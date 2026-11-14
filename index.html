@@ -959,6 +959,7 @@ const FIREBASE_CONFIG = /*FIREBASE_CONFIG_JSON*/{
 const BUDGET_CONFIG = /*BUDGET_CONFIG_JSON*/{
 	"deadzone": 15.0,
 	"deadzonePx": 15.0,
+	"followSyncIntervalMs": 1000,
 	"globalMax": 105,
 	"globalRechargeAmount": 3,
 	"globalRechargeSec": 2.0,
@@ -1651,12 +1652,17 @@ function updateLegsIK_F(c, dt, emitFootprints = true) {
         leg.liftHeight = 0;
 
         if (emitFootprints && (c.isPlayer || Math.random() < 0.3)) {
+          if (state.footprints.length > 250) {
+            state.footprints.shift();
+          }
           state.footprints.push({
             x: leg.footX,
             y: leg.footY,
             r: 2.2,
             alpha: 0.45,
-            hue: g.hue
+            hue: g.hue,
+            life: 1.5,
+            maxLife: 1.5
           });
         }
       } else {
@@ -2752,6 +2758,7 @@ const state = {
     isZoomingToTarget: false
   },
   targetFollowCreature: null,
+  lastFollowSyncTime: 0,
   needsRemakeOnNextClick: false,
   hasInitiallyRegistered: false,
   input: {
@@ -2769,6 +2776,7 @@ const state = {
     globalCredits: BUDGET_CONFIG.globalMax || 105,
     deadzone: (typeof BUDGET_CONFIG.deadzone === 'number') ? BUDGET_CONFIG.deadzone : 15.0,
     rateLimitMs: BUDGET_CONFIG.rateLimitMs || 250,
+    followSyncIntervalMs: BUDGET_CONFIG.followSyncIntervalMs || 1000,
     sleepBackgroundSec: BUDGET_CONFIG.sleepBackgroundSec || 60,
     sleepAfkSec: BUDGET_CONFIG.sleepAfkSec || 300
   },
@@ -3576,6 +3584,7 @@ function setupGlobalBudgetSync() {
       if (typeof val.userRechargeSec === 'number') state.budget.userRechargeSec = val.userRechargeSec;
       if (typeof val.deadzone === 'number') state.budget.deadzone = val.deadzone;
       if (typeof val.deadzonePx === 'number') state.budget.deadzone = val.deadzonePx;
+      if (typeof val.followSyncIntervalMs === 'number') state.budget.followSyncIntervalMs = val.followSyncIntervalMs;
       if (typeof val.rateLimitMs === 'number') state.budget.rateLimitMs = val.rateLimitMs;
       if (typeof val.sleepBackgroundSec === 'number') state.budget.sleepBackgroundSec = val.sleepBackgroundSec;
       if (typeof val.sleepAfkSec === 'number') state.budget.sleepAfkSec = val.sleepAfkSec;
@@ -4044,6 +4053,13 @@ function gameLoop(now) {
         state.user.targetY = state.user.y;
         state.user.isMoving = false;
       }
+
+      // Synchronisation périodique de la position vers Firebase pendant le suivi
+      const followInterval = state.budget.followSyncIntervalMs || 1000;
+      if (now - state.lastFollowSyncTime >= followInterval) {
+        state.lastFollowSyncTime = now;
+        pushMovement(state.user.targetX, state.user.targetY);
+      }
     }
 
     // 1. Physique des créatures
@@ -4136,12 +4152,11 @@ function gameLoop(now) {
 
   // Empreintes et traces au sol (Type F)
   for (const fp of state.footprints) {
-    ctx.save();
-    ctx.fillStyle = `rgba(56, 189, 248, ${Math.max(0, fp.life * 0.35)})`;
+    const fade = Math.max(0, Math.min(1, fp.life / (fp.maxLife || 1.5)));
+    ctx.fillStyle = `hsla(${fp.hue || 199}, 85%, 65%, ${fade * (fp.alpha || 0.45)})`;
     ctx.beginPath();
-    ctx.arc(fp.x, fp.y, 2.5, 0, Math.PI * 2);
+    ctx.arc(fp.x, fp.y, fp.r || 2.2, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
 
   // Anneaux vortex (Type G)
@@ -4263,8 +4278,9 @@ let dragStartX = 0;
 let dragStartY = 0;
 let lastPointerX = 0;
 let lastPointerY = 0;
-let initialPinchDist = 0;
-let initialPinchZoom = 1;
+let lastPinchDist = 0;
+let lastPinchCenter = { x: 0, y: 0 };
+let wasPinching = false;
 
 canvas.addEventListener('pointerdown', (e) => {
   if (e.target !== canvas) return;
@@ -4274,17 +4290,24 @@ canvas.addEventListener('pointerdown', (e) => {
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
   if (activePointers.size === 1) {
-    isDragging = false;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
+    if (!wasPinching) {
+      isDragging = false;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+    }
     lastPointerX = e.clientX;
     lastPointerY = e.clientY;
-  } else if (activePointers.size === 2) {
+  } else if (activePointers.size >= 2) {
     isDragging = true;
+    wasPinching = true;
     state.camera.isCentered = false;
+    state.camera.isZoomingToTarget = false;
     const pts = Array.from(activePointers.values());
-    initialPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    initialPinchZoom = state.camera.zoom;
+    lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    lastPinchCenter = {
+      x: (pts[0].x + pts[1].x) * 0.5,
+      y: (pts[0].y + pts[1].y) * 0.5
+    };
   }
 });
 
@@ -4295,6 +4318,12 @@ canvas.addEventListener('pointermove', (e) => {
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
   if (activePointers.size === 1) {
+    if (wasPinching) {
+      // Ignorer tout saut brutal causé par le doigt restant lors de la fin d'un pincement
+      lastPointerX = e.clientX;
+      lastPointerY = e.clientY;
+      return;
+    }
     const dx = e.clientX - lastPointerX;
     const dy = e.clientY - lastPointerY;
     if (!isDragging && Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY) > state.input.dragThreshold) {
@@ -4313,19 +4342,57 @@ canvas.addEventListener('pointermove', (e) => {
   } else if (activePointers.size >= 2) {
     const pts = Array.from(activePointers.values());
     const curDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    if (initialPinchDist > 10) {
-      state.camera.zoom = Math.max(state.camera.minZoom, Math.min(state.camera.maxZoom, initialPinchZoom * (curDist / initialPinchDist)));
-      state.camera.targetZoom = state.camera.zoom;
+    const curCenter = {
+      x: (pts[0].x + pts[1].x) * 0.5,
+      y: (pts[0].y + pts[1].y) * 0.5
+    };
+
+    if (lastPinchDist > 5 && curDist > 5) {
+      const zoomRatio = curDist / lastPinchDist;
+      const oldZoom = state.camera.zoom;
+      const newZoom = Math.max(state.camera.minZoom, Math.min(state.camera.maxZoom, oldZoom * zoomRatio));
+
+      // Zoom focalisé précisément sous le centre des deux doigts (comme Google Maps / Safari)
+      const dpr = window.devicePixelRatio || 1;
+      const viewW = canvas.width / dpr;
+      const viewH = canvas.height / dpr;
+
+      // Point monde sous les doigts avant zoom
+      const worldFocusX = (curCenter.x - viewW / 2) / oldZoom + state.camera.x;
+      const worldFocusY = (curCenter.y - viewH / 2) / oldZoom + state.camera.y;
+
+      state.camera.zoom = newZoom;
+      state.camera.targetZoom = newZoom;
       state.camera.isZoomingToTarget = false;
+
+      // Translation conjointe (pan 2 doigts) + maintien du focus sous les doigts
+      state.camera.x = worldFocusX - (curCenter.x - viewW / 2) / newZoom;
+      state.camera.y = worldFocusY - (curCenter.y - viewH / 2) / newZoom;
+      state.camera.targetX = state.camera.x;
+      state.camera.targetY = state.camera.y;
+      clampCamera();
     }
+
+    lastPinchDist = curDist;
+    lastPinchCenter = curCenter;
   }
 });
 
 function handlePointerEnd(e) {
   activePointers.delete(e.pointerId);
   try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
-  if (activePointers.size === 0 && !isDragging) {
-    const wp = screenToWorld(dragStartX, dragStartY);
+
+  if (activePointers.size === 1) {
+    // Si un doigt reste après un pincement, mettre à jour sa position pour éviter tout à-coup
+    const remaining = activePointers.values().next().value;
+    lastPointerX = remaining.x;
+    lastPointerY = remaining.y;
+  } else if (activePointers.size === 0) {
+    const hadPinch = wasPinching;
+    wasPinching = false;
+
+    if (!isDragging && !hadPinch) {
+      const wp = screenToWorld(dragStartX, dragStartY);
 
     // Si Firebase a été purgé avec l'app, la bestiole est recréée sur Firebase en conservant son skin
     if (state.needsRemakeOnNextClick) {
