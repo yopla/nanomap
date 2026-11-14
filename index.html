@@ -4609,6 +4609,27 @@ const fsIconExit = document.getElementById('fs-icon-exit');
 let popupCheckInterval = null;
 let activeFullscreenBlobUrl = null;
 
+function isIPhoneDevice() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  if (/iPhone|iPod/i.test(ua) || /iPhone|iPod/i.test(platform)) return true;
+  const docEl = document.documentElement;
+  const hasDomFs = !!(
+    docEl && (
+      docEl.requestFullscreen ||
+      docEl.webkitRequestFullscreen ||
+      docEl.mozRequestFullScreen ||
+      docEl.msRequestFullscreen
+    )
+  );
+  if (navigator.maxTouchPoints > 1 && !hasDomFs) return true;
+  return false;
+}
+
+if (fsBtn && isIPhoneDevice()) {
+  fsBtn.style.display = 'none';
+}
+
 function isFullScreen() {
   return !!(
     document.fullscreenElement ||
@@ -4940,6 +4961,7 @@ function openFullTabFallback() {
 }
 
 function toggleFullScreen() {
+  if (isIPhoneDevice()) return;
   state.lastInteractionTime = performance.now();
   if (!isFullScreen()) {
     const docEl = document.documentElement;
@@ -4965,7 +4987,9 @@ function toggleFullScreen() {
   }
 }
 
-fsBtn.addEventListener('click', toggleFullScreen);
+if (fsBtn && !isIPhoneDevice()) {
+  fsBtn.addEventListener('click', toggleFullScreen);
+}
 document.addEventListener('fullscreenchange', updateFsIcons);
 document.addEventListener('webkitfullscreenchange', updateFsIcons);
 document.addEventListener('mozfullscreenchange', updateFsIcons);
