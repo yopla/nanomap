@@ -815,7 +815,6 @@
       <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
     </svg>
   </button>
-  <button class="round-btn" id="btnSettings" title="Paramètres & Nombre de bots">⚙️</button>
 </div>
 
 <!-- BARRE D'EXPRESSION EMOJI ULTRA-ÉPURÉE (AFFICHAGE DIRECT AU DESSUS DE LA BESTIOLE) -->
@@ -4997,13 +4996,16 @@ document.addEventListener('MSFullscreenChange', updateFsIcons);
 
 /* Modale Paramètres */
 const settingsModal = document.getElementById('settingsModal');
+const btnSettings = document.getElementById('btnSettings');
 
-document.getElementById('btnSettings').addEventListener('click', () => {
-  state.lastInteractionTime = performance.now();
-  document.getElementById('inputPlayerName').value = state.user.name;
-  updateHudUI();
-  settingsModal.classList.add('active');
-});
+if (btnSettings && settingsModal) {
+  btnSettings.addEventListener('click', () => {
+    state.lastInteractionTime = performance.now();
+    document.getElementById('inputPlayerName').value = state.user.name;
+    updateHudUI();
+    settingsModal.classList.add('active');
+  });
+}
 
 document.getElementById('btnCloseSettings').addEventListener('click', () => {
   settingsModal.classList.remove('active');
