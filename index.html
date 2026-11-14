@@ -959,7 +959,6 @@ const FIREBASE_CONFIG = /*FIREBASE_CONFIG_JSON*/{
 const BUDGET_CONFIG = /*BUDGET_CONFIG_JSON*/{
 	"deadzone": 15.0,
 	"deadzonePx": 15.0,
-	"followSyncIntervalMs": 1000,
 	"globalMax": 105,
 	"globalRechargeAmount": 3,
 	"globalRechargeSec": 2.0,
@@ -4500,6 +4499,7 @@ function handlePointerEnd(e) {
     state.ripples.push({ x: targetX, y: targetY, radius: 5, alpha: 0.95 });
 
     pushMovement(targetX, targetY);
+    }
   }
 }
 
