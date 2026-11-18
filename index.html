@@ -3383,9 +3383,14 @@ function isDuplicateOfSelf(uid, data) {
 
 function pruneSelfDuplicates() {
   let removed = false;
+  const now = performance.now();
+  const seenCreatures = new Map();
+
   for (const uid of Object.keys(state.players)) {
     const p = state.players[uid];
     if (!p) continue;
+
+    // 1. Doublon de soi-même
     if (isDuplicateOfSelf(uid, { name: p.name, seed: p.seed, is_bot: p.isBot })) {
       if (state.targetFollowCreature && state.targetFollowCreature.id === uid) {
         state.targetFollowCreature = null;
@@ -3393,6 +3398,44 @@ function pruneSelfDuplicates() {
       }
       delete state.players[uid];
       removed = true;
+      continue;
+    }
+
+    // 2. Nettoyage des fantômes distants abandonnés :
+    // - Hors ligne depuis plus de 2 minutes (120 000 ms)
+    // - Ou aucune mise à jour depuis plus de 6 minutes (360 000 ms)
+    const elapsedSinceLastSeen = p.lastSeenAt ? (now - p.lastSeenAt) : 0;
+    if ((p.online === false && elapsedSinceLastSeen > 120000) || (elapsedSinceLastSeen > 360000)) {
+      if (state.targetFollowCreature && state.targetFollowCreature.id === uid) {
+        state.targetFollowCreature = null;
+        closeExpressionMenu();
+      }
+      delete state.players[uid];
+      removed = true;
+      continue;
+    }
+
+    // 3. Doublons entre autres joueurs distants (même nom + même seed)
+    if (p.name && typeof p.seed === 'number') {
+      const key = String(p.name).trim().toLowerCase() + '|' + p.seed;
+      if (seenCreatures.has(key)) {
+        const prevUid = seenCreatures.get(key);
+        const prevP = state.players[prevUid];
+        const prevSeen = (prevP && prevP.lastSeenAt) || 0;
+        const curSeen = p.lastSeenAt || 0;
+        const toDeleteUid = (prevSeen < curSeen) ? prevUid : uid;
+        if (state.targetFollowCreature && state.targetFollowCreature.id === toDeleteUid) {
+          state.targetFollowCreature = null;
+          closeExpressionMenu();
+        }
+        delete state.players[toDeleteUid];
+        removed = true;
+        if (toDeleteUid === prevUid) {
+          seenCreatures.set(key, uid);
+        }
+      } else {
+        seenCreatures.set(key, uid);
+      }
     }
   }
   if (removed) updateOnlineCounter();
@@ -3681,6 +3724,19 @@ function onUserAdded(snap) {
     }
     return;
   }
+  if (data.oldUid && state.players[data.oldUid]) {
+    delete state.players[data.oldUid];
+  }
+  if (data.name && typeof data.seed === 'number') {
+    const cleanName = String(data.name).trim().toLowerCase();
+    for (const otherUid of Object.keys(state.players)) {
+      if (otherUid === uid) continue;
+      const otherP = state.players[otherUid];
+      if (otherP && otherP.name && String(otherP.name).trim().toLowerCase() === cleanName && otherP.seed === data.seed) {
+        delete state.players[otherUid];
+      }
+    }
+  }
   if (state.players[uid]) return;
 
   let cType = data.creatureType;
@@ -3791,6 +3847,10 @@ function onUserChanged(snap) {
 function onUserRemoved(snap) {
   const uid = snap.key;
   if (!uid) return;
+  if (window.__FIREMOJI_OLD_UID && window.__FIREMOJI_OLD_UID === uid) {
+    window.__FIREMOJI_OLD_UID = null;
+    savePlayerProfile();
+  }
   if (state.user && uid === state.user.id && state.hasInitiallyRegistered && !state.isPaused && !state.isSleeping && wasSocketConnected) {
     state.needsRemakeOnNextClick = true;
   }
