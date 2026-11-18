@@ -740,6 +740,18 @@
     }
   }
 
+  .version-badge {
+    position: fixed;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    left: max(10px, env(safe-area-inset-left, 0px));
+    font-size: 11px;
+    font-family: monospace;
+    color: rgba(255, 255, 255, 0.45);
+    pointer-events: none;
+    user-select: none;
+    z-index: 1000;
+  }
+
 </style>
 </head>
 <body>
@@ -5371,5 +5383,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
+<div class="version-badge">v0.1</div>
 </body>
 </html>
