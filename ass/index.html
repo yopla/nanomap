@@ -2463,23 +2463,38 @@
 	"version": 1
 }/*EXTENSIONS_DATA_JSON_END*/;
 
+  const fetchJsonNoCache = async (url) => {
+    try {
+      const sep = url.includes("?") ? "&" : "?";
+      const r = await fetch(`${url}${sep}_ts=${Date.now()}`, { cache: "no-store" });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (_e) { return null; }
+  };
+
+  let lastRemoteCfgSnap = "";
+  let lastRemoteElemsSnap = "";
+  let lastRemoteExtsSnap = "";
+
   // En HTTP/HTTPS : charge en priorité les JSON en ligne s'ils existent (fallback sur les données embarquées)
   if (window.location.protocol === "http:" || window.location.protocol === "https:") {
-    const fetchJsonOpt = async (url) => {
-      try {
-        const r = await fetch(url, { cache: "no-store" });
-        if (!r.ok) return null;
-        return await r.json();
-      } catch (_e) { return null; }
-    };
     const [remoteCfg, remoteElems, remoteExts] = await Promise.all([
-      fetchJsonOpt("game_config.json"),
-      fetchJsonOpt("config/elements_data.json"),
-      fetchJsonOpt("config/extensions.json"),
+      fetchJsonNoCache("game_config.json"),
+      fetchJsonNoCache("config/elements_data.json"),
+      fetchJsonNoCache("config/extensions.json"),
     ]);
-    if (remoteCfg && typeof remoteCfg === "object") Object.assign(GAME_CONFIG, remoteCfg);
-    if (remoteElems && Array.isArray(remoteElems.elements)) ELEMENTS_DATA = remoteElems;
-    if (remoteExts && Array.isArray(remoteExts.extensions)) EXTENSIONS_DATA = remoteExts;
+    if (remoteCfg && typeof remoteCfg === "object") {
+      Object.assign(GAME_CONFIG, remoteCfg);
+      lastRemoteCfgSnap = JSON.stringify(remoteCfg);
+    }
+    if (remoteElems && Array.isArray(remoteElems.elements)) {
+      ELEMENTS_DATA = remoteElems;
+      lastRemoteElemsSnap = JSON.stringify(remoteElems);
+    }
+    if (remoteExts && Array.isArray(remoteExts.extensions)) {
+      EXTENSIONS_DATA = remoteExts;
+      lastRemoteExtsSnap = JSON.stringify(remoteExts);
+    }
   }
 
   const canvas = document.getElementById("game");
@@ -2531,29 +2546,37 @@
   const joystickToggleEl = document.getElementById("joystick-toggle");
 
   // Elements & Recipes index
-  const elementsList = Array.isArray(ELEMENTS_DATA?.elements) ? ELEMENTS_DATA.elements : [];
+  let elementsList = [];
   const elementsById = new Map();
   const recipeMap = new Map();
   const level1Elements = [];
   let maxElementLevel = 1;
   const pairKey = (a, b) => (a <= b ? `${a}|${b}` : `${b}|${a}`);
 
-  for (const el of elementsList) {
-    if (!el || !el.id) continue;
-    elementsById.set(el.id, el);
-    maxElementLevel = Math.max(maxElementLevel, Number(el.level) || 1);
-    if (Number(el.level) === 1) level1Elements.push(el);
-    if (Array.isArray(el.recipe) && el.recipe.length === 2) {
-      const k = pairKey(el.recipe[0], el.recipe[1]);
-      if (!recipeMap.has(k)) recipeMap.set(k, el.id);
+  function rebuildElementsIndex() {
+    elementsList = Array.isArray(ELEMENTS_DATA?.elements) ? ELEMENTS_DATA.elements : [];
+    elementsById.clear();
+    recipeMap.clear();
+    level1Elements.length = 0;
+    maxElementLevel = 1;
+    for (const el of elementsList) {
+      if (!el || !el.id) continue;
+      elementsById.set(el.id, el);
+      maxElementLevel = Math.max(maxElementLevel, Number(el.level) || 1);
+      if (Number(el.level) === 1) level1Elements.push(el);
+      if (Array.isArray(el.recipe) && el.recipe.length === 2) {
+        const k = pairKey(el.recipe[0], el.recipe[1]);
+        if (!recipeMap.has(k)) recipeMap.set(k, el.id);
+      }
     }
   }
+  rebuildElementsIndex();
 
   const inventory = new Map();
   const discovered = new Set();
 
   // Option 1 + 2 : Bitmask par chunk + LRU borné avant repousse
-  const MAX_COLLECTED_CHUNKS = Math.max(0, Math.floor(Number(GAME_CONFIG.maxCollectedChunks ?? 1000)));
+  let MAX_COLLECTED_CHUNKS = Math.max(0, Math.floor(Number(GAME_CONFIG.maxCollectedChunks ?? 1000)));
   const collectedChunks = new Map(); // "biomeId|cx,cy" -> bitmask
   const collectedChunkOrder = []; // LRU (plus ancien en tête, plus récent en queue)
 
@@ -2735,7 +2758,7 @@
     }
   ];
 
-  const BIOMES = (Array.isArray(GAME_CONFIG.biomes) && GAME_CONFIG.biomes.length > 0)
+  let BIOMES = (Array.isArray(GAME_CONFIG.biomes) && GAME_CONFIG.biomes.length > 0)
     ? GAME_CONFIG.biomes
     : DEFAULT_BIOMES;
 
@@ -2784,19 +2807,37 @@
   }
   applyActiveBiomeParams(activeBiomeId);
 
-  const MOVE_SPEED = Math.max(60, Math.min(800, Number(GAME_CONFIG.moveSpeed ?? 240)));
-  const DEADZONE_PX = Math.max(0, Math.min(120, Number(GAME_CONFIG.deadzonePx ?? 14)));
-  const CAM_SMOOTH = Math.max(1, Math.min(25, Number(GAME_CONFIG.cameraSmoothing ?? 6.5)));
-  const CAM_ZOOM = Math.max(0.4, Math.min(2.5, Number(GAME_CONFIG.cameraZoom ?? 1.0)));
-  const SHOW_COMPASS = GAME_CONFIG.showCompass !== false;
-  const SHIP_TITLE = String(GAME_CONFIG.shipTitle || "VAISSEAU");
-  const SHIP_SUBTITLE = String(GAME_CONFIG.shipSubtitle || "Systèmes nominaux • Base (0, 0)");
-  const EXIT_BTN_TEXT = String(GAME_CONFIG.exitButtonText || "Sortir");
+  let MOVE_SPEED = Math.max(60, Math.min(800, Number(GAME_CONFIG.moveSpeed ?? 240)));
+  let DEADZONE_PX = Math.max(0, Math.min(120, Number(GAME_CONFIG.deadzonePx ?? 14)));
+  let CAM_SMOOTH = Math.max(1, Math.min(25, Number(GAME_CONFIG.cameraSmoothing ?? 6.5)));
+  let CAM_ZOOM = Math.max(0.4, Math.min(2.5, Number(GAME_CONFIG.cameraZoom ?? 1.0)));
+  let SHOW_COMPASS = GAME_CONFIG.showCompass !== false;
+  let SHIP_TITLE = String(GAME_CONFIG.shipTitle || "VAISSEAU");
+  let SHIP_SUBTITLE = String(GAME_CONFIG.shipSubtitle || "Systèmes nominaux • Base (0, 0)");
+  let EXIT_BTN_TEXT = String(GAME_CONFIG.exitButtonText || "Sortir");
 
-  shipTitleEl.textContent = SHIP_TITLE;
+  function applyGameConfigParams() {
+    MAX_COLLECTED_CHUNKS = Math.max(0, Math.floor(Number(GAME_CONFIG.maxCollectedChunks ?? 1000)));
+    enforceCollectedChunksLimit();
+    BIOMES = (Array.isArray(GAME_CONFIG.biomes) && GAME_CONFIG.biomes.length > 0)
+      ? GAME_CONFIG.biomes
+      : DEFAULT_BIOMES;
+    MOVE_SPEED = Math.max(60, Math.min(800, Number(GAME_CONFIG.moveSpeed ?? 240)));
+    DEADZONE_PX = Math.max(0, Math.min(120, Number(GAME_CONFIG.deadzonePx ?? 14)));
+    CAM_SMOOTH = Math.max(1, Math.min(25, Number(GAME_CONFIG.cameraSmoothing ?? 6.5)));
+    CAM_ZOOM = Math.max(0.4, Math.min(2.5, Number(GAME_CONFIG.cameraZoom ?? 1.0)));
+    SHOW_COMPASS = GAME_CONFIG.showCompass !== false;
+    SHIP_TITLE = String(GAME_CONFIG.shipTitle || "VAISSEAU");
+    SHIP_SUBTITLE = String(GAME_CONFIG.shipSubtitle || "Systèmes nominaux • Base (0, 0)");
+    EXIT_BTN_TEXT = String(GAME_CONFIG.exitButtonText || "Sortir");
+    shipTitleEl.textContent = SHIP_TITLE;
+    exitBtnEl.setAttribute("aria-label", EXIT_BTN_TEXT);
+    applyActiveBiomeParams(activeBiomeId);
+  }
+
   exitBtnEl.textContent = "✕";
   exitBtnEl.classList.add("icon-close-lg");
-  exitBtnEl.setAttribute("aria-label", EXIT_BTN_TEXT);
+  applyGameConfigParams();
 
   let viewW = window.innerWidth;
   let viewH = window.innerHeight;
@@ -4363,6 +4404,7 @@
     switchShipView("hub");
     renderShipUI();
     overlayEl.classList.add("open");
+    hotRefreshRemoteData(false);
   }
 
   function closeShipUI() {
@@ -5401,6 +5443,7 @@
   let nextHookId = 1;
   const activeExtensions = new Map(); // filename -> { cleanups: Array<Function>, iframe: HTMLIFrameElement | null }
   const loadingExtensions = new Set();
+  const loadedExtensionHtml = new Map(); // filename -> dernier HTML chargé (pour détecter les MAJ à chaud)
   let extSlotGeneration = 0;
   const titleCardQueue = [];
   let titleCardTimer = null;
@@ -5927,7 +5970,7 @@
     }
   }
 
-  async function loadAndActivateExtension(extDef, isFreshUnlock) {
+  async function loadAndActivateExtension(extDef, isFreshUnlock, forceReload = false) {
     const filename = String(extDef?.filename || "");
     if (!filename || activeExtensions.has(filename) || loadingExtensions.has(filename)) return;
     loadingExtensions.add(filename);
@@ -5935,6 +5978,8 @@
 
     const { scopedHost, cleanups } = createScopedHost(filename, extDef);
     const url = `extensions/${encodeURIComponent(filename)}`;
+    const isHttp = (window.location.protocol === "http:" || window.location.protocol === "https:");
+    const fetchUrl = isHttp ? `${url}?_ts=${Date.now()}` : url;
 
     const finishActivateModule = (mod) => {
       if (gen !== extSlotGeneration) return;
@@ -5949,17 +5994,18 @@
     };
 
     try {
-      // Si déjà chargé dans le registre global
-      if (window.AssemblageExtensions[filename]) {
+      // Si déjà chargé dans le registre global (sauf si rechargement forcé à chaud)
+      if (!forceReload && window.AssemblageExtensions[filename]) {
         finishActivateModule(window.AssemblageExtensions[filename]);
         loadingExtensions.delete(filename);
         return;
       }
 
-      const resp = await fetch(url, { cache: "no-store" });
+      const resp = await fetch(fetchUrl, { cache: "no-store" });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const htmlText = await resp.text();
       if (gen !== extSlotGeneration) return;
+      loadedExtensionHtml.set(filename, htmlText);
       const doc = new DOMParser().parseFromString(htmlText, "text/html");
 
       doc.querySelectorAll("style").forEach(st => {
@@ -6140,17 +6186,121 @@
     if (anyNewUnlock) saveCurrentSlot(true);
   }
 
-  async function tryRefreshExtensionsManifestFromDisk() {
-    if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return;
+  let lastHotRefreshAt = 0;
+  let hotRefreshInFlight = false;
+  const HOT_REFRESH_COOLDOWN_MS = 10000;
+  if (!lastRemoteCfgSnap) lastRemoteCfgSnap = JSON.stringify(GAME_CONFIG);
+  if (!lastRemoteElemsSnap) lastRemoteElemsSnap = JSON.stringify(ELEMENTS_DATA);
+  if (!lastRemoteExtsSnap) lastRemoteExtsSnap = JSON.stringify(EXTENSIONS_DATA);
+
+  async function hotRefreshRemoteData(force = false) {
+    if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return false;
+    const now = Date.now();
+    if (hotRefreshInFlight) return false;
+    if (!force && (now - lastHotRefreshAt) < HOT_REFRESH_COOLDOWN_MS) return false;
+    hotRefreshInFlight = true;
+    lastHotRefreshAt = now;
+
     try {
-      const resp = await fetch("config/extensions.json", { cache: "no-store" });
-      if (!resp.ok) return;
-      const parsed = await resp.json();
-      if (parsed && Array.isArray(parsed.extensions)) {
-        EXTENSIONS_DATA = parsed;
-        syncUnlockedExtensions(false);
+      const [remoteCfg, remoteElems, remoteExts] = await Promise.all([
+        fetchJsonNoCache("game_config.json"),
+        fetchJsonNoCache("config/elements_data.json"),
+        fetchJsonNoCache("config/extensions.json"),
+      ]);
+
+      let uiChanged = false;
+      let extHotReloaded = false;
+
+      if (remoteCfg && typeof remoteCfg === "object") {
+        const snap = JSON.stringify(remoteCfg);
+        if (snap !== lastRemoteCfgSnap) {
+          lastRemoteCfgSnap = snap;
+          const prevBiomeKey = `${activeBiomeId}|${WORLD_SEED}|${ROCK_DENSITY}|${CRYSTAL_DENSITY}|${BIOME_SCALE}|${activeBiomeTheme}|${groundColA}|${groundColB}|${groundColC}|${accentRgb}`;
+          for (const k of Object.keys(GAME_CONFIG)) delete GAME_CONFIG[k];
+          Object.assign(GAME_CONFIG, remoteCfg);
+          applyGameConfigParams();
+          const nextBiomeKey = `${activeBiomeId}|${WORLD_SEED}|${ROCK_DENSITY}|${CRYSTAL_DENSITY}|${BIOME_SCALE}|${activeBiomeTheme}|${groundColA}|${groundColB}|${groundColC}|${accentRgb}`;
+          if (prevBiomeKey !== nextBiomeKey) {
+            chunks.clear();
+            updateChunks(alien.x, alien.y);
+          }
+          uiChanged = true;
+        }
       }
-    } catch (_e) {}
+
+      if (remoteElems && Array.isArray(remoteElems.elements)) {
+        const snap = JSON.stringify(remoteElems);
+        if (snap !== lastRemoteElemsSnap) {
+          lastRemoteElemsSnap = snap;
+          ELEMENTS_DATA = remoteElems;
+          rebuildElementsIndex();
+          activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
+          uiChanged = true;
+        }
+      }
+
+      if (remoteExts && Array.isArray(remoteExts.extensions)) {
+        const snap = JSON.stringify(remoteExts);
+        if (snap !== lastRemoteExtsSnap) {
+          lastRemoteExtsSnap = snap;
+          EXTENSIONS_DATA = remoteExts;
+          uiChanged = true;
+        }
+      }
+
+      // Désactive les extensions retirées ou passées à enabled: false
+      const enabledByFile = new Map();
+      const extList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+      for (const extDef of extList) {
+        const fname = String(extDef?.filename || "");
+        if (fname && extDef.enabled !== false) enabledByFile.set(fname, extDef);
+      }
+      for (const fname of Array.from(activeExtensions.keys())) {
+        if (!enabledByFile.has(fname)) {
+          deactivateExtension(fname);
+          delete window.AssemblageExtensions[fname];
+          loadedExtensionHtml.delete(fname);
+          extHotReloaded = true;
+        }
+      }
+
+      // Vérifie si le fichier HTML d'une extension déjà active a été modifié en ligne
+      const activeToCheck = Array.from(activeExtensions.keys()).filter(f => enabledByFile.has(f));
+      if (activeToCheck.length > 0) {
+        await Promise.all(activeToCheck.map(async (fname) => {
+          try {
+            const resp = await fetch(`extensions/${encodeURIComponent(fname)}?_ts=${Date.now()}`, { cache: "no-store" });
+            if (!resp.ok) return;
+            const newHtml = await resp.text();
+            if (loadedExtensionHtml.has(fname) && loadedExtensionHtml.get(fname) !== newHtml) {
+              deactivateExtension(fname);
+              delete window.AssemblageExtensions[fname];
+              loadedExtensionHtml.delete(fname);
+              await loadAndActivateExtension(enabledByFile.get(fname), false, true);
+              extHotReloaded = true;
+            }
+          } catch (_e) {}
+        }));
+      }
+
+      syncUnlockedExtensions(false);
+
+      if (uiChanged && uiOpen) {
+        renderShipUI();
+      }
+      if (uiChanged || extHotReloaded) {
+        showToast("🔄 Contenu mis à jour");
+      }
+      return uiChanged || extHotReloaded;
+    } catch (_e) {
+      return false;
+    } finally {
+      hotRefreshInFlight = false;
+    }
+  }
+
+  async function tryRefreshExtensionsManifestFromDisk() {
+    return hotRefreshRemoteData(true);
   }
 
   window.AssemblageHost = {
@@ -6158,6 +6308,7 @@
     getExtensions: () => (Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : []),
     getStates: exportExtensionStatesObj,
     checkNow: () => syncUnlockedExtensions(false),
+    refreshRemote: () => hotRefreshRemoteData(true),
     unlockExtension: unlockExtensionByFilename,
     openExtensionFrame: openExtFrame,
     closeExtensionFrame: closeExtFrame,
@@ -6475,6 +6626,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.1.3</div>
+<div id="version-badge" aria-hidden="true">v0.1.5</div>
 </body>
 </html>
