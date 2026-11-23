@@ -648,6 +648,129 @@
     transform: scale(0.92);
   }
 
+  /* BARRE DE SAISIE CHAT (MODE CHAT ACTIVÉ PAR L'HÔTE N&B) */
+  .chat-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 4px;
+  }
+  .chat-text-input {
+    width: min(280px, 60vw);
+    padding: 8px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(15, 23, 42, 0.92);
+    color: #f8fafc;
+    font-size: 14px;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .chat-text-input:focus {
+    border-color: rgba(248, 250, 252, 0.85);
+    box-shadow: 0 0 12px rgba(248, 250, 252, 0.25);
+  }
+  .chat-char-count {
+    font-size: 11px;
+    color: #94a3b8;
+    min-width: 34px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .chat-send-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.12s ease, background 0.15s;
+  }
+  .chat-send-btn:hover {
+    transform: scale(1.08);
+    background: #ffffff;
+  }
+  .chat-send-btn:active {
+    transform: scale(0.92);
+  }
+
+  /* PANNEAU HÔTE N&B */
+  .round-btn.host-chat-active {
+    border-color: rgba(248, 250, 252, 0.95) !important;
+    box-shadow: 0 0 16px rgba(248, 250, 252, 0.55), 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+  }
+  .host-section {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .host-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+  }
+  .host-status-pill.connected {
+    background: rgba(248, 250, 252, 0.18);
+    color: #ffffff;
+    border: 1px solid rgba(248, 250, 252, 0.45);
+  }
+  .host-toggle-btn {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(30, 41, 59, 0.9);
+    color: #e2e8f0;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+  .host-toggle-btn.active {
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #ffffff;
+    box-shadow: 0 0 16px rgba(248, 250, 252, 0.35);
+  }
+  .host-toggle-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .host-uid-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: #94a3b8;
+  }
+  .host-uid-code {
+    flex: 1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: #e2e8f0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* ==================== RESPONSIVE : BOUTONS HUD & DIALOGUE PLUS GROS ==================== */
   @media (max-width: 768px) {
     #pan-hint { display: none; }
@@ -815,10 +938,12 @@
   <span>💧 Click to move</span>
 </div>
 
-<!-- BARRE D'ACTION SIMPLIFIÉE : DÉ, RECENTRER, PLEIN ÉCRAN, PARAMÈTRES -->
+<!-- BARRE D'ACTION SIMPLIFIÉE : DÉ, RECENTRER, PLEIN ÉCRAN, PARAMÈTRES HÔTE -->
 <div id="action-bar">
   <button class="round-btn dice-btn" id="btnDice" title="Generate a random procedural creature (Types C, F, G or H)">🎲</button>
   <button class="round-btn" id="btnCenterCamera" title="Center camera on my creature">🎯</button>
+  <button class="round-btn" id="btnHostChatWrite" title="Écrire un message (Mode Chat)" style="display:none;">💬</button>
+  <button class="round-btn" id="btnSettings" title="Paramètres Hôte N&B" style="display:none;">⚙️</button>
   <button class="round-btn" id="fullscreen-btn" title="Fullscreen">
     <svg id="fs-icon-enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -829,9 +954,14 @@
   </button>
 </div>
 
-<!-- BARRE D'EXPRESSION EMOJI ULTRA-ÉPURÉE (AFFICHAGE DIRECT AU DESSUS DE LA BESTIOLE) -->
+<!-- BARRE D'EXPRESSION EMOJI / CHAT ULTRA-ÉPURÉE (AFFICHAGE DIRECT AU DESSUS DE LA BESTIOLE) -->
 <div id="expression-bar" class="expression-bar">
   <div class="expression-choices" id="expressionChoices"></div>
+  <div class="chat-input-bar" id="chatInputBar" style="display:none;">
+    <input type="text" id="chatTextInput" class="chat-text-input" maxlength="60" placeholder="Écrire un message (60 car. max)..." autocomplete="off">
+    <span class="chat-char-count" id="chatCharCount">0/60</span>
+    <button class="chat-send-btn" id="btnChatSend" title="Envoyer">↵</button>
+  </div>
 </div>
 
 <div id="toast-container"></div>
@@ -843,6 +973,35 @@
       <span>⚙️ Ecosystem Settings</span>
     </div>
     <div class="modal-body">
+      <!-- CONTRÔLE HÔTE NOIR & BLANC (VISIBLE UNIQUEMENT SUR L'EXPORT HÔTE PRIVÉ) -->
+      <div class="settings-section host-section" id="hostSettingsSection" style="display:none;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px;">
+          <div class="settings-title">⚫ Contrôle Hôte Noir &amp; Blanc</div>
+          <span class="host-status-pill" id="hostAuthStatusPill">Non connecté</span>
+        </div>
+
+        <div id="hostLoginForm" style="display:flex; flex-direction:column; gap:8px;">
+          <div class="settings-desc">Connectez-vous avec votre compte Firebase Auth (Email / Mot de passe) pour activer votre avatar Noir &amp; Blanc et contrôler le Mode Chat.</div>
+          <input type="email" id="hostEmailInput" class="form-input" placeholder="Email Firebase Auth..." autocomplete="username">
+          <input type="password" id="hostPasswordInput" class="form-input" placeholder="Mot de passe..." autocomplete="current-password">
+          <button class="btn-base btn-primary" id="btnHostSignIn" style="width:100%;">🔐 Se connecter (Hôte)</button>
+        </div>
+
+        <div id="hostSignedInPanel" style="display:none; flex-direction:column; gap:10px;">
+          <div class="settings-desc" id="hostAccountInfo">Connecté en tant que Hôte.</div>
+          <div class="host-uid-row">
+            <span>UID :</span>
+            <code class="host-uid-code" id="hostUidDisplay">-</code>
+            <button class="btn-base btn-secondary" id="btnCopyHostUid" style="padding:4px 8px; font-size:11px;">Copier</button>
+          </div>
+          <button class="host-toggle-btn" id="btnToggleChatMode" disabled>💬 Mode Chat : DÉSACTIVÉ</button>
+          <div class="settings-desc" style="font-size:11px;">
+            Quand le Mode Chat est activé, cliquer sur votre avatar Noir &amp; Blanc ouvre une barre clavier (60 car. max). Il se coupe automatiquement si vous fermez cet onglet.
+          </div>
+          <button class="btn-base btn-secondary" id="btnHostSignOut" style="width:100%; font-size:12px;">Déconnexion Hôte</button>
+        </div>
+      </div>
+
       <!-- Écosystème & Bestioles Actives -->
       <div class="settings-section">
         <div>
@@ -982,6 +1141,11 @@ const BUDGET_CONFIG = /*BUDGET_CONFIG_JSON*/{
 	"userRechargeAmount": 1,
 	"userRechargeSec": 2.0
 }/*BUDGET_CONFIG_JSON_END*/;
+
+const HOST_CONFIG = /*HOST_CONFIG_JSON*/{
+	"hostMode": false
+}/*HOST_CONFIG_JSON_END*/;
+const IS_HOST_BUILD = !!(HOST_CONFIG && HOST_CONFIG.hostMode === true);
 
 function mulberry32(a) {
   return function() {
@@ -2013,17 +2177,37 @@ function updateHydroLegs_H(c, dt, emitWaterEffects = true) {
 
 function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
   const isFaded = !isMe && creature.online === false && (!state.budget || state.budget.fadeInactive !== false);
-  if (isFaded) {
+  const isMonochrome = creature.monochrome === true || (isMe && IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn);
+  const needsSave = isFaded || isMonochrome;
+  if (needsSave) {
     ctx.save();
-    ctx.globalAlpha *= 0.42;
+    if (isFaded) ctx.globalAlpha *= 0.42;
   }
   try {
+    if (isMonochrome && showLabel) {
+      const pulse = state.chatMode ? (0.55 + 0.35 * Math.sin(performance.now() * 0.005)) : 0.32;
+      const ringR = state.chatMode ? (34 + Math.sin(performance.now() * 0.005) * 3) : 31;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(creature.x, creature.y, ringR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + pulse.toFixed(2) + ')';
+      ctx.lineWidth = state.chatMode ? 2.2 : 1.5;
+      if (state.chatMode) {
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.75)';
+        ctx.shadowBlur = 12;
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    if (isMonochrome) {
+      ctx.filter = 'grayscale(100%) contrast(1.22) brightness(1.06)';
+    }
     if (creature.type === 'C') drawCreatureC(ctx, creature, isMe, showLabel);
     else if (creature.type === 'F') drawCreatureF(ctx, creature, isMe, showLabel);
     else if (creature.type === 'G') drawCreatureG(ctx, creature, isMe, showLabel);
     else drawCreatureH(ctx, creature, isMe, showLabel);
   } finally {
-    if (isFaded) ctx.restore();
+    if (needsSave) ctx.restore();
   }
 }
 
@@ -2807,7 +2991,13 @@ const state = {
   sleepReason: null,
   hasInitiallyRegistered: false,
   lastInteractionTime: performance.now(),
-  hiddenAt: 0
+  hiddenAt: 0,
+  chatMode: false,
+  hostAuth: {
+    signedIn: false,
+    email: '',
+    uid: ''
+  }
 };
 
 if (state.budget) {
@@ -3037,13 +3227,94 @@ function flushSpeechSync() {
   fbPayload.speech = {
     text: payload.text,
     count: payload.count,
+    mode: payload.mode === 'chat' ? 'chat' : 'emoji',
     timestamp: firebase.database.ServerValue.TIMESTAMP
   };
   fbPayload.actionCount = state.user.actionCount;
 
   state.firebase.db.ref('users/' + state.user.id).update(fbPayload).then(function() {
     state.firebase.lastActionTimestamp = Math.max(state.firebase.lastActionTimestamp, Date.now());
-  }).catch(function() {});
+  }).catch(function(err) {
+    if (payload.mode === 'chat') {
+      console.warn('Envoi chat refusé par Firebase:', err);
+      showToast('🔒 Mode chat désactivé ou refusé par le serveur.', 'warning');
+    }
+  });
+}
+
+function isSafeEmojiOnlyText(str) {
+  if (typeof str !== 'string' || !str.length || str.length > 20) return false;
+  // Rejette toute lettre/chiffre ASCII ou ponctuation texte (empêche l'injection de texte hors mode chat)
+  if (/[A-Za-z0-9]/.test(str)) return false;
+  return true;
+}
+
+function shouldUseChatInputForTarget(targetCreature) {
+  if (!state.chatMode) return false;
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) return true;
+  if (targetCreature && targetCreature.monochrome === true) return true;
+  return false;
+}
+
+function refreshExpressionBarMode() {
+  const bar = document.getElementById('expression-bar');
+  const choicesEl = document.getElementById('expressionChoices');
+  const chatBarEl = document.getElementById('chatInputBar');
+  const chatInput = document.getElementById('chatTextInput');
+  if (!bar || !choicesEl || !chatBarEl) return;
+
+  const useChat = shouldUseChatInputForTarget(targetedCreatureForExpression);
+  if (useChat) {
+    choicesEl.style.display = 'none';
+    chatBarEl.style.display = 'flex';
+    if (bar.classList.contains('active') && chatInput) {
+      setTimeout(() => { try { chatInput.focus(); } catch (_) {} }, 40);
+    }
+  } else {
+    chatBarEl.style.display = 'none';
+    choicesEl.style.display = 'flex';
+    if (chatInput && document.activeElement === chatInput) {
+      try { chatInput.blur(); } catch (_) {}
+    }
+  }
+}
+
+function submitChatMessage() {
+  if (!state.user) return;
+  if (!shouldUseChatInputForTarget(targetedCreatureForExpression)) {
+    showToast('🔒 Le Mode Chat n\'est pas actif.', 'warning');
+    refreshExpressionBarMode();
+    return;
+  }
+  const chatInput = document.getElementById('chatTextInput');
+  const countEl = document.getElementById('chatCharCount');
+  if (!chatInput) return;
+
+  const rawText = String(chatInput.value || '').replace(/\s+/g, ' ').trim().substring(0, 60);
+  if (!rawText) return;
+
+  if (!consumeActionToken()) {
+    showToast('⚡ Out of energy! Wait for recharge...', 'warning');
+    return;
+  }
+  state.user.actionCount = (state.user.actionCount || 0) + 1;
+  state.lastInteractionTime = performance.now();
+
+  const now = performance.now();
+  state.user.speechBubble = {
+    text: rawText,
+    count: 1,
+    mode: 'chat',
+    createdAt: now,
+    expiresAt: now + 6500
+  };
+
+  pendingSpeechPayload = { text: rawText, count: 1, mode: 'chat' };
+  flushSpeechSync();
+
+  chatInput.value = '';
+  if (countEl) countEl.textContent = '0/60';
+  closeExpressionMenu();
 }
 
 function triggerImmediateEmojiExpression(emoji) {
@@ -3055,7 +3326,7 @@ function triggerImmediateEmojiExpression(emoji) {
   state.user.actionCount = (state.user.actionCount || 0) + 1;
 
   const now = performance.now();
-  if (!state.user.speechBubble || now >= state.user.speechBubble.expiresAt || selectedEmojis.length >= 5) {
+  if (!state.user.speechBubble || state.user.speechBubble.mode === 'chat' || now >= state.user.speechBubble.expiresAt || selectedEmojis.length >= 5) {
     selectedEmojis = [];
   }
 
@@ -3067,12 +3338,13 @@ function triggerImmediateEmojiExpression(emoji) {
   state.user.speechBubble = {
     text: text,
     count: count,
+    mode: 'emoji',
     createdAt: now,
     expiresAt: now + 4000
   };
 
   // Synchronisation Firebase respectant le rateLimitMs
-  pendingSpeechPayload = { text: text, count: count };
+  pendingSpeechPayload = { text: text, count: count, mode: 'emoji' };
   flushSpeechSync();
 
   if (count >= 5) {
@@ -3091,6 +3363,7 @@ function openExpressionMenu(targetCreature) {
   selectedEmojis = [];
   const bar = document.getElementById('expression-bar');
   if (bar) bar.classList.add('active');
+  refreshExpressionBarMode();
 }
 
 function closeExpressionMenu() {
@@ -3102,6 +3375,42 @@ function closeExpressionMenu() {
   targetedCreatureForExpression = null;
   selectedEmojis = [];
   if (bar) bar.classList.remove('active');
+  const chatInput = document.getElementById('chatTextInput');
+  if (chatInput && document.activeElement === chatInput) {
+    try { chatInput.blur(); } catch (_) {}
+  }
+}
+
+function wrapBubbleText(ctx, text, maxWidth) {
+  const words = String(text).split(' ');
+  const lines = [];
+  let current = '';
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const candidate = current ? (current + ' ' + word) : word;
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      current = candidate;
+    } else {
+      if (current) lines.push(current);
+      // Si un seul mot dépasse maxWidth, découpe propre
+      if (ctx.measureText(word).width > maxWidth) {
+        let part = '';
+        for (const ch of Array.from(word)) {
+          if (ctx.measureText(part + ch).width > maxWidth && part) {
+            lines.push(part);
+            part = ch;
+          } else {
+            part += ch;
+          }
+        }
+        current = part;
+      } else {
+        current = word;
+      }
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [text];
 }
 
 function drawSpeechBubble(ctx, creature, now) {
@@ -3113,21 +3422,80 @@ function drawSpeechBubble(ctx, creature, now) {
     return;
   }
 
+  const isChatText = bubble.mode === 'chat';
+  if (isChatText && !state.chatMode) {
+    creature.speechBubble = null;
+    return;
+  }
+
   const alpha = Math.min(1.0, remaining / 500);
+  const bx = creature.x;
+  const by = creature.y - 54 + Math.sin(now * 0.005) * 3;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (isChatText) {
+    const fontSize = 14;
+    const lineHeight = 19;
+    ctx.font = '600 ' + fontSize + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    const lines = wrapBubbleText(ctx, bubble.text, 230);
+    let maxLineW = 0;
+    for (let i = 0; i < lines.length; i++) {
+      maxLineW = Math.max(maxLineW, ctx.measureText(lines[i]).width);
+    }
+    const padX = 14;
+    const padY = 9;
+    const boxW = Math.max(54, maxLineW + padX * 2);
+    const boxH = lines.length * lineHeight + padY * 2;
+    const rx = bx - boxW / 2;
+    const ry = by - boxH + 14;
+
+    ctx.shadowColor = 'rgba(248, 250, 252, 0.35)';
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.strokeStyle = 'rgba(248, 250, 252, 0.72)';
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(rx, ry, boxW, boxH, 12);
+    } else {
+      ctx.rect(rx, ry, boxW, boxH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(bx - 5, ry + boxH);
+    ctx.lineTo(bx + 5, ry + boxH);
+    ctx.lineTo(bx, ry + boxH + 6);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = 3;
+    for (let i = 0; i < lines.length; i++) {
+      const ly = ry + padY + lineHeight * (i + 0.5);
+      ctx.fillText(lines[i], bx, ly);
+    }
+    ctx.restore();
+    return;
+  }
+
   const count = Math.max(1, Math.min(7, bubble.count || Array.from(bubble.text).length));
   // Moins on en choisit et plus les emoji affichés sont grands
   // 1 -> 42px, 2 -> 33px, 3 -> 26px, 4 -> 20px, 5 -> 16px, 6 -> 13px, 7 -> 11px
   const fontSizes = [42, 33, 26, 20, 16, 13, 11];
   const fontSize = fontSizes[count - 1] || 11;
 
-  const bx = creature.x;
-  const by = creature.y - 54 + Math.sin(now * 0.005) * 3;
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
   ctx.font = 'bold ' + fontSize + 'px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
 
   const metrics = ctx.measureText(bubble.text);
   const padX = 14;
@@ -3345,6 +3713,9 @@ function buildUserFirebasePayload(includeCreatedAt = true) {
   if (includeCreatedAt) {
     payload.createdAt = (state.user && state.user.createdAt) || Date.now();
   }
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
+    payload.monochrome = true;
+  }
   if (window.__FIREMOJI_OLD_UID && state.user && window.__FIREMOJI_OLD_UID !== state.user.id) {
     payload.oldUid = String(window.__FIREMOJI_OLD_UID).substring(0, 128);
   }
@@ -3486,7 +3857,11 @@ function armOnDisconnectRemoval() {
   state.firebase.presRef = state.firebase.db.ref('presence/' + state.user.id);
   const p1 = state.firebase.userRef.onDisconnect().remove().catch(() => {});
   const p2 = state.firebase.presRef.onDisconnect().remove().catch(() => {});
-  return Promise.all([p1, p2]);
+  const tasks = [p1, p2];
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
+    tasks.push(state.firebase.db.ref('meta/chatMode').onDisconnect().set(false).catch(() => {}));
+  }
+  return Promise.all(tasks);
 }
 
 function setupConnectedMonitor() {
@@ -3536,6 +3911,7 @@ function initFirebase() {
       state.firebase.auth = firebase.auth();
 
       setupGlobalBudgetSync();
+      setupChatModeSync();
 
       state.firebase.auth.onIdTokenChanged((user) => {
         if (user) {
@@ -3552,6 +3928,17 @@ function initFirebase() {
             if (user) {
               const previousUid = (state.user && state.user.id) ? state.user.id : null;
               state.user.id = user.uid;
+              if (IS_HOST_BUILD && !user.isAnonymous) {
+                state.hostAuth.signedIn = true;
+                state.hostAuth.email = user.email || '';
+                state.hostAuth.uid = user.uid;
+                state.user.monochrome = true;
+              } else {
+                state.hostAuth.signedIn = false;
+                state.hostAuth.email = '';
+                state.hostAuth.uid = user.uid || '';
+                state.user.monochrome = false;
+              }
               if (previousUid && previousUid !== user.uid && !window.__FIREMOJI_OLD_UID) {
                 window.__FIREMOJI_OLD_UID = previousUid;
               }
@@ -3560,9 +3947,15 @@ function initFirebase() {
               }
               user.getIdToken().then((t) => { currentAuthToken = t; }).catch(() => {});
               savePlayerProfile();
+              updateHostUi();
               setupConnectedMonitor();
             } else {
               currentAuthToken = null;
+              state.hostAuth.signedIn = false;
+              state.hostAuth.email = '';
+              state.hostAuth.uid = '';
+              if (state.user) state.user.monochrome = false;
+              updateHostUi();
               if (!state.firebase.auth.currentUser) {
                 state.firebase.auth.signInAnonymously().catch((err) => {
                   console.warn('Erreur auth Firebase:', err);
@@ -3619,6 +4012,34 @@ function onFirebaseConnected(isReconnect = false) {
   } else {
     showToast('🟢 Connected ok!');
   }
+}
+
+function setupChatModeSync() {
+  if (!state.firebase.db) return;
+  state.firebase.db.ref('meta/chatMode').on('value', (snap) => {
+    const enabled = snap.val() === true;
+    const changed = (state.chatMode !== enabled);
+    state.chatMode = enabled;
+    updateHostUi();
+    refreshExpressionBarMode();
+    if (!enabled) {
+      if (state.user && state.user.speechBubble && state.user.speechBubble.mode === 'chat') {
+        state.user.speechBubble = null;
+      }
+      for (const uid in state.players) {
+        if (state.players[uid] && state.players[uid].speechBubble && state.players[uid].speechBubble.mode === 'chat') {
+          state.players[uid].speechBubble = null;
+        }
+      }
+    }
+    if (changed && state.hasInitiallyRegistered) {
+      if (enabled) {
+        showToast('💬 Mode Chat activé ! Cliquez sur l\'avatar Noir & Blanc pour écrire.');
+      } else {
+        showToast('🔒 Mode Chat désactivé.');
+      }
+    }
+  });
 }
 
 function setupGlobalBudgetSync() {
@@ -3771,20 +4192,33 @@ function onUserAdded(snap) {
   remoteC.targetY = typeof data.targetY === 'number' ? data.targetY : posY;
   remoteC.maxSpeed = typeof data.speed === 'number' ? data.speed : 240;
   remoteC.online = data.online !== false;
+  remoteC.monochrome = data.monochrome === true;
   remoteC.isBot = !!(data.is_bot || uid.startsWith('bot_') || uid.startsWith('godot_'));
   remoteC.lastSeenAt = performance.now();
   if (Math.hypot(remoteC.targetX - remoteC.x, remoteC.targetY - remoteC.y) > 4) {
     if (remoteC.type === 'H') remoteC.isSwimming = true;
     else remoteC.isMoving = true;
   }
-  if (data.speech && data.speech.text) {
+  if (data.speech && typeof data.speech.text === 'string' && data.speech.text.length > 0) {
+    const mode = data.speech.mode === 'chat' ? 'chat' : 'emoji';
+    const maxAge = mode === 'chat' ? 6500 : 4000;
     const age = Date.now() - (data.speech.timestamp || 0);
-    if (age < 4000) {
-      remoteC.speechBubble = {
-        text: data.speech.text,
-        count: data.speech.count || data.speech.text.length,
-        expiresAt: performance.now() + (4000 - age)
-      };
+    if (age < maxAge) {
+      if (mode === 'chat' && state.chatMode && data.speech.text.length <= 60) {
+        remoteC.speechBubble = {
+          text: data.speech.text.substring(0, 60),
+          count: 1,
+          mode: 'chat',
+          expiresAt: performance.now() + (maxAge - age)
+        };
+      } else if (mode === 'emoji' && isSafeEmojiOnlyText(data.speech.text)) {
+        remoteC.speechBubble = {
+          text: data.speech.text,
+          count: data.speech.count || Array.from(data.speech.text).length,
+          mode: 'emoji',
+          expiresAt: performance.now() + (maxAge - age)
+        };
+      }
     }
   }
 
@@ -3839,20 +4273,36 @@ function onUserChanged(snap) {
   if (typeof data.targetY === 'number') p.targetY = data.targetY;
   if (typeof data.speed === 'number') p.maxSpeed = data.speed;
   if (typeof data.online === 'boolean') p.online = data.online;
+  p.monochrome = data.monochrome === true;
   p.lastSeenAt = performance.now();
   if (hadTargetChange && Math.hypot(p.targetX - p.x, p.targetY - p.y) > 4) {
     if (p.type === 'H') p.isSwimming = true;
     else p.isMoving = true;
   }
-  if (data.speech && data.speech.text) {
+  if (data.speech && typeof data.speech.text === 'string' && data.speech.text.length > 0) {
+    const mode = data.speech.mode === 'chat' ? 'chat' : 'emoji';
+    const maxAge = mode === 'chat' ? 6500 : 4000;
     const age = Date.now() - (data.speech.timestamp || 0);
-    if (age < 4000) {
-      p.speechBubble = {
-        text: data.speech.text,
-        count: data.speech.count || data.speech.text.length,
-        expiresAt: performance.now() + (4000 - age)
-      };
+    if (age < maxAge) {
+      if (mode === 'chat' && state.chatMode && data.speech.text.length <= 60) {
+        p.speechBubble = {
+          text: data.speech.text.substring(0, 60),
+          count: 1,
+          mode: 'chat',
+          expiresAt: performance.now() + (maxAge - age)
+        };
+      } else if (mode === 'emoji' && isSafeEmojiOnlyText(data.speech.text)) {
+        p.speechBubble = {
+          text: data.speech.text,
+          count: data.speech.count || Array.from(data.speech.text).length,
+          mode: 'emoji',
+          expiresAt: performance.now() + (maxAge - age)
+        };
+      }
     }
+  }
+  if (targetedCreatureForExpression && targetedCreatureForExpression.id === uid) {
+    refreshExpressionBarMode();
   }
 }
 
@@ -4792,6 +5242,9 @@ function removeOwnFirebaseNodes(useKeepaliveFetch = false) {
     if (state.firebase.db) {
       removals.push(state.firebase.db.ref('users/' + uid).remove().catch(() => {}));
       removals.push(state.firebase.db.ref('presence/' + uid).remove().catch(() => {}));
+      if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
+        removals.push(state.firebase.db.ref('meta/chatMode').set(false).catch(() => {}));
+      }
     }
   } catch (_) {}
 
@@ -4808,6 +5261,13 @@ function removeOwnFirebaseNodes(useKeepaliveFetch = false) {
           method: 'DELETE',
           keepalive: true
         }).catch(() => {});
+        if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
+          fetch(baseUrl + '/meta/chatMode.json' + authQuery, {
+            method: 'PUT',
+            body: 'false',
+            keepalive: true
+          }).catch(() => {});
+        }
       }
     } catch (_) {}
   }
@@ -5134,16 +5594,192 @@ document.addEventListener('webkitfullscreenchange', updateFsIcons);
 document.addEventListener('mozfullscreenchange', updateFsIcons);
 document.addEventListener('MSFullscreenChange', updateFsIcons);
 
-/* Modale Paramètres */
+/* Modale Paramètres & Contrôle Hôte Noir & Blanc */
 const settingsModal = document.getElementById('settingsModal');
 const btnSettings = document.getElementById('btnSettings');
+const btnHostChatWrite = document.getElementById('btnHostChatWrite');
+const hostSettingsSection = document.getElementById('hostSettingsSection');
+const hostAuthStatusPill = document.getElementById('hostAuthStatusPill');
+const hostLoginForm = document.getElementById('hostLoginForm');
+const hostSignedInPanel = document.getElementById('hostSignedInPanel');
+const hostAccountInfo = document.getElementById('hostAccountInfo');
+const hostUidDisplay = document.getElementById('hostUidDisplay');
+const btnToggleChatMode = document.getElementById('btnToggleChatMode');
+
+function updateHostUi() {
+  if (btnSettings) {
+    btnSettings.style.display = IS_HOST_BUILD ? 'flex' : 'none';
+    btnSettings.classList.toggle('host-chat-active', IS_HOST_BUILD && state.chatMode);
+  }
+  if (btnHostChatWrite) {
+    btnHostChatWrite.style.display = (IS_HOST_BUILD && state.hostAuth.signedIn && state.chatMode) ? 'flex' : 'none';
+    btnHostChatWrite.classList.toggle('host-chat-active', state.chatMode);
+  }
+  if (hostSettingsSection) {
+    hostSettingsSection.style.display = IS_HOST_BUILD ? 'block' : 'none';
+  }
+  if (!IS_HOST_BUILD) return;
+
+  const signedIn = !!(state.hostAuth && state.hostAuth.signedIn);
+  if (hostAuthStatusPill) {
+    hostAuthStatusPill.textContent = signedIn ? '⚫ Hôte N&B actif' : 'Non connecté';
+    hostAuthStatusPill.classList.toggle('connected', signedIn);
+  }
+  if (hostLoginForm) hostLoginForm.style.display = signedIn ? 'none' : 'flex';
+  if (hostSignedInPanel) hostSignedInPanel.style.display = signedIn ? 'flex' : 'none';
+  if (hostAccountInfo && signedIn) {
+    hostAccountInfo.textContent = 'Connecté : ' + (state.hostAuth.email || 'Hôte');
+  }
+  if (hostUidDisplay) {
+    hostUidDisplay.textContent = signedIn ? state.hostAuth.uid : '-';
+  }
+  if (btnToggleChatMode) {
+    btnToggleChatMode.disabled = !signedIn;
+    btnToggleChatMode.classList.toggle('active', state.chatMode);
+    btnToggleChatMode.textContent = state.chatMode ? '💬 Mode Chat : ACTIVÉ (60 car.)' : '💬 Mode Chat : DÉSACTIVÉ';
+  }
+}
+
+updateHostUi();
 
 if (btnSettings && settingsModal) {
   btnSettings.addEventListener('click', () => {
     state.lastInteractionTime = performance.now();
     document.getElementById('inputPlayerName').value = state.user.name;
     updateHudUI();
+    updateHostUi();
     settingsModal.classList.add('active');
+  });
+}
+
+if (btnHostChatWrite) {
+  btnHostChatWrite.addEventListener('click', () => {
+    state.lastInteractionTime = performance.now();
+    if (!IS_HOST_BUILD || !state.hostAuth.signedIn || !state.chatMode) return;
+    openExpressionMenu(state.user);
+  });
+}
+
+const btnHostSignIn = document.getElementById('btnHostSignIn');
+if (btnHostSignIn) {
+  btnHostSignIn.addEventListener('click', () => {
+    if (!IS_HOST_BUILD || !state.firebase.auth) return;
+    const emailEl = document.getElementById('hostEmailInput');
+    const passEl = document.getElementById('hostPasswordInput');
+    const email = emailEl ? emailEl.value.trim() : '';
+    const password = passEl ? passEl.value : '';
+    if (!email || !password) {
+      showToast('⚠️ Renseignez votre email et mot de passe Firebase Auth.', 'warning');
+      return;
+    }
+    btnHostSignIn.disabled = true;
+    btnHostSignIn.textContent = 'Connexion...';
+    const prevAnonUid = (state.firebase.auth.currentUser && state.firebase.auth.currentUser.isAnonymous)
+      ? state.firebase.auth.currentUser.uid : null;
+    state.firebase.auth.signInWithEmailAndPassword(email, password).then((cred) => {
+      if (passEl) passEl.value = '';
+      if (prevAnonUid && cred.user && prevAnonUid !== cred.user.uid && state.firebase.db) {
+        state.firebase.db.ref('users/' + prevAnonUid).remove().catch(() => {});
+        state.firebase.db.ref('presence/' + prevAnonUid).remove().catch(() => {});
+      }
+      showToast('⚫ Connecté en tant que Hôte Noir & Blanc !');
+    }).catch((err) => {
+      console.warn('Erreur connexion Hôte:', err);
+      showToast('❌ Échec connexion : ' + (err && err.message ? err.message : 'vérifiez email/mdp'), 'warning');
+    }).finally(() => {
+      btnHostSignIn.disabled = false;
+      btnHostSignIn.textContent = '🔐 Se connecter (Hôte)';
+    });
+  });
+}
+
+const btnHostSignOut = document.getElementById('btnHostSignOut');
+if (btnHostSignOut) {
+  btnHostSignOut.addEventListener('click', () => {
+    if (!IS_HOST_BUILD || !state.firebase.auth) return;
+    const disableChat = (state.firebase.db && state.chatMode)
+      ? state.firebase.db.ref('meta/chatMode').set(false).catch(() => {})
+      : Promise.resolve();
+    disableChat.finally(() => {
+      removeOwnFirebaseNodes(false).finally(() => {
+        state.firebase.auth.signOut().then(() => {
+          showToast('🔓 Déconnecté du compte Hôte.');
+        }).catch(() => {});
+      });
+    });
+  });
+}
+
+const btnCopyHostUid = document.getElementById('btnCopyHostUid');
+if (btnCopyHostUid) {
+  btnCopyHostUid.addEventListener('click', () => {
+    const uid = state.hostAuth && state.hostAuth.uid ? state.hostAuth.uid : '';
+    if (!uid) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(uid).then(() => {
+        showToast('📋 UID Hôte copié ! Collez-le dans Paramètres Godot.');
+      }).catch(() => {
+        showToast('UID : ' + uid);
+      });
+    } else {
+      showToast('UID : ' + uid);
+    }
+  });
+}
+
+if (btnToggleChatMode) {
+  btnToggleChatMode.addEventListener('click', () => {
+    if (!IS_HOST_BUILD || !state.hostAuth.signedIn || !state.firebase.db) return;
+    const nextVal = !state.chatMode;
+    btnToggleChatMode.disabled = true;
+    state.firebase.db.ref('meta/chatMode').set(nextVal).then(() => {
+      if (nextVal) {
+        state.firebase.db.ref('meta/chatMode').onDisconnect().set(false).catch(() => {});
+      }
+    }).catch((err) => {
+      console.warn('Erreur toggle chatMode:', err);
+      showToast('🔒 Refusé par Firebase ! Vérifiez que votre UID est bien dans database.rules.json.', 'warning');
+    }).finally(() => {
+      btnToggleChatMode.disabled = !state.hostAuth.signedIn;
+    });
+  });
+}
+
+/* Barre de saisie Chat (60 caractères max) */
+const chatTextInput = document.getElementById('chatTextInput');
+const chatCharCount = document.getElementById('chatCharCount');
+const btnChatSend = document.getElementById('btnChatSend');
+
+if (chatTextInput) {
+  chatTextInput.addEventListener('input', () => {
+    state.lastInteractionTime = performance.now();
+    if (chatTextInput.value.length > 60) {
+      chatTextInput.value = chatTextInput.value.substring(0, 60);
+    }
+    if (chatCharCount) {
+      chatCharCount.textContent = chatTextInput.value.length + '/60';
+    }
+  });
+  chatTextInput.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    state.lastInteractionTime = performance.now();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitChatMessage();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeExpressionMenu();
+    }
+  });
+  chatTextInput.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+}
+
+if (btnChatSend) {
+  btnChatSend.addEventListener('click', (e) => {
+    e.stopPropagation();
+    submitChatMessage();
   });
 }
 
@@ -5383,6 +6019,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.12</div>
+<div class="version-badge">v0.1</div>
 </body>
 </html>
