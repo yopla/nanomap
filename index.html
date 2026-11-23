@@ -2176,13 +2176,20 @@ function updateHydroLegs_H(c, dt, emitWaterEffects = true) {
    5. RENDU GRAPHIQUE DES 4 TYPES DE BESTIOLES (C, F, G, H)
    ========================================================================== */
 
+const MONO_PALETTE_G = {
+  body: '#e2e8f0',
+  rear: '#94a3b8',
+  legs: '#cbd5e1',
+  accent: '#ffffff'
+};
+
 function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
   const isFaded = !isMe && creature.online === false && (!state.budget || state.budget.fadeInactive !== false);
   const isMonochrome = creature.monochrome === true || (isMe && IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn);
-  const needsSave = isFaded || isMonochrome;
-  if (needsSave) {
+  creature._mono = isMonochrome;
+  if (isFaded) {
     ctx.save();
-    if (isFaded) ctx.globalAlpha *= 0.42;
+    ctx.globalAlpha *= 0.42;
   }
   try {
     if (isMonochrome && showLabel) {
@@ -2193,22 +2200,22 @@ function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
       ctx.arc(creature.x, creature.y, ringR, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(255, 255, 255, ' + pulse.toFixed(2) + ')';
       ctx.lineWidth = state.chatMode ? 2.2 : 1.5;
-      if (state.chatMode) {
-        ctx.shadowColor = 'rgba(255, 255, 255, 0.75)';
-        ctx.shadowBlur = 12;
-      }
       ctx.stroke();
+      if (state.chatMode) {
+        ctx.beginPath();
+        ctx.arc(creature.x, creature.y, ringR + 4, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (pulse * 0.32).toFixed(2) + ')';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
       ctx.restore();
-    }
-    if (isMonochrome) {
-      ctx.filter = 'grayscale(100%) contrast(1.22) brightness(1.06)';
     }
     if (creature.type === 'C') drawCreatureC(ctx, creature, isMe, showLabel);
     else if (creature.type === 'F') drawCreatureF(ctx, creature, isMe, showLabel);
     else if (creature.type === 'G') drawCreatureG(ctx, creature, isMe, showLabel);
     else drawCreatureH(ctx, creature, isMe, showLabel);
   } finally {
-    if (needsSave) ctx.restore();
+    if (isFaded) ctx.restore();
   }
 }
 
@@ -2263,7 +2270,7 @@ function drawMinimalPlateC(ctx, type, r) {
   }
 }
 
-function drawSideLegsC(ctx, seg, segIndex, pairIndex, swimPhase, hue, accentHue) {
+function drawSideLegsC(ctx, seg, segIndex, pairIndex, swimPhase, hue, accentHue, mono = false) {
   const legLen = seg.legLength;
   const femurLen = legLen * 0.55;
   const tibiaLen = legLen * 0.55;
@@ -2289,7 +2296,7 @@ function drawSideLegsC(ctx, seg, segIndex, pairIndex, swimPhase, hue, accentHue)
     const footX = kneeX + Math.cos(tibiaAngle) * tibiaLen;
     const footY = kneeY + Math.sin(tibiaAngle) * tibiaLen;
 
-    ctx.strokeStyle = `hsla(${accentHue}, 85%, 66%, 0.9)`;
+    ctx.strokeStyle = `hsla(${accentHue}, ${mono ? 0 : 85}%, 66%, 0.9)`;
     ctx.lineWidth = 2.6;
     ctx.beginPath();
     ctx.moveTo(rootX, rootY);
@@ -2297,7 +2304,7 @@ function drawSideLegsC(ctx, seg, segIndex, pairIndex, swimPhase, hue, accentHue)
     ctx.lineTo(footX, footY);
     ctx.stroke();
 
-    ctx.fillStyle = `hsla(${hue}, 95%, 78%, 0.95)`;
+    ctx.fillStyle = `hsla(${hue}, ${mono ? 0 : 95}%, 78%, 0.95)`;
     ctx.beginPath();
     ctx.arc(footX, footY, 2.1, 0, Math.PI * 2);
     ctx.fill();
@@ -2309,12 +2316,13 @@ function drawCreatureC(ctx, creature, isMe, showLabel) {
   const g = creature.genome;
   const joints = creature.joints;
   if (!joints || joints.length === 0) return;
+  const mono = !!creature._mono;
 
   ctx.save();
   if (isMe && showLabel) {
     ctx.save();
     ctx.translate(joints[0].x, joints[0].y);
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 65%, 0.32)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 65%, 0.32)`;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(0, 0, g.segments[0].radius + 16, 0, Math.PI * 2);
@@ -2328,7 +2336,7 @@ function drawCreatureC(ctx, creature, isMe, showLabel) {
     ctx.save();
     ctx.translate(tailJ.x, tailJ.y);
     ctx.rotate(tailJ.angle);
-    ctx.strokeStyle = `hsla(${g.accentHue}, 85%, 65%, 0.8)`;
+    ctx.strokeStyle = `hsla(${g.accentHue}, ${mono ? 0 : 85}%, 65%, 0.8)`;
     ctx.lineWidth = 2.4;
     ctx.lineCap = 'round';
     const forkSpread = 0.35 + Math.sin(creature.swimPhase) * 0.08;
@@ -2351,12 +2359,12 @@ function drawCreatureC(ctx, creature, isMe, showLabel) {
     ctx.rotate(j.angle);
 
     for (let p = 0; p < seg.legPairs; p++) {
-      drawSideLegsC(ctx, seg, i, p, creature.swimPhase, g.hue, g.accentHue);
+      drawSideLegsC(ctx, seg, i, p, creature.swimPhase, g.hue, g.accentHue, mono);
     }
 
     if (i === 0 && g.hasAntennae) {
       const antWave = Math.sin(creature.swimPhase * 0.8) * 0.18;
-      ctx.strokeStyle = `hsla(${g.accentHue}, 90%, 72%, 0.85)`;
+      ctx.strokeStyle = `hsla(${g.accentHue}, ${mono ? 0 : 90}%, 72%, 0.85)`;
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -2368,8 +2376,8 @@ function drawCreatureC(ctx, creature, isMe, showLabel) {
     }
 
     const lightness = Math.round(54 - t * 14);
-    ctx.fillStyle = `hsl(${(g.hue + i * 6) % 360}, 78%, ${lightness}%)`;
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 80%, 0.9)`;
+    ctx.fillStyle = `hsl(${(g.hue + i * 6) % 360}, ${mono ? 0 : 78}%, ${lightness}%)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 80%, 0.9)`;
     ctx.lineWidth = 2;
 
     drawMinimalPlateC(ctx, seg.primType, seg.radius);
@@ -2442,10 +2450,11 @@ function drawCreatureF(ctx, creature, isMe, showLabel) {
   const g = creature.genome;
   ctx.save();
 
+  const mono = !!creature._mono;
   if (isMe && showLabel) {
     ctx.save();
     ctx.translate(creature.x, creature.y);
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 65%, 0.28)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 65%, 0.28)`;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(0, 0, g.plates[0].r + 22, 0, Math.PI * 2);
@@ -2471,7 +2480,7 @@ function drawCreatureF(ctx, creature, isMe, showLabel) {
       const segThickness = Math.max(2.2, 4.6 - s * 0.85);
       const segLight = 52 + s * 6;
 
-      ctx.strokeStyle = `hsl(${(g.accentHue + s * 10) % 360}, 82%, ${segLight}%)`;
+      ctx.strokeStyle = `hsl(${(g.accentHue + s * 10) % 360}, ${mono ? 0 : 82}%, ${segLight}%)`;
       ctx.lineWidth = segThickness;
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
@@ -2480,14 +2489,14 @@ function drawCreatureF(ctx, creature, isMe, showLabel) {
     }
 
     for (let s = 1; s < pts.length - 1; s++) {
-      ctx.fillStyle = `hsl(${g.hue}, 90%, 76%)`;
+      ctx.fillStyle = `hsl(${g.hue}, ${mono ? 0 : 90}%, 76%)`;
       ctx.beginPath();
       ctx.arc(pts[s].x, pts[s].y, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
     const tip = pts[pts.length - 1];
-    ctx.fillStyle = leg.isStepping ? '#fef08a' : `hsl(${g.hue}, 95%, 82%)`;
+    ctx.fillStyle = leg.isStepping ? (mono ? '#ffffff' : '#fef08a') : `hsl(${g.hue}, ${mono ? 0 : 95}%, 82%)`;
     ctx.strokeStyle = '#041019';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -2507,8 +2516,8 @@ function drawCreatureF(ctx, creature, isMe, showLabel) {
     ctx.translate(pl.localX, 0);
 
     const lightness = 52 - i * 8;
-    ctx.fillStyle = `hsl(${(g.hue + i * 8) % 360}, 78%, ${lightness}%)`;
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 82%, 0.92)`;
+    ctx.fillStyle = `hsl(${(g.hue + i * 8) % 360}, ${mono ? 0 : 78}%, ${lightness}%)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 82%, 0.92)`;
     ctx.lineWidth = 2;
 
     drawBodyPlateFH(ctx, pl.primType, pl.r);
@@ -2792,12 +2801,13 @@ function drawCreatureG(ctx, creature, isMe, showLabel) {
 /* --- RENDU TYPE H (HydroStroke — Rames palmées à traction & poussée d'eau) --- */
 function drawCreatureH(ctx, creature, isMe, showLabel) {
   const g = creature.genome;
+  const mono = !!creature._mono;
   ctx.save();
 
   if (isMe && showLabel) {
     ctx.save();
     ctx.translate(creature.x, creature.y);
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 65%, 0.28)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 65%, 0.28)`;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(0, 0, g.plates[0].r + 22, 0, Math.PI * 2);
@@ -2814,7 +2824,7 @@ function drawCreatureH(ctx, creature, isMe, showLabel) {
     if (!pts || pts.length < 2) continue;
 
     if (leg.isPullingWater && leg.webExpansion > 0.12) {
-      ctx.fillStyle = `hsla(${g.accentHue}, 95%, 68%, ${0.18 + leg.webExpansion * 0.34})`;
+      ctx.fillStyle = `hsla(${g.accentHue}, ${mono ? 0 : 95}%, 68%, ${0.18 + leg.webExpansion * 0.34})`;
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s].x, pts[s].y);
@@ -2838,7 +2848,7 @@ function drawCreatureH(ctx, creature, isMe, showLabel) {
       const thickness = Math.max(2.0, 4.8 - s * 0.72);
       const lightness = leg.isPullingWater ? (60 + s * 5) : (44 + s * 4);
 
-      ctx.strokeStyle = `hsl(${(g.accentHue + s * 8) % 360}, 85%, ${lightness}%)`;
+      ctx.strokeStyle = `hsl(${(g.accentHue + s * 8) % 360}, ${mono ? 0 : 85}%, ${lightness}%)`;
       ctx.lineWidth = thickness;
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
@@ -2847,7 +2857,7 @@ function drawCreatureH(ctx, creature, isMe, showLabel) {
     }
 
     for (let s = 1; s < pts.length - 1; s++) {
-      ctx.fillStyle = `hsl(${g.hue}, 92%, 78%)`;
+      ctx.fillStyle = `hsl(${g.hue}, ${mono ? 0 : 92}%, 78%)`;
       ctx.beginPath();
       ctx.arc(pts[s].x, pts[s].y, 2.3, 0, Math.PI * 2);
       ctx.fill();
@@ -2863,9 +2873,9 @@ function drawCreatureH(ctx, creature, isMe, showLabel) {
     ctx.translate(tip.x, tip.y);
     ctx.rotate(tipAngle);
     ctx.fillStyle = leg.isPullingWater
-      ? `hsla(${g.hue}, 95%, 76%, 0.92)`
-      : `hsla(${g.accentHue}, 70%, 55%, 0.65)`;
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 88%, 0.9)`;
+      ? `hsla(${g.hue}, ${mono ? 0 : 95}%, 76%, 0.92)`
+      : `hsla(${g.accentHue}, ${mono ? 0 : 70}%, 55%, 0.65)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 88%, 0.9)`;
     ctx.lineWidth = 1.2;
 
     ctx.beginPath();
@@ -2890,8 +2900,8 @@ function drawCreatureH(ctx, creature, isMe, showLabel) {
     ctx.translate(pl.localX, 0);
 
     const lightness = 52 - i * 8;
-    ctx.fillStyle = `hsl(${(g.hue + i * 8) % 360}, 78%, ${lightness}%)`;
-    ctx.strokeStyle = `hsla(${g.hue}, 95%, 82%, 0.92)`;
+    ctx.fillStyle = `hsl(${(g.hue + i * 8) % 360}, ${mono ? 0 : 78}%, ${lightness}%)`;
+    ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 82%, 0.92)`;
     ctx.lineWidth = 2;
 
     drawBodyPlateFH(ctx, pl.primType, pl.r);
@@ -6061,6 +6071,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.2</div>
+<div class="version-badge">v0.21</div>
 </body>
 </html>
