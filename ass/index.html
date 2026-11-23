@@ -1257,8 +1257,14 @@
     border-radius: 8px;
     padding: 4px 10px;
   }
-  #ext-tc-close-btn {
+  .ext-tc-actions {
     margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  #ext-tc-close-btn {
     background: rgba(24, 96, 82, 0.94);
     color: #f2fffa;
     border: 1px solid var(--ext-accent);
@@ -1269,6 +1275,18 @@
     cursor: pointer;
   }
   #ext-tc-close-btn:hover { filter: brightness(1.12); }
+  #ext-tc-skip-all-btn {
+    display: none;
+    background: rgba(34, 46, 66, 0.92);
+    color: #cde3f2;
+    border: 1px solid rgba(150, 190, 215, 0.45);
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #ext-tc-skip-all-btn:hover { background: rgba(48, 66, 92, 0.96); color: #ffffff; }
 
   #ext-modal-overlay {
     position: fixed;
@@ -1543,7 +1561,10 @@
     <div id="ext-tc-title">Extension</div>
     <div id="ext-tc-desc"></div>
     <div id="ext-tc-file">📄 extension.html</div>
-    <button id="ext-tc-close-btn" type="button">Continuer</button>
+    <div class="ext-tc-actions">
+      <button id="ext-tc-close-btn" type="button">Continuer</button>
+      <button id="ext-tc-skip-all-btn" type="button">Tout passer</button>
+    </div>
   </div>
 </div>
 
@@ -2454,7 +2475,7 @@
 				"type": "distance_traveled"
 			},
 			"description": "Extension de démonstration minimaliste qui confirme son activation avec son nom de fichier HTML.",
-			"enabled": true,
+			"enabled": false,
 			"filename": "demo_bienvenue.html",
 			"icon": "🧩",
 			"name": "Extension Démo Bienvenue"
@@ -5578,6 +5599,7 @@
   const extTcDescEl = document.getElementById("ext-tc-desc");
   const extTcFileEl = document.getElementById("ext-tc-file");
   const extTcCloseBtnEl = document.getElementById("ext-tc-close-btn");
+  const extTcSkipAllBtnEl = document.getElementById("ext-tc-skip-all-btn");
   const extModalOverlayEl = document.getElementById("ext-modal-overlay");
   const extModalTitleEl = document.getElementById("ext-modal-title");
   const extModalBodyEl = document.getElementById("ext-modal-body");
@@ -5600,6 +5622,55 @@
   const titleCardQueue = [];
   let titleCardTimer = null;
   let extCheckAccum = 0;
+  const EXT_FETCH_CONCURRENCY = 6;
+  const EXT_HTML_CHECK_COOLDOWN_MS = 30000;
+  const EXT_HTML_AUTO_CHECK_MAX = 10;
+  let lastExtHtmlCheckAt = 0;
+
+  let cachedExtListRef = null;
+  let cachedExtByFilename = new Map();
+  function getExtensionsByFilenameMap() {
+    const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+    if (list !== cachedExtListRef) {
+      cachedExtListRef = list;
+      cachedExtByFilename = new Map();
+      for (const extDef of list) {
+        const fname = String(extDef?.filename || "");
+        if (fname) cachedExtByFilename.set(fname, extDef);
+      }
+    }
+    return cachedExtByFilename;
+  }
+
+  async function runWithConcurrency(items, limit, worker) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const cap = Math.max(1, Math.min(limit || 6, items.length));
+    let cursor = 0;
+    const runners = [];
+    for (let i = 0; i < cap; i++) {
+      runners.push((async () => {
+        while (cursor < items.length) {
+          const idx = cursor++;
+          await worker(items[idx], idx);
+        }
+      })());
+    }
+    await Promise.all(runners);
+  }
+
+  let pendingElementsRefreshTimer = null;
+  let pendingElementsRefreshOpts = { pruneState: false, refreshChunks: false };
+  function scheduleElementsRefresh({ pruneState = false, refreshChunks = true } = {}) {
+    pendingElementsRefreshOpts.pruneState = pendingElementsRefreshOpts.pruneState || Boolean(pruneState);
+    pendingElementsRefreshOpts.refreshChunks = pendingElementsRefreshOpts.refreshChunks || Boolean(refreshChunks);
+    if (pendingElementsRefreshTimer !== null) return;
+    pendingElementsRefreshTimer = setTimeout(() => {
+      const opts = pendingElementsRefreshOpts;
+      pendingElementsRefreshTimer = null;
+      pendingElementsRefreshOpts = { pruneState: false, refreshChunks: false };
+      refreshWorldAndUiAfterElementsChange(opts);
+    }, 30);
+  }
 
   function runHook(name, baseFn, ...args) {
     const list = hookWrappers.get(name);
@@ -5731,6 +5802,16 @@
   extFrameCloseBtnEl.addEventListener("click", closeExtFrame);
   extFrameOverlayEl.addEventListener("click", (e) => { if (e.target === extFrameOverlayEl) closeExtFrame(); });
 
+  function updateTitleCardSkipBtn() {
+    if (!extTcSkipAllBtnEl) return;
+    if (titleCardQueue.length > 0) {
+      extTcSkipAllBtnEl.textContent = `Tout passer (${titleCardQueue.length + 1})`;
+      extTcSkipAllBtnEl.style.display = "inline-block";
+    } else {
+      extTcSkipAllBtnEl.style.display = "none";
+    }
+  }
+
   function showNextTitleCard() {
     if (extTitleCardOpen || titleCardQueue.length === 0) return;
     const item = titleCardQueue.shift();
@@ -5739,7 +5820,8 @@
     extTcIconEl.textContent = item.icon || "🧩";
     extTcTitleEl.textContent = item.title || item.filename || "Extension";
     extTcDescEl.textContent = item.description || "";
-    extTcFileEl.textContent = `📄 ${item.filename || ""}`;
+    extTcFileEl.textContent = item.fileLabel || `📄 ${item.filename || ""}`;
+    updateTitleCardSkipBtn();
     extTitleCardOpen = true;
     extTitleCardOverlayEl.classList.add("open");
     if (titleCardTimer) clearTimeout(titleCardTimer);
@@ -5755,12 +5837,22 @@
     }
   }
 
+  function skipAllTitleCards() {
+    titleCardQueue.length = 0;
+    if (titleCardTimer) { clearTimeout(titleCardTimer); titleCardTimer = null; }
+    extTitleCardOpen = false;
+    extTitleCardOverlayEl.classList.remove("open");
+    updateTitleCardSkipBtn();
+  }
+
   extTcCloseBtnEl.addEventListener("click", closeTitleCard);
+  if (extTcSkipAllBtnEl) extTcSkipAllBtnEl.addEventListener("click", skipAllTitleCards);
   extTitleCardOverlayEl.addEventListener("click", (e) => { if (e.target === extTitleCardOverlayEl) closeTitleCard(); });
 
   function queueTitleCard(opts) {
     titleCardQueue.push(opts);
-    showNextTitleCard();
+    if (extTitleCardOpen) updateTitleCardSkipBtn();
+    else showNextTitleCard();
   }
 
   function createScopedHost(filename, extDef) {
@@ -5975,7 +6067,7 @@
           const hadEntry = extensionElementsByFile.has(filename);
           if (cleanList.length === 0) {
             if (extensionElementsByFile.delete(filename)) {
-              refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+              scheduleElementsRefresh({ pruneState: false, refreshChunks: true });
             }
             return 0;
           }
@@ -5983,16 +6075,16 @@
           if (!hadEntry) {
             registerCleanup(() => {
               if (extensionElementsByFile.delete(filename)) {
-                refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+                scheduleElementsRefresh({ pruneState: false, refreshChunks: true });
               }
             });
           }
-          refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+          scheduleElementsRefresh({ pruneState: false, refreshChunks: true });
           return cleanList.length;
         },
         unregisterElements() {
           if (extensionElementsByFile.delete(filename)) {
-            refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+            scheduleElementsRefresh({ pruneState: false, refreshChunks: true });
           }
         },
       },
@@ -6260,8 +6352,7 @@
     if (ctype === "extension_unlocked") {
       const req = String(cond.requiredExtension || "");
       if (!req) return false;
-      const extList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
-      const reqDef = extList.find(e => String(e?.filename || "") === req);
+      const reqDef = getExtensionsByFilenameMap().get(req);
       if (!reqDef || reqDef.enabled === false) return false;
       const st = extensionStates.get(req);
       return Boolean(st && st.unlocked);
@@ -6365,8 +6456,7 @@
 
   function unlockExtensionByFilename(targetFilename, announce = true) {
     const fname = String(targetFilename || "");
-    const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
-    const extDef = list.find(e => String(e?.filename || "") === fname);
+    const extDef = getExtensionsByFilenameMap().get(fname);
     if (!extDef || extDef.enabled === false) return false;
     const rec = getExtensionStateRecord(fname);
     if (rec.unlocked) {
@@ -6399,7 +6489,9 @@
 
   function syncUnlockedExtensions(silentRestore = false) {
     const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
-    const pendingLoads = [];
+    const toLoad = [];
+    const freshTitleCards = [];
+    const freshToasts = [];
     let anyStateChange = false;
     if (silentRestore && revokeChangedExtensions(null)) {
       anyStateChange = true;
@@ -6411,8 +6503,8 @@
 
       if (rec.unlocked && rec.enabled) {
         if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
-        if (!activeExtensions.has(fname)) {
-          pendingLoads.push(loadAndActivateExtension(extDef, false));
+        if (!activeExtensions.has(fname) && !loadingExtensions.has(fname)) {
+          toLoad.push({ extDef, isFreshUnlock: false });
         }
         continue;
       }
@@ -6427,7 +6519,7 @@
         if (!silentRestore) {
           const mode = String(extDef.announcementMode || "title_card");
           if (mode === "title_card") {
-            queueTitleCard({
+            freshTitleCards.push({
               filename: fname,
               icon: extDef.icon || "🧩",
               title: extDef.name || fname,
@@ -6435,14 +6527,37 @@
               accentColor: extDef.accentColor || "#73fad1",
             });
           } else if (mode === "toast") {
-            showToast(`${extDef.icon || "🧩"} Extension activée : ${extDef.name || fname}`);
+            freshToasts.push(`${extDef.icon || "🧩"} Extension activée : ${extDef.name || fname}`);
           }
         }
-        pendingLoads.push(loadAndActivateExtension(extDef, !silentRestore));
+        toLoad.push({ extDef, isFreshUnlock: !silentRestore });
       }
     }
+
+    if (freshTitleCards.length > 3) {
+      const preview = freshTitleCards.slice(0, 4).map(c => `${c.icon} ${c.title}`).join(" • ");
+      const extra = freshTitleCards.length > 4 ? ` (+${freshTitleCards.length - 4} autres)` : "";
+      queueTitleCard({
+        badge: "EXTENSIONS ACTIVÉES",
+        icon: "🧩",
+        title: `${freshTitleCards.length} extensions activées`,
+        description: `${preview}${extra}`,
+        fileLabel: `📦 ${freshTitleCards.length} modules HTML chargés`,
+        accentColor: "#73fad1",
+      });
+    } else {
+      for (const tc of freshTitleCards) queueTitleCard(tc);
+    }
+    if (freshToasts.length === 1) {
+      showToast(freshToasts[0]);
+    } else if (freshToasts.length > 1) {
+      showToast(`🧩 ${freshToasts.length} extensions activées !`);
+    }
+
     if (anyStateChange) saveCurrentSlot(true);
-    return pendingLoads.length > 0 ? Promise.all(pendingLoads) : Promise.resolve();
+    return toLoad.length > 0
+      ? runWithConcurrency(toLoad, EXT_FETCH_CONCURRENCY, (item) => loadAndActivateExtension(item.extDef, item.isFreshUnlock))
+      : Promise.resolve();
   }
 
   let lastHotRefreshAt = 0;
@@ -6549,9 +6664,17 @@
       }
 
       // Vérifie si le fichier HTML d'une extension déjà active a été modifié ou supprimé en ligne
+      // (évite une tempête de requêtes HTTP quand beaucoup d'extensions sont actives :
+      //  vérification complète uniquement sur refresh forcé, changement du manifeste, ou petit nombre d'extensions avec cooldown)
       const activeToCheck = Array.from(activeExtensions.keys()).filter(f => enabledByFile.has(f));
-      if (activeToCheck.length > 0) {
-        await Promise.all(activeToCheck.map(async (fname) => {
+      const shouldCheckExtHtml = activeToCheck.length > 0 && (
+        force ||
+        extManifestChanged ||
+        (activeToCheck.length <= EXT_HTML_AUTO_CHECK_MAX && (now - lastExtHtmlCheckAt) >= EXT_HTML_CHECK_COOLDOWN_MS)
+      );
+      if (shouldCheckExtHtml) {
+        lastExtHtmlCheckAt = now;
+        await runWithConcurrency(activeToCheck, EXT_FETCH_CONCURRENCY, async (fname) => {
           try {
             const resp = await fetch(`extensions/${encodeURIComponent(fname)}?_ts=${Date.now()}`, { cache: "no-store" });
             if (resp.status === 404) {
@@ -6571,7 +6694,7 @@
               extHotReloaded = true;
             }
           } catch (_e) {}
-        }));
+        });
       }
 
       await syncUnlockedExtensions(false);
@@ -6921,6 +7044,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.2.2</div>
+<div id="version-badge" aria-hidden="true">v0.2.3</div>
 </body>
 </html>
