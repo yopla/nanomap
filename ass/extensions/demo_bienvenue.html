@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Démo Bienvenue</title>
+</head>
+<body>
+<script>
+// Extension Assemblage : demo_bienvenue.html
+(function () {
+  const FILENAME = "demo_bienvenue.html";
+
+  function buildMessageHtml(fname) {
+    return `
+      <p style="margin:0 0 10px 0;font-size:15px;color:#eefcff;">
+        Vous avez activé cette extension <strong>${fname}</strong> !
+      </p>
+      <p style="margin:0;font-size:12px;color:#9fc4dc;">
+        Cette extension est chargée dynamiquement depuis <code>extensions/${fname}</code> sans modifier le HTML de base.
+      </p>
+    `;
+  }
+
+  // Mode 1 : chargement direct par index.html
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const fname = ext.filename || FILENAME;
+      const openInfo = () => {
+        host.ui.showModal({
+          icon: ext.icon || "🧩",
+          title: ext.name || fname,
+          html: buildMessageHtml(fname),
+        });
+      };
+
+      // Bouton dans Paramètres pour réafficher le message à volonté
+      host.ui.addSettingButton({
+        id: "demo_bienvenue_info",
+        label: "Extension " + fname,
+        desc: "Affiche le message de confirmation de l'extension.",
+        buttonText: "Afficher",
+        onClick: openInfo,
+      });
+
+      if (ext.isFreshUnlock) {
+        host.ui.showToast(`🧩 Vous avez activé cette extension ${fname}`);
+      }
+    },
+    onDeactivate() {},
+  };
+
+  // Mode 2 : fallback iframe + postMessage (si index.html est ouvert en file://)
+  if (window.self !== window.top) {
+    window.addEventListener("message", (ev) => {
+      const msg = ev.data;
+      if (!msg || msg.channel !== "assemblage_host") return;
+      if (msg.event === "init") {
+        const fname = (msg.ext && msg.ext.filename) || FILENAME;
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "add_setting_button",
+          id: "demo_bienvenue_info",
+          label: "Extension " + fname,
+          desc: "Affiche le message de confirmation de l'extension.",
+          buttonText: "Afficher",
+        }, "*");
+        if (msg.ext && msg.ext.isFreshUnlock) {
+          window.parent.postMessage({
+            channel: "assemblage_ext",
+            filename: FILENAME,
+            cmd: "toast",
+            text: `🧩 Vous avez activé cette extension ${fname}`,
+          }, "*");
+        }
+      } else if (msg.event === "button_click" && msg.id === "demo_bienvenue_info") {
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "modal",
+          opts: {
+            icon: "🧩",
+            title: "Extension Démo Bienvenue",
+            html: buildMessageHtml(FILENAME),
+          },
+        }, "*");
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

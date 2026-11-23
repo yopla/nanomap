@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Filtre Alien Noir &amp; Blanc</title>
+</head>
+<body>
+<script>
+// Extension Assemblage : alien_noir_et_blanc.html
+// Mode 1 : chargement direct par index.html (interception synchrone de drawAlien)
+(function () {
+  const FILENAME = "alien_noir_et_blanc.html";
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const savedState = host.state.get() || {};
+      let bwEnabled = Boolean(savedState.bwEnabled);
+
+      // Interception / déviation de la fonction drawAlien() du HTML de base
+      host.hooks.wrap("drawAlien", (originalDrawAlien, timeSec) => {
+        if (!bwEnabled) {
+          return originalDrawAlien(timeSec);
+        }
+        const ctx = host.game.ctx;
+        ctx.save();
+        ctx.filter = "grayscale(100%) contrast(1.08)";
+        const res = originalDrawAlien(timeSec);
+        ctx.restore();
+        return res;
+      });
+
+      // Ajout du bouton / interrupteur dans le menu Paramètres du HTML de base
+      host.ui.addSettingToggle({
+        id: "alien_bw",
+        label: "Passer l'alien en noir et blanc",
+        desc: "Extension " + ext.filename + " — intercepte drawAlien() pour rendre l'alien monochrome.",
+        checked: bwEnabled,
+        onChange(checked) {
+          bwEnabled = Boolean(checked);
+          host.state.set({ bwEnabled }, true);
+          host.ui.showToast(bwEnabled ? "🎞️ Alien en noir et blanc activé" : "🎨 Couleurs de l'alien restaurées");
+        },
+      });
+    },
+    onDeactivate() {
+      // Les hooks et le bouton Paramètres sont nettoyés automatiquement par AssemblageHost
+    },
+  };
+
+  // Mode 2 : fallback iframe + postMessage (si index.html est ouvert en file://)
+  if (window.self !== window.top) {
+    let bwEnabled = false;
+    window.addEventListener("message", (ev) => {
+      const msg = ev.data;
+      if (!msg || msg.channel !== "assemblage_host") return;
+      if (msg.event === "init") {
+        bwEnabled = Boolean(msg.state && msg.state.bwEnabled);
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "add_setting_toggle",
+          id: "alien_bw",
+          label: "Passer l'alien en noir et blanc",
+          desc: "Extension " + FILENAME + " — rend l'alien monochrome.",
+          checked: bwEnabled,
+        }, "*");
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "set_alien_filter",
+          filter: bwEnabled ? "grayscale(100%) contrast(1.08)" : "none",
+        }, "*");
+      } else if (msg.event === "toggle_change" && msg.id === "alien_bw") {
+        bwEnabled = Boolean(msg.value);
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "state_set",
+          patch: { bwEnabled },
+        }, "*");
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "set_alien_filter",
+          filter: bwEnabled ? "grayscale(100%) contrast(1.08)" : "none",
+        }, "*");
+        window.parent.postMessage({
+          channel: "assemblage_ext",
+          filename: FILENAME,
+          cmd: "toast",
+          text: bwEnabled ? "🎞️ Alien en noir et blanc activé" : "🎨 Couleurs de l'alien restaurées",
+        }, "*");
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

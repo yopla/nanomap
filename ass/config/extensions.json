@@ -1,0 +1,37 @@
+{
+	"version": 1,
+	"extensions": [
+		{
+			"filename": "alien_noir_et_blanc.html",
+			"name": "Filtre Alien Noir & Blanc",
+			"icon": "🎞️",
+			"enabled": true,
+			"accentColor": "#d8e6f2",
+			"announcementMode": "title_card",
+			"description": "Ajoute un mode visuel rétro monochrome pour l'alien, contrôlable à tout moment depuis le menu Paramètres.",
+			"activationBehavior": "Affiche un carton titre, injecte un interrupteur « Passer l'alien en noir et blanc » dans le menu Paramètres du HTML de base, et intercepte la fonction drawAlien() pour appliquer un filtre grayscale(100%) tant que l'option est active.",
+			"condition": {
+				"type": "discovered_count",
+				"elementId": "",
+				"biomeId": "",
+				"count": 1
+			}
+		},
+		{
+			"filename": "demo_bienvenue.html",
+			"name": "Extension Démo Bienvenue",
+			"icon": "🧩",
+			"enabled": true,
+			"accentColor": "#73fad1",
+			"announcementMode": "title_card",
+			"description": "Extension de démonstration minimaliste qui confirme son activation avec son nom de fichier HTML.",
+			"activationBehavior": "Affiche un carton titre de déblocage puis un panneau/bandeau de confirmation indiquant « Vous avez activé cette extension demo_bienvenue.html » (et permet de le rouvrir depuis les Paramètres).",
+			"condition": {
+				"type": "distance_traveled",
+				"elementId": "",
+				"biomeId": "",
+				"count": 120
+			}
+		}
+	]
+}

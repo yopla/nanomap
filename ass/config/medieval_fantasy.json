@@ -1,0 +1,329 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "minerai_fer",
+			"name": "Minerai de Fer",
+			"level": 1,
+			"icon": "⛏️",
+			"color": "#9ea7b8",
+			"description": "Roche ferreuse brute extraite des flancs escarpés des montagnes brumeuses.",
+			"recipe": []
+		},
+		{
+			"id": "bois_chene",
+			"name": "Bois de Chêne",
+			"level": 1,
+			"icon": "🪵",
+			"color": "#b88454",
+			"description": "Bois dense et robuste récolté au cœur des forêts séculaires.",
+			"recipe": []
+		},
+		{
+			"id": "herbe_sylvaine",
+			"name": "Herbe Sylvaine",
+			"level": 1,
+			"icon": "🌿",
+			"color": "#54d67c",
+			"description": "Plante médicinale et aromatique cueillie à l'aube dans les clairières.",
+			"recipe": []
+		},
+		{
+			"id": "eau_source",
+			"name": "Eau de Source",
+			"level": 1,
+			"icon": "💧",
+			"color": "#52b8ff",
+			"description": "Eau pure et limpide puisée dans une fontaine sacrée.",
+			"recipe": []
+		},
+		{
+			"id": "braise_vive",
+			"name": "Braise Vive",
+			"level": 1,
+			"icon": "🔥",
+			"color": "#ff7a3d",
+			"description": "Flamme persistante capturée dans une pierre ardente, prisée des forgerons.",
+			"recipe": []
+		},
+		{
+			"id": "eclat_mana",
+			"name": "Éclat de Mana",
+			"level": 1,
+			"icon": "💎",
+			"color": "#b06bff",
+			"description": "Cristal arcanique vibrant d'une magie ancienne enfouie sous la terre.",
+			"recipe": []
+		},
+		{
+			"id": "lingot_acier",
+			"name": "Lingot d'Acier",
+			"level": 2,
+			"icon": "⛓️",
+			"color": "#c4cddb",
+			"description": "Minerai de fer fondu et purifié à la braise pour forger armes et armures.",
+			"recipe": ["minerai_fer", "braise_vive"]
+		},
+		{
+			"id": "charbon_bois",
+			"name": "Charbon de Bois",
+			"level": 2,
+			"icon": "🪨",
+			"color": "#7b7687",
+			"description": "Chêne lentement calciné offrant une chaleur intense pour la forge et l'alchimie.",
+			"recipe": ["bois_chene", "braise_vive"]
+		},
+		{
+			"id": "manche_taille",
+			"name": "Manche Taillé",
+			"level": 2,
+			"icon": "🪓",
+			"color": "#c99663",
+			"description": "Poignée en chêne renforcée de ferrures, prête à accueillir une lame.",
+			"recipe": ["bois_chene", "minerai_fer"]
+		},
+		{
+			"id": "potion_soin",
+			"name": "Potion de Soin",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#ff5e78",
+			"description": "Décoction d'herbes médicinales qui referme rapidement les blessures.",
+			"recipe": ["herbe_sylvaine", "eau_source"]
+		},
+		{
+			"id": "elixir_mana",
+			"name": "Élixir de Mana",
+			"level": 2,
+			"icon": "🍶",
+			"color": "#66a3ff",
+			"description": "Eau de source infusée de poussière arcanique pour restaurer la magie.",
+			"recipe": ["eclat_mana", "eau_source"]
+		},
+		{
+			"id": "pierre_runique",
+			"name": "Pierre Runique",
+			"level": 2,
+			"icon": "🔮",
+			"color": "#c78cff",
+			"description": "Éclat de mana serti de fer et gravé de runes capables de canaliser un sort.",
+			"recipe": ["eclat_mana", "minerai_fer"]
+		},
+		{
+			"id": "baguette_bois",
+			"name": "Baguette de Chêne",
+			"level": 2,
+			"icon": "🪄",
+			"color": "#d4a26a",
+			"description": "Rameau de chêne imprégné d'essence magique, premier outil de l'apprenti mage.",
+			"recipe": ["bois_chene", "eclat_mana"]
+		},
+		{
+			"id": "poudre_alchimique",
+			"name": "Poudre Alchimique",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffd166",
+			"description": "Herbes sylvaines calcinées en une poudre dorée hautement réactive.",
+			"recipe": ["herbe_sylvaine", "braise_vive"]
+		},
+		{
+			"id": "parchemin_vierge",
+			"name": "Parchemin Vierge",
+			"level": 2,
+			"icon": "📜",
+			"color": "#f2dfb6",
+			"description": "Feuillet pressé à partir de fibres de bois et d'eau claire pour inscrire des sorts.",
+			"recipe": ["bois_chene", "eau_source"]
+		},
+		{
+			"id": "baume_sylvestre",
+			"name": "Baume Sylvestre",
+			"level": 2,
+			"icon": "🍃",
+			"color": "#7bf0a4",
+			"description": "Onguent végétal enchanté qui fortifie l'esprit et repousse les malédictions.",
+			"recipe": ["herbe_sylvaine", "eclat_mana"]
+		},
+		{
+			"id": "coeur_arcanique",
+			"name": "Cœur Arcanique",
+			"level": 2,
+			"icon": "💠",
+			"color": "#d966ff",
+			"description": "Fusion de deux éclats de mana en un noyau magique pur et concentré.",
+			"recipe": ["eclat_mana", "eclat_mana"]
+		},
+		{
+			"id": "epee_chevalier",
+			"name": "Épée de Chevalier",
+			"level": 3,
+			"icon": "⚔️",
+			"color": "#dce4f0",
+			"description": "Lame d'acier parfaitement équilibrée montée sur une poignée en chêne ferré.",
+			"recipe": ["lingot_acier", "manche_taille"]
+		},
+		{
+			"id": "armure_plates",
+			"name": "Armure de Plates",
+			"level": 3,
+			"icon": "🛡️",
+			"color": "#9db3cc",
+			"description": "Cuirasse robuste forgée à haute température dans un foyer de charbon ardent.",
+			"recipe": ["lingot_acier", "charbon_bois"]
+		},
+		{
+			"id": "baton_mage",
+			"name": "Bâton de Mage",
+			"level": 3,
+			"icon": "⚜️",
+			"color": "#b983ff",
+			"description": "Sceptre de chêne surmonté d'un cœur arcanique amplifiant chaque incantation.",
+			"recipe": ["baguette_bois", "coeur_arcanique"]
+		},
+		{
+			"id": "parchemin_feu",
+			"name": "Parchemin de Feu",
+			"level": 3,
+			"icon": "🔥",
+			"color": "#ff8c42",
+			"description": "Sortilège calligraphié à la poudre alchimique, libérant une vague de flammes.",
+			"recipe": ["parchemin_vierge", "poudre_alchimique"]
+		},
+		{
+			"id": "grimoire_runique",
+			"name": "Grimoire Runique",
+			"level": 3,
+			"icon": "📖",
+			"color": "#9b72ff",
+			"description": "Recueil de runes anciennes permettant de maîtriser la haute magie.",
+			"recipe": ["parchemin_vierge", "pierre_runique"]
+		},
+		{
+			"id": "amulette_protection",
+			"name": "Amulette de Protection",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#63e2ff",
+			"description": "Talisman runique béni par la forêt, déviant les sortilèges hostiles.",
+			"recipe": ["pierre_runique", "baume_sylvestre"]
+		},
+		{
+			"id": "panacee_royale",
+			"name": "Panacée Royale",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#ff7aa8",
+			"description": "Breuvage précieux alliant vitalité et mana, réservé aux champions du royaume.",
+			"recipe": ["potion_soin", "elixir_mana"]
+		},
+		{
+			"id": "bombe_feu_gregeois",
+			"name": "Flasque de Feu Grégeois",
+			"level": 3,
+			"icon": "💣",
+			"color": "#ff6b35",
+			"description": "Mélange incendiaire alchimique brûlant avec une intensité redoutable.",
+			"recipe": ["poudre_alchimique", "charbon_bois"]
+		},
+		{
+			"id": "mithril_enchante",
+			"name": "Lingot de Mithril",
+			"level": 3,
+			"icon": "🌟",
+			"color": "#a8f0ff",
+			"description": "Acier transmuté par le mana pur en un métal argenté, léger et quasi indestructible.",
+			"recipe": ["lingot_acier", "coeur_arcanique"]
+		},
+		{
+			"id": "fiole_clairvoyance",
+			"name": "Fiole de Clairvoyance",
+			"level": 3,
+			"icon": "👁️",
+			"color": "#7ee8fa",
+			"description": "Infusion lumineuse révélant les illusions et les passages dissimulés.",
+			"recipe": ["elixir_mana", "baume_sylvestre"]
+		},
+		{
+			"id": "lame_runique",
+			"name": "Lame Runique",
+			"level": 4,
+			"icon": "🗡️",
+			"color": "#8be9fd",
+			"description": "Épée de chevalier gravée de runes sacrées, capable de pourfendre les spectres.",
+			"recipe": ["epee_chevalier", "grimoire_runique"]
+		},
+		{
+			"id": "egide_mithril",
+			"name": "Égide de Mithril",
+			"level": 4,
+			"icon": "💠",
+			"color": "#b8e8ff",
+			"description": "Armure légendaire renforcée au mithril, légère comme une plume et impénétrable.",
+			"recipe": ["armure_plates", "mithril_enchante"]
+		},
+		{
+			"id": "sceptre_archimage",
+			"name": "Sceptre d'Archimage",
+			"level": 4,
+			"icon": "👑",
+			"color": "#d699ff",
+			"description": "Relique suprême des mages, canalisant les flammes arcaniques d'un simple geste.",
+			"recipe": ["baton_mage", "parchemin_feu"]
+		},
+		{
+			"id": "calice_immortalite",
+			"name": "Calice de Jouvence",
+			"level": 4,
+			"icon": "🏆",
+			"color": "#ffd966",
+			"description": "Coupe enchantée offrant régénération constante et aura protectrice.",
+			"recipe": ["panacee_royale", "amulette_protection"]
+		},
+		{
+			"id": "orbe_oracle",
+			"name": "Orbe de l'Oracle",
+			"level": 4,
+			"icon": "🌕",
+			"color": "#9bf6ff",
+			"description": "Sphère prophétique dévoilant les secrets du royaume et les périls à venir.",
+			"recipe": ["grimoire_runique", "fiole_clairvoyance"]
+		},
+		{
+			"id": "coeur_dragon",
+			"name": "Cœur de Forge Draconique",
+			"level": 4,
+			"icon": "🐉",
+			"color": "#ff5c5c",
+			"description": "Noyau incandescent scellant la fureur du feu grégeois dans du mithril pur.",
+			"recipe": ["mithril_enchante", "bombe_feu_gregeois"]
+		},
+		{
+			"id": "excalibur_draconique",
+			"name": "Excalibur Draconique",
+			"level": 5,
+			"icon": "⚔️",
+			"color": "#ffae42",
+			"description": "Épée mythique trempée dans la forge draconique, symbole des souverains légendaires.",
+			"recipe": ["lame_runique", "coeur_dragon"]
+		},
+		{
+			"id": "couronne_archimage",
+			"name": "Couronne d'Éternité",
+			"level": 5,
+			"icon": "👑",
+			"color": "#d98aff",
+			"description": "Diadème omniscient unissant la maîtrise des arcanes et la vision absolue du destin.",
+			"recipe": ["sceptre_archimage", "orbe_oracle"]
+		},
+		{
+			"id": "bastion_paladin",
+			"name": "Relique du Paladin",
+			"level": 5,
+			"icon": "⚜️",
+			"color": "#7ef2c8",
+			"description": "Équipement sacré rendant son porteur invincible face aux ténèbres du royaume.",
+			"recipe": ["egide_mithril", "calice_immortalite"]
+		}
+	]
+}
