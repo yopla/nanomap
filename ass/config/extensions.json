@@ -24,7 +24,7 @@
 			"announcementMode": "title_card",
 			"condition": {
 				"biomeId": "",
-				"count": 100,
+				"count": 25,
 				"elementId": "",
 				"expression": "",
 				"requiredExtension": "",
