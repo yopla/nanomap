@@ -3986,6 +3986,7 @@
           unlocked: Boolean(st.unlocked),
           enabled: st.enabled === undefined ? true : Boolean(st.enabled),
           unlocked_at: String(st.unlocked_at || ""),
+          condition_sig: String(st.condition_sig || ""),
           state: (st.state && typeof st.state === "object") ? st.state : {},
         };
       }
@@ -5485,6 +5486,7 @@
         unlocked: Boolean(st.unlocked),
         enabled: st.enabled === undefined ? true : Boolean(st.enabled),
         unlocked_at: String(st.unlocked_at || ""),
+        condition_sig: String(st.condition_sig || ""),
         state: (st.state && typeof st.state === "object") ? st.state : {},
       };
     }
@@ -5500,6 +5502,7 @@
         unlocked: Boolean(st.unlocked),
         enabled: st.enabled === undefined ? true : Boolean(st.enabled),
         unlocked_at: String(st.unlocked_at || ""),
+        condition_sig: String(st.condition_sig || ""),
         state: (st.state && typeof st.state === "object") ? JSON.parse(JSON.stringify(st.state)) : {},
       });
     }
@@ -5507,7 +5510,7 @@
 
   function getExtensionStateRecord(filename) {
     if (!extensionStates.has(filename)) {
-      extensionStates.set(filename, { unlocked: false, enabled: true, unlocked_at: "", state: {} });
+      extensionStates.set(filename, { unlocked: false, enabled: true, unlocked_at: "", condition_sig: "", state: {} });
     }
     return extensionStates.get(filename);
   }
@@ -6113,6 +6116,70 @@
     return false;
   }
 
+  function getExtensionConditionSignature(extDef) {
+    const c = (extDef && extDef.condition && typeof extDef.condition === "object") ? extDef.condition : {};
+    return JSON.stringify({
+      type: String(c.type || "always"),
+      elementId: String(c.elementId || ""),
+      biomeId: String(c.biomeId || ""),
+      count: Math.max(0, Number(c.count || 0)),
+      requiredExtension: String(c.requiredExtension || ""),
+      expression: String(c.expression || ""),
+    });
+  }
+
+  function revokeChangedExtensions(prevCondSigs = null) {
+    const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+    let revokedAny = false;
+
+    for (const extDef of list) {
+      const fname = String(extDef?.filename || "");
+      if (!fname || extDef.enabled === false) continue;
+      const rec = getExtensionStateRecord(fname);
+      if (!rec.unlocked) continue;
+      const newSig = getExtensionConditionSignature(extDef);
+      const knownSig = String(rec.condition_sig || (prevCondSigs ? prevCondSigs.get(fname) : "") || "");
+      if (knownSig && knownSig !== newSig) {
+        if (!evaluateExtensionCondition(extDef)) {
+          deactivateExtension(fname);
+          rec.unlocked = false;
+          rec.unlocked_at = "";
+          rec.condition_sig = "";
+          revokedAny = true;
+        } else {
+          rec.condition_sig = newSig;
+        }
+      } else if (!rec.condition_sig) {
+        rec.condition_sig = newSig;
+      }
+    }
+
+    // Propagation en cascade si une extension dépendait d'une extension re-verrouillée ou désactivée
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const extDef of list) {
+        const fname = String(extDef?.filename || "");
+        if (!fname || extDef.enabled === false) continue;
+        const rec = getExtensionStateRecord(fname);
+        if (!rec.unlocked) continue;
+        const ctype = String(extDef?.condition?.type || "always");
+        if (ctype === "extension_unlocked" || (revokedAny && ctype === "custom_expr")) {
+          if (!evaluateExtensionCondition(extDef)) {
+            deactivateExtension(fname);
+            rec.unlocked = false;
+            rec.unlocked_at = "";
+            rec.condition_sig = "";
+            revokedAny = true;
+            changed = true;
+          }
+        }
+      }
+    }
+
+    return revokedAny;
+  }
+
   function unlockExtensionByFilename(targetFilename, announce = true) {
     const fname = String(targetFilename || "");
     const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
@@ -6120,12 +6187,14 @@
     if (!extDef || extDef.enabled === false) return false;
     const rec = getExtensionStateRecord(fname);
     if (rec.unlocked) {
+      if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
       if (rec.enabled && !activeExtensions.has(fname)) loadAndActivateExtension(extDef, false);
       return false;
     }
     rec.unlocked = true;
     rec.enabled = true;
     rec.unlocked_at = new Date().toISOString();
+    rec.condition_sig = getExtensionConditionSignature(extDef);
     if (announce) {
       const mode = String(extDef.announcementMode || "title_card");
       if (mode === "title_card") {
@@ -6147,13 +6216,17 @@
 
   function syncUnlockedExtensions(silentRestore = false) {
     const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
-    let anyNewUnlock = false;
+    let anyStateChange = false;
+    if (silentRestore && revokeChangedExtensions(null)) {
+      anyStateChange = true;
+    }
     for (const extDef of list) {
       const fname = String(extDef?.filename || "");
       if (!fname || extDef.enabled === false) continue;
       const rec = getExtensionStateRecord(fname);
 
       if (rec.unlocked && rec.enabled) {
+        if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
         if (!activeExtensions.has(fname)) {
           loadAndActivateExtension(extDef, false);
         }
@@ -6164,7 +6237,8 @@
         rec.unlocked = true;
         rec.enabled = true;
         rec.unlocked_at = new Date().toISOString();
-        anyNewUnlock = true;
+        rec.condition_sig = getExtensionConditionSignature(extDef);
+        anyStateChange = true;
 
         if (!silentRestore) {
           const mode = String(extDef.announcementMode || "title_card");
@@ -6183,7 +6257,7 @@
         loadAndActivateExtension(extDef, !silentRestore);
       }
     }
-    if (anyNewUnlock) saveCurrentSlot(true);
+    if (anyStateChange) saveCurrentSlot(true);
   }
 
   let lastHotRefreshAt = 0;
@@ -6239,6 +6313,13 @@
         }
       }
 
+      const prevCondSigs = new Map();
+      const prevExtList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+      for (const prevDef of prevExtList) {
+        const pfname = String(prevDef?.filename || "");
+        if (pfname) prevCondSigs.set(pfname, getExtensionConditionSignature(prevDef));
+      }
+
       if (remoteExts && Array.isArray(remoteExts.extensions)) {
         const snap = JSON.stringify(remoteExts);
         if (snap !== lastRemoteExtsSnap) {
@@ -6262,6 +6343,12 @@
           loadedExtensionHtml.delete(fname);
           extHotReloaded = true;
         }
+      }
+
+      // Re-verrouille à chaud les extensions dont la condition a changé et n'est plus satisfaite
+      if (revokeChangedExtensions(prevCondSigs)) {
+        extHotReloaded = true;
+        saveCurrentSlot(true);
       }
 
       // Vérifie si le fichier HTML d'une extension déjà active a été modifié en ligne
@@ -6626,6 +6713,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.1.5</div>
+<div id="version-badge" aria-hidden="true">v0.1.7</div>
 </body>
 </html>
