@@ -3253,6 +3253,10 @@ function drawCreatureH(ctx, creature, isMe, showLabel) {
    6. ÉTAT GLOBAL DU MONDE, MULTIJOUEUR FIREBASE & BOTS
    ========================================================================== */
 
+function generateHostSessionId() {
+  return 'hs_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
 const state = {
   user: null,             // Mon avatar bestiole local
   players: {},            // Joueurs distants connectés & bots Godot : uid -> créature
@@ -3325,6 +3329,11 @@ const state = {
     signedIn: false,
     email: '',
     uid: '',
+    sessionId: generateHostSessionId(),
+    superseded: false,
+    claimingSession: false,
+    activeSessionOnServer: null,
+    autoRecoverCount: 0,
     monochrome: (() => {
       try {
         const saved = localStorage.getItem('firemoji_host_monochrome');
@@ -4482,6 +4491,7 @@ function disableRemoteAvatarsSync(clearRemotePlayers = false) {
 
 function armOnDisconnectRemoval() {
   if (!state.firebase.db || !state.user || !state.user.id) return Promise.resolve();
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.superseded) return Promise.resolve();
   state.firebase.userRef = state.firebase.db.ref('users/' + state.user.id);
   state.firebase.presRef = state.firebase.db.ref('presence/' + state.user.id);
   const p1 = state.firebase.userRef.onDisconnect().remove().catch(() => {});
@@ -4492,6 +4502,90 @@ function armOnDisconnectRemoval() {
     tasks.push(state.firebase.db.ref('meta/swingWave').onDisconnect().remove().catch(() => {}));
   }
   return Promise.all(tasks);
+}
+
+let hostSessionRef = null;
+let hostSessionCb = null;
+
+function cancelOwnOnDisconnect() {
+  if (!state.firebase.db || !state.user || !state.user.id) return Promise.resolve();
+  const uid = state.user.id;
+  const tasks = [
+    state.firebase.db.ref('users/' + uid).onDisconnect().cancel().catch(() => {}),
+    state.firebase.db.ref('presence/' + uid).onDisconnect().cancel().catch(() => {})
+  ];
+  if (IS_HOST_BUILD) {
+    tasks.push(state.firebase.db.ref('meta/chatMode').onDisconnect().cancel().catch(() => {}));
+    tasks.push(state.firebase.db.ref('meta/swingWave').onDisconnect().cancel().catch(() => {}));
+  }
+  return Promise.all(tasks);
+}
+
+function teardownHostSessionSync() {
+  if (hostSessionRef && hostSessionCb) {
+    try { hostSessionRef.off('value', hostSessionCb); } catch (_) {}
+  }
+  hostSessionRef = null;
+  hostSessionCb = null;
+}
+
+function handleHostSessionSuperseded(newSessionId) {
+  if (!IS_HOST_BUILD || !state.hostAuth || !state.hostAuth.signedIn || state.hostAuth.superseded) return;
+  state.hostAuth.superseded = true;
+  state.hostAuth.claimingSession = false;
+  state.hostAuth.activeSessionOnServer = newSessionId || null;
+  teardownHostSessionSync();
+
+  // Annuler tous nos onDisconnect() AVANT de passer hors-ligne afin de ne pas supprimer la nouvelle session Hôte
+  const cancelPromise = cancelOwnOnDisconnect();
+  enterSleepMode('session hôte reprise sur un autre appareil', {
+    skipRemoteCleanup: true,
+    afterCancel: cancelPromise
+  });
+  showToast('🔁 Session Hôte reprise sur un autre appareil.', 'warning');
+}
+
+function attachHostSessionListener() {
+  if (!IS_HOST_BUILD || !state.firebase.db || !state.hostAuth || !state.hostAuth.signedIn) return;
+  teardownHostSessionSync();
+  hostSessionRef = state.firebase.db.ref('meta/hostSession');
+  hostSessionCb = (snap) => {
+    if (!state.hostAuth || !state.hostAuth.signedIn || state.hostAuth.superseded) return;
+    if (state.hostAuth.claimingSession) return;
+    const val = snap.val();
+    if (!val || val === state.hostAuth.sessionId) {
+      if (val === state.hostAuth.sessionId) {
+        state.hostAuth.activeSessionOnServer = val;
+      }
+      return;
+    }
+    handleHostSessionSuperseded(val);
+  };
+  hostSessionRef.on('value', hostSessionCb, (err) => {
+    console.warn('Erreur lecture meta/hostSession (publiez database.rules.json) :', err);
+  });
+}
+
+function claimHostSession() {
+  if (!IS_HOST_BUILD || !state.firebase.db || !state.hostAuth || !state.hostAuth.signedIn || state.hostAuth.superseded) {
+    return Promise.resolve();
+  }
+  if (!state.hostAuth.sessionId) {
+    state.hostAuth.sessionId = generateHostSessionId();
+  }
+  const mySessionId = state.hostAuth.sessionId;
+  state.hostAuth.claimingSession = true;
+  teardownHostSessionSync();
+  return state.firebase.db.ref('meta/hostSession').set(mySessionId).then(() => {
+    if (!state.hostAuth || !state.hostAuth.signedIn || state.hostAuth.superseded) return;
+    if (state.hostAuth.sessionId !== mySessionId) return;
+    state.hostAuth.activeSessionOnServer = mySessionId;
+    state.hostAuth.claimingSession = false;
+    attachHostSessionListener();
+  }).catch((err) => {
+    state.hostAuth.claimingSession = false;
+    console.warn('Erreur écriture meta/hostSession (publiez database.rules.json) :', err);
+  });
 }
 
 function setupConnectedMonitor() {
@@ -4569,11 +4663,19 @@ function initFirebase() {
                 state.hostAuth.signedIn = true;
                 state.hostAuth.email = user.email || '';
                 state.hostAuth.uid = user.uid;
+                state.hostAuth.superseded = false;
+                state.hostAuth.autoRecoverCount = 0;
+                if (!state.hostAuth.sessionId) state.hostAuth.sessionId = generateHostSessionId();
                 state.user.monochrome = state.hostAuth.monochrome === true;
               } else {
+                teardownHostSessionSync();
                 state.hostAuth.signedIn = false;
                 state.hostAuth.email = '';
                 state.hostAuth.uid = user.uid || '';
+                state.hostAuth.superseded = false;
+                state.hostAuth.claimingSession = false;
+                state.hostAuth.activeSessionOnServer = null;
+                state.hostAuth.autoRecoverCount = 0;
                 state.user.monochrome = false;
               }
               if (previousUid && previousUid !== user.uid && !window.__FIREMOJI_OLD_UID) {
@@ -4588,9 +4690,14 @@ function initFirebase() {
               setupConnectedMonitor();
             } else {
               currentAuthToken = null;
+              teardownHostSessionSync();
               state.hostAuth.signedIn = false;
               state.hostAuth.email = '';
               state.hostAuth.uid = '';
+              state.hostAuth.superseded = false;
+              state.hostAuth.claimingSession = false;
+              state.hostAuth.activeSessionOnServer = null;
+              state.hostAuth.autoRecoverCount = 0;
               if (state.user) state.user.monochrome = false;
               updateHostUi();
               if (!state.firebase.auth.currentUser) {
@@ -4618,9 +4725,13 @@ function initFirebase() {
 
 function onFirebaseConnected(isReconnect = false) {
   if (state.isPaused || state.isSleeping || !state.firebase.db || !state.user || !state.user.id) return;
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.superseded) return;
 
   state.needsRemakeOnNextClick = false;
   updateOnlineCounter();
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
+    claimHostSession();
+  }
   armOnDisconnectRemoval();
   registerOrUpdatePlayerOnFirebase(true);
 
@@ -4637,7 +4748,22 @@ function onFirebaseConnected(isReconnect = false) {
     if (snap.exists()) {
       state.hasInitiallyRegistered = true;
       state.needsRemakeOnNextClick = false;
+      if (state.hostAuth) state.hostAuth.autoRecoverCount = 0;
     } else if (state.hasInitiallyRegistered && !state.isPaused && !state.isSleeping && wasSocketConnected && state.firebase.connected) {
+      // Filet de sécurité Hôte : si un ancien appareil hors-ligne déclenche son onDisconnect() en retard,
+      // l'appareil Hôte légitime (propriétaire de meta/hostSession) se ré-enregistre automatiquement.
+      if (
+        IS_HOST_BUILD &&
+        state.hostAuth &&
+        state.hostAuth.signedIn &&
+        !state.hostAuth.superseded &&
+        state.hostAuth.activeSessionOnServer === state.hostAuth.sessionId &&
+        (state.hostAuth.autoRecoverCount || 0) < 2
+      ) {
+        state.hostAuth.autoRecoverCount = (state.hostAuth.autoRecoverCount || 0) + 1;
+        registerOrUpdatePlayerOnFirebase(true);
+        return;
+      }
       state.needsRemakeOnNextClick = true;
     }
   };
@@ -6244,6 +6370,8 @@ function updateFsIcons() {
 
 function removeOwnFirebaseNodes(useKeepaliveFetch = false) {
   if (!state.user || !state.user.id) return Promise.resolve();
+  // Si cette session Hôte a été reprise sur un autre appareil, ne jamais effacer les nœuds Firebase de la nouvelle session
+  if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.superseded) return Promise.resolve();
   const uid = state.user.id;
   const removals = [];
   try {
@@ -6752,6 +6880,9 @@ if (btnHostSignIn) {
       }
 
       // 2. Connexion avec le compte Hôte (Email / Mot de passe)
+      state.hostAuth.superseded = false;
+      state.hostAuth.sessionId = generateHostSessionId();
+      state.hostAuth.autoRecoverCount = 0;
       const cred = await state.firebase.auth.signInWithEmailAndPassword(email, password);
       if (passEl) passEl.value = '';
       if (cred && cred.user) {
@@ -6782,15 +6913,18 @@ const btnHostSignOut = document.getElementById('btnHostSignOut');
 if (btnHostSignOut) {
   btnHostSignOut.addEventListener('click', () => {
     if (!IS_HOST_BUILD || !state.firebase.auth) return;
-    const disableChat = (state.firebase.db && state.chatMode)
-      ? state.firebase.db.ref('meta/chatMode').set(false).catch(() => {})
-      : Promise.resolve();
-    disableChat.finally(() => {
-      removeOwnFirebaseNodes(false).finally(() => {
-        state.firebase.auth.signOut().then(() => {
-          showToast('🔓 Déconnecté du compte Hôte.');
-        }).catch(() => {});
-      });
+    teardownHostSessionSync();
+    const isSuperseded = !!(state.hostAuth && state.hostAuth.superseded);
+    const cleanupPromise = isSuperseded
+      ? Promise.resolve()
+      : ((state.firebase.db && state.chatMode)
+          ? state.firebase.db.ref('meta/chatMode').set(false).catch(() => {})
+          : Promise.resolve()
+        ).finally(() => removeOwnFirebaseNodes(false));
+    cleanupPromise.finally(() => {
+      state.firebase.auth.signOut().then(() => {
+        showToast('🔓 Déconnecté du compte Hôte.');
+      }).catch(() => {});
     });
   });
 }
@@ -7003,8 +7137,10 @@ function showToast(msg, type = 'info') {
 let sleepOfflineTimer = null;
 let backgroundSleepTimer = null;
 
-function enterSleepMode(reason) {
+function enterSleepMode(reason, options = null) {
   if (state.isSleeping) return;
+  const skipRemoteCleanup = !!(options && options.skipRemoteCleanup === true);
+  const afterCancel = (options && options.afterCancel) ? options.afterCancel : null;
   state.isSleeping = true;
   state.sleepReason = reason || 'inactivité AFK';
   state.hasInitiallyRegistered = false;
@@ -7013,15 +7149,28 @@ function enterSleepMode(reason) {
   savePlayerProfile();
 
   const isBg = !!(state.sleepReason && state.sleepReason.includes('arrière-plan'));
+  const isSuperseded = !!(state.sleepReason && state.sleepReason.includes('autre appareil'));
   const titleEl = document.getElementById('sleepTitle');
   const descEl = document.getElementById('sleepDesc');
+  const wakeBtnEl = document.getElementById('btnWakeUp');
   if (titleEl) {
-    titleEl.textContent = isBg ? 'Tab on Standby' : 'Session on Standby';
+    if (isSuperseded) {
+      titleEl.textContent = '🔁 Session Hôte reprise ailleurs';
+    } else {
+      titleEl.textContent = isBg ? 'Tab on Standby' : 'Session on Standby';
+    }
   }
   if (descEl) {
-    descEl.textContent = isBg
-      ? 'The tab was in the background for too long. Your creature was removed to preserve the server.'
-      : 'You have been inactive for more than ' + Math.round((state.budget.sleepAfkSec || 300) / 60) + ' minutes. Your creature was removed to preserve the free quota.';
+    if (isSuperseded) {
+      descEl.textContent = 'Votre compte Hôte a été ouvert sur un autre appareil ou onglet. Cette fenêtre a été mise en veille sans déconnecter l\'autre session.';
+    } else {
+      descEl.textContent = isBg
+        ? 'The tab was in the background for too long. Your creature was removed to preserve the server.'
+        : 'You have been inactive for more than ' + Math.round((state.budget.sleepAfkSec || 300) / 60) + ' minutes. Your creature was removed to preserve the free quota.';
+    }
+  }
+  if (wakeBtnEl) {
+    wakeBtnEl.textContent = isSuperseded ? '🔄 Reprendre la main ici' : '⚡ Resume session';
   }
   const overlayEl = document.getElementById('sleepOverlay');
   if (overlayEl) overlayEl.classList.add('active');
@@ -7044,22 +7193,34 @@ function enterSleepMode(reason) {
         try { db.goOffline(); } catch (_) {}
       }
     };
-    sleepOfflineTimer = setTimeout(goOff, 400);
-    removeOwnFirebaseNodes(true).then(goOff).catch(goOff);
+    sleepOfflineTimer = setTimeout(goOff, skipRemoteCleanup ? 500 : 400);
+    if (skipRemoteCleanup) {
+      Promise.resolve(afterCancel).then(goOff).catch(goOff);
+    } else {
+      removeOwnFirebaseNodes(true).then(goOff).catch(goOff);
+    }
   }
   updateOnlineCounter();
 }
 
 function wakeFromSleep() {
   if (!state.isSleeping) return;
+  const wasSuperseded = !!(IS_HOST_BUILD && state.hostAuth && state.hostAuth.superseded);
   state.isSleeping = false;
   state.sleepReason = null;
   state.lastInteractionTime = performance.now();
   hasDestroyedOnExit = false;
+  if (wasSuperseded) {
+    state.hostAuth.superseded = false;
+    state.hostAuth.sessionId = generateHostSessionId();
+    state.hostAuth.autoRecoverCount = 0;
+  }
   if (sleepOfflineTimer) {
     clearTimeout(sleepOfflineTimer);
     sleepOfflineTimer = null;
   }
+  const wakeBtnEl = document.getElementById('btnWakeUp');
+  if (wakeBtnEl) wakeBtnEl.textContent = '⚡ Resume session';
   const overlayEl = document.getElementById('sleepOverlay');
   if (overlayEl) overlayEl.classList.remove('active');
 
@@ -7069,11 +7230,14 @@ function wakeFromSleep() {
     try { state.firebase.db.goOnline(); } catch (_) {}
     enableRemoteAvatarsSync();
     if (state.firebase.connected) {
+      if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
+        claimHostSession();
+      }
       registerOrUpdatePlayerOnFirebase(true);
     }
   }
   updateOnlineCounter();
-  showToast('⚡ Session reactivated — creature recreated!');
+  showToast(wasSuperseded ? '🔁 Session Hôte reprise sur cet appareil !' : '⚡ Session reactivated — creature recreated!');
 }
 
 document.getElementById('btnWakeUp').addEventListener('click', wakeFromSleep);
@@ -7153,6 +7317,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.1</div>
+<div class="version-badge">v0.6</div>
 </body>
 </html>
