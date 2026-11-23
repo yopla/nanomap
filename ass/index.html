@@ -6309,6 +6309,30 @@
           ELEMENTS_DATA = remoteElems;
           rebuildElementsIndex();
           activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
+
+          let statePruned = false;
+          for (const id of Array.from(inventory.keys())) {
+            if (!byId.has(id)) {
+              inventory.delete(id);
+              statePruned = true;
+            }
+          }
+          for (const id of Array.from(discovered.values())) {
+            if (!byId.has(id)) {
+              discovered.delete(id);
+              statePruned = true;
+            }
+          }
+          if (slotA && !byId.has(slotA)) slotA = "";
+          if (slotB && !byId.has(slotB)) slotB = "";
+          if (inspectedId && !byId.has(inspectedId)) inspectedId = "";
+
+          // Régénère les chunks autour du joueur pour retirer les pickups supprimés
+          chunks.clear();
+          lastCenterKey = "";
+          updateChunks(alien.x, alien.y);
+
+          if (statePruned) saveCurrentSlot(true);
           uiChanged = true;
         }
       }
@@ -6713,6 +6737,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.1.7</div>
+<div id="version-badge" aria-hidden="true">v0.1.8</div>
 </body>
 </html>
