@@ -44,7 +44,7 @@
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.35s ease;
-    z-index: 15;
+    z-index: 80;
     white-space: nowrap;
   }
   #toast.show { opacity: 1; }
@@ -964,6 +964,28 @@
     font-size: 13px;
     color: #c7ebff;
   }
+  #saves-feedback {
+    display: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: #84fad0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(16, 46, 54, 0.72);
+    border: 1px solid rgba(115, 245, 214, 0.45);
+    transition: opacity 0.4s ease;
+  }
+  #saves-feedback.show { display: block; opacity: 1; }
+  #saves-feedback.overwrite {
+    color: #ffe27a;
+    background: rgba(62, 50, 18, 0.72);
+    border-color: rgba(255, 214, 96, 0.55);
+  }
+  #saves-feedback.error {
+    color: #ff9494;
+    background: rgba(66, 20, 26, 0.78);
+    border-color: rgba(255, 118, 118, 0.6);
+  }
   #saves-list {
     display: flex;
     flex-direction: column;
@@ -983,8 +1005,24 @@
     border: 1.5px solid rgba(82, 118, 163, 0.7);
     border-radius: 12px;
     padding: 12px 14px;
+    transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
   }
-  .save-card.active { border-color: #73f5d6; border-width: 2px; }
+  .save-card.active {
+    border-color: #73f5d6;
+    border-width: 3px;
+    background: rgba(34, 70, 86, 0.94);
+    box-shadow: 0 0 0 1px rgba(115, 245, 214, 0.24), inset 0 0 22px rgba(115, 245, 214, 0.10);
+  }
+  @keyframes saveCardFlashOverwrite {
+    0% { box-shadow: 0 0 0 3px rgba(255, 224, 110, 0.9), inset 0 0 28px rgba(255, 224, 110, 0.35); filter: brightness(1.28); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes saveCardFlashNew {
+    0% { box-shadow: 0 0 0 3px rgba(115, 245, 214, 0.9), inset 0 0 28px rgba(115, 245, 214, 0.35); filter: brightness(1.24); }
+    100% { filter: brightness(1); }
+  }
+  .save-card.flash-overwrite { animation: saveCardFlashOverwrite 0.65s ease-out; }
+  .save-card.flash-new { animation: saveCardFlashNew 0.65s ease-out; }
   .save-card.partial { border-color: #ffd15c; }
   .save-card.invalid { border-color: #ff6b6b; }
   .save-meta { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px; }
@@ -1324,6 +1362,7 @@
         <div id="saves-info">Slot actif : slot_1</div>
         <button id="save-now-btn" class="save-btn primary" type="button">💾 Sauvegarder maintenant</button>
       </div>
+      <div id="saves-feedback"></div>
       <div id="saves-list"></div>
     </div>
 
@@ -2338,7 +2377,9 @@
   const hubSavesBtnEl = document.getElementById("hub-saves-btn");
   const biomesListEl = document.getElementById("biomes-list");
   const savesInfoEl = document.getElementById("saves-info");
+  const savesFeedbackEl = document.getElementById("saves-feedback");
   const savesListEl = document.getElementById("saves-list");
+  let savesFeedbackTimer = null;
   const saveNowBtnEl = document.getElementById("save-now-btn");
   const slotAEl = document.getElementById("slot-a");
   const slotBEl = document.getElementById("slot-b");
@@ -3791,20 +3832,62 @@
     return { status, data, warnings, errors, needsResave: migrated || status === "partial" || hashChanged };
   }
 
+  function showSaveFeedback(slotId, msg, isOverwrite = false, isError = false) {
+    if (savesFeedbackEl) {
+      savesFeedbackEl.textContent = msg;
+      savesFeedbackEl.classList.remove("overwrite", "error", "show");
+      if (isError) savesFeedbackEl.classList.add("error");
+      else if (isOverwrite) savesFeedbackEl.classList.add("overwrite");
+      if (msg) {
+        savesFeedbackEl.classList.add("show");
+        savesFeedbackEl.style.opacity = "1";
+      }
+      clearTimeout(savesFeedbackTimer);
+      savesFeedbackTimer = setTimeout(() => {
+        if (!savesFeedbackEl) return;
+        savesFeedbackEl.style.opacity = "0";
+        setTimeout(() => {
+          if (savesFeedbackEl && savesFeedbackEl.style.opacity === "0") {
+            savesFeedbackEl.classList.remove("show");
+          }
+        }, 420);
+      }, 3000);
+    }
+    if (slotId && savesListEl) {
+      const card = savesListEl.querySelector(`.save-card[data-slot-id="${slotId}"]`);
+      if (card) {
+        card.classList.remove("flash-overwrite", "flash-new");
+        void card.offsetWidth;
+        card.classList.add(isOverwrite ? "flash-overwrite" : "flash-new");
+      }
+    }
+  }
+
   function saveCurrentSlot(silent = false, targetSlotId = "") {
     const sid = targetSlotId || currentSlotId || "slot_1";
+    const wasExisting = Boolean(storageGet(SAVE_KEY_PREFIX + sid));
     currentSlotId = sid;
     const payload = buildSavePayload(sid);
     currentSlotCreatedAt = payload.meta.created_at;
+    const slotLabel = payload.meta.slot_name || defaultSlotName(sid);
     const ok = storageSet(SAVE_KEY_PREFIX + sid, JSON.stringify(payload));
     if (ok) {
       storageSet(SAVE_LAST_KEY, sid);
       autosaveDirty = false;
       autosaveTimer = 0;
       if (shipViewMode === "saves") renderSavesView();
-      if (!silent) showToast(`💾 Partie sauvegardée (${sid}) !`);
+      if (!silent) {
+        if (wasExisting) {
+          showToast(`💾 Sauvegarde « ${slotLabel} » écrasée !`);
+          showSaveFeedback(sid, `✅ Sauvegarde « ${slotLabel} » écrasée avec la partie en cours.`, true, false);
+        } else {
+          showToast(`💾 Partie sauvegardée dans « ${slotLabel} » !`);
+          showSaveFeedback(sid, `✅ Partie sauvegardée dans « ${slotLabel} ».`, false, false);
+        }
+      }
     } else if (!silent) {
       showToast("❌ Stockage local indisponible ou plein.");
+      showSaveFeedback("", "❌ Stockage local indisponible ou plein.", false, true);
     }
   }
 
@@ -3928,6 +4011,7 @@
       const isActive = sid === currentSlotId;
       const card = document.createElement("div");
       card.className = "save-card" + (isActive ? " active" : "");
+      card.dataset.slotId = sid;
 
       let status = "empty";
       let meta = null;
@@ -4001,6 +4085,9 @@
       btnSave.type = "button";
       btnSave.className = "save-btn primary";
       btnSave.textContent = status === "empty" ? "💾 Sauver" : "💾 Écraser";
+      btnSave.title = status === "empty"
+        ? "Enregistrer la partie en cours dans cet emplacement"
+        : "Écraser cette sauvegarde avec la partie en cours";
       btnSave.addEventListener("click", () => saveCurrentSlot(false, sid));
       actions.appendChild(btnSave);
 
@@ -4008,6 +4095,7 @@
       btnNew.type = "button";
       btnNew.className = "save-btn new-game";
       btnNew.textContent = "✨ Nouvelle";
+      btnNew.title = "Réinitialise la partie en cours à zéro et démarre une nouvelle partie sur cet emplacement";
       btnNew.addEventListener("click", () => startNewGame(sid));
       actions.appendChild(btnNew);
 
@@ -4016,7 +4104,7 @@
         btnDel.type = "button";
         btnDel.className = "save-btn danger";
         btnDel.textContent = "🗑";
-        btnDel.title = "Supprimer cette sauvegarde";
+        btnDel.title = "Supprime uniquement le fichier de sauvegarde (sans réinitialiser la partie en cours)";
         btnDel.addEventListener("click", () => {
           if (window.confirm(`Supprimer définitivement « ${meta?.slot_name || defaultSlotName(sid)} » ?`)) {
             deleteSlot(sid);
@@ -5514,15 +5602,90 @@
         },
       });
     } else if (msg.cmd === "set_alien_filter") {
-      const filterStr = String(msg.filter || "none");
+      const filterStr = String(msg.filter || "none").trim();
       if (host._alienFilterUnhook) { host._alienFilterUnhook(); host._alienFilterUnhook = null; }
       if (filterStr && filterStr !== "none") {
-        host._alienFilterUnhook = host.hooks.wrap("drawAlien", (orig, t) => {
-          ctx.save();
-          ctx.filter = filterStr;
-          orig(t);
-          ctx.restore();
-        });
+        // Optimisation : pour un filtre grayscale/contrast, remapper fillStyle/strokeStyle en JS
+        // au lieu d'utiliser ctx.filter (très lent sur Canvas2D à chaque primitive).
+        const isSimpleGrayscale = /^(?:\s*(?:grayscale\([^)]*\)|contrast\([^)]*\))\s*)+$/i.test(filterStr) && /grayscale\(/i.test(filterStr);
+        if (isSimpleGrayscale) {
+          const contrastMatch = /contrast\(\s*([\d.]+)(%?)\s*\)/i.exec(filterStr);
+          let contrast = 1;
+          if (contrastMatch) {
+            contrast = Number(contrastMatch[1]);
+            if (contrastMatch[2] === "%") contrast /= 100;
+          }
+          const cache = new Map();
+          const toGray = (value) => {
+            if (typeof value !== "string") return value;
+            const hit = cache.get(value);
+            if (hit !== undefined) return hit;
+            const s = value.trim();
+            let rgba = null;
+            if (s.charCodeAt(0) === 35) {
+              const hex = s.slice(1);
+              if (hex.length === 3 || hex.length === 4) {
+                rgba = [
+                  parseInt(hex[0] + hex[0], 16),
+                  parseInt(hex[1] + hex[1], 16),
+                  parseInt(hex[2] + hex[2], 16),
+                  hex.length === 4 ? parseInt(hex[3] + hex[3], 16) / 255 : 1,
+                ];
+              } else if (hex.length === 6 || hex.length === 8) {
+                rgba = [
+                  parseInt(hex.slice(0, 2), 16),
+                  parseInt(hex.slice(2, 4), 16),
+                  parseInt(hex.slice(4, 6), 16),
+                  hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+                ];
+              }
+            } else {
+              const m = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(s);
+              if (m) rgba = [Number(m[1]), Number(m[2]), Number(m[3]), m[4] !== undefined ? Number(m[4]) : 1];
+            }
+            if (!rgba) { cache.set(value, value); return value; }
+            let lum = 0.2126 * rgba[0] + 0.7152 * rgba[1] + 0.0722 * rgba[2];
+            lum = Math.max(0, Math.min(255, Math.round((lum - 128) * contrast + 128)));
+            const out = rgba[3] >= 0.999 ? `rgb(${lum},${lum},${lum})` : `rgba(${lum},${lum},${lum},${rgba[3]})`;
+            cache.set(value, out);
+            return out;
+          };
+          if (!ctx.__assemblageColorHooked) {
+            const proto = Object.getPrototypeOf(ctx);
+            const fillDesc = Object.getOwnPropertyDescriptor(proto, "fillStyle");
+            const strokeDesc = Object.getOwnPropertyDescriptor(proto, "strokeStyle");
+            if (fillDesc && fillDesc.set && strokeDesc && strokeDesc.set) {
+              ctx.__assemblageColorMapper = null;
+              ctx.__assemblageColorHooked = true;
+              Object.defineProperty(ctx, "fillStyle", {
+                configurable: true,
+                get() { return fillDesc.get.call(this); },
+                set(v) { const fn = this.__assemblageColorMapper; fillDesc.set.call(this, fn ? fn(v) : v); },
+              });
+              Object.defineProperty(ctx, "strokeStyle", {
+                configurable: true,
+                get() { return strokeDesc.get.call(this); },
+                set(v) { const fn = this.__assemblageColorMapper; strokeDesc.set.call(this, fn ? fn(v) : v); },
+              });
+            }
+          }
+          host._alienFilterUnhook = host.hooks.wrap("drawAlien", (orig, t) => {
+            const prevMapper = ctx.__assemblageColorMapper;
+            ctx.__assemblageColorMapper = toGray;
+            try {
+              return orig(t);
+            } finally {
+              ctx.__assemblageColorMapper = prevMapper;
+            }
+          });
+        } else {
+          host._alienFilterUnhook = host.hooks.wrap("drawAlien", (orig, t) => {
+            ctx.save();
+            ctx.filter = filterStr;
+            orig(t);
+            ctx.restore();
+          });
+        }
       }
     }
   });
