@@ -1282,9 +1282,9 @@ const BUDGET_CONFIG = /*BUDGET_CONFIG_JSON*/{
 	"rateLimitMs": 250,
 	"sleepAfkSec": 300,
 	"sleepBackgroundSec": 60,
-	"userMax": 12,
+	"userMax": 15,
 	"userRechargeAmount": 1,
-	"userRechargeSec": 2.0
+	"userRechargeSec": 2.5
 }/*BUDGET_CONFIG_JSON_END*/;
 
 const HOST_CONFIG = /*HOST_CONFIG_JSON*/{
@@ -3330,6 +3330,7 @@ const state = {
   waterWaves: [],
   ripples: [],
   swingWaveHits: [],
+  vanishEffects: [],
   camera: {
     x: 1600,
     y: 1600,
@@ -4321,6 +4322,7 @@ function initWorld() {
 
 function syncBotPopulation(regenerateAll = false) {
   if (regenerateAll) {
+    for (const bot of state.bots) spawnVanishEffect(bot);
     state.bots = [];
   }
   while (state.bots.length < state.targetBotCount) {
@@ -4335,6 +4337,9 @@ function syncBotPopulation(regenerateAll = false) {
     state.bots.push(createCreature(x, y, forcedType, false, null, botSeed));
   }
   if (state.bots.length > state.targetBotCount) {
+    for (let i = state.targetBotCount; i < state.bots.length; i++) {
+      spawnVanishEffect(state.bots[i]);
+    }
     state.bots.length = state.targetBotCount;
   }
   updateHudUI();
@@ -4491,6 +4496,7 @@ function pruneSelfDuplicates() {
         state.targetFollowCreature = null;
         closeExpressionMenu();
       }
+      spawnVanishEffect(p);
       delete state.players[uid];
       removed = true;
       continue;
@@ -4541,6 +4547,7 @@ function disableRemoteAvatarsSync(clearRemotePlayers = false) {
   usersListenersAttached = false;
   if (clearRemotePlayers) {
     state.players = {};
+    state.vanishEffects.length = 0;
     if (state.targetFollowCreature && state.targetFollowCreature !== state.user) {
       state.targetFollowCreature = null;
       closeExpressionMenu();
@@ -4960,6 +4967,164 @@ function drawSwingWaveHits(ctx, now) {
       ctx.beginPath();
       ctx.arc(x, y, r2, 0, Math.PI * 2);
       ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+const VANISH_DURATION = 0.62;
+const VANISH_MAX_ACTIVE = 32;
+const VANISH_MAX_BODY_GHOSTS = 6;
+const VANISH_TYPE_HUES = { C: 172, F: 28, G: 272, H: 199 };
+
+function isWorldPointVisible(wx, wy, margin = 110) {
+  if (!canvas || !state.camera) return true;
+  const dpr = getCanvasDpr();
+  const viewW = canvas.width / dpr;
+  const viewH = canvas.height / dpr;
+  const zoom = state.camera.zoom || 1;
+  const halfW = (viewW * 0.5) / zoom + margin;
+  const halfH = (viewH * 0.5) / zoom + margin;
+  return Math.abs(wx - state.camera.x) <= halfW && Math.abs(wy - state.camera.y) <= halfH;
+}
+
+function spawnVanishEffect(creature) {
+  if (!creature || !state.vanishEffects || state.isPaused || state.isSleeping) return;
+  if (typeof creature.x !== 'number' || typeof creature.y !== 'number') return;
+  // Culling viewport : si la créature est hors-écran (ex: purge de 50 bots), 0 coût CPU/GPU
+  if (!isWorldPointVisible(creature.x, creature.y, 110)) return;
+
+  const list = state.vanishEffects;
+  if (list.length >= VANISH_MAX_ACTIVE) {
+    list.shift();
+  }
+
+  let activeBodies = 0;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].bodyCreature) activeBodies++;
+  }
+
+  const keepBody = activeBodies < VANISH_MAX_BODY_GHOSTS && list.length < 12;
+  const sparkCount = list.length > 14 ? 3 : 6;
+  const sparks = new Array(sparkCount);
+  const baseAngle = Math.random() * Math.PI * 2;
+  for (let i = 0; i < sparkCount; i++) {
+    const a = baseAngle + (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.55;
+    const dist = 24 + Math.random() * 26;
+    sparks[i] = {
+      vx: Math.cos(a) * dist,
+      vy: Math.sin(a) * dist,
+      r: 2.0 + Math.random() * 2.2
+    };
+  }
+
+  const isMono = creature.monochrome === true || creature._mono === true;
+  const hue = (creature.genome && typeof creature.genome.hue === 'number')
+    ? Math.round(creature.genome.hue)
+    : (VANISH_TYPE_HUES[creature.type] || 199);
+
+  list.push({
+    x: creature.x,
+    y: creature.y,
+    elapsed: 0,
+    duration: VANISH_DURATION,
+    hue: hue,
+    mono: isMono,
+    baseRadius: creature.type === 'H' ? 24 : 20,
+    spinDir: Math.random() < 0.5 ? -1 : 1,
+    bodyCreature: keepBody ? creature : null,
+    sparks: sparks
+  });
+}
+
+function updateVanishEffects(dt) {
+  const list = state.vanishEffects;
+  if (!list || !list.length) return;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const e = list[i];
+    e.elapsed += dt;
+    if (e.elapsed >= e.duration) {
+      e.bodyCreature = null;
+      list.splice(i, 1);
+    }
+  }
+}
+
+function drawVanishEffects(ctx) {
+  const list = state.vanishEffects;
+  if (!list || !list.length) return;
+
+  // Passe 1 : silhouettes qui rétrécissent (capées à VANISH_MAX_BODY_GHOSTS pour garder 60 FPS sur smartphone)
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (!e.bodyCreature) continue;
+    const t = e.elapsed / e.duration;
+    if (t >= 0.65) {
+      e.bodyCreature = null;
+      continue;
+    }
+    const bt = t / 0.65;
+    const alpha = (1 - bt * bt) * 0.85;
+    const scale = 1 - 0.62 * (bt * bt);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(e.x, e.y);
+    ctx.rotate(bt * 0.35 * e.spinDir);
+    ctx.scale(scale, scale);
+    ctx.translate(-e.x, -e.y);
+    drawCreatureAny(ctx, e.bodyCreature, false, false);
+    ctx.restore();
+  }
+
+  // Passe 2 : onde + flash doux + spores batchées (zéro gradient, 1 fill() par effet)
+  ctx.save();
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    const t = Math.min(1, e.elapsed / e.duration);
+    const inv = 1 - t;
+    const easeOut = 1 - inv * inv;
+    const x = e.x;
+    const y = e.y;
+
+    // Petit coeur lumineux qui se résorbe au début
+    if (t < 0.4) {
+      const ct = 1 - (t / 0.4);
+      const coreR = Math.max(1.5, e.baseRadius * 0.65 * ct);
+      ctx.fillStyle = e.mono
+        ? `rgba(248, 250, 252, ${(ct * 0.36).toFixed(3)})`
+        : `hsla(${e.hue}, 90%, 78%, ${(ct * 0.34).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, coreR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Anneau concentrique de dissolution
+    const ringR = e.baseRadius * 0.65 + easeOut * 38;
+    ctx.strokeStyle = e.mono
+      ? `rgba(241, 245, 249, ${(0.72 * inv * inv).toFixed(3)})`
+      : `hsla(${e.hue}, 88%, 72%, ${(0.72 * inv * inv).toFixed(3)})`;
+    ctx.lineWidth = 2.0 * inv + 0.45;
+    ctx.beginPath();
+    ctx.arc(x, y, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Spores bioluminescentes dessinées en un seul path batché
+    const sparks = e.sparks;
+    if (sparks && sparks.length) {
+      ctx.fillStyle = e.mono
+        ? `rgba(248, 250, 252, ${(0.85 * inv).toFixed(3)})`
+        : `hsla(${e.hue}, 95%, 78%, ${(0.85 * inv).toFixed(3)})`;
+      ctx.beginPath();
+      const sizeScale = 0.3 + 0.7 * inv;
+      for (let j = 0; j < sparks.length; j++) {
+        const sp = sparks[j];
+        const sx = x + sp.vx * easeOut;
+        const sy = y + sp.vy * easeOut;
+        const sr = sp.r * sizeScale;
+        ctx.moveTo(sx + sr, sy);
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      }
+      ctx.fill();
     }
   }
   ctx.restore();
@@ -5513,6 +5678,7 @@ function onUserRemoved(snap) {
     closeExpressionMenu();
   }
   if (state.players[uid]) {
+    spawnVanishEffect(state.players[uid]);
     delete state.players[uid];
     updateOnlineCounter();
   }
@@ -5785,6 +5951,7 @@ function gameLoop(now) {
     // 1. Onde Swing Hôte & Physique des créatures
     updateSwingWave(dt);
     updateSwingWaveHits(dt);
+    updateVanishEffects(dt);
     updateCreature(state.user, dt);
 
     for (const uid in state.players) {
@@ -5936,6 +6103,7 @@ function gameLoop(now) {
   // Onde circulaire de Swing déclenchée par l'Hôte + impacts lumineux sur chaque créature touchée
   drawSwingWave(ctx, now);
   drawSwingWaveHits(ctx, now);
+  drawVanishEffects(ctx);
 
   // Bots autonomes
   for (const bot of state.bots) {
@@ -7504,6 +7672,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v7.1</div>
+<div class="version-badge">v0.81</div>
 </body>
 </html>
