@@ -2472,7 +2472,7 @@
 				"type": "always"
 			},
 			"description": "Ajoute 3 nouveaux éléments (Éclat de Comète récoltable en Plaines Astrales + Lame Cométaire et Cœur de Comète) avec support du remplacement à chaud.",
-			"enabled": true,
+			"enabled": false,
 			"filename": "pack_elements_demo.html",
 			"icon": "☄️",
 			"name": "Pack d'Éléments Démo"
@@ -6248,7 +6248,7 @@
       return discovered.size >= Math.max(1, cnt);
     }
     if (ctype === "distance_traveled") {
-      return alien.distance >= Math.max(1, cnt);
+      return Math.floor(alien.distance / 18) >= Math.max(1, cnt);
     }
     if (ctype === "biome_visited") {
       const bid = String(cond.biomeId || "");
@@ -6921,6 +6921,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.2.1</div>
+<div id="version-badge" aria-hidden="true">v0.2.2</div>
 </body>
 </html>
