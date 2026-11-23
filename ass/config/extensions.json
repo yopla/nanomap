@@ -31,7 +31,7 @@
 				"type": "distance_traveled"
 			},
 			"description": "Extension de démonstration minimaliste qui confirme son activation avec son nom de fichier HTML.",
-			"enabled": false,
+			"enabled": true,
 			"filename": "demo_bienvenue.html",
 			"icon": "🧩",
 			"name": "Extension Démo Bienvenue"
