@@ -806,6 +806,85 @@
   #settings-btn:hover { background: rgba(28, 42, 68, 0.94); border-color: rgba(115, 235, 255, 0.95); }
   #settings-btn:active { transform: scale(0.95); }
 
+  /* Fullscreen button & transfer pause overlay */
+  #fullscreen-btn {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    right: max(16px, env(safe-area-inset-right, 16px));
+    z-index: 16;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(18, 25, 43, 0.84);
+    border: 1.5px solid rgba(72, 214, 245, 0.65);
+    color: #e6f4ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
+    touch-action: manipulation;
+  }
+  #fullscreen-btn:hover { background: rgba(28, 42, 68, 0.94); border-color: rgba(115, 235, 255, 0.95); }
+  #fullscreen-btn:active { transform: scale(0.95); }
+
+  #fs-pause-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 8, 18, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 950;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #fs-pause-overlay.open { display: flex; }
+  .fs-pause-card {
+    background: linear-gradient(145deg, rgba(18, 25, 43, 0.97), rgba(10, 15, 28, 0.98));
+    border: 1.5px solid rgba(72, 214, 245, 0.65);
+    border-radius: 18px;
+    padding: 26px 22px;
+    max-width: 390px;
+    width: 100%;
+    text-align: center;
+    color: #e6f4ff;
+    box-shadow: 0 22px 54px rgba(0, 0, 0, 0.72), 0 0 36px rgba(72, 214, 245, 0.14);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .fs-pause-icon { font-size: 36px; line-height: 1; }
+  .fs-pause-title { font-size: 19px; font-weight: 800; letter-spacing: 0.4px; color: #6bf0ff; }
+  .fs-pause-desc { font-size: 13px; line-height: 1.45; color: rgba(210, 230, 250, 0.85); }
+  .fs-pause-actions { display: flex; flex-direction: column; gap: 10px; align-items: center; margin-top: 4px; width: 100%; }
+  #btn-resume-here {
+    padding: 10px 22px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(72, 214, 245, 0.85);
+    background: linear-gradient(135deg, rgba(32, 130, 185, 0.9), rgba(24, 96, 150, 0.95));
+    color: #f0f9ff;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    transition: transform 0.12s ease, filter 0.15s ease;
+  }
+  #btn-resume-here:hover { filter: brightness(1.12); }
+  #btn-resume-here:active { transform: scale(0.96); }
+  #btn-fallback-fs-link {
+    display: none;
+    color: #7dd3fc;
+    font-size: 12.5px;
+    text-decoration: underline;
+    margin-top: 2px;
+  }
+
   #settings-overlay {
     position: fixed;
     inset: 0;
@@ -1311,8 +1390,29 @@
 <canvas id="game"></canvas>
 <div id="toast"></div>
 <div id="hint">Touchez l'écran pour déplacer l'alien • Récoltez les ressources • Appuyez sur le vaisseau pour assembler</div>
-<div id="version-badge" aria-hidden="true">v0.1.0</div>
 <button id="settings-btn" type="button" aria-label="Paramètres" title="Paramètres">⚙️</button>
+<button id="fullscreen-btn" type="button" aria-label="Plein écran" title="Plein écran">
+  <svg id="fs-icon-enter" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+  </svg>
+  <svg id="fs-icon-exit" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+  </svg>
+</button>
+
+<div id="fs-pause-overlay" role="dialog" aria-modal="true" aria-labelledby="fs-pause-title">
+  <div class="fs-pause-card">
+    <div class="fs-pause-icon">🛸</div>
+    <div id="fs-pause-title" class="fs-pause-title">Plein écran actif</div>
+    <div class="fs-pause-desc">
+      Votre partie a été transférée dans le nouvel onglet. Fermez cet onglet ou cliquez ci-dessous pour reprendre ici.
+    </div>
+    <div class="fs-pause-actions">
+      <button id="btn-resume-here" type="button">🔄 Reprendre dans cette fenêtre</button>
+      <a id="btn-fallback-fs-link" href="#" target="_blank" rel="noopener noreferrer">Ouvrir en plein écran manuellement</a>
+    </div>
+  </div>
+</div>
 
 <div id="settings-overlay" role="dialog" aria-modal="true" aria-labelledby="settings-title">
   <div id="settings-card">
@@ -3008,7 +3108,8 @@
   let extTitleCardOpen = false;
   let extModalOpen = false;
   let extFrameOpen = false;
-  function isAnyUIOpen() { return uiOpen || settingsOpen || extTitleCardOpen || extModalOpen || extFrameOpen; }
+  let fsPaused = false;
+  function isAnyUIOpen() { return uiOpen || settingsOpen || extTitleCardOpen || extModalOpen || extFrameOpen || fsPaused; }
 
   function updateHintText() {
     hintEl.textContent = useJoystick
@@ -3643,9 +3744,11 @@
 
   // --- Système de sauvegarde multi-slots (localStorage + validation MAJ) ---
   const SAVE_VERSION = 1;
-  const GAME_VERSION = "1.0.0";
-  const versionBadgeEl = document.getElementById("version-badge");
-  if (versionBadgeEl) versionBadgeEl.textContent = `v${GAME_VERSION}`;
+  function getGameVersion() {
+    const el = document.getElementById("version-badge");
+    const txt = el ? el.textContent.trim() : "";
+    return txt.replace(/^v/i, "") || "0.1.0";
+  }
   const SAVE_KEY_PREFIX = "assemblage_save_v1_";
   const SAVE_LAST_KEY = "assemblage_last_slot_v1";
   const DEFAULT_SLOTS = ["slot_1", "slot_2", "slot_3"];
@@ -3701,7 +3804,7 @@
     return {
       meta: {
         save_version: SAVE_VERSION,
-        game_version: GAME_VERSION,
+        game_version: getGameVersion(),
         elements_db_version: Number(ELEMENTS_DATA?.version || 1),
         content_hash: computeContentHash(),
         slot_id: slotId,
@@ -3906,26 +4009,16 @@
     }
   }
 
-  function loadSlot(slotId, silentIfValid = false) {
-    const rawStr = storageGet(SAVE_KEY_PREFIX + slotId);
-    if (!rawStr) {
-      if (!silentIfValid) showToast(`❌ Emplacement ${slotId} vide.`);
-      return false;
-    }
-    let parsed = null;
-    try { parsed = JSON.parse(rawStr); } catch {
-      if (!silentIfValid) showToast("❌ Sauvegarde corrompue (JSON invalide).");
-      return false;
-    }
+  function applySaveObject(parsed, slotId, silentIfValid = false, rawStr = "") {
     const val = validateAndPrepareSave(parsed);
     if (val.status === "invalid") {
       if (!silentIfValid) showToast(`❌ Invalide : ${val.errors.join("; ")}`);
       return false;
     }
-    if (val.needsResave) storageSet(SAVE_KEY_PREFIX + slotId + "_bak", rawStr);
+    if (val.needsResave && rawStr) storageSet(SAVE_KEY_PREFIX + slotId + "_bak", rawStr);
 
     const d = val.data;
-    currentSlotId = slotId;
+    currentSlotId = slotId || "slot_1";
     currentSlotCreatedAt = String(d.meta.created_at || "");
     playTimeSec = Number(d.meta.play_time_sec || 0);
     inventory.clear();
@@ -3952,18 +4045,32 @@
     else hintEl.style.opacity = "1";
     updateChunks(alien.x, alien.y);
 
-    storageSet(SAVE_LAST_KEY, slotId);
+    storageSet(SAVE_LAST_KEY, currentSlotId);
     autosaveDirty = false;
     autosaveTimer = 0;
-    if (val.needsResave) saveCurrentSlot(true, slotId);
+    if (val.needsResave) saveCurrentSlot(true, currentSlotId);
     renderShipUI();
     if (shipViewMode === "saves") renderSavesView();
     syncUnlockedExtensions(true);
 
     if (val.status === "partial") showToast(`⚠️ Partie chargée avec ${val.warnings.length} ajustement(s)`);
-    else if (val.status === "migrated") showToast(`🔄 Sauvegarde migrée (${slotId}) !`);
-    else if (!silentIfValid) showToast(`📂 Partie chargée (${slotId}) !`);
+    else if (val.status === "migrated") showToast(`🔄 Sauvegarde migrée (${currentSlotId}) !`);
+    else if (!silentIfValid) showToast(`📂 Partie chargée (${currentSlotId}) !`);
     return true;
+  }
+
+  function loadSlot(slotId, silentIfValid = false) {
+    const rawStr = storageGet(SAVE_KEY_PREFIX + slotId);
+    if (!rawStr) {
+      if (!silentIfValid) showToast(`❌ Emplacement ${slotId} vide.`);
+      return false;
+    }
+    let parsed = null;
+    try { parsed = JSON.parse(rawStr); } catch {
+      if (!silentIfValid) showToast("❌ Sauvegarde corrompue (JSON invalide).");
+      return false;
+    }
+    return applySaveObject(parsed, slotId, silentIfValid, rawStr);
   }
 
   function startNewGame(slotId) {
@@ -5965,16 +6072,276 @@
     hooks: { wrap: addHookWrapper },
   };
 
-  let lastTs = null;
-  currentSlotId = storageGet(SAVE_LAST_KEY) || "slot_1";
-  if (storageGet(SAVE_KEY_PREFIX + currentSlotId)) {
-    loadSlot(currentSlotId, true);
-  } else {
-    updateChunks(alien.x, alien.y);
-    syncUnlockedExtensions(false);
+  /* ==========================================================================
+     PLEIN ÉCRAN & TRANSFERT BLOB (EMBED / GOOGLE SITES)
+     ========================================================================== */
+  const fsBtnEl = document.getElementById("fullscreen-btn");
+  const fsIconEnterEl = document.getElementById("fs-icon-enter");
+  const fsIconExitEl = document.getElementById("fs-icon-exit");
+  const fsPauseOverlayEl = document.getElementById("fs-pause-overlay");
+  const btnResumeHereEl = document.getElementById("btn-resume-here");
+  const btnFallbackFsLinkEl = document.getElementById("btn-fallback-fs-link");
+  let fsPopupCheckInterval = null;
+  let activeFullscreenBlobUrl = null;
+
+  function isIPhoneDevice() {
+    const ua = navigator.userAgent || "";
+    const platform = navigator.platform || "";
+    if (/iPhone|iPod/i.test(ua) || /iPhone|iPod/i.test(platform)) return true;
+    const docEl = document.documentElement;
+    const hasDomFs = !!(
+      docEl && (
+        docEl.requestFullscreen ||
+        docEl.webkitRequestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.msRequestFullscreen
+      )
+    );
+    if (navigator.maxTouchPoints > 1 && !hasDomFs) return true;
+    return false;
   }
-  window.addEventListener("beforeunload", () => { if (autosaveDirty) saveCurrentSlot(true); });
-  document.addEventListener("visibilitychange", () => { if (document.hidden && autosaveDirty) saveCurrentSlot(true); });
+
+  if (fsBtnEl && isIPhoneDevice()) {
+    fsBtnEl.style.display = "none";
+  }
+
+  function isFullScreen() {
+    return !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+  }
+
+  function updateFsIcons() {
+    const isFs = isFullScreen();
+    if (fsIconEnterEl) fsIconEnterEl.style.display = isFs ? "none" : "block";
+    if (fsIconExitEl) fsIconExitEl.style.display = isFs ? "block" : "none";
+  }
+
+  function pauseOldWindowForFullscreen(childWin, fallbackUrl) {
+    fsPaused = true;
+    if (fsPauseOverlayEl) fsPauseOverlayEl.classList.add("open");
+    if (btnFallbackFsLinkEl) {
+      if (fallbackUrl) {
+        btnFallbackFsLinkEl.href = fallbackUrl;
+        btnFallbackFsLinkEl.style.display = "inline-block";
+      } else {
+        btnFallbackFsLinkEl.style.display = "none";
+      }
+    }
+    if (fsPopupCheckInterval) {
+      clearInterval(fsPopupCheckInterval);
+      fsPopupCheckInterval = null;
+    }
+    if (childWin) {
+      fsPopupCheckInterval = setInterval(() => {
+        try {
+          if (childWin.closed) {
+            clearInterval(fsPopupCheckInterval);
+            fsPopupCheckInterval = null;
+            if (fsPaused) resumeCurrentWindow();
+          }
+        } catch (_) {}
+      }, 500);
+    }
+  }
+
+  function resumeCurrentWindow() {
+    if (fsPopupCheckInterval) {
+      clearInterval(fsPopupCheckInterval);
+      fsPopupCheckInterval = null;
+    }
+    if (activeFullscreenBlobUrl) {
+      try { URL.revokeObjectURL(activeFullscreenBlobUrl); } catch (_) {}
+      activeFullscreenBlobUrl = null;
+    }
+    fsPaused = false;
+    if (fsPauseOverlayEl) fsPauseOverlayEl.classList.remove("open");
+    if (btnFallbackFsLinkEl) btnFallbackFsLinkEl.style.display = "none";
+    showToast("🛸 Partie reprise dans cette fenêtre !");
+  }
+
+  if (btnResumeHereEl) {
+    btnResumeHereEl.addEventListener("click", resumeCurrentWindow);
+  }
+  if (btnFallbackFsLinkEl) {
+    btnFallbackFsLinkEl.addEventListener("click", () => {
+      if (!fsPaused) {
+        pauseOldWindowForFullscreen(null, btnFallbackFsLinkEl.href);
+      }
+    });
+  }
+
+  function notifyOpenerState(msgType) {
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage({
+          type: msgType,
+          slotId: currentSlotId,
+          payload: buildSavePayload(currentSlotId),
+          useJoystick: useJoystick,
+        }, "*");
+      }
+    } catch (_) {}
+  }
+
+  window.addEventListener("message", (event) => {
+    const msg = event && event.data;
+    if (!msg || typeof msg !== "object") return;
+    if (msg.type === "assemblage_state_sync" || msg.type === "assemblage_popup_closed") {
+      if (typeof msg.useJoystick === "boolean") {
+        useJoystick = msg.useJoystick;
+        joystickToggleEl.checked = useJoystick;
+        updateHintText();
+        storageSet("assemblage_use_joystick_v1", useJoystick ? "1" : "0");
+      }
+      if (msg.payload && typeof msg.payload === "object") {
+        applySaveObject(msg.payload, msg.slotId || currentSlotId, true);
+        saveCurrentSlot(true, currentSlotId);
+      }
+      if (msg.type === "assemblage_popup_closed" && fsPaused) {
+        resumeCurrentWindow();
+      }
+    }
+  });
+
+  function openFullTabFallback() {
+    saveCurrentSlot(true);
+    const transferState = {
+      slotId: currentSlotId,
+      payload: buildSavePayload(currentSlotId),
+      useJoystick: useJoystick,
+    };
+
+    let htmlStr = document.documentElement.outerHTML;
+    const injectionPayload = JSON.stringify(transferState).replace(/</g, "\\u003c");
+    const injectTag = "<!-- INJECT_STATE_HERE -->" +
+      "<script>window.__ASSEMBLAGE_TRANSFERRED_STATE=" + injectionPayload + ";<" + "/script>" +
+      "<!-- INJECT_STATE_HERE_END -->";
+
+    const markerRe = /<!--\s*INJECT_STATE_HERE\s*-->[\s\S]*?<!--\s*INJECT_STATE_HERE_END\s*-->/;
+    if (markerRe.test(htmlStr)) {
+      htmlStr = htmlStr.replace(markerRe, injectTag);
+    } else {
+      htmlStr = htmlStr.replace("<script>", injectTag + "\n<script>");
+    }
+
+    const fullHtml = "<!DOCTYPE html>\n" + htmlStr;
+    if (activeFullscreenBlobUrl) {
+      try { URL.revokeObjectURL(activeFullscreenBlobUrl); } catch (_) {}
+      activeFullscreenBlobUrl = null;
+    }
+
+    let blobUrl = "";
+    try {
+      const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
+      blobUrl = URL.createObjectURL(blob);
+      activeFullscreenBlobUrl = blobUrl;
+    } catch (_) {}
+
+    let newWin = null;
+    if (blobUrl) {
+      try { newWin = window.open(blobUrl, "_blank"); } catch (_) {}
+    }
+    if (newWin) {
+      pauseOldWindowForFullscreen(newWin, blobUrl);
+      return;
+    }
+
+    let fallbackHref = blobUrl;
+    if (!fallbackHref && window.location.protocol !== "blob:") {
+      fallbackHref = window.location.href;
+      try { newWin = window.open(fallbackHref, "_blank"); } catch (_) {}
+      if (newWin) {
+        pauseOldWindowForFullscreen(newWin, fallbackHref);
+        return;
+      }
+    }
+
+    if (fallbackHref && btnFallbackFsLinkEl) {
+      btnFallbackFsLinkEl.href = fallbackHref;
+      btnFallbackFsLinkEl.style.display = "inline-block";
+      if (fsPauseOverlayEl) fsPauseOverlayEl.classList.add("open");
+    }
+    showToast("⚠️ Pop-up bloqué : utilisez le lien plein écran affiché.");
+  }
+
+  function toggleFullScreen() {
+    if (isIPhoneDevice()) return;
+    if (!isFullScreen()) {
+      const docEl = document.documentElement;
+      const fsAllowed = document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled;
+      const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+      if (req && fsAllowed !== false) {
+        try {
+          const ret = req.call(docEl);
+          if (ret && typeof ret.catch === "function") {
+            ret.catch(() => openFullTabFallback());
+          }
+        } catch (_) {
+          openFullTabFallback();
+        }
+      } else {
+        openFullTabFallback();
+      }
+    } else {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) {
+        try { exit.call(document); } catch (_) {}
+      }
+    }
+  }
+
+  if (fsBtnEl && !isIPhoneDevice()) {
+    fsBtnEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleFullScreen();
+    });
+  }
+  document.addEventListener("fullscreenchange", updateFsIcons);
+  document.addEventListener("webkitfullscreenchange", updateFsIcons);
+  document.addEventListener("mozfullscreenchange", updateFsIcons);
+  document.addEventListener("MSFullscreenChange", updateFsIcons);
+
+  let lastTs = null;
+  const transferredState = window.__ASSEMBLAGE_TRANSFERRED_STATE;
+  if (transferredState && typeof transferredState === "object" && transferredState.payload) {
+    if (typeof transferredState.useJoystick === "boolean") {
+      useJoystick = transferredState.useJoystick;
+      joystickToggleEl.checked = useJoystick;
+      updateHintText();
+    }
+    if (!applySaveObject(transferredState.payload, transferredState.slotId || "slot_1", true)) {
+      updateChunks(alien.x, alien.y);
+      syncUnlockedExtensions(false);
+    } else {
+      saveCurrentSlot(true, currentSlotId);
+    }
+  } else {
+    currentSlotId = storageGet(SAVE_LAST_KEY) || "slot_1";
+    if (storageGet(SAVE_KEY_PREFIX + currentSlotId)) {
+      loadSlot(currentSlotId, true);
+    } else {
+      updateChunks(alien.x, alien.y);
+      syncUnlockedExtensions(false);
+    }
+  }
+  window.addEventListener("beforeunload", () => {
+    if (autosaveDirty) saveCurrentSlot(true);
+    notifyOpenerState("assemblage_popup_closed");
+  });
+  window.addEventListener("pagehide", () => {
+    if (autosaveDirty) saveCurrentSlot(true);
+    notifyOpenerState("assemblage_popup_closed");
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      if (autosaveDirty) saveCurrentSlot(true);
+      notifyOpenerState("assemblage_state_sync");
+    }
+  });
 
   function frame(now) {
     const dt = lastTs === null ? (1 / 60) : Math.max(0.001, Math.min((now - lastTs) / 1000, 0.05));
@@ -6016,5 +6383,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
+<div id="version-badge" aria-hidden="true">v0.1.2</div>
 </body>
 </html>
