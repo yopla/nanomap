@@ -995,6 +995,7 @@
             <button class="btn-base btn-secondary" id="btnCopyHostUid" style="padding:4px 8px; font-size:11px;">Copier</button>
           </div>
           <button class="host-toggle-btn" id="btnToggleChatMode" disabled>💬 Mode Chat : DÉSACTIVÉ</button>
+          <div id="hostChatError" style="display:none; color:#fca5a5; font-size:11px; line-height:1.4; background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.35); border-radius:8px; padding:7px 9px;"></div>
           <div class="settings-desc" style="font-size:11px;">
             Quand le Mode Chat est activé, cliquer sur votre avatar Noir &amp; Blanc ouvre une barre clavier (60 car. max). Il se coupe automatiquement si vous fermez cet onglet.
           </div>
@@ -5661,8 +5662,21 @@ if (btnHostChatWrite) {
 }
 
 const btnHostSignIn = document.getElementById('btnHostSignIn');
+const hostChatError = document.getElementById('hostChatError');
+
+function setHostError(msg) {
+  if (!hostChatError) return;
+  if (msg) {
+    hostChatError.textContent = msg;
+    hostChatError.style.display = 'block';
+  } else {
+    hostChatError.textContent = '';
+    hostChatError.style.display = 'none';
+  }
+}
+
 if (btnHostSignIn) {
-  btnHostSignIn.addEventListener('click', () => {
+  btnHostSignIn.addEventListener('click', async () => {
     if (!IS_HOST_BUILD || !state.firebase.auth) return;
     const emailEl = document.getElementById('hostEmailInput');
     const passEl = document.getElementById('hostPasswordInput');
@@ -5674,22 +5688,46 @@ if (btnHostSignIn) {
     }
     btnHostSignIn.disabled = true;
     btnHostSignIn.textContent = 'Connexion...';
-    const prevAnonUid = (state.firebase.auth.currentUser && state.firebase.auth.currentUser.isAnonymous)
-      ? state.firebase.auth.currentUser.uid : null;
-    state.firebase.auth.signInWithEmailAndPassword(email, password).then((cred) => {
+    setHostError('');
+    try {
+      // 1. Supprimer l'ancien avatar anonyme AVANT de changer de compte (sinon PERMISSION_DENIED et ghost!)
+      const curUser = state.firebase.auth.currentUser;
+      if (curUser && curUser.isAnonymous && state.firebase.db) {
+        const anonUid = curUser.uid;
+        try {
+          await state.firebase.db.ref('users/' + anonUid).onDisconnect().cancel();
+          await state.firebase.db.ref('presence/' + anonUid).onDisconnect().cancel();
+        } catch (_) {}
+        await Promise.all([
+          state.firebase.db.ref('users/' + anonUid).remove().catch(() => {}),
+          state.firebase.db.ref('presence/' + anonUid).remove().catch(() => {})
+        ]);
+      }
+
+      // 2. Connexion avec le compte Hôte (Email / Mot de passe)
+      const cred = await state.firebase.auth.signInWithEmailAndPassword(email, password);
       if (passEl) passEl.value = '';
-      if (prevAnonUid && cred.user && prevAnonUid !== cred.user.uid && state.firebase.db) {
-        state.firebase.db.ref('users/' + prevAnonUid).remove().catch(() => {});
-        state.firebase.db.ref('presence/' + prevAnonUid).remove().catch(() => {});
+      if (cred && cred.user) {
+        currentAuthToken = await cred.user.getIdToken(true);
+      }
+
+      // 3. Reconnexion propre du WebSocket RTDB avec le nouveau token Hôte (sans rate-limit résiduel)
+      state.firebase.lastActionTimestamp = 0;
+      if (state.firebase.db) {
+        state.firebase.db.goOffline();
+        setTimeout(() => {
+          try { state.firebase.db.goOnline(); } catch (_) {}
+        }, 180);
       }
       showToast('⚫ Connecté en tant que Hôte Noir & Blanc !');
-    }).catch((err) => {
+    } catch (err) {
       console.warn('Erreur connexion Hôte:', err);
-      showToast('❌ Échec connexion : ' + (err && err.message ? err.message : 'vérifiez email/mdp'), 'warning');
-    }).finally(() => {
+      const errMsg = (err && err.message) ? err.message : 'vérifiez email/mdp';
+      showToast('❌ Échec connexion : ' + errMsg, 'warning');
+    } finally {
       btnHostSignIn.disabled = false;
       btnHostSignIn.textContent = '🔐 Se connecter (Hôte)';
-    });
+    }
   });
 }
 
@@ -5732,13 +5770,17 @@ if (btnToggleChatMode) {
     if (!IS_HOST_BUILD || !state.hostAuth.signedIn || !state.firebase.db) return;
     const nextVal = !state.chatMode;
     btnToggleChatMode.disabled = true;
+    setHostError('');
     state.firebase.db.ref('meta/chatMode').set(nextVal).then(() => {
+      setHostError('');
       if (nextVal) {
         state.firebase.db.ref('meta/chatMode').onDisconnect().set(false).catch(() => {});
       }
     }).catch((err) => {
       console.warn('Erreur toggle chatMode:', err);
-      showToast('🔒 Refusé par Firebase ! Vérifiez que votre UID est bien dans database.rules.json.', 'warning');
+      const code = (err && err.code) ? err.code : 'PERMISSION_DENIED';
+      setHostError('🔒 Refusé par Firebase (' + code + '). Publiez bien le nouveau database.rules.json contenant votre UID (' + state.hostAuth.uid + ') dans Firebase Console > Realtime Database > Règles > Publier.');
+      showToast('🔒 Refusé par Firebase ! Publiez database.rules.json avec votre UID.', 'warning');
     }).finally(() => {
       btnToggleChatMode.disabled = !state.hostAuth.signedIn;
     });
