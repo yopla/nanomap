@@ -1065,6 +1065,7 @@
             <code class="host-uid-code" id="hostUidDisplay">-</code>
             <button class="btn-base btn-secondary" id="btnCopyHostUid" style="padding:4px 8px; font-size:11px;">Copier</button>
           </div>
+          <button class="host-toggle-btn" id="btnToggleHostMono" disabled>⚫ Avatar Noir &amp; Blanc : ACTIVÉ</button>
           <button class="host-toggle-btn" id="btnToggleChatMode" disabled>💬 Mode Chat : DÉSACTIVÉ</button>
           <div class="host-scale-box">
             <label class="host-scale-label" for="hostSwingScaleSelect">
@@ -2472,7 +2473,7 @@ const MONO_PALETTE_G = {
 
 function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
   const isFaded = !isMe && creature.online === false && (!state.budget || state.budget.fadeInactive !== false);
-  const isMonochrome = creature.monochrome === true || (isMe && IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn);
+  const isMonochrome = creature.monochrome === true || (isMe && IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn && state.hostAuth.monochrome === true);
   creature._mono = isMonochrome;
   if (isFaded) {
     ctx.save();
@@ -2885,7 +2886,8 @@ function drawHingePinG(ctx, x, y, radius, color) {
 
 function drawCreatureG(ctx, creature, isMe, showLabel) {
   const g = creature.genome;
-  const pal = FLAT_PALETTES_G[g.paletteIdx % FLAT_PALETTES_G.length];
+  const mono = !!creature._mono;
+  const pal = mono ? MONO_PALETTE_G : FLAT_PALETTES_G[g.paletteIdx % FLAT_PALETTES_G.length];
   const scale = g.bodyScale || 1.0;
 
   ctx.save();
@@ -2893,7 +2895,7 @@ function drawCreatureG(ctx, creature, isMe, showLabel) {
 
   if (isMe && showLabel) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(192, 132, 252, 0.35)';
+    ctx.strokeStyle = mono ? 'rgba(255, 255, 255, 0.35)' : 'rgba(192, 132, 252, 0.35)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(0, 0, 36 * scale, 0, Math.PI * 2);
@@ -3322,7 +3324,15 @@ const state = {
   hostAuth: {
     signedIn: false,
     email: '',
-    uid: ''
+    uid: '',
+    monochrome: (() => {
+      try {
+        const saved = localStorage.getItem('firemoji_host_monochrome');
+        return saved === null ? true : saved === 'true';
+      } catch (_) {
+        return true;
+      }
+    })()
   }
 };
 
@@ -3551,14 +3561,18 @@ function flushSwingSync() {
   pendingSwingPayload = null;
   state.firebase.lastActionTimestamp = nowMs;
 
-  const fbPayload = buildUserFirebasePayload();
-  fbPayload.swing = {
+  const swingData = {
     seed: payload.seed,
     ts: firebase.database.ServerValue.TIMESTAMP
   };
-  fbPayload.actionCount = state.user.actionCount;
+  const useDiff = state.hasInitiallyRegistered && !state.needsRemakeOnNextClick;
+  const fbPayload = useDiff
+    ? buildUserDiffPayload({ swing: swingData })
+    : Object.assign(buildUserFirebasePayload(true), { swing: swingData });
 
   state.firebase.db.ref('users/' + state.user.id).update(fbPayload).then(function() {
+    state.hasInitiallyRegistered = true;
+    state.needsRemakeOnNextClick = false;
     state.firebase.lastActionTimestamp = Math.max(state.firebase.lastActionTimestamp, Date.now());
   }).catch(function(err) {
     console.warn('Envoi swing refusé par Firebase:', err);
@@ -3815,16 +3829,20 @@ function flushSpeechSync() {
   pendingSpeechPayload = null;
   state.firebase.lastActionTimestamp = nowMs;
 
-  const fbPayload = buildUserFirebasePayload();
-  fbPayload.speech = {
+  const speechData = {
     text: payload.text,
     count: payload.count,
     mode: payload.mode === 'chat' ? 'chat' : 'emoji',
     timestamp: firebase.database.ServerValue.TIMESTAMP
   };
-  fbPayload.actionCount = state.user.actionCount;
+  const useDiff = state.hasInitiallyRegistered && !state.needsRemakeOnNextClick;
+  const fbPayload = useDiff
+    ? buildUserDiffPayload({ speech: speechData })
+    : Object.assign(buildUserFirebasePayload(true), { speech: speechData });
 
   state.firebase.db.ref('users/' + state.user.id).update(fbPayload).then(function() {
+    state.hasInitiallyRegistered = true;
+    state.needsRemakeOnNextClick = false;
     state.firebase.lastActionTimestamp = Math.max(state.firebase.lastActionTimestamp, Date.now());
   }).catch(function(err) {
     if (payload.mode === 'chat') {
@@ -4310,10 +4328,25 @@ function buildUserFirebasePayload(includeCreatedAt = true) {
     payload.createdAt = (state.user && state.user.createdAt) || Date.now();
   }
   if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
-    payload.monochrome = true;
+    payload.monochrome = state.hostAuth.monochrome === true;
   }
   if (window.__FIREMOJI_OLD_UID && state.user && window.__FIREMOJI_OLD_UID !== state.user.id) {
     payload.oldUid = String(window.__FIREMOJI_OLD_UID).substring(0, 128);
+  }
+  return payload;
+}
+
+function buildUserDiffPayload(extraFields = null) {
+  const curX = Math.max(0, Math.min(WORLD_WIDTH, Math.round(state.user ? state.user.x : 1600)));
+  const curY = Math.max(0, Math.min(WORLD_HEIGHT, Math.round(state.user ? state.user.y : 1600)));
+  const payload = {
+    x: curX,
+    y: curY,
+    actionCount: (state.user && state.user.actionCount) || 0,
+    updatedAt: firebase.database.ServerValue.TIMESTAMP
+  };
+  if (extraFields && typeof extraFields === 'object') {
+    Object.assign(payload, extraFields);
   }
   return payload;
 }
@@ -4536,7 +4569,7 @@ function initFirebase() {
                 state.hostAuth.signedIn = true;
                 state.hostAuth.email = user.email || '';
                 state.hostAuth.uid = user.uid;
-                state.user.monochrome = true;
+                state.user.monochrome = state.hostAuth.monochrome === true;
               } else {
                 state.hostAuth.signedIn = false;
                 state.hostAuth.email = '';
@@ -5076,8 +5109,8 @@ function pushMovement(targetX, targetY) {
     return;
   }
 
-  // Si la bestiole a été purgée de Firebase, on la recrée entièrement (en conservant son skin)
-  if (state.needsRemakeOnNextClick) {
+  // Si la bestiole n'est pas encore enregistrée ou a été purgée de Firebase, on la recrée entièrement (en conservant son skin)
+  if (state.needsRemakeOnNextClick || !state.hasInitiallyRegistered) {
     state.needsRemakeOnNextClick = false;
     state.user.targetX = targetX;
     state.user.targetY = targetY;
@@ -5089,7 +5122,12 @@ function pushMovement(targetX, targetY) {
   state.user.targetX = targetX;
   state.user.targetY = targetY;
 
-  const payload = buildUserFirebasePayload(true);
+  const tgtX = Math.max(0, Math.min(WORLD_WIDTH, Math.round(targetX)));
+  const tgtY = Math.max(0, Math.min(WORLD_HEIGHT, Math.round(targetY)));
+  const payload = buildUserDiffPayload({
+    targetX: tgtX,
+    targetY: tgtY
+  });
   state.firebase.db.ref('users/' + state.user.id).update(payload).then(() => {
     state.firebase.lastActionTimestamp = Math.max(state.firebase.lastActionTimestamp, Date.now());
   }).catch(() => {
@@ -6575,6 +6613,7 @@ const hostLoginForm = document.getElementById('hostLoginForm');
 const hostSignedInPanel = document.getElementById('hostSignedInPanel');
 const hostAccountInfo = document.getElementById('hostAccountInfo');
 const hostUidDisplay = document.getElementById('hostUidDisplay');
+const btnToggleHostMono = document.getElementById('btnToggleHostMono');
 const btnToggleChatMode = document.getElementById('btnToggleChatMode');
 const hostSwingScaleSelect = document.getElementById('hostSwingScaleSelect');
 
@@ -6596,8 +6635,9 @@ function updateHostUi() {
   if (!IS_HOST_BUILD) return;
 
   const signedIn = !!(state.hostAuth && state.hostAuth.signedIn);
+  const isMono = signedIn && state.hostAuth.monochrome === true;
   if (hostAuthStatusPill) {
-    hostAuthStatusPill.textContent = signedIn ? '⚫ Hôte N&B actif' : 'Non connecté';
+    hostAuthStatusPill.textContent = signedIn ? (isMono ? '⚫ Hôte N&B actif' : '🎨 Hôte Couleur actif') : 'Non connecté';
     hostAuthStatusPill.classList.toggle('connected', signedIn);
   }
   if (hostLoginForm) hostLoginForm.style.display = signedIn ? 'none' : 'flex';
@@ -6607,6 +6647,11 @@ function updateHostUi() {
   }
   if (hostUidDisplay) {
     hostUidDisplay.textContent = signedIn ? state.hostAuth.uid : '-';
+  }
+  if (btnToggleHostMono) {
+    btnToggleHostMono.disabled = !signedIn;
+    btnToggleHostMono.classList.toggle('active', isMono);
+    btnToggleHostMono.textContent = isMono ? '⚫ Avatar Noir & Blanc : ACTIVÉ' : '🎨 Avatar Noir & Blanc : DÉSACTIVÉ (Couleur)';
   }
   if (btnToggleChatMode) {
     btnToggleChatMode.disabled = !signedIn;
@@ -6764,6 +6809,19 @@ if (btnCopyHostUid) {
     } else {
       showToast('UID : ' + uid);
     }
+  });
+}
+
+if (btnToggleHostMono) {
+  btnToggleHostMono.addEventListener('click', () => {
+    if (!IS_HOST_BUILD || !state.hostAuth.signedIn) return;
+    const nextMono = !(state.hostAuth.monochrome === true);
+    state.hostAuth.monochrome = nextMono;
+    try { localStorage.setItem('firemoji_host_monochrome', String(nextMono)); } catch (_) {}
+    if (state.user) state.user.monochrome = nextMono;
+    updateHostUi();
+    registerOrUpdatePlayerOnFirebase();
+    showToast(nextMono ? '⚫ Avatar passé en Noir & Blanc' : '🎨 Avatar passé en Couleur');
   });
 }
 
@@ -7095,6 +7153,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.4</div>
+<div class="version-badge">v0.15</div>
 </body>
 </html>
