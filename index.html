@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#02080f">
 <title>Noctilucyl - multi users ecosystem</title>
 
 <!-- Firebase SDK Compat (v10.8.0) -->
@@ -921,6 +924,26 @@
     z-index: 1000;
   }
 
+  /* ==================== OPTIMISATIONS STRICTEMENT IPHONE ==================== */
+  html.is-iphone .chat-text-input,
+  html.is-iphone .form-input {
+    font-size: 16px;
+  }
+  html.is-iphone .expression-bar {
+    max-width: calc(100vw - 16px);
+  }
+  html.is-iphone .round-btn:hover,
+  html.is-iphone .btn-expr-choice:hover,
+  html.is-iphone .avatar-preview-bubble:hover,
+  html.is-iphone .chat-send-btn:hover {
+    transform: none;
+  }
+  html.is-iphone .round-btn:active,
+  html.is-iphone .btn-expr-choice:active,
+  html.is-iphone .chat-send-btn:active {
+    transform: scale(0.92);
+  }
+
 </style>
 </head>
 <body>
@@ -1207,6 +1230,44 @@ const HOST_CONFIG = /*HOST_CONFIG_JSON*/{
 	"hostMode": false
 }/*HOST_CONFIG_JSON_END*/;
 const IS_HOST_BUILD = !!(HOST_CONFIG && HOST_CONFIG.hostMode === true);
+
+function detectIPhoneDevice() {
+  const ua = navigator.userAgent || '';
+  const platform = navigator.platform || '';
+  if (/iPhone|iPod/i.test(ua) || /iPhone|iPod/i.test(platform)) return true;
+  const docEl = document.documentElement;
+  const hasDomFs = !!(
+    docEl && (
+      docEl.requestFullscreen ||
+      docEl.webkitRequestFullscreen ||
+      docEl.mozRequestFullScreen ||
+      docEl.msRequestFullscreen
+    )
+  );
+  if (navigator.maxTouchPoints > 1 && !hasDomFs) return true;
+  return false;
+}
+const IS_IPHONE_DEVICE = detectIPhoneDevice();
+function isIPhoneDevice() {
+  return IS_IPHONE_DEVICE;
+}
+function getCanvasDpr() {
+  const raw = window.devicePixelRatio || 1;
+  return IS_IPHONE_DEVICE ? Math.min(raw, 2) : raw;
+}
+if (IS_IPHONE_DEVICE && document.documentElement) {
+  document.documentElement.classList.add('is-iphone');
+  if (window.visualViewport) {
+    const syncIPhoneKeyboardOffset = () => {
+      const bar = document.getElementById('expression-bar');
+      if (!bar) return;
+      const kbHeight = Math.max(0, Math.round(window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop));
+      bar.style.bottom = kbHeight > 80 ? (kbHeight + 12) + 'px' : '';
+    };
+    window.visualViewport.addEventListener('resize', syncIPhoneKeyboardOffset);
+    window.visualViewport.addEventListener('scroll', syncIPhoneKeyboardOffset);
+  }
+}
 
 function mulberry32(a) {
   return function() {
@@ -3202,6 +3263,7 @@ const state = {
   vortexRings: [],
   waterWaves: [],
   ripples: [],
+  swingWaveHits: [],
   camera: {
     x: 1600,
     y: 1600,
@@ -3245,7 +3307,8 @@ const state = {
     usersRef: null,
     presRef: null,
     connected: false,
-    lastActionTimestamp: 0
+    lastActionTimestamp: 0,
+    serverTimeOffset: 0
   },
   isSleeping: false,
   isPaused: false,
@@ -3797,7 +3860,11 @@ function refreshExpressionBarMode() {
     choicesEl.style.display = 'none';
     chatBarEl.style.display = 'flex';
     if (bar.classList.contains('active') && chatInput) {
-      setTimeout(() => { try { chatInput.focus(); } catch (_) {} }, 40);
+      if (IS_IPHONE_DEVICE) {
+        try { chatInput.focus(); } catch (_) {}
+      } else {
+        setTimeout(() => { try { chatInput.focus(); } catch (_) {} }, 40);
+      }
     }
   } else {
     chatBarEl.style.display = 'none';
@@ -4440,6 +4507,11 @@ function initFirebase() {
       state.firebase.db = firebase.database();
       state.firebase.auth = firebase.auth();
 
+      state.firebase.db.ref('.info/serverTimeOffset').on('value', (snap) => {
+        const offset = snap.val();
+        state.firebase.serverTimeOffset = (typeof offset === 'number' && !isNaN(offset)) ? offset : 0;
+      });
+
       setupGlobalBudgetSync();
       setupChatModeSync();
       setupSwingScaleSync();
@@ -4590,6 +4662,90 @@ const SWING_WAVE_START_RADIUS = 35;
 const SWING_WAVE_GROW_SPEED = 240; // px par seconde tant que le bouton est maintenu
 const SWING_WAVE_MAX_RADIUS = 1400;
 
+function getServerNowMs() {
+  const offset = (state.firebase && typeof state.firebase.serverTimeOffset === 'number')
+    ? state.firebase.serverTimeOffset
+    : 0;
+  return Date.now() + offset;
+}
+
+function spawnSwingWaveHit(c) {
+  if (!c || !state.swingWaveHits) return;
+  const duration = (c.swing && c.swing.duration) ? c.swing.duration : 1.05;
+  state.swingWaveHits.push({
+    creature: c,
+    x: c.x,
+    y: c.y,
+    elapsed: 0,
+    duration: Math.max(0.85, duration + 0.15)
+  });
+  if (state.swingWaveHits.length > 120) {
+    state.swingWaveHits.splice(0, state.swingWaveHits.length - 120);
+  }
+}
+
+function updateSwingWaveHits(dt) {
+  if (!state.swingWaveHits || !state.swingWaveHits.length) return;
+  for (let i = state.swingWaveHits.length - 1; i >= 0; i--) {
+    const h = state.swingWaveHits[i];
+    h.elapsed += dt;
+    if (h.creature) {
+      h.x = h.creature.x;
+      h.y = h.creature.y;
+    }
+    if (h.elapsed >= h.duration) {
+      state.swingWaveHits.splice(i, 1);
+    }
+  }
+}
+
+function drawSwingWaveHits(ctx, now) {
+  if (!state.swingWaveHits || !state.swingWaveHits.length) return;
+  ctx.save();
+  for (let i = 0; i < state.swingWaveHits.length; i++) {
+    const h = state.swingWaveHits[i];
+    const t = Math.min(1, h.elapsed / h.duration);
+    const inv = 1 - t;
+    const x = h.x;
+    const y = h.y;
+
+    // Halo lumineux pulsant autour de la créature touchée pendant son swing
+    const auraAlpha = Math.sin(t * Math.PI) * 0.42;
+    const auraR = 32 + Math.sin(t * Math.PI) * 14;
+    if (auraAlpha > 0.01) {
+      const grad = ctx.createRadialGradient(x, y, 4, x, y, auraR);
+      grad.addColorStop(0, `rgba(248, 250, 252, ${(auraAlpha * 0.55).toFixed(3)})`);
+      grad.addColorStop(0.65, `rgba(125, 211, 252, ${(auraAlpha * 0.45).toFixed(3)})`);
+      grad.addColorStop(1, 'rgba(125, 211, 252, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, auraR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 1re onde concentrique rapide émise par la créature touchée
+    const r1 = 16 + t * 76;
+    ctx.strokeStyle = `rgba(248, 250, 252, ${(0.92 * inv * inv).toFixed(3)})`;
+    ctx.lineWidth = 2.6 * (0.4 + 0.6 * inv);
+    ctx.beginPath();
+    ctx.arc(x, y, r1, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 2e onde concentrique décalée (écho lumineux cyan)
+    if (t > 0.14) {
+      const t2 = Math.min(1, (t - 0.14) / 0.86);
+      const inv2 = 1 - t2;
+      const r2 = 14 + t2 * 64;
+      ctx.strokeStyle = `rgba(125, 211, 252, ${(0.75 * inv2 * inv2).toFixed(3)})`;
+      ctx.lineWidth = 1.8 * (0.4 + 0.6 * inv2);
+      ctx.beginPath();
+      ctx.arc(x, y, r2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
 function applySwingWaveToCreatures(wave) {
   if (!wave || !wave.triggeredIds) return;
   const r = wave.currentRadius;
@@ -4600,6 +4756,7 @@ function applySwingWaveToCreatures(wave) {
       wave.triggeredIds.add(key);
       const cSeed = (((wave.seed || 1) ^ Math.abs(hashString(String(key)))) >>> 0) || 1;
       startCreatureSwing(c, cSeed);
+      spawnSwingWaveHit(c);
       if (c === state.user) {
         playLocalSwingSound();
       }
@@ -4627,7 +4784,7 @@ function updateSwingWave(dt) {
     applySwingWaveToCreatures(w);
   } else if (w.ending) {
     applySwingWaveToCreatures(w);
-    w.fadeAlpha -= dt * 2.6;
+    w.fadeAlpha -= dt * 1.6;
     if (w.fadeAlpha <= 0) {
       state.swingWave = null;
     }
@@ -4775,7 +4932,7 @@ function setupSwingWaveSync() {
       return;
     }
 
-    const nowMs = Date.now();
+    const nowMs = getServerNowMs();
     const refTs = val.active ? (val.startedAt || val.waveId) : (val.endedAt || val.waveId);
     if (typeof refTs === 'number' && (nowMs - refTs) > 12000) {
       return;
@@ -5017,7 +5174,7 @@ function onUserAdded(snap) {
   }
 
   if (data.swing && typeof data.swing.ts === 'number' && typeof data.swing.seed === 'number') {
-    const swingAge = Date.now() - data.swing.ts;
+    const swingAge = getServerNowMs() - data.swing.ts;
     remoteC.lastSwingTs = data.swing.ts;
     if (swingAge >= -2000 && swingAge < 2200) {
       startCreatureSwing(remoteC, data.swing.seed);
@@ -5106,7 +5263,7 @@ function onUserChanged(snap) {
   if (data.swing && typeof data.swing.ts === 'number' && typeof data.swing.seed === 'number') {
     if (data.swing.ts !== p.lastSwingTs) {
       p.lastSwingTs = data.swing.ts;
-      const swingAge = Date.now() - data.swing.ts;
+      const swingAge = getServerNowMs() - data.swing.ts;
       if (swingAge >= -2000 && swingAge < 2500) {
         startCreatureSwing(p, data.swing.seed);
       }
@@ -5238,7 +5395,7 @@ const canvas = document.getElementById('worldCanvas');
 const ctx = canvas.getContext('2d', { alpha: false });
 
 function resizeCanvas() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDpr();
   canvas.width = Math.round(window.innerWidth * dpr);
   canvas.height = Math.round(window.innerHeight * dpr);
 }
@@ -5403,6 +5560,7 @@ function gameLoop(now) {
 
     // 1. Onde Swing Hôte & Physique des créatures
     updateSwingWave(dt);
+    updateSwingWaveHits(dt);
     updateCreature(state.user, dt);
 
     for (const uid in state.players) {
@@ -5474,7 +5632,7 @@ function gameLoop(now) {
   }
 
   // 4. Rendu Canvas 2D
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDpr();
   const viewW = canvas.width / dpr;
   const viewH = canvas.height / dpr;
 
@@ -5551,8 +5709,9 @@ function gameLoop(now) {
     ctx.fill();
   }
 
-  // Onde circulaire de Swing déclenchée par l'Hôte
+  // Onde circulaire de Swing déclenchée par l'Hôte + impacts lumineux sur chaque créature touchée
   drawSwingWave(ctx, now);
+  drawSwingWaveHits(ctx, now);
 
   // Bots autonomes
   for (const bot of state.bots) {
@@ -5586,7 +5745,7 @@ function gameLoop(now) {
    ========================================================================== */
 
 function screenToWorld(clientX, clientY) {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDpr();
   const viewW = canvas.width / dpr;
   const viewH = canvas.height / dpr;
   return {
@@ -5596,7 +5755,7 @@ function screenToWorld(clientX, clientY) {
 }
 
 function clampCamera() {
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDpr();
   const viewW = (canvas.width / dpr) / state.camera.zoom;
   const viewH = (canvas.height / dpr) / state.camera.zoom;
 
@@ -5696,7 +5855,7 @@ canvas.addEventListener('pointermove', (e) => {
       const newZoom = Math.max(state.camera.minZoom, Math.min(state.camera.maxZoom, oldZoom * zoomRatio));
 
       // Zoom focalisé précisément sous le centre des deux doigts (comme Google Maps / Safari)
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = getCanvasDpr();
       const viewW = canvas.width / dpr;
       const viewH = canvas.height / dpr;
 
@@ -5864,7 +6023,7 @@ canvas.addEventListener('wheel', (e) => {
   const factor = e.deltaY < 0 ? 1.12 : 0.89;
   const before = screenToWorld(e.clientX, e.clientY);
   state.camera.zoom = Math.max(state.camera.minZoom, Math.min(state.camera.maxZoom, state.camera.zoom * factor));
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = getCanvasDpr();
   state.camera.targetZoom = state.camera.zoom;
   state.camera.isZoomingToTarget = false;
   state.camera.x = before.x - (e.clientX - (canvas.width / dpr) / 2) / state.camera.zoom;
@@ -6025,23 +6184,6 @@ const fsIconEnter = document.getElementById('fs-icon-enter');
 const fsIconExit = document.getElementById('fs-icon-exit');
 let popupCheckInterval = null;
 let activeFullscreenBlobUrl = null;
-
-function isIPhoneDevice() {
-  const ua = navigator.userAgent || '';
-  const platform = navigator.platform || '';
-  if (/iPhone|iPod/i.test(ua) || /iPhone|iPod/i.test(platform)) return true;
-  const docEl = document.documentElement;
-  const hasDomFs = !!(
-    docEl && (
-      docEl.requestFullscreen ||
-      docEl.webkitRequestFullscreen ||
-      docEl.mozRequestFullScreen ||
-      docEl.msRequestFullscreen
-    )
-  );
-  if (navigator.maxTouchPoints > 1 && !hasDomFs) return true;
-  return false;
-}
 
 if (fsBtn && isIPhoneDevice()) {
   fsBtn.style.display = 'none';
@@ -6953,6 +7095,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.3</div>
+<div class="version-badge">v0.4</div>
 </body>
 </html>
