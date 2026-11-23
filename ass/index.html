@@ -2447,7 +2447,7 @@
 			"announcementMode": "title_card",
 			"condition": {
 				"biomeId": "",
-				"count": 120,
+				"count": 250,
 				"elementId": "",
 				"expression": "",
 				"requiredExtension": "",
@@ -2458,6 +2458,24 @@
 			"filename": "demo_bienvenue.html",
 			"icon": "🧩",
 			"name": "Extension Démo Bienvenue"
+		},
+		{
+			"accentColor": "#7ae8ff",
+			"activationBehavior": "Enregistre 3 éléments supplémentaires via host.game.registerElements() (ou postMessage en file://), met à jour l'index, les recettes et les chunks autour du joueur.",
+			"announcementMode": "title_card",
+			"condition": {
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"requiredExtension": "",
+				"type": "always"
+			},
+			"description": "Ajoute 3 nouveaux éléments (Éclat de Comète récoltable en Plaines Astrales + Lame Cométaire et Cœur de Comète) avec support du remplacement à chaud.",
+			"enabled": true,
+			"filename": "pack_elements_demo.html",
+			"icon": "☄️",
+			"name": "Pack d'Éléments Démo"
 		}
 	],
 	"version": 1
@@ -2470,6 +2488,39 @@
       if (!r.ok) return null;
       return await r.json();
     } catch (_e) { return null; }
+  };
+
+  const extractEmbeddedJsonFromHtml = (htmlText, tagName) => {
+    const startMarker = "/*" + tagName + "*/";
+    const endMarker = "/*" + tagName + "_END*/";
+    const startIdx = htmlText.indexOf(startMarker);
+    if (startIdx < 0) return null;
+    const jsonStart = startIdx + startMarker.length;
+    const endIdx = htmlText.indexOf(endMarker, jsonStart);
+    if (endIdx < 0) return null;
+    try {
+      return JSON.parse(htmlText.slice(jsonStart, endIdx));
+    } catch (_e) {
+      return null;
+    }
+  };
+
+  const fetchEmbeddedDataFromHtml = async () => {
+    try {
+      const path = window.location.pathname || "index.html";
+      const pageUrl = path.endsWith("/") ? `${path}index.html` : path;
+      const sep = pageUrl.includes("?") ? "&" : "?";
+      const r = await fetch(`${pageUrl}${sep}_ts=${Date.now()}`, { cache: "no-store" });
+      if (!r.ok) return null;
+      const htmlText = await r.text();
+      return {
+        cfg: extractEmbeddedJsonFromHtml(htmlText, "GAME_CONFIG_JSON"),
+        elems: extractEmbeddedJsonFromHtml(htmlText, "ELEMENTS_DATA_JSON"),
+        exts: extractEmbeddedJsonFromHtml(htmlText, "EXTENSIONS_DATA_JSON"),
+      };
+    } catch (_e) {
+      return null;
+    }
   };
 
   let lastRemoteCfgSnap = "";
@@ -2545,7 +2596,9 @@
   const settingsCloseBtnEl = document.getElementById("settings-close-btn");
   const joystickToggleEl = document.getElementById("joystick-toggle");
 
-  // Elements & Recipes index
+  // Elements & Recipes index (base + couche d'éléments ajoutés par les extensions actives)
+  let BASE_ELEMENTS_DATA = ELEMENTS_DATA;
+  const extensionElementsByFile = new Map(); // filename -> Array<Element>
   let elementsList = [];
   const elementsById = new Map();
   const recipeMap = new Map();
@@ -2553,8 +2606,44 @@
   let maxElementLevel = 1;
   const pairKey = (a, b) => (a <= b ? `${a}|${b}` : `${b}|${a}`);
 
+  function sanitizeExtensionElement(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const id = String(raw.id || "").trim();
+    if (!id) return null;
+    const lvl = Math.max(1, Math.floor(Number(raw.level) || 1));
+    const recipe = Array.isArray(raw.recipe)
+      ? raw.recipe.map(r => String(r || "").trim()).filter(Boolean)
+      : [];
+    const biome = lvl === 1 ? (String(raw.biome || "").trim() || "plaine_astrale") : "";
+    return {
+      id,
+      name: String(raw.name || id).trim(),
+      level: lvl,
+      biome,
+      icon: String(raw.icon || "🔹").trim(),
+      color: String(raw.color || "#66d9ff").trim(),
+      description: String(raw.description || "").trim(),
+      recipe,
+    };
+  }
+
   function rebuildElementsIndex() {
-    elementsList = Array.isArray(ELEMENTS_DATA?.elements) ? ELEMENTS_DATA.elements : [];
+    const mergedById = new Map();
+    const baseList = Array.isArray(BASE_ELEMENTS_DATA?.elements) ? BASE_ELEMENTS_DATA.elements : [];
+    for (const el of baseList) {
+      if (el && el.id) mergedById.set(el.id, el);
+    }
+    for (const extEls of extensionElementsByFile.values()) {
+      if (!Array.isArray(extEls)) continue;
+      for (const el of extEls) {
+        if (el && el.id) mergedById.set(el.id, el);
+      }
+    }
+    elementsList = Array.from(mergedById.values());
+    ELEMENTS_DATA = {
+      version: Number(BASE_ELEMENTS_DATA?.version || 1),
+      elements: elementsList,
+    };
     elementsById.clear();
     recipeMap.clear();
     level1Elements.length = 0;
@@ -2571,6 +2660,41 @@
     }
   }
   rebuildElementsIndex();
+
+  function refreshWorldAndUiAfterElementsChange({ pruneState = false, refreshChunks = true } = {}) {
+    rebuildElementsIndex();
+    if (typeof getLevel1ElementsForBiome === "function") {
+      activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
+    }
+    let statePruned = false;
+    if (pruneState) {
+      for (const id of Array.from(inventory.keys())) {
+        if (!elementsById.has(id)) {
+          inventory.delete(id);
+          statePruned = true;
+        }
+      }
+      for (const id of Array.from(discovered.values())) {
+        if (!elementsById.has(id)) {
+          discovered.delete(id);
+          statePruned = true;
+        }
+      }
+      if (slotA && !elementsById.has(slotA)) slotA = "";
+      if (slotB && !elementsById.has(slotB)) slotB = "";
+      if (inspectedId && !elementsById.has(inspectedId)) inspectedId = "";
+      if (statePruned && typeof saveCurrentSlot === "function") saveCurrentSlot(true);
+    }
+    if (refreshChunks && typeof chunks !== "undefined" && typeof updateChunks === "function" && typeof alien !== "undefined") {
+      chunks.clear();
+      lastCenterKey = "";
+      updateChunks(alien.x, alien.y);
+    }
+    if (typeof uiOpen !== "undefined" && uiOpen && typeof renderShipUI === "function") {
+      renderShipUI();
+    }
+    return statePruned;
+  }
 
   const inventory = new Map();
   const discovered = new Set();
@@ -3182,7 +3306,7 @@
     if (!SHOW_COMPASS) return false;
     const { cx, cy, r } = getCompassLayout();
     const inNeedle = Math.hypot(sx - cx, sy - cy) <= r + 10;
-    const inLabel = Math.abs(sx - cx) <= 44 && sy >= cy && sy <= cy + r + 28;
+    const inLabel = Math.abs(sx - cx) <= 44 && sy >= cy && sy <= cy + r + 42;
     return inNeedle || inLabel;
   }
 
@@ -5298,6 +5422,25 @@
     ctx.restore();
   }
 
+  function formatCompactMeters(meters) {
+    const m = Math.max(0, Math.floor(meters));
+    if (m < 1000) return `${m}m`;
+    if (m < 10000) {
+      const tenths = Math.floor(m / 100);
+      const whole = Math.floor(tenths / 10);
+      const dec = tenths % 10;
+      return dec === 0 ? `${whole}K` : `${whole},${dec}K`;
+    }
+    if (m < 1000000) return `${Math.floor(m / 1000)}K`;
+    if (m < 10000000) {
+      const tenthsM = Math.floor(m / 100000);
+      const wholeM = Math.floor(tenthsM / 10);
+      const decM = tenthsM % 10;
+      return decM === 0 ? `${wholeM}M` : `${wholeM},${decM}M`;
+    }
+    return `${Math.floor(m / 1000000)}M`;
+  }
+
   function drawCompass() {
     if (!SHOW_COMPASS || isAnyUIOpen()) return;
     const { cx, cy, r } = getCompassLayout();
@@ -5356,6 +5499,14 @@
     ctx.fillText(label, cx + 1, cy + r + 5);
     ctx.fillStyle = "#dbf2ff";
     ctx.fillText(label, cx, cy + r + 4);
+
+    // Total distance traveled (compact format)
+    const totalLabel = formatCompactMeters(alien.distance / 18);
+    ctx.font = "600 11.5px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillText(totalLabel, cx + 1, cy + r + 22);
+    ctx.fillStyle = "#9ecce8";
+    ctx.fillText(totalLabel, cx, cy + r + 21);
     ctx.restore();
   }
 
@@ -5817,6 +5968,33 @@
         openShipUI() { openShipUI(); },
         closeShipUI() { closeShipUI(); },
         saveNow() { saveCurrentSlot(true); },
+        registerElements(list) {
+          const cleanList = Array.isArray(list)
+            ? list.map(sanitizeExtensionElement).filter(Boolean)
+            : [];
+          const hadEntry = extensionElementsByFile.has(filename);
+          if (cleanList.length === 0) {
+            if (extensionElementsByFile.delete(filename)) {
+              refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+            }
+            return 0;
+          }
+          extensionElementsByFile.set(filename, cleanList);
+          if (!hadEntry) {
+            registerCleanup(() => {
+              if (extensionElementsByFile.delete(filename)) {
+                refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+              }
+            });
+          }
+          refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+          return cleanList.length;
+        },
+        unregisterElements() {
+          if (extensionElementsByFile.delete(filename)) {
+            refreshWorldAndUiAfterElementsChange({ pruneState: false, refreshChunks: true });
+          }
+        },
       },
     };
     return { scopedHost, cleanups };
@@ -5833,6 +6011,8 @@
     if (msg.cmd === "toast") host.ui.showToast(msg.text || "");
     else if (msg.cmd === "modal") host.ui.showModal(msg.opts || {});
     else if (msg.cmd === "state_set") host.state.set(msg.patch || {}, true);
+    else if (msg.cmd === "register_elements") host.game.registerElements(Array.isArray(msg.elements) ? msg.elements : []);
+    else if (msg.cmd === "unregister_elements") host.game.unregisterElements();
     else if (msg.cmd === "add_setting_toggle") {
       const toggleId = String(msg.id || fname);
       host.ui.addSettingToggle({
@@ -6080,6 +6260,9 @@
     if (ctype === "extension_unlocked") {
       const req = String(cond.requiredExtension || "");
       if (!req) return false;
+      const extList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+      const reqDef = extList.find(e => String(e?.filename || "") === req);
+      if (!reqDef || reqDef.enabled === false) return false;
       const st = extensionStates.get(req);
       return Boolean(st && st.unlocked);
     }
@@ -6216,6 +6399,7 @@
 
   function syncUnlockedExtensions(silentRestore = false) {
     const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+    const pendingLoads = [];
     let anyStateChange = false;
     if (silentRestore && revokeChangedExtensions(null)) {
       anyStateChange = true;
@@ -6228,7 +6412,7 @@
       if (rec.unlocked && rec.enabled) {
         if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
         if (!activeExtensions.has(fname)) {
-          loadAndActivateExtension(extDef, false);
+          pendingLoads.push(loadAndActivateExtension(extDef, false));
         }
         continue;
       }
@@ -6254,17 +6438,18 @@
             showToast(`${extDef.icon || "🧩"} Extension activée : ${extDef.name || fname}`);
           }
         }
-        loadAndActivateExtension(extDef, !silentRestore);
+        pendingLoads.push(loadAndActivateExtension(extDef, !silentRestore));
       }
     }
     if (anyStateChange) saveCurrentSlot(true);
+    return pendingLoads.length > 0 ? Promise.all(pendingLoads) : Promise.resolve();
   }
 
   let lastHotRefreshAt = 0;
   let hotRefreshInFlight = false;
-  const HOT_REFRESH_COOLDOWN_MS = 10000;
+  const HOT_REFRESH_COOLDOWN_MS = 3000;
   if (!lastRemoteCfgSnap) lastRemoteCfgSnap = JSON.stringify(GAME_CONFIG);
-  if (!lastRemoteElemsSnap) lastRemoteElemsSnap = JSON.stringify(ELEMENTS_DATA);
+  if (!lastRemoteElemsSnap) lastRemoteElemsSnap = JSON.stringify(BASE_ELEMENTS_DATA);
   if (!lastRemoteExtsSnap) lastRemoteExtsSnap = JSON.stringify(EXTENSIONS_DATA);
 
   async function hotRefreshRemoteData(force = false) {
@@ -6276,13 +6461,25 @@
     lastHotRefreshAt = now;
 
     try {
-      const [remoteCfg, remoteElems, remoteExts] = await Promise.all([
+      let [remoteCfg, remoteElems, remoteExts] = await Promise.all([
         fetchJsonNoCache("game_config.json"),
         fetchJsonNoCache("config/elements_data.json"),
         fetchJsonNoCache("config/extensions.json"),
       ]);
 
+      // Fallback si les JSON séparés ne sont pas publiés (ex: seul index.html + extensions/ sur GitHub Pages)
+      if (!remoteCfg || !remoteElems || !remoteExts) {
+        const embedded = await fetchEmbeddedDataFromHtml();
+        if (embedded) {
+          if (!remoteCfg && embedded.cfg) remoteCfg = embedded.cfg;
+          if (!remoteElems && embedded.elems) remoteElems = embedded.elems;
+          if (!remoteExts && embedded.exts) remoteExts = embedded.exts;
+        }
+      }
+
       let uiChanged = false;
+      let baseElementsChanged = false;
+      let extManifestChanged = false;
       let extHotReloaded = false;
 
       if (remoteCfg && typeof remoteCfg === "object") {
@@ -6306,33 +6503,8 @@
         const snap = JSON.stringify(remoteElems);
         if (snap !== lastRemoteElemsSnap) {
           lastRemoteElemsSnap = snap;
-          ELEMENTS_DATA = remoteElems;
-          rebuildElementsIndex();
-          activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
-
-          let statePruned = false;
-          for (const id of Array.from(inventory.keys())) {
-            if (!byId.has(id)) {
-              inventory.delete(id);
-              statePruned = true;
-            }
-          }
-          for (const id of Array.from(discovered.values())) {
-            if (!byId.has(id)) {
-              discovered.delete(id);
-              statePruned = true;
-            }
-          }
-          if (slotA && !byId.has(slotA)) slotA = "";
-          if (slotB && !byId.has(slotB)) slotB = "";
-          if (inspectedId && !byId.has(inspectedId)) inspectedId = "";
-
-          // Régénère les chunks autour du joueur pour retirer les pickups supprimés
-          chunks.clear();
-          lastCenterKey = "";
-          updateChunks(alien.x, alien.y);
-
-          if (statePruned) saveCurrentSlot(true);
+          BASE_ELEMENTS_DATA = remoteElems;
+          baseElementsChanged = true;
           uiChanged = true;
         }
       }
@@ -6349,6 +6521,7 @@
         if (snap !== lastRemoteExtsSnap) {
           lastRemoteExtsSnap = snap;
           EXTENSIONS_DATA = remoteExts;
+          extManifestChanged = true;
           uiChanged = true;
         }
       }
@@ -6369,18 +6542,25 @@
         }
       }
 
-      // Re-verrouille à chaud les extensions dont la condition a changé et n'est plus satisfaite
+      // Re-verrouille à chaud les extensions dont la condition a changé ou dont une dépendance a été désactivée
       if (revokeChangedExtensions(prevCondSigs)) {
         extHotReloaded = true;
         saveCurrentSlot(true);
       }
 
-      // Vérifie si le fichier HTML d'une extension déjà active a été modifié en ligne
+      // Vérifie si le fichier HTML d'une extension déjà active a été modifié ou supprimé en ligne
       const activeToCheck = Array.from(activeExtensions.keys()).filter(f => enabledByFile.has(f));
       if (activeToCheck.length > 0) {
         await Promise.all(activeToCheck.map(async (fname) => {
           try {
             const resp = await fetch(`extensions/${encodeURIComponent(fname)}?_ts=${Date.now()}`, { cache: "no-store" });
+            if (resp.status === 404) {
+              deactivateExtension(fname);
+              delete window.AssemblageExtensions[fname];
+              loadedExtensionHtml.delete(fname);
+              extHotReloaded = true;
+              return;
+            }
             if (!resp.ok) return;
             const newHtml = await resp.text();
             if (loadedExtensionHtml.has(fname) && loadedExtensionHtml.get(fname) !== newHtml) {
@@ -6394,13 +6574,17 @@
         }));
       }
 
-      syncUnlockedExtensions(false);
+      await syncUnlockedExtensions(false);
 
-      if (uiChanged && uiOpen) {
+      // Reconstruit l'index fusionné (base + extensions actives) et purge les IDs réellement supprimés
+      let statePruned = false;
+      if (baseElementsChanged || extHotReloaded || extManifestChanged) {
+        statePruned = refreshWorldAndUiAfterElementsChange({ pruneState: true, refreshChunks: true });
+      } else if (uiChanged && uiOpen) {
         renderShipUI();
       }
       if (uiChanged || extHotReloaded) {
-        showToast("🔄 Contenu mis à jour");
+        showToast(statePruned ? "🔄 Contenu mis à jour (inventaire synchronisé)" : "🔄 Contenu mis à jour");
       }
       return uiChanged || extHotReloaded;
     } catch (_e) {
@@ -6737,6 +6921,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.1.8</div>
+<div id="version-badge" aria-hidden="true">v0.2.1</div>
 </body>
 </html>

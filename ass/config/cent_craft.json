@@ -1,0 +1,1465 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "silice",
+			"name": "Silice Stellaire",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "🪨",
+			"color": "#9ea8c2",
+			"description": "Minéral granuleux récolté autour des cratères rocheux. Riche en silicates purs.",
+			"recipe": []
+		},
+		{
+			"id": "spore",
+			"name": "Spore Bioluminescente",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "🌿",
+			"color": "#52e585",
+			"description": "Organisme vivant cueilli dans la flore phosphorescente des plaines.",
+			"recipe": []
+		},
+		{
+			"id": "gel_astral",
+			"name": "Gel Astral",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "💧",
+			"color": "#5cb8ff",
+			"description": "Fluide visqueux et conducteur condensé dans les cuvettes moussues.",
+			"recipe": []
+		},
+		{
+			"id": "poussiere_etoile",
+			"name": "Poussière d'Étoile",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Poudre cosmique scintillante déposée par les pluies de micrométéorites.",
+			"recipe": []
+		},
+		{
+			"id": "cristal",
+			"name": "Cristal Luminescent",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "💎",
+			"color": "#38e8d8",
+			"description": "Éclat énergétique vibrant extrait des formations cristallines volcaniques.",
+			"recipe": []
+		},
+		{
+			"id": "ferrite",
+			"name": "Minerai de Ferrite",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "⚙️",
+			"color": "#c98b63",
+			"description": "Métal brut dense et magnétique affleurant dans le basalte noir.",
+			"recipe": []
+		},
+		{
+			"id": "plasma_brut",
+			"name": "Goutte de Plasma",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Résidu thermique instable qui suinte des micro-failles volcaniques.",
+			"recipe": []
+		},
+		{
+			"id": "soufre_volcanique",
+			"name": "Soufre Volcanique",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "🌋",
+			"color": "#f2d64b",
+			"description": "Dépôt jaune âcre et hautement réactif formé autour des fumerolles.",
+			"recipe": []
+		},
+		{
+			"id": "glace_eternelle",
+			"name": "Glace Éternelle",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "🧊",
+			"color": "#9ee7ff",
+			"description": "Glace cosmique ultra-dense formée proche du zéro absolu.",
+			"recipe": []
+		},
+		{
+			"id": "neige_stellaire",
+			"name": "Neige Stellaire",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "🌨️",
+			"color": "#dff6ff",
+			"description": "Poudre cristalline légère qui scintille sur les étendues gelées.",
+			"recipe": []
+		},
+		{
+			"id": "azote_solide",
+			"name": "Azote Solide",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "🫧",
+			"color": "#6bc5ff",
+			"description": "Gaz cryogénique condensé en blocs translucides au fond des crevasses.",
+			"recipe": []
+		},
+		{
+			"id": "lichen_givre",
+			"name": "Lichen de Givre",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "🪸",
+			"color": "#7ef5d8",
+			"description": "Organisme extrêmophile prospérant sur la banquise malgré le froid extrême.",
+			"recipe": []
+		},
+		{
+			"id": "mycelium_brut",
+			"name": "Mycélium Brut",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🍄",
+			"color": "#d977ff",
+			"description": "Réseau filamenteux vivant récolté sous les chapeaux géants de la jungle.",
+			"recipe": []
+		},
+		{
+			"id": "resine_lumineuse",
+			"name": "Résine Lumineuse",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🍯",
+			"color": "#c2ff52",
+			"description": "Sève épaisse et phosphorescente qui perle le long des troncs fongiques.",
+			"recipe": []
+		},
+		{
+			"id": "pollen_toxique",
+			"name": "Pollen Toxique",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🦠",
+			"color": "#ff6ec7",
+			"description": "Nuage de micro-spores mutagènes très réactives au contact d'autres composés.",
+			"recipe": []
+		},
+		{
+			"id": "seve_nocturne",
+			"name": "Sève Nocturne",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🧪",
+			"color": "#9b6bff",
+			"description": "Liquide sombre et bioluminescent qui catalyse les réactions organiques.",
+			"recipe": []
+		},
+		{
+			"id": "verre_solaire",
+			"name": "Verre Solaire",
+			"level": 2,
+			"biome": "",
+			"icon": "🪟",
+			"color": "#ffd966",
+			"description": "Silice vitrifiée par le plasma en une plaque optique ultra-résistante.",
+			"recipe": [
+				"silice",
+				"plasma_brut"
+			]
+		},
+		{
+			"id": "alliage_ferrite",
+			"name": "Alliage de Ferrite",
+			"level": 2,
+			"biome": "",
+			"icon": "🔩",
+			"color": "#d9a577",
+			"description": "Ferrite purifiée à haute température, idéale pour la charpente spatiale.",
+			"recipe": [
+				"ferrite",
+				"plasma_brut"
+			]
+		},
+		{
+			"id": "circuit_silice",
+			"name": "Circuit de Silice",
+			"level": 2,
+			"biome": "",
+			"icon": "🔌",
+			"color": "#7ec8ff",
+			"description": "Plaquette conductrice gravée dans la silice et soudée à la ferrite.",
+			"recipe": [
+				"silice",
+				"ferrite"
+			]
+		},
+		{
+			"id": "prisme_astral",
+			"name": "Prisme Astral",
+			"level": 2,
+			"biome": "",
+			"icon": "🔮",
+			"color": "#5ef2e6",
+			"description": "Cristal taillé et poli à la poussière d'étoile qui focalise la lumière.",
+			"recipe": [
+				"cristal",
+				"poussiere_etoile"
+			]
+		},
+		{
+			"id": "pile_plasma",
+			"name": "Pile à Plasma",
+			"level": 2,
+			"biome": "",
+			"icon": "🔋",
+			"color": "#ff944d",
+			"description": "Cellule énergétique stabilisant une goutte de plasma dans un cristal.",
+			"recipe": [
+				"cristal",
+				"plasma_brut"
+			]
+		},
+		{
+			"id": "poudre_pyro",
+			"name": "Poudre Pyroclastique",
+			"level": 2,
+			"biome": "",
+			"icon": "💥",
+			"color": "#ff6a33",
+			"description": "Mélange explosif de soufre volcanique et de plasma brut.",
+			"recipe": [
+				"soufre_volcanique",
+				"plasma_brut"
+			]
+		},
+		{
+			"id": "acier_soufre",
+			"name": "Acier Sulfuré",
+			"level": 2,
+			"biome": "",
+			"icon": "🛡️",
+			"color": "#c9a85c",
+			"description": "Ferrite traitée au soufre pour résister à la corrosion extrême.",
+			"recipe": [
+				"ferrite",
+				"soufre_volcanique"
+			]
+		},
+		{
+			"id": "boue_minerale",
+			"name": "Boue Minérale",
+			"level": 2,
+			"biome": "",
+			"icon": "🧱",
+			"color": "#8c96a8",
+			"description": "Pâte compacte de silice et de gel astral facile à mouler.",
+			"recipe": [
+				"silice",
+				"gel_astral"
+			]
+		},
+		{
+			"id": "serum_vital",
+			"name": "Sérum Vital",
+			"level": 2,
+			"biome": "",
+			"icon": "🧴",
+			"color": "#64f0a8",
+			"description": "Solution nutritive mêlant spores vivantes et gel astral.",
+			"recipe": [
+				"spore",
+				"gel_astral"
+			]
+		},
+		{
+			"id": "pollen_stellaire",
+			"name": "Pollen Stellaire",
+			"level": 2,
+			"biome": "",
+			"icon": "🌼",
+			"color": "#d8ff7a",
+			"description": "Spores chargées de poussière d'étoile émettant une lueur dorée.",
+			"recipe": [
+				"spore",
+				"poussiere_etoile"
+			]
+		},
+		{
+			"id": "quartz_givree",
+			"name": "Quartz Givré",
+			"level": 2,
+			"biome": "",
+			"icon": "💠",
+			"color": "#8ee8ff",
+			"description": "Cristal refroidi par la glace éternelle aux propriétés supraconductrices.",
+			"recipe": [
+				"cristal",
+				"glace_eternelle"
+			]
+		},
+		{
+			"id": "vapeur_thermique",
+			"name": "Vapeur Thermique",
+			"level": 2,
+			"biome": "",
+			"icon": "💨",
+			"color": "#cfe7f5",
+			"description": "Choc thermique entre glace éternelle et plasma libérant une pression intense.",
+			"recipe": [
+				"glace_eternelle",
+				"plasma_brut"
+			]
+		},
+		{
+			"id": "cryo_gel",
+			"name": "Cryo-Gel",
+			"level": 2,
+			"biome": "",
+			"icon": "❄️",
+			"color": "#5cd4ff",
+			"description": "Fluide réfrigérant ultra-stable combinant gel astral et azote solide.",
+			"recipe": [
+				"gel_astral",
+				"azote_solide"
+			]
+		},
+		{
+			"id": "givre_compact",
+			"name": "Givre Compact",
+			"level": 2,
+			"biome": "",
+			"icon": "🧊",
+			"color": "#c4f0ff",
+			"description": "Bloc isolant formé en comprimant la neige stellaire avec la glace.",
+			"recipe": [
+				"glace_eternelle",
+				"neige_stellaire"
+			]
+		},
+		{
+			"id": "flocon_astral",
+			"name": "Flocon Astral",
+			"level": 2,
+			"biome": "",
+			"icon": "✳️",
+			"color": "#e6f7ff",
+			"description": "Cristal de neige stellaire imprégné de poussière d'étoile.",
+			"recipe": [
+				"neige_stellaire",
+				"poussiere_etoile"
+			]
+		},
+		{
+			"id": "tissu_polaire",
+			"name": "Tissu Polaire",
+			"level": 2,
+			"biome": "",
+			"icon": "🧣",
+			"color": "#8ef0d0",
+			"description": "Fibre organique isolante tissée à partir de lichen et de neige.",
+			"recipe": [
+				"lichen_givre",
+				"neige_stellaire"
+			]
+		},
+		{
+			"id": "baume_cryo",
+			"name": "Baume Cryogénique",
+			"level": 2,
+			"biome": "",
+			"icon": "🧊",
+			"color": "#70e6d2",
+			"description": "Onguent apaisant qui préserve les tissus vivants du froid absolu.",
+			"recipe": [
+				"lichen_givre",
+				"gel_astral"
+			]
+		},
+		{
+			"id": "cable_fongique",
+			"name": "Câble Fongique",
+			"level": 2,
+			"biome": "",
+			"icon": "🪢",
+			"color": "#c77dff",
+			"description": "Filaments de mycélium renforcés de ferrite formant un câble bio-conducteur.",
+			"recipe": [
+				"mycelium_brut",
+				"ferrite"
+			]
+		},
+		{
+			"id": "toile_mycelium",
+			"name": "Toile de Mycélium",
+			"level": 2,
+			"biome": "",
+			"icon": "🕸️",
+			"color": "#d699ff",
+			"description": "Maillage organique dense obtenu en tressant deux souches de mycélium.",
+			"recipe": [
+				"mycelium_brut",
+				"mycelium_brut"
+			]
+		},
+		{
+			"id": "ambre_lueur",
+			"name": "Ambre Lumineux",
+			"level": 2,
+			"biome": "",
+			"icon": "🟠",
+			"color": "#d4ff4d",
+			"description": "Résine solidifiée autour d'une spore, piégeant sa bioluminescence.",
+			"recipe": [
+				"resine_lumineuse",
+				"spore"
+			]
+		},
+		{
+			"id": "colle_organique",
+			"name": "Colle Organique",
+			"level": 2,
+			"biome": "",
+			"icon": "🧴",
+			"color": "#a8e65c",
+			"description": "Adhésif naturel très résistant issu de résine et de silice fine.",
+			"recipe": [
+				"resine_lumineuse",
+				"silice"
+			]
+		},
+		{
+			"id": "acide_corrosif",
+			"name": "Acide Corrosif",
+			"level": 2,
+			"biome": "",
+			"icon": "☣️",
+			"color": "#ff5eb8",
+			"description": "Réactif puissant né de la fusion entre soufre volcanique et pollen toxique.",
+			"recipe": [
+				"soufre_volcanique",
+				"pollen_toxique"
+			]
+		},
+		{
+			"id": "nuage_mutagene",
+			"name": "Nuage Mutagène",
+			"level": 2,
+			"biome": "",
+			"icon": "🌫️",
+			"color": "#e066ff",
+			"description": "Aérosol instable de pollen toxique dispersé dans de l'azote solide.",
+			"recipe": [
+				"pollen_toxique",
+				"azote_solide"
+			]
+		},
+		{
+			"id": "encre_stellaire",
+			"name": "Encre Stellaire",
+			"level": 2,
+			"biome": "",
+			"icon": "🖋️",
+			"color": "#8e66ff",
+			"description": "Fluide lumineux utilisé pour graver des schémas conducteurs.",
+			"recipe": [
+				"seve_nocturne",
+				"poussiere_etoile"
+			]
+		},
+		{
+			"id": "elixir_ombre",
+			"name": "Élixir d'Ombre",
+			"level": 2,
+			"biome": "",
+			"icon": "🍷",
+			"color": "#7b4dff",
+			"description": "Décoction concentrée de sève nocturne et de mycélium.",
+			"recipe": [
+				"seve_nocturne",
+				"mycelium_brut"
+			]
+		},
+		{
+			"id": "vernis_bio",
+			"name": "Vernis Bio-Luminescent",
+			"level": 2,
+			"biome": "",
+			"icon": "🖌️",
+			"color": "#b4ff6e",
+			"description": "Enduit protecteur brillant issu de la résine et de la sève nocturne.",
+			"recipe": [
+				"resine_lumineuse",
+				"seve_nocturne"
+			]
+		},
+		{
+			"id": "aimant_cryo",
+			"name": "Aimant Cryogénique",
+			"level": 2,
+			"biome": "",
+			"icon": "🧲",
+			"color": "#66b3ff",
+			"description": "Ferrite refroidie à l'azote solide développant un champ magnétique intense.",
+			"recipe": [
+				"ferrite",
+				"azote_solide"
+			]
+		},
+		{
+			"id": "symbiote_givre",
+			"name": "Symbiote de Givre",
+			"level": 2,
+			"biome": "",
+			"icon": "🌱",
+			"color": "#66f0b8",
+			"description": "Organisme hybride unissant la résilience du lichen et la vigueur des spores.",
+			"recipe": [
+				"lichen_givre",
+				"spore"
+			]
+		},
+		{
+			"id": "catalyseur_soufre",
+			"name": "Catalyseur de Soufre",
+			"level": 2,
+			"biome": "",
+			"icon": "⚗️",
+			"color": "#e8c84a",
+			"description": "Composant chimique stabilisé mêlant soufre volcanique et cristal.",
+			"recipe": [
+				"soufre_volcanique",
+				"cristal"
+			]
+		},
+		{
+			"id": "antidote_brut",
+			"name": "Antidote Brut",
+			"level": 2,
+			"biome": "",
+			"icon": "💊",
+			"color": "#80ffbf",
+			"description": "Neutralisant organique obtenu en filtrant le pollen toxique par le lichen.",
+			"recipe": [
+				"pollen_toxique",
+				"lichen_givre"
+			]
+		},
+		{
+			"id": "panneau_solaire",
+			"name": "Panneau Solaire",
+			"level": 3,
+			"biome": "",
+			"icon": "☀️",
+			"color": "#ffcf40",
+			"description": "Capteur photovoltaïque combinant verre solaire et circuit de silice.",
+			"recipe": [
+				"verre_solaire",
+				"circuit_silice"
+			]
+		},
+		{
+			"id": "lentille_laser",
+			"name": "Lentille Laser",
+			"level": 3,
+			"biome": "",
+			"icon": "🔦",
+			"color": "#4df5ff",
+			"description": "Optique de haute précision alignant un prisme astral dans du verre solaire.",
+			"recipe": [
+				"verre_solaire",
+				"prisme_astral"
+			]
+		},
+		{
+			"id": "blindage_lourd",
+			"name": "Blindage Lourd",
+			"level": 3,
+			"biome": "",
+			"icon": "🧱",
+			"color": "#b8956a",
+			"description": "Plaque de coque renforcée par fusion d'alliage de ferrite et d'acier sulfuré.",
+			"recipe": [
+				"alliage_ferrite",
+				"acier_soufre"
+			]
+		},
+		{
+			"id": "turbine_vapeur",
+			"name": "Turbine à Vapeur",
+			"level": 3,
+			"biome": "",
+			"icon": "🌀",
+			"color": "#9ec5e6",
+			"description": "Générateur mécanique mû par la vapeur thermique dans un carter en alliage.",
+			"recipe": [
+				"alliage_ferrite",
+				"vapeur_thermique"
+			]
+		},
+		{
+			"id": "bobine_flux",
+			"name": "Bobine de Flux",
+			"level": 3,
+			"biome": "",
+			"icon": "⚡",
+			"color": "#66d9ff",
+			"description": "Enroulement supraconducteur unissant circuit de silice et aimant cryogénique.",
+			"recipe": [
+				"circuit_silice",
+				"aimant_cryo"
+			]
+		},
+		{
+			"id": "batterie_plasma",
+			"name": "Batterie à Plasma",
+			"level": 3,
+			"biome": "",
+			"icon": "🪫",
+			"color": "#ff8533",
+			"description": "Accumulateur haute capacité refroidi par cryo-gel pour stocker le plasma.",
+			"recipe": [
+				"pile_plasma",
+				"cryo_gel"
+			]
+		},
+		{
+			"id": "charge_sismique",
+			"name": "Charge Sismique",
+			"level": 3,
+			"biome": "",
+			"icon": "💣",
+			"color": "#ff5233",
+			"description": "Dispositif d'excavation logeant de la poudre pyroclastique dans une coque.",
+			"recipe": [
+				"poudre_pyro",
+				"alliage_ferrite"
+			]
+		},
+		{
+			"id": "ceramique_astrale",
+			"name": "Céramique Astrale",
+			"level": 3,
+			"biome": "",
+			"icon": "🏺",
+			"color": "#d4b483",
+			"description": "Matériau réfractaire obtenu en cuisant la boue minérale au plasma.",
+			"recipe": [
+				"boue_minerale",
+				"plasma_brut"
+			]
+		},
+		{
+			"id": "biosphere_mini",
+			"name": "Mini-Biosphère",
+			"level": 3,
+			"biome": "",
+			"icon": "🌐",
+			"color": "#5ce699",
+			"description": "Dôme de verre solaire abritant un écosystème nourri au sérum vital.",
+			"recipe": [
+				"verre_solaire",
+				"serum_vital"
+			]
+		},
+		{
+			"id": "miel_stellaire",
+			"name": "Nectar Stellaire",
+			"level": 3,
+			"biome": "",
+			"icon": "🍯",
+			"color": "#ffe066",
+			"description": "Concentré énergétique doré né du pollen stellaire et de l'ambre lumineux.",
+			"recipe": [
+				"pollen_stellaire",
+				"ambre_lueur"
+			]
+		},
+		{
+			"id": "puce_quantique",
+			"name": "Puce Quantique",
+			"level": 3,
+			"biome": "",
+			"icon": "💻",
+			"color": "#52e0ff",
+			"description": "Microprocesseur gravé dans du quartz givré avec un circuit de silice.",
+			"recipe": [
+				"quartz_givree",
+				"circuit_silice"
+			]
+		},
+		{
+			"id": "radiateur_cryo",
+			"name": "Radiateur Cryogénique",
+			"level": 3,
+			"biome": "",
+			"icon": "❄️",
+			"color": "#78d9ff",
+			"description": "Échangeur thermique combinant cryo-gel et givre compact.",
+			"recipe": [
+				"cryo_gel",
+				"givre_compact"
+			]
+		},
+		{
+			"id": "voile_stellaire",
+			"name": "Voile Stellaire",
+			"level": 3,
+			"biome": "",
+			"icon": "⛵",
+			"color": "#d6f2ff",
+			"description": "Membrane ultra-légère tissée de tissu polaire et de flocons astraux.",
+			"recipe": [
+				"tissu_polaire",
+				"flocon_astral"
+			]
+		},
+		{
+			"id": "combinaison_froid",
+			"name": "Combinaison Polaire",
+			"level": 3,
+			"biome": "",
+			"icon": "🧥",
+			"color": "#6ce6cc",
+			"description": "Tenue isolante renforcée au baume cryogénique pour les climats extrêmes.",
+			"recipe": [
+				"tissu_polaire",
+				"baume_cryo"
+			]
+		},
+		{
+			"id": "nerf_synthetique",
+			"name": "Nerf Synthétique",
+			"level": 3,
+			"biome": "",
+			"icon": "🧬",
+			"color": "#b86bff",
+			"description": "Faisceau de câbles fongiques irrigués par du sérum vital.",
+			"recipe": [
+				"cable_fongique",
+				"serum_vital"
+			]
+		},
+		{
+			"id": "filtre_organique",
+			"name": "Filtre Organique",
+			"level": 3,
+			"biome": "",
+			"icon": "🫧",
+			"color": "#99e6b3",
+			"description": "Membrane purificatrice faite d'une toile de mycélium imprégnée d'antidote.",
+			"recipe": [
+				"toile_mycelium",
+				"antidote_brut"
+			]
+		},
+		{
+			"id": "composite_bio",
+			"name": "Composite Bio-Résine",
+			"level": 3,
+			"biome": "",
+			"icon": "🧩",
+			"color": "#a3d95b",
+			"description": "Matériau léger et souple stratifié avec toile de mycélium et colle organique.",
+			"recipe": [
+				"toile_mycelium",
+				"colle_organique"
+			]
+		},
+		{
+			"id": "solvant_universel",
+			"name": "Solvant Universel",
+			"level": 3,
+			"biome": "",
+			"icon": "🧪",
+			"color": "#ff66c4",
+			"description": "Solution alchimique dissolvant presque tout, mêlant acide corrosif et catalyseur.",
+			"recipe": [
+				"acide_corrosif",
+				"catalyseur_soufre"
+			]
+		},
+		{
+			"id": "serum_mutagene",
+			"name": "Sérum Mutagène",
+			"level": 3,
+			"biome": "",
+			"icon": "💉",
+			"color": "#d952ff",
+			"description": "Agent d'évolution rapide issu du nuage mutagène et de l'élixir d'ombre.",
+			"recipe": [
+				"nuage_mutagene",
+				"elixir_ombre"
+			]
+		},
+		{
+			"id": "parchemin_astral",
+			"name": "Schéma Astral",
+			"level": 3,
+			"biome": "",
+			"icon": "📜",
+			"color": "#9c7aff",
+			"description": "Plan lumineux tracé à l'encre stellaire sur une fibre de tissu polaire.",
+			"recipe": [
+				"encre_stellaire",
+				"tissu_polaire"
+			]
+		},
+		{
+			"id": "bouclier_vernis",
+			"name": "Coque Bio-Vernie",
+			"level": 3,
+			"biome": "",
+			"icon": "🔰",
+			"color": "#8cff66",
+			"description": "Acier sulfuré enduit de vernis bio-luminescent auto-cicatrisant.",
+			"recipe": [
+				"acier_soufre",
+				"vernis_bio"
+			]
+		},
+		{
+			"id": "capteur_bio",
+			"name": "Bio-Capteur",
+			"level": 3,
+			"biome": "",
+			"icon": "📡",
+			"color": "#66f5a3",
+			"description": "Sonde vivante associant un symbiote de givre à un câble fongique.",
+			"recipe": [
+				"symbiote_givre",
+				"cable_fongique"
+			]
+		},
+		{
+			"id": "lanterne_ambre",
+			"name": "Lanterne d'Ambre",
+			"level": 3,
+			"biome": "",
+			"icon": "🏮",
+			"color": "#ffd147",
+			"description": "Source lumineuse perpétuelle alimentée par un prisme astral et de l'ambre.",
+			"recipe": [
+				"prisme_astral",
+				"ambre_lueur"
+			]
+		},
+		{
+			"id": "injecteur_chimique",
+			"name": "Injecteur Chimique",
+			"level": 3,
+			"biome": "",
+			"icon": "⚗️",
+			"color": "#e6b84d",
+			"description": "Réacteur pressurisé propulsant un catalyseur de soufre par la vapeur.",
+			"recipe": [
+				"catalyseur_soufre",
+				"vapeur_thermique"
+			]
+		},
+		{
+			"id": "moteur_ion",
+			"name": "Propulseur Ionique",
+			"level": 3,
+			"biome": "",
+			"icon": "🚀",
+			"color": "#5cb8ff",
+			"description": "Moteur spatial accélérant du plasma grâce à un aimant cryogénique.",
+			"recipe": [
+				"pile_plasma",
+				"aimant_cryo"
+			]
+		},
+		{
+			"id": "medicament_astral",
+			"name": "Remède Astral",
+			"level": 3,
+			"biome": "",
+			"icon": "🩺",
+			"color": "#70ffaa",
+			"description": "Soin complet combinant antidote brut et baume cryogénique.",
+			"recipe": [
+				"antidote_brut",
+				"baume_cryo"
+			]
+		},
+		{
+			"id": "crystal_resonateur",
+			"name": "Résonateur Cristallin",
+			"level": 3,
+			"biome": "",
+			"icon": "🔔",
+			"color": "#6beeff",
+			"description": "Diapason énergétique unissant quartz givré et prisme astral.",
+			"recipe": [
+				"quartz_givree",
+				"prisme_astral"
+			]
+		},
+		{
+			"id": "encre_ombre",
+			"name": "Encre d'Ombre",
+			"level": 3,
+			"biome": "",
+			"icon": "🖤",
+			"color": "#6a42cc",
+			"description": "Pigment quantique issu de l'encre stellaire et de l'élixir d'ombre.",
+			"recipe": [
+				"encre_stellaire",
+				"elixir_ombre"
+			]
+		},
+		{
+			"id": "ciment_givre",
+			"name": "Béton Cryogénique",
+			"level": 3,
+			"biome": "",
+			"icon": "🏗️",
+			"color": "#99c2d6",
+			"description": "Structure ultra-dense obtenue en liant boue minérale et givre compact.",
+			"recipe": [
+				"boue_minerale",
+				"givre_compact"
+			]
+		},
+		{
+			"id": "grenade_acide",
+			"name": "Capsule Corrosive",
+			"level": 3,
+			"biome": "",
+			"icon": "🧪",
+			"color": "#ff4d94",
+			"description": "Charge chimique combinant poudre pyroclastique et acide corrosif.",
+			"recipe": [
+				"poudre_pyro",
+				"acide_corrosif"
+			]
+		},
+		{
+			"id": "centrale_solaire",
+			"name": "Centrale Solaire",
+			"level": 4,
+			"biome": "",
+			"icon": "🔆",
+			"color": "#ffbf33",
+			"description": "Unité de production continue reliant panneau solaire et batterie à plasma.",
+			"recipe": [
+				"panneau_solaire",
+				"batterie_plasma"
+			]
+		},
+		{
+			"id": "canon_laser",
+			"name": "Foreuse Laser",
+			"level": 4,
+			"biome": "",
+			"icon": "🔫",
+			"color": "#33e6ff",
+			"description": "Faisceau de découpe industrielle alimentant une lentille laser par bobine de flux.",
+			"recipe": [
+				"lentille_laser",
+				"bobine_flux"
+			]
+		},
+		{
+			"id": "coque_spatiale",
+			"name": "Coque Spatiale",
+			"level": 4,
+			"biome": "",
+			"icon": "🛸",
+			"color": "#a6b8cc",
+			"description": "Carlingue pressurisée alliant blindage lourd et céramique astrale.",
+			"recipe": [
+				"blindage_lourd",
+				"ceramique_astrale"
+			]
+		},
+		{
+			"id": "generateur_vapeur",
+			"name": "Réacteur Thermique",
+			"level": 4,
+			"biome": "",
+			"icon": "🏭",
+			"color": "#ff9955",
+			"description": "Machine thermodynamique couplant turbine à vapeur et radiateur cryogénique.",
+			"recipe": [
+				"turbine_vapeur",
+				"radiateur_cryo"
+			]
+		},
+		{
+			"id": "calculateur_quantique",
+			"name": "Calculateur Quantique",
+			"level": 4,
+			"biome": "",
+			"icon": "🖥️",
+			"color": "#4dc3ff",
+			"description": "Superordinateur refroidi par radiateur cryogénique autour d'une puce quantique.",
+			"recipe": [
+				"puce_quantique",
+				"radiateur_cryo"
+			]
+		},
+		{
+			"id": "ia_organique",
+			"name": "Cortex Bio-Numérique",
+			"level": 4,
+			"biome": "",
+			"icon": "🧠",
+			"color": "#c266ff",
+			"description": "Intelligence hybride fusionnant puce quantique et nerf synthétique.",
+			"recipe": [
+				"puce_quantique",
+				"nerf_synthetique"
+			]
+		},
+		{
+			"id": "station_oxygene",
+			"name": "Station Atmosphérique",
+			"level": 4,
+			"biome": "",
+			"icon": "🌿",
+			"color": "#4dff99",
+			"description": "Système de survie couplant mini-biosphère et filtre organique.",
+			"recipe": [
+				"biosphere_mini",
+				"filtre_organique"
+			]
+		},
+		{
+			"id": "exosquelette",
+			"name": "Exosquelette Polaire",
+			"level": 4,
+			"biome": "",
+			"icon": "🤖",
+			"color": "#5ce6d6",
+			"description": "Armure motorisée intégrant combinaison polaire et composite bio-résine.",
+			"recipe": [
+				"combinaison_froid",
+				"composite_bio"
+			]
+		},
+		{
+			"id": "vaisseau_voile",
+			"name": "Voilier Solaire",
+			"level": 4,
+			"biome": "",
+			"icon": "🛰️",
+			"color": "#a3e0ff",
+			"description": "Sonde autonome propulsée par voile stellaire et propulseur ionique.",
+			"recipe": [
+				"voile_stellaire",
+				"moteur_ion"
+			]
+		},
+		{
+			"id": "drone_eclaireur",
+			"name": "Drone Éclaireur",
+			"level": 4,
+			"biome": "",
+			"icon": "🚁",
+			"color": "#66ffcc",
+			"description": "Appareil de reconnaissance équipé d'un bio-capteur et d'un composite léger.",
+			"recipe": [
+				"capteur_bio",
+				"composite_bio"
+			]
+		},
+		{
+			"id": "alambic_quantique",
+			"name": "Raffineur Alchimique",
+			"level": 4,
+			"biome": "",
+			"icon": "⚗️",
+			"color": "#ff66d9",
+			"description": "Unité de synthèse combinant solvant universel et injecteur chimique.",
+			"recipe": [
+				"solvant_universel",
+				"injecteur_chimique"
+			]
+		},
+		{
+			"id": "organisme_evo",
+			"name": "Symbiote Évolué",
+			"level": 4,
+			"biome": "",
+			"icon": "🦋",
+			"color": "#d966ff",
+			"description": "Créature de laboratoire nourrie au nectar stellaire et au sérum mutagène.",
+			"recipe": [
+				"miel_stellaire",
+				"serum_mutagene"
+			]
+		},
+		{
+			"id": "grimoire_stellaire",
+			"name": "Codex Stellaire",
+			"level": 4,
+			"biome": "",
+			"icon": "📖",
+			"color": "#8566ff",
+			"description": "Archive de connaissances cosmiques rédigée à l'encre d'ombre sur schéma astral.",
+			"recipe": [
+				"parchemin_astral",
+				"encre_ombre"
+			]
+		},
+		{
+			"id": "bouclier_energie",
+			"name": "Bouclier Énergétique",
+			"level": 4,
+			"biome": "",
+			"icon": "🛡️",
+			"color": "#52f2ff",
+			"description": "Champ déflecteur projeté par une coque bio-vernie et une bobine de flux.",
+			"recipe": [
+				"bouclier_vernis",
+				"bobine_flux"
+			]
+		},
+		{
+			"id": "phare_astral",
+			"name": "Phare Astral",
+			"level": 4,
+			"biome": "",
+			"icon": "🗼",
+			"color": "#ffe052",
+			"description": "Balise interstellaire amplifiant une lanterne d'ambre par résonateur cristallin.",
+			"recipe": [
+				"lanterne_ambre",
+				"crystal_resonateur"
+			]
+		},
+		{
+			"id": "infirmerie_auto",
+			"name": "Caisson Médical",
+			"level": 4,
+			"biome": "",
+			"icon": "🏥",
+			"color": "#66ffaa",
+			"description": "Module de régénération associant remède astral et nerf synthétique.",
+			"recipe": [
+				"medicament_astral",
+				"nerf_synthetique"
+			]
+		},
+		{
+			"id": "foreuse_sismique",
+			"name": "Foreuse Sismique",
+			"level": 4,
+			"biome": "",
+			"icon": "⛏️",
+			"color": "#ff704d",
+			"description": "Engin minier lourd couplant charge sismique et turbine à vapeur.",
+			"recipe": [
+				"charge_sismique",
+				"turbine_vapeur"
+			]
+		},
+		{
+			"id": "base_glaciaire",
+			"name": "Avant-Poste Cryo",
+			"level": 4,
+			"biome": "",
+			"icon": "🏔️",
+			"color": "#8cd9ff",
+			"description": "Refuge modulaire bâti en béton cryogénique et éclairé par lanterne d'ambre.",
+			"recipe": [
+				"ciment_givre",
+				"lanterne_ambre"
+			]
+		},
+		{
+			"id": "reacteur_plasma",
+			"name": "Cœur à Plasma",
+			"level": 4,
+			"biome": "",
+			"icon": "⚛️",
+			"color": "#ff7733",
+			"description": "Source d'énergie stellaire confinée par batterie à plasma et propulseur ionique.",
+			"recipe": [
+				"batterie_plasma",
+				"moteur_ion"
+			]
+		},
+		{
+			"id": "arme_chimique",
+			"name": "Dissolvant Tactique",
+			"level": 4,
+			"biome": "",
+			"icon": "☣️",
+			"color": "#ff4da6",
+			"description": "Outil de déblaiement extrême mêlant capsule corrosive et solvant universel.",
+			"recipe": [
+				"grenade_acide",
+				"solvant_universel"
+			]
+		},
+		{
+			"id": "antenne_resonante",
+			"name": "Antenne Résonante",
+			"level": 4,
+			"biome": "",
+			"icon": "📶",
+			"color": "#5ce6ff",
+			"description": "Relais longue portée combinant résonateur cristallin et bio-capteur.",
+			"recipe": [
+				"crystal_resonateur",
+				"capteur_bio"
+			]
+		},
+		{
+			"id": "atelier_orbital",
+			"name": "Atelier Modulaire",
+			"level": 4,
+			"biome": "",
+			"icon": "🔧",
+			"color": "#c2a385",
+			"description": "Base de fabrication protégée par blindage lourd et béton cryogénique.",
+			"recipe": [
+				"blindage_lourd",
+				"ciment_givre"
+			]
+		},
+		{
+			"id": "croiseur_spatial",
+			"name": "Croiseur Spatial",
+			"level": 5,
+			"biome": "",
+			"icon": "🚀",
+			"color": "#70b8ff",
+			"description": "Vaisseau d'exploration complet combinant coque spatiale et cœur à plasma.",
+			"recipe": [
+				"coque_spatiale",
+				"reacteur_plasma"
+			]
+		},
+		{
+			"id": "station_orbitale",
+			"name": "Station Orbitale",
+			"level": 5,
+			"biome": "",
+			"icon": "🛰️",
+			"color": "#80e5ff",
+			"description": "Habitat spatial autonome unissant station atmosphérique et centrale solaire.",
+			"recipe": [
+				"station_oxygene",
+				"centrale_solaire"
+			]
+		},
+		{
+			"id": "ia_consciente",
+			"name": "Conscience Artificielle",
+			"level": 5,
+			"biome": "",
+			"icon": "🌌",
+			"color": "#b85cff",
+			"description": "Esprit synthétique éveillé né du cortex bio-numérique et du calculateur quantique.",
+			"recipe": [
+				"ia_organique",
+				"calculateur_quantique"
+			]
+		},
+		{
+			"id": "armure_titan",
+			"name": "Armure Titan",
+			"level": 5,
+			"biome": "",
+			"icon": "🦾",
+			"color": "#4df0ff",
+			"description": "Exosquelette de combat renforcé par un bouclier énergétique intégral.",
+			"recipe": [
+				"exosquelette",
+				"bouclier_energie"
+			]
+		},
+		{
+			"id": "foreuse_planetaire",
+			"name": "Foreuse Planétaire",
+			"level": 5,
+			"biome": "",
+			"icon": "🌋",
+			"color": "#ff6633",
+			"description": "Plateforme d'extraction profonde associant foreuse laser et foreuse sismique.",
+			"recipe": [
+				"canon_laser",
+				"foreuse_sismique"
+			]
+		},
+		{
+			"id": "synthetiseur_matiere",
+			"name": "Synthétiseur de Matière",
+			"level": 5,
+			"biome": "",
+			"icon": "🔮",
+			"color": "#ff66e6",
+			"description": "Convertisseur moléculaire couplant raffineur alchimique et réacteur thermique.",
+			"recipe": [
+				"alambic_quantique",
+				"generateur_vapeur"
+			]
+		},
+		{
+			"id": "arche_vivante",
+			"name": "Arche Vivante",
+			"level": 5,
+			"biome": "",
+			"icon": "🌳",
+			"color": "#52ff99",
+			"description": "Sanctuaire biologique préservant la vie grâce au symbiote évolué et au caisson médical.",
+			"recipe": [
+				"organisme_evo",
+				"infirmerie_auto"
+			]
+		},
+		{
+			"id": "balise_galactique",
+			"name": "Balise Galactique",
+			"level": 5,
+			"biome": "",
+			"icon": "🌠",
+			"color": "#ffe666",
+			"description": "Émetteur subspatial reliant phare astral et antenne résonante.",
+			"recipe": [
+				"phare_astral",
+				"antenne_resonante"
+			]
+		},
+		{
+			"id": "flotte_drones",
+			"name": "Essaim Autonome",
+			"level": 5,
+			"biome": "",
+			"icon": "🐝",
+			"color": "#66ffd9",
+			"description": "Réseau de drones éclaireurs coordonnés par un voilier solaire relais.",
+			"recipe": [
+				"drone_eclaireur",
+				"vaisseau_voile"
+			]
+		},
+		{
+			"id": "citadelle_givre",
+			"name": "Citadelle Stellaire",
+			"level": 5,
+			"biome": "",
+			"icon": "🏰",
+			"color": "#99d6ff",
+			"description": "Colonie fortifiée assemblant avant-poste cryo et atelier modulaire.",
+			"recipe": [
+				"base_glaciaire",
+				"atelier_orbital"
+			]
+		},
+		{
+			"id": "savoir_cosmique",
+			"name": "Archive Cosmique",
+			"level": 5,
+			"biome": "",
+			"icon": "📚",
+			"color": "#9470ff",
+			"description": "Bibliothèque universelle décryptant le codex stellaire via un calculateur quantique.",
+			"recipe": [
+				"grimoire_stellaire",
+				"calculateur_quantique"
+			]
+		},
+		{
+			"id": "purificateur_monde",
+			"name": "Terra-Purificateur",
+			"level": 5,
+			"biome": "",
+			"icon": "🌍",
+			"color": "#70ff88",
+			"description": "Dispositif planétaire neutralisant les toxines via dissolvant tactique et station atmosphérique.",
+			"recipe": [
+				"arme_chimique",
+				"station_oxygene"
+			]
+		},
+		{
+			"id": "vaisseau_mere",
+			"name": "Vaisseau-Mère",
+			"level": 6,
+			"biome": "",
+			"icon": "🛸",
+			"color": "#66ccff",
+			"description": "Citadelle interstellaire née de la fusion d'un croiseur spatial et d'une station orbitale.",
+			"recipe": [
+				"croiseur_spatial",
+				"station_orbitale"
+			]
+		},
+		{
+			"id": "singularite_ia",
+			"name": "Singularité Consciente",
+			"level": 6,
+			"biome": "",
+			"icon": "👁️",
+			"color": "#cc66ff",
+			"description": "Entité omnisciente unissant la conscience artificielle à l'archive cosmique.",
+			"recipe": [
+				"ia_consciente",
+				"savoir_cosmique"
+			]
+		},
+		{
+			"id": "moteur_distorsion",
+			"name": "Portail Interstellaire",
+			"level": 6,
+			"biome": "",
+			"icon": "🌀",
+			"color": "#ffdd55",
+			"description": "Passage supraluminique ouvert par une balise galactique et un synthétiseur de matière.",
+			"recipe": [
+				"balise_galactique",
+				"synthetiseur_matiere"
+			]
+		},
+		{
+			"id": "planete_eden",
+			"name": "Monde Éden",
+			"level": 6,
+			"biome": "",
+			"icon": "🪐",
+			"color": "#4dffb8",
+			"description": "Biosphère parfaite restaurée par l'arche vivante et le terra-purificateur.",
+			"recipe": [
+				"arche_vivante",
+				"purificateur_monde"
+			]
+		},
+		{
+			"id": "colosse_astral",
+			"name": "Colosse Astral",
+			"level": 6,
+			"biome": "",
+			"icon": "⚡",
+			"color": "#ff884d",
+			"description": "Titan d'ingénierie combinant armure titan et foreuse planétaire.",
+			"recipe": [
+				"armure_titan",
+				"foreuse_planetaire"
+			]
+		},
+		{
+			"id": "empire_stellaire",
+			"name": "Métropole Galactique",
+			"level": 6,
+			"biome": "",
+			"icon": "🏙️",
+			"color": "#80d4ff",
+			"description": "Civilisation autonome déployée par une citadelle stellaire et un essaim autonome.",
+			"recipe": [
+				"citadelle_givre",
+				"flotte_drones"
+			]
+		}
+	]
+}
