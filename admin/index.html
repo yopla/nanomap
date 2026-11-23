@@ -799,6 +799,56 @@
     opacity: 0.45;
     cursor: not-allowed;
   }
+  .host-purge-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  .host-purge-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .host-purge-btn {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(30, 41, 59, 0.9);
+    color: #e2e8f0;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.16s ease;
+    text-align: left;
+  }
+  .host-purge-btn:hover:not(:disabled) {
+    background: rgba(51, 65, 85, 0.95);
+    border-color: rgba(226, 232, 240, 0.45);
+  }
+  .host-purge-btn.danger {
+    border-color: rgba(248, 113, 113, 0.42);
+    background: rgba(127, 29, 29, 0.45);
+    color: #fecaca;
+  }
+  .host-purge-btn.danger:hover:not(:disabled) {
+    background: rgba(153, 27, 27, 0.7);
+    border-color: rgba(248, 113, 113, 0.75);
+  }
+  .host-purge-btn.danger.confirming {
+    background: #dc2626;
+    border-color: #fca5a5;
+    color: #ffffff;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.45);
+  }
+  .host-purge-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
   .host-uid-row {
     display: flex;
     align-items: center;
@@ -1079,6 +1129,16 @@
               <option value="off">🔇 Silencieux (Off)</option>
             </select>
           </div>
+          <div class="host-purge-box">
+            <div class="host-scale-label">
+              <span>🧹 Nettoyage Firebase (hors Hôte)</span>
+            </div>
+            <div class="host-purge-actions">
+              <button class="host-purge-btn" id="btnHostPurgeCenter" disabled>🎯 Purger le centre</button>
+              <button class="host-purge-btn" id="btnHostPurgeInactive" disabled>⏱️ Purger inactifs (&gt; 10 min)</button>
+              <button class="host-purge-btn danger" id="btnHostPurgeAll" disabled>🗑️ Purger tout Firebase</button>
+            </div>
+          </div>
           <div id="hostChatError" style="display:none; color:#fca5a5; font-size:11px; line-height:1.4; background:rgba(239,68,68,0.14); border:1px solid rgba(239,68,68,0.35); border-radius:8px; padding:7px 9px;"></div>
           <div class="settings-desc" style="font-size:11px;">
             Quand le Mode Chat est activé, cliquer sur votre avatar Noir &amp; Blanc ouvre une barre clavier (60 car. max). Il se coupe automatiquement si vous fermez cet onglet.
@@ -1216,7 +1276,7 @@ const BUDGET_CONFIG = /*BUDGET_CONFIG_JSON*/{
 	"deadzone": 15.0,
 	"deadzonePx": 15.0,
 	"followSyncIntervalMs": 1000,
-	"globalMax": 105,
+	"globalMax": 115,
 	"globalRechargeAmount": 3,
 	"globalRechargeSec": 2.0,
 	"rateLimitMs": 250,
@@ -6744,6 +6804,24 @@ const hostUidDisplay = document.getElementById('hostUidDisplay');
 const btnToggleHostMono = document.getElementById('btnToggleHostMono');
 const btnToggleChatMode = document.getElementById('btnToggleChatMode');
 const hostSwingScaleSelect = document.getElementById('hostSwingScaleSelect');
+const btnHostPurgeCenter = document.getElementById('btnHostPurgeCenter');
+const btnHostPurgeInactive = document.getElementById('btnHostPurgeInactive');
+const btnHostPurgeAll = document.getElementById('btnHostPurgeAll');
+let hostPurgeBusy = false;
+let hostPurgeAllConfirmTimer = null;
+let hostPurgeAllArmed = false;
+
+function resetHostPurgeAllConfirm() {
+  if (hostPurgeAllConfirmTimer) {
+    clearTimeout(hostPurgeAllConfirmTimer);
+    hostPurgeAllConfirmTimer = null;
+  }
+  hostPurgeAllArmed = false;
+  if (btnHostPurgeAll) {
+    btnHostPurgeAll.classList.remove('confirming');
+    btnHostPurgeAll.textContent = '🗑️ Purger tout Firebase';
+  }
+}
 
 function updateHostUi() {
   if (btnSettings) {
@@ -6793,6 +6871,11 @@ function updateHostUi() {
       hostSwingScaleSelect.value = curScale;
     }
   }
+  const purgeDisabled = !signedIn || hostPurgeBusy;
+  if (btnHostPurgeCenter) btnHostPurgeCenter.disabled = purgeDisabled;
+  if (btnHostPurgeInactive) btnHostPurgeInactive.disabled = purgeDisabled;
+  if (btnHostPurgeAll) btnHostPurgeAll.disabled = purgeDisabled;
+  if (!signedIn) resetHostPurgeAllConfirm();
 }
 
 updateHostUi();
@@ -7003,6 +7086,110 @@ if (hostSwingScaleSelect) {
     }).finally(() => {
       hostSwingScaleSelect.disabled = !state.hostAuth.signedIn;
     });
+  });
+}
+
+function executeHostPurge(mode) {
+  if (!IS_HOST_BUILD || !state.hostAuth.signedIn || !state.firebase.db || hostPurgeBusy) return;
+  resetHostPurgeAllConfirm();
+  hostPurgeBusy = true;
+  updateHostUi();
+  setHostError('');
+
+  const protectedUids = new Set();
+  if (state.hostAuth && state.hostAuth.uid) protectedUids.add(state.hostAuth.uid);
+  if (state.firebase && state.firebase.uid) protectedUids.add(state.firebase.uid);
+
+  const cx = WORLD_WIDTH / 2;
+  const cy = WORLD_HEIGHT / 2;
+  const nowMs = Date.now();
+  const inactiveLimitMs = 10 * 60 * 1000;
+
+  state.firebase.db.ref('users').once('value').then((snap) => {
+    const usersObj = snap.val() || {};
+    const uidsToKill = [];
+
+    for (const uid of Object.keys(usersObj)) {
+      if (protectedUids.has(uid)) continue;
+      const u = usersObj[uid] || {};
+
+      if (mode === 'all') {
+        uidsToKill.push(uid);
+      } else if (mode === 'center') {
+        const localP = state.players[uid];
+        const px = (localP && typeof localP.x === 'number') ? localP.x : (typeof u.x === 'number' ? u.x : NaN);
+        const py = (localP && typeof localP.y === 'number') ? localP.y : (typeof u.y === 'number' ? u.y : NaN);
+        if (!isNaN(px) && !isNaN(py) && Math.hypot(px - cx, py - cy) <= CENTRAL_CIRCLE_RADIUS) {
+          uidsToKill.push(uid);
+        }
+      } else if (mode === 'inactive10m') {
+        const lastSeen = typeof u.lastSeen === 'number' ? u.lastSeen : 0;
+        const updatedAt = typeof u.updatedAt === 'number' ? u.updatedAt : 0;
+        const lastActivity = Math.max(lastSeen, updatedAt);
+        if (lastActivity <= 0 || (nowMs - lastActivity) >= inactiveLimitMs) {
+          uidsToKill.push(uid);
+        }
+      }
+    }
+
+    if (uidsToKill.length === 0) {
+      if (mode === 'center') showToast('ℹ️ Aucune bestiole dans le centre (hors Hôte)');
+      else if (mode === 'inactive10m') showToast('ℹ️ Aucun inactif (> 10 min) à purger');
+      else showToast('ℹ️ Firebase est déjà vide (hors Hôte)');
+      return null;
+    }
+
+    const updates = {};
+    for (const uid of uidsToKill) {
+      updates['users/' + uid] = null;
+      updates['presence/' + uid] = null;
+    }
+
+    return state.firebase.db.ref().update(updates).then(() => {
+      if (mode === 'center') {
+        showToast('🎯 ' + uidsToKill.length + ' bestiole(s) purgée(s) du centre !');
+      } else if (mode === 'inactive10m') {
+        showToast('⏱️ ' + uidsToKill.length + ' inactif(s) (> 10 min) purgé(s) !');
+      } else {
+        showToast('🗑️ ' + uidsToKill.length + ' bestiole(s) purgée(s) de Firebase !');
+      }
+    });
+  }).catch((err) => {
+    console.warn('Erreur purge Hôte (' + mode + '):', err);
+    const code = (err && err.code) ? err.code : 'PERMISSION_DENIED';
+    setHostError('🔒 Purge refusée par Firebase (' + code + '). Vérifiez que database.rules.json est bien publié avec votre UID (' + state.hostAuth.uid + ').');
+    showToast('🔒 Purge refusée par Firebase (' + code + ').', 'warning');
+  }).finally(() => {
+    hostPurgeBusy = false;
+    updateHostUi();
+  });
+}
+
+if (btnHostPurgeCenter) {
+  btnHostPurgeCenter.addEventListener('click', () => {
+    executeHostPurge('center');
+  });
+}
+
+if (btnHostPurgeInactive) {
+  btnHostPurgeInactive.addEventListener('click', () => {
+    executeHostPurge('inactive10m');
+  });
+}
+
+if (btnHostPurgeAll) {
+  btnHostPurgeAll.addEventListener('click', () => {
+    if (!IS_HOST_BUILD || !state.hostAuth.signedIn || !state.firebase.db || hostPurgeBusy) return;
+    if (!hostPurgeAllArmed) {
+      hostPurgeAllArmed = true;
+      btnHostPurgeAll.classList.add('confirming');
+      btnHostPurgeAll.textContent = '⚠️ Cliquer encore pour tout purger (hors Hôte)';
+      hostPurgeAllConfirmTimer = setTimeout(() => {
+        resetHostPurgeAllConfirm();
+      }, 4500);
+      return;
+    }
+    executeHostPurge('all');
   });
 }
 
@@ -7317,6 +7504,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.6</div>
+<div class="version-badge">v7.1</div>
 </body>
 </html>
