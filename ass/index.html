@@ -1051,6 +1051,12 @@
     gap: 10px;
     flex-wrap: wrap;
   }
+  .saves-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
   #saves-info {
     font-size: 13px;
     color: #c7ebff;
@@ -1473,7 +1479,12 @@
     <div id="ship-view-saves">
       <div class="saves-top">
         <div id="saves-info">Slot actif : slot_1</div>
-        <button id="save-now-btn" class="save-btn primary" type="button">💾 Sauvegarder maintenant</button>
+        <div class="saves-top-actions">
+          <button id="save-now-btn" class="save-btn primary" type="button">💾 Sauvegarder maintenant</button>
+          <button id="save-export-btn" class="save-btn" type="button" title="Exporter la partie en cours en fichier JSON">⬇ Sauver fichier</button>
+          <button id="save-import-btn" class="save-btn" type="button" title="Charger un fichier JSON de sauvegarde dans le slot actif">⬆ Charger fichier</button>
+          <input id="save-import-input" type="file" accept=".json,application/json" style="display:none;" />
+        </div>
       </div>
       <div id="saves-feedback"></div>
       <div id="saves-list"></div>
@@ -2494,6 +2505,9 @@
   const savesListEl = document.getElementById("saves-list");
   let savesFeedbackTimer = null;
   const saveNowBtnEl = document.getElementById("save-now-btn");
+  const saveExportBtnEl = document.getElementById("save-export-btn");
+  const saveImportBtnEl = document.getElementById("save-import-btn");
+  const saveImportInputEl = document.getElementById("save-import-input");
   const slotAEl = document.getElementById("slot-a");
   const slotBEl = document.getElementById("slot-b");
   const assembleBtnEl = document.getElementById("assemble-btn");
@@ -4112,6 +4126,75 @@
     showToast(`🗑 Sauvegarde supprimée (${slotId})`);
   }
 
+  function exportSaveToFile() {
+    const sid = currentSlotId || "slot_1";
+    const payload = buildSavePayload(sid);
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const datePart = new Date().toISOString().slice(0, 10);
+    const filename = `assemblage_${sid}_${datePart}.json`;
+    try {
+      const blob = new Blob([jsonStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast(`⬇ Sauvegarde exportée (${filename})`);
+      showSaveFeedback(sid, `✅ Fichier « ${filename} » téléchargé.`, false, false);
+    } catch {
+      showToast("❌ Impossible d'exporter le fichier de sauvegarde.");
+      showSaveFeedback("", "❌ Impossible d'exporter le fichier de sauvegarde.", false, true);
+    }
+  }
+
+  function importSaveFromFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const rawStr = String(reader.result || "");
+      let parsed = null;
+      try {
+        parsed = JSON.parse(rawStr);
+      } catch {
+        showToast("❌ Fichier JSON invalide.");
+        showSaveFeedback("", "❌ Le fichier sélectionné n'est pas un JSON valide.", false, true);
+        return;
+      }
+      const val = validateAndPrepareSave(parsed);
+      if (val.status === "invalid") {
+        const errMsg = val.errors.join("; ") || "format non reconnu";
+        showToast(`❌ Sauvegarde invalide : ${errMsg}`);
+        showSaveFeedback("", `❌ Sauvegarde invalide : ${errMsg}`, false, true);
+        return;
+      }
+      const sid = currentSlotId || "slot_1";
+      const wasExisting = Boolean(storageGet(SAVE_KEY_PREFIX + sid));
+      if (wasExisting) {
+        const slotLabel = defaultSlotName(sid);
+        if (!window.confirm(`Charger « ${file.name} » dans « ${slotLabel} » ? La sauvegarde actuelle de cet emplacement sera remplacée.`)) {
+          return;
+        }
+      }
+      const ok = applySaveObject(parsed, sid, true, rawStr);
+      if (ok) {
+        saveCurrentSlot(true, sid);
+        const msg = val.status === "partial"
+          ? `⚠️ Fichier « ${file.name} » chargé dans ${sid} (${val.warnings.length} ajustement(s)).`
+          : `✅ Fichier « ${file.name} » chargé dans ${sid}.`;
+        showToast(`⬆ ${file.name} chargé (${sid}) !`);
+        showSaveFeedback(sid, msg, wasExisting, false);
+      }
+    };
+    reader.onerror = () => {
+      showToast("❌ Erreur lors de la lecture du fichier.");
+      showSaveFeedback("", "❌ Erreur lors de la lecture du fichier.", false, true);
+    };
+    reader.readAsText(file);
+  }
+
   function formatPlayTime(sec) {
     const s = Math.max(0, Math.floor(sec));
     const h = Math.floor(s / 3600);
@@ -4213,13 +4296,15 @@
       btnSave.addEventListener("click", () => saveCurrentSlot(false, sid));
       actions.appendChild(btnSave);
 
-      const btnNew = document.createElement("button");
-      btnNew.type = "button";
-      btnNew.className = "save-btn new-game";
-      btnNew.textContent = "✨ Nouvelle";
-      btnNew.title = "Réinitialise la partie en cours à zéro et démarre une nouvelle partie sur cet emplacement";
-      btnNew.addEventListener("click", () => startNewGame(sid));
-      actions.appendChild(btnNew);
+      if (status === "empty") {
+        const btnNew = document.createElement("button");
+        btnNew.type = "button";
+        btnNew.className = "save-btn new-game";
+        btnNew.textContent = "✨ Nouvelle";
+        btnNew.title = "Réinitialise la partie en cours à zéro et démarre une nouvelle partie sur cet emplacement";
+        btnNew.addEventListener("click", () => startNewGame(sid));
+        actions.appendChild(btnNew);
+      }
 
       if (status !== "empty") {
         const btnDel = document.createElement("button");
@@ -4395,6 +4480,13 @@
   hubBiomesBtnEl.addEventListener("click", () => switchShipView("biomes"));
   hubSavesBtnEl.addEventListener("click", () => switchShipView("saves"));
   saveNowBtnEl.addEventListener("click", () => saveCurrentSlot(false, currentSlotId));
+  saveExportBtnEl.addEventListener("click", exportSaveToFile);
+  saveImportBtnEl.addEventListener("click", () => saveImportInputEl.click());
+  saveImportInputEl.addEventListener("change", () => {
+    const file = saveImportInputEl.files && saveImportInputEl.files[0];
+    saveImportInputEl.value = "";
+    if (file) importSaveFromFile(file);
+  });
   exitBtnEl.addEventListener("click", closeShipUI);
   slotAEl.addEventListener("mousedown", (e) => {
     if (e.button !== 0 || !slotA) return;
@@ -6383,6 +6475,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.1.2</div>
+<div id="version-badge" aria-hidden="true">v0.1.3</div>
 </body>
 </html>
