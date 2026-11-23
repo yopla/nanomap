@@ -12,7 +12,7 @@
 				"requiredExtension": "",
 				"type": "discovered_count"
 			},
-			"description": "Ajoute un mode visuel rétro monochrome pour l'alien, contrôlable à tout moment depuis le menu Paramètres.",
+			"description": "Ajoute un mode visuel rétro monochrome pour l'alien, contrôlable à tout moment depuis le menu Paramètres..",
 			"enabled": true,
 			"filename": "alien_noir_et_blanc.html",
 			"icon": "🎞️",
@@ -24,7 +24,7 @@
 			"announcementMode": "title_card",
 			"condition": {
 				"biomeId": "",
-				"count": 250,
+				"count": 100,
 				"elementId": "",
 				"expression": "",
 				"requiredExtension": "",
