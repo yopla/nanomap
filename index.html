@@ -3923,7 +3923,7 @@ function flushSpeechSync() {
 }
 
 function isSafeEmojiOnlyText(str) {
-  if (typeof str !== 'string' || !str.length || str.length > 20) return false;
+  if (typeof str !== 'string' || !str.length || str.length > 35) return false;
   // Rejette toute lettre/chiffre ASCII ou ponctuation texte (empêche l'injection de texte hors mode chat)
   if (/[A-Za-z0-9]/.test(str)) return false;
   return true;
@@ -4364,14 +4364,19 @@ function updateBotsAI(now) {
 let currentAuthToken = null;
 let hasDestroyedOnExit = false;
 let wasSocketConnected = false;
+let rtdbSocketConnected = false;
 let hasEverConnected = false;
+let isSwitchingHostAuth = false;
 let infoConnectedRef = null;
 let infoConnectedCb = null;
+let userValueRef = null;
 let userValueCb = null;
 let usersListenersAttached = false;
 let pendingRegisterAfterRateLimit = false;
 let pendingMoveTarget = null;
 let unifiedWriteRetryTimer = null;
+let registerRetryCount = 0;
+const MAX_REGISTER_RETRIES = 2;
 
 function getFirebaseMinDelay() {
   return Math.max(280, (Number(state.budget && state.budget.rateLimitMs) || 250) + 30);
@@ -4441,7 +4446,7 @@ function scheduleFirebaseWriteRetry(delayMs) {
         state.user.targetY = pendingMoveTarget.y;
         pendingMoveTarget = null;
       }
-      registerOrUpdatePlayerOnFirebase();
+      registerOrUpdatePlayerOnFirebase(registerRetryCount < MAX_REGISTER_RETRIES);
     } else if (pendingMoveTarget) {
       const tgt = pendingMoveTarget;
       pendingMoveTarget = null;
@@ -4663,6 +4668,15 @@ function setupConnectedMonitor() {
   infoConnectedRef = state.firebase.db.ref('.info/connected');
   infoConnectedCb = (snap) => {
     const connected = (snap.val() === true);
+    rtdbSocketConnected = connected;
+    if (isSwitchingHostAuth) {
+      if (!connected) {
+        state.firebase.connected = false;
+        wasSocketConnected = false;
+        state.hasInitiallyRegistered = false;
+      }
+      return;
+    }
     if (state.isPaused || state.isSleeping) {
       state.firebase.connected = false;
       wasSocketConnected = false;
@@ -4681,6 +4695,8 @@ function setupConnectedMonitor() {
       state.firebase.connected = false;
       wasSocketConnected = false;
       state.hasInitiallyRegistered = false;
+      state.lastSentTargetX = null;
+      state.lastSentTargetY = null;
       updateOnlineCounter();
       if (hadBeenConnected && !hasDestroyedOnExit && !document.hidden) {
         showToast('📡 Connection lost — creature removed, auto-reconnecting...', 'warning');
@@ -4758,6 +4774,10 @@ function initFirebase() {
             } else {
               currentAuthToken = null;
               teardownHostSessionSync();
+              if (userValueRef && userValueCb) {
+                userValueRef.off('value', userValueCb);
+                userValueRef = null;
+              }
               state.hostAuth.signedIn = false;
               state.hostAuth.email = '';
               state.hostAuth.uid = '';
@@ -4794,6 +4814,7 @@ function onFirebaseConnected(isReconnect = false) {
   if (state.isPaused || state.isSleeping || !state.firebase.db || !state.user || !state.user.id) return;
   if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.superseded) return;
 
+  registerRetryCount = 0;
   state.needsRemakeOnNextClick = false;
   updateOnlineCounter();
   if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
@@ -4807,10 +4828,11 @@ function onFirebaseConnected(isReconnect = false) {
   }
 
   // Détection si notre bestiole est purgée de Firebase (ex: via l'app Godot)
-  if (state.firebase.userRef && userValueCb) {
-    state.firebase.userRef.off('value', userValueCb);
+  if (userValueRef && userValueCb) {
+    userValueRef.off('value', userValueCb);
   }
-  state.firebase.userRef = state.firebase.db.ref('users/' + state.user.id);
+  userValueRef = state.firebase.db.ref('users/' + state.user.id);
+  state.firebase.userRef = userValueRef;
   userValueCb = (snap) => {
     if (snap.exists()) {
       state.hasInitiallyRegistered = true;
@@ -4834,7 +4856,7 @@ function onFirebaseConnected(isReconnect = false) {
       state.needsRemakeOnNextClick = true;
     }
   };
-  state.firebase.userRef.on('value', userValueCb);
+  userValueRef.on('value', userValueCb);
 
   pruneSelfDuplicates();
   if (isReconnect) {
@@ -5429,17 +5451,25 @@ function registerOrUpdatePlayerOnFirebase(retryOnDenied = true) {
   armOnDisconnectRemoval();
 
   const payload = buildUserFirebasePayload(true);
+  state.lastSentTargetX = payload.targetX;
+  state.lastSentTargetY = payload.targetY;
 
   state.firebase.db.ref('users/' + state.user.id).set(payload).then(() => {
+    registerRetryCount = 0;
     state.hasInitiallyRegistered = true;
     state.needsRemakeOnNextClick = false;
     state.firebase.lastActionTimestamp = Math.max(state.firebase.lastActionTimestamp, Date.now());
   }).catch((err) => {
     console.warn('Erreur set Firebase:', err);
-    if (retryOnDenied) {
+    state.lastSentTargetX = null;
+    state.lastSentTargetY = null;
+    if (retryOnDenied && registerRetryCount < MAX_REGISTER_RETRIES) {
+      registerRetryCount += 1;
       state.firebase.lastActionTimestamp = Date.now();
       pendingRegisterAfterRateLimit = true;
-      scheduleFirebaseWriteRetry(getFirebaseMinDelay() + 50);
+      scheduleFirebaseWriteRetry(getFirebaseMinDelay() * registerRetryCount + 50);
+    } else {
+      state.needsRemakeOnNextClick = true;
     }
   });
 
@@ -5462,10 +5492,11 @@ function pushMovement(targetX, targetY) {
 
   // Si la bestiole n'est pas encore enregistrée ou a été purgée de Firebase, on la recrée entièrement (en conservant son skin)
   if (state.needsRemakeOnNextClick || !state.hasInitiallyRegistered) {
+    registerRetryCount = 0;
     state.needsRemakeOnNextClick = false;
     state.user.targetX = targetX;
     state.user.targetY = targetY;
-    registerOrUpdatePlayerOnFirebase();
+    registerOrUpdatePlayerOnFirebase(true);
     return;
   }
 
@@ -5475,6 +5506,8 @@ function pushMovement(targetX, targetY) {
 
   const tgtX = Math.max(0, Math.min(WORLD_WIDTH, Math.round(targetX)));
   const tgtY = Math.max(0, Math.min(WORLD_HEIGHT, Math.round(targetY)));
+  state.lastSentTargetX = tgtX;
+  state.lastSentTargetY = tgtY;
   const payload = buildUserDiffPayload({
     targetX: tgtX,
     targetY: tgtY
@@ -5482,6 +5515,8 @@ function pushMovement(targetX, targetY) {
   state.firebase.db.ref('users/' + state.user.id).update(payload).then(() => {
     state.firebase.lastActionTimestamp = Math.max(state.firebase.lastActionTimestamp, Date.now());
   }).catch(() => {
+    state.lastSentTargetX = null;
+    state.lastSentTargetY = null;
     state.needsRemakeOnNextClick = true;
   });
 }
@@ -5542,8 +5577,9 @@ function onUserAdded(snap) {
   if (data.speech && typeof data.speech.text === 'string' && data.speech.text.length > 0) {
     const mode = data.speech.mode === 'chat' ? 'chat' : 'emoji';
     const maxAge = mode === 'chat' ? 6500 : 4000;
-    const age = Date.now() - (data.speech.timestamp || 0);
-    if (age < maxAge) {
+    const rawAge = getServerNowMs() - (data.speech.timestamp || 0);
+    const age = Math.max(0, rawAge);
+    if (rawAge >= -2000 && age < maxAge) {
       if (mode === 'chat' && state.chatMode && data.speech.text.length <= 60) {
         remoteC.speechBubble = {
           text: data.speech.text.substring(0, 60),
@@ -5630,8 +5666,9 @@ function onUserChanged(snap) {
   if (data.speech && typeof data.speech.text === 'string' && data.speech.text.length > 0) {
     const mode = data.speech.mode === 'chat' ? 'chat' : 'emoji';
     const maxAge = mode === 'chat' ? 6500 : 4000;
-    const age = Date.now() - (data.speech.timestamp || 0);
-    if (age < maxAge) {
+    const rawAge = getServerNowMs() - (data.speech.timestamp || 0);
+    const age = Math.max(0, rawAge);
+    if (rawAge >= -2000 && age < maxAge) {
       if (mode === 'chat' && state.chatMode && data.speech.text.length <= 60) {
         p.speechBubble = {
           text: data.speech.text.substring(0, 60),
@@ -6735,11 +6772,16 @@ function applyTransferredProfileToCurrentUser(prof) {
   saveToWindowName(buildStoredProfile());
 }
 
+let pauseOfflineTimer = null;
+
 function killAndPauseOldWindow(childWin, fallbackUrl) {
   state.isPaused = true;
   state.hasInitiallyRegistered = false;
   wasSocketConnected = false;
   state.firebase.connected = false;
+  state.lastSentTargetX = null;
+  state.lastSentTargetY = null;
+  teardownHostSessionSync();
 
   const pauseEl = document.getElementById('pauseOverlay');
   if (pauseEl) pauseEl.classList.add('active');
@@ -6756,18 +6798,22 @@ function killAndPauseOldWindow(childWin, fallbackUrl) {
   disableRemoteAvatarsSync(false);
   updateOnlineCounter();
 
-  let offlineTimer = null;
+  if (pauseOfflineTimer) {
+    clearTimeout(pauseOfflineTimer);
+    pauseOfflineTimer = null;
+  }
   const goOff = () => {
-    if (offlineTimer) {
-      clearTimeout(offlineTimer);
-      offlineTimer = null;
+    if (pauseOfflineTimer) {
+      clearTimeout(pauseOfflineTimer);
+      pauseOfflineTimer = null;
     }
     if (state.isPaused && state.firebase.db) {
       try { state.firebase.db.goOffline(); } catch (_) {}
     }
   };
-  offlineTimer = setTimeout(goOff, 350);
-  removeOwnFirebaseNodes(true).then(goOff).catch(goOff);
+  pauseOfflineTimer = setTimeout(goOff, 350);
+  // Annuler nos onDisconnect() AVANT goOffline() afin de ne pas supprimer la session du nouvel onglet sur le même UID
+  cancelOwnOnDisconnect().then(goOff).catch(goOff);
 
   if (popupCheckInterval) {
     clearInterval(popupCheckInterval);
@@ -6791,6 +6837,10 @@ function resumeCurrentWindow() {
     clearInterval(popupCheckInterval);
     popupCheckInterval = null;
   }
+  if (pauseOfflineTimer) {
+    clearTimeout(pauseOfflineTimer);
+    pauseOfflineTimer = null;
+  }
   if (activeFullscreenBlobUrl) {
     try { URL.revokeObjectURL(activeFullscreenBlobUrl); } catch (_) {}
     activeFullscreenBlobUrl = null;
@@ -6809,9 +6859,13 @@ function resumeCurrentWindow() {
     state.hasInitiallyRegistered = false;
     wasSocketConnected = false;
     try { state.firebase.db.goOnline(); } catch (_) {}
-    enableRemoteAvatarsSync();
-    if (state.firebase.connected) {
-      registerOrUpdatePlayerOnFirebase(true);
+    if (!state.budget || state.budget.syncRemoteAvatars !== false) {
+      enableRemoteAvatarsSync();
+    }
+    if (rtdbSocketConnected) {
+      wasSocketConnected = true;
+      state.firebase.connected = true;
+      onFirebaseConnected(true);
     }
   }
   updateOnlineCounter();
@@ -7124,13 +7178,18 @@ if (btnHostSignIn) {
       const curUser = state.firebase.auth.currentUser;
       if (curUser && curUser.isAnonymous && state.firebase.db) {
         const anonUid = curUser.uid;
-        try {
-          await state.firebase.db.ref('users/' + anonUid).onDisconnect().cancel();
-        } catch (_) {}
-        await state.firebase.db.ref('users/' + anonUid).remove().catch(() => {});
+        await Promise.all([
+          state.firebase.db.ref('users/' + anonUid).onDisconnect().cancel().catch(() => {}),
+          state.firebase.db.ref('presence/' + anonUid).onDisconnect().cancel().catch(() => {})
+        ]);
+        await Promise.all([
+          state.firebase.db.ref('users/' + anonUid).remove().catch(() => {}),
+          state.firebase.db.ref('presence/' + anonUid).remove().catch(() => {})
+        ]);
       }
 
-      // 2. Connexion avec le compte Hôte (Email / Mot de passe)
+      // 2. Connexion avec le compte Hôte (Email / Mot de passe) sans armer prématurément onDisconnect avant goOffline
+      isSwitchingHostAuth = true;
       state.hostAuth.superseded = false;
       state.hostAuth.sessionId = generateHostSessionId();
       state.hostAuth.autoRecoverCount = 0;
@@ -7140,16 +7199,26 @@ if (btnHostSignIn) {
         currentAuthToken = await cred.user.getIdToken(true);
       }
 
-      // 3. Reconnexion propre du WebSocket RTDB avec le nouveau token Hôte (sans rate-limit résiduel)
+      // 3. Reconnexion propre du WebSocket RTDB avec le nouveau token Hôte (sans rate-limit résiduel ni onDisconnect parasite)
       state.firebase.lastActionTimestamp = 0;
+      registerRetryCount = 0;
       if (state.firebase.db) {
         state.firebase.db.goOffline();
         setTimeout(() => {
+          isSwitchingHostAuth = false;
           try { state.firebase.db.goOnline(); } catch (_) {}
+          if (rtdbSocketConnected && !state.isSleeping && !state.isPaused) {
+            wasSocketConnected = true;
+            state.firebase.connected = true;
+            onFirebaseConnected(true);
+          }
         }, 180);
+      } else {
+        isSwitchingHostAuth = false;
       }
       showToast('⚫ Connecté en tant que Hôte Noir & Blanc !');
     } catch (err) {
+      isSwitchingHostAuth = false;
       console.warn('Erreur connexion Hôte:', err);
       const errMsg = (err && err.message) ? err.message : 'vérifiez email/mdp';
       showToast('❌ Échec connexion : ' + errMsg, 'warning');
@@ -7270,7 +7339,7 @@ function executeHostPurge(mode) {
 
   const cx = WORLD_WIDTH / 2;
   const cy = WORLD_HEIGHT / 2;
-  const nowMs = Date.now();
+  const nowMs = getServerNowMs();
   const inactiveLimitMs = 10 * 60 * 1000;
 
   state.firebase.db.ref('users').once('value').then((snap) => {
@@ -7501,6 +7570,9 @@ function enterSleepMode(reason, options = null) {
   state.hasInitiallyRegistered = false;
   wasSocketConnected = false;
   state.firebase.connected = false;
+  state.lastSentTargetX = null;
+  state.lastSentTargetY = null;
+  teardownHostSessionSync();
   savePlayerProfile();
 
   const isBg = !!(state.sleepReason && state.sleepReason.includes('arrière-plan'));
@@ -7583,12 +7655,13 @@ function wakeFromSleep() {
     state.hasInitiallyRegistered = false;
     wasSocketConnected = false;
     try { state.firebase.db.goOnline(); } catch (_) {}
-    enableRemoteAvatarsSync();
-    if (state.firebase.connected) {
-      if (IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn) {
-        claimHostSession();
-      }
-      registerOrUpdatePlayerOnFirebase(true);
+    if (!state.budget || state.budget.syncRemoteAvatars !== false) {
+      enableRemoteAvatarsSync();
+    }
+    if (rtdbSocketConnected) {
+      wasSocketConnected = true;
+      state.firebase.connected = true;
+      onFirebaseConnected(true);
     }
   }
   updateOnlineCounter();
@@ -7645,8 +7718,14 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('online', () => {
   if (!state.isSleeping && !state.isPaused && state.firebase.db) {
     try { state.firebase.db.goOnline(); } catch (_) {}
-    if (state.firebase.connected) {
-      registerOrUpdatePlayerOnFirebase(true);
+    if (rtdbSocketConnected) {
+      if (!state.firebase.connected) {
+        wasSocketConnected = true;
+        state.firebase.connected = true;
+        onFirebaseConnected(true);
+      } else {
+        registerOrUpdatePlayerOnFirebase(true);
+      }
     }
   }
 });
@@ -7672,6 +7751,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.8</div>
+<div class="version-badge">v0.99</div>
 </body>
 </html>
