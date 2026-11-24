@@ -1280,6 +1280,7 @@ const BUDGET_CONFIG = /*BUDGET_CONFIG_JSON*/{
 	"globalRechargeAmount": 3,
 	"globalRechargeSec": 2.0,
 	"rateLimitMs": 250,
+	"remoteGhostTimeoutSec": 360,
 	"sleepAfkSec": 300,
 	"sleepBackgroundSec": 60,
 	"userMax": 15,
@@ -1990,6 +1991,12 @@ function updateCreatureSwing(c, dt) {
 
 function updateCreature(c, dt) {
   const wasMoving = !!(c.isMoving || c.isSwimming);
+  if (c.appearAnim) {
+    c.appearAnim.elapsed += dt;
+    if (c.appearAnim.elapsed >= c.appearAnim.duration) {
+      c.appearAnim = null;
+    }
+  }
   updateCreatureSwing(c, dt);
   if (c.type === 'C') updatePhysicsC(c, dt);
   else if (c.type === 'F') updatePhysicsF(c, dt);
@@ -2535,9 +2542,28 @@ function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
   const isFaded = !isMe && creature.online === false && (!state.budget || state.budget.fadeInactive !== false);
   const isMonochrome = creature.monochrome === true || (isMe && IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn && state.hostAuth.monochrome === true);
   creature._mono = isMonochrome;
-  if (isFaded) {
+  const appear = showLabel ? creature.appearAnim : null;
+  const needsTransform = isFaded || !!appear;
+  if (needsTransform) {
     ctx.save();
-    ctx.globalAlpha *= 0.42;
+    if (isFaded) {
+      ctx.globalAlpha *= 0.42;
+    }
+    if (appear) {
+      const t = Math.max(0, Math.min(1, appear.elapsed / appear.duration));
+      const inv = 1 - t;
+      const easeOut = 1 - inv * inv * inv;
+      const alpha = Math.min(1, t / 0.55);
+      // Pop-in doux avec léger dépassement élastique (inverse de la rétractation vanish)
+      const overshoot = Math.sin(t * Math.PI) * 0.08 * inv;
+      const scale = 0.38 + 0.62 * easeOut + overshoot;
+      const rot = inv * inv * 0.32 * appear.spinDir;
+      ctx.globalAlpha *= alpha;
+      ctx.translate(creature.x, creature.y);
+      ctx.rotate(rot);
+      ctx.scale(scale, scale);
+      ctx.translate(-creature.x, -creature.y);
+    }
   }
   try {
     if (isMonochrome && showLabel) {
@@ -2586,7 +2612,7 @@ function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
     else if (creature.type === 'G') drawCreatureG(ctx, creature, isMe, showLabel);
     else drawCreatureH(ctx, creature, isMe, showLabel);
   } finally {
-    if (isFaded) ctx.restore();
+    if (needsTransform) ctx.restore();
   }
 }
 
@@ -3331,6 +3357,7 @@ const state = {
   ripples: [],
   swingWaveHits: [],
   vanishEffects: [],
+  appearEffects: [],
   camera: {
     x: WORLD_WIDTH / 2,
     y: WORLD_HEIGHT / 2,
@@ -3360,11 +3387,13 @@ const state = {
     globalRechargeAmount: BUDGET_CONFIG.globalRechargeAmount || 1,
     globalRechargeSec: BUDGET_CONFIG.globalRechargeSec || 3.0,
     globalCredits: BUDGET_CONFIG.globalMax || 105,
+    lastGlobalRefillTime: performance.now(),
     deadzone: (typeof BUDGET_CONFIG.deadzone === 'number') ? BUDGET_CONFIG.deadzone : 15.0,
     rateLimitMs: BUDGET_CONFIG.rateLimitMs || 250,
     followSyncIntervalMs: BUDGET_CONFIG.followSyncIntervalMs || 1000,
     sleepBackgroundSec: BUDGET_CONFIG.sleepBackgroundSec || 60,
-    sleepAfkSec: BUDGET_CONFIG.sleepAfkSec || 300
+    sleepAfkSec: BUDGET_CONFIG.sleepAfkSec || 300,
+    remoteGhostTimeoutSec: (typeof BUDGET_CONFIG.remoteGhostTimeoutSec === 'number') ? BUDGET_CONFIG.remoteGhostTimeoutSec : 360
   },
   firebase: {
     app: null,
@@ -4301,6 +4330,7 @@ function initWorld() {
   state.camera.zoom = Math.max(1.0, initMinZoom);
   state.camera.targetZoom = state.camera.zoom;
   clampCamera();
+  spawnAppearEffect(state.user);
   savePlayerProfile();
   renderExpressionChoices();
 
@@ -4336,7 +4366,9 @@ function syncBotPopulation(regenerateAll = false) {
       ? CREATURE_TYPES[state.bots.length % 4]
       : state.typeFilter;
     const botSeed = Math.floor(Math.random() * 0xFFFFFF);
-    state.bots.push(createCreature(x, y, forcedType, false, null, botSeed));
+    const bot = createCreature(x, y, forcedType, false, null, botSeed);
+    state.bots.push(bot);
+    spawnAppearEffect(bot);
   }
   if (state.bots.length > state.targetBotCount) {
     for (let i = state.targetBotCount; i < state.bots.length; i++) {
@@ -4496,9 +4528,12 @@ function pruneSelfDuplicates() {
 
     // 2. Nettoyage des fantômes distants abandonnés :
     // - Hors ligne depuis plus de 2 minutes (120 000 ms)
-    // - Ou aucune mise à jour depuis plus de 6 minutes (360 000 ms)
+    // - Ou aucune mise à jour depuis plus de remoteGhostTimeoutSec (défaut 6 min / 360 s, 0 = désactivé)
+    const ghostTimeoutMs = (typeof state.budget.remoteGhostTimeoutSec === 'number')
+      ? state.budget.remoteGhostTimeoutSec * 1000
+      : 360000;
     const elapsedSinceLastSeen = p.lastSeenAt ? (now - p.lastSeenAt) : 0;
-    if ((p.online === false && elapsedSinceLastSeen > 120000) || (elapsedSinceLastSeen > 360000)) {
+    if ((p.online === false && elapsedSinceLastSeen > 120000) || (ghostTimeoutMs > 0 && elapsedSinceLastSeen > ghostTimeoutMs)) {
       if (state.targetFollowCreature && state.targetFollowCreature.id === uid) {
         state.targetFollowCreature = null;
         closeExpressionMenu();
@@ -4555,6 +4590,7 @@ function disableRemoteAvatarsSync(clearRemotePlayers = false) {
   if (clearRemotePlayers) {
     state.players = {};
     state.vanishEffects.length = 0;
+    state.appearEffects.length = 0;
     if (state.targetFollowCreature && state.targetFollowCreature !== state.user) {
       state.targetFollowCreature = null;
       closeExpressionMenu();
@@ -5154,6 +5190,128 @@ function drawVanishEffects(ctx) {
   ctx.restore();
 }
 
+const APPEAR_DURATION = 0.62;
+const APPEAR_MAX_ACTIVE = 32;
+
+function spawnAppearEffect(creature) {
+  if (!creature || !state.appearEffects || state.isPaused || state.isSleeping) return;
+  if (typeof creature.x !== 'number' || typeof creature.y !== 'number') return;
+  // Culling viewport : si la créature apparaît hors-écran, 0 coût CPU/GPU
+  if (!isWorldPointVisible(creature.x, creature.y, 110)) return;
+
+  const spinDir = Math.random() < 0.5 ? -1 : 1;
+  creature.appearAnim = {
+    elapsed: 0,
+    duration: APPEAR_DURATION * 0.72,
+    spinDir: spinDir
+  };
+
+  const list = state.appearEffects;
+  if (list.length >= APPEAR_MAX_ACTIVE) {
+    list.shift();
+  }
+
+  const sparkCount = list.length > 14 ? 3 : 6;
+  const sparks = new Array(sparkCount);
+  const baseAngle = Math.random() * Math.PI * 2;
+  for (let i = 0; i < sparkCount; i++) {
+    const a = baseAngle + (i / sparkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.55;
+    const dist = 24 + Math.random() * 26;
+    sparks[i] = {
+      vx: Math.cos(a) * dist,
+      vy: Math.sin(a) * dist,
+      r: 2.0 + Math.random() * 2.2
+    };
+  }
+
+  const isMono = creature.monochrome === true || creature._mono === true;
+  const hue = (creature.genome && typeof creature.genome.hue === 'number')
+    ? Math.round(creature.genome.hue)
+    : (VANISH_TYPE_HUES[creature.type] || 199);
+
+  list.push({
+    x: creature.x,
+    y: creature.y,
+    elapsed: 0,
+    duration: APPEAR_DURATION,
+    hue: hue,
+    mono: isMono,
+    baseRadius: creature.type === 'H' ? 24 : 20,
+    sparks: sparks
+  });
+}
+
+function updateAppearEffects(dt) {
+  const list = state.appearEffects;
+  if (!list || !list.length) return;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const e = list[i];
+    e.elapsed += dt;
+    if (e.elapsed >= e.duration) {
+      list.splice(i, 1);
+    }
+  }
+}
+
+function drawAppearEffects(ctx) {
+  const list = state.appearEffects;
+  if (!list || !list.length) return;
+
+  ctx.save();
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    const t = Math.min(1, e.elapsed / e.duration);
+    const inv = 1 - t;
+    const easeOut = 1 - inv * inv;
+    const x = e.x;
+    const y = e.y;
+
+    // Petit coeur lumineux qui éclôt puis s'estompe
+    if (t < 0.5) {
+      const ct = Math.sin((t / 0.5) * Math.PI);
+      const coreR = Math.max(1.5, e.baseRadius * (0.32 + 0.42 * (t / 0.5)));
+      ctx.fillStyle = e.mono
+        ? `rgba(248, 250, 252, ${(ct * 0.34).toFixed(3)})`
+        : `hsla(${e.hue}, 92%, 80%, ${(ct * 0.32).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, coreR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Anneau concentrique d'émergence
+    const ringR = e.baseRadius * 0.45 + easeOut * 34;
+    ctx.strokeStyle = e.mono
+      ? `rgba(241, 245, 249, ${(0.72 * inv * inv).toFixed(3)})`
+      : `hsla(${e.hue}, 90%, 74%, ${(0.72 * inv * inv).toFixed(3)})`;
+    ctx.lineWidth = 2.0 * inv + 0.45;
+    ctx.beginPath();
+    ctx.arc(x, y, ringR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Spores bioluminescentes qui convergent vers la créature (miroir du vanish)
+    const sparks = e.sparks;
+    if (sparks && sparks.length) {
+      const sparkAlpha = Math.sin(t * Math.PI) * 0.85;
+      ctx.fillStyle = e.mono
+        ? `rgba(248, 250, 252, ${sparkAlpha.toFixed(3)})`
+        : `hsla(${e.hue}, 95%, 80%, ${sparkAlpha.toFixed(3)})`;
+      ctx.beginPath();
+      const converge = 1 - easeOut;
+      const sizeScale = 0.35 + 0.65 * Math.sin(t * Math.PI);
+      for (let j = 0; j < sparks.length; j++) {
+        const sp = sparks[j];
+        const sx = x + sp.vx * converge;
+        const sy = y + sp.vy * converge;
+        const sr = sp.r * sizeScale;
+        ctx.moveTo(sx + sr, sy);
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
 function applySwingWaveToCreatures(wave) {
   if (!wave || !wave.triggeredIds) return;
   const r = wave.currentRadius;
@@ -5407,10 +5565,31 @@ function setupGlobalBudgetSync() {
   budgetRef.on('value', (snap) => {
     const val = snap.val();
     if (val) {
-      if (typeof val.globalMax === 'number') state.budget.globalMax = val.globalMax;
+      if (typeof val.globalMax === 'number') {
+        state.budget.globalMax = val.globalMax;
+        state.budget.globalCredits = Math.min(state.budget.globalCredits, state.budget.globalMax);
+      }
       if (typeof val.globalRechargeAmount === 'number') state.budget.globalRechargeAmount = val.globalRechargeAmount;
       if (typeof val.globalRechargeSec === 'number') state.budget.globalRechargeSec = val.globalRechargeSec;
-      if (typeof val.globalCredits === 'number') state.budget.globalCredits = val.globalCredits;
+      if (typeof val.globalCredits === 'number') {
+        let syncedGlobal = Math.min(state.budget.globalMax, Math.max(0, val.globalCredits));
+        const gRate = Math.max(0.1, state.budget.globalRechargeSec || 3.0);
+        const gQty = state.budget.globalRechargeAmount || 1;
+        const nowPerf = performance.now();
+        if (typeof val.lastGlobalUpdate === 'number' && val.lastGlobalUpdate > 0) {
+          const elapsedSec = Math.max(0, (getServerNowMs() - val.lastGlobalUpdate) / 1000);
+          if (elapsedSec >= gRate) {
+            const catchupSteps = Math.floor(elapsedSec / gRate);
+            syncedGlobal = Math.min(state.budget.globalMax, syncedGlobal + catchupSteps * gQty);
+            state.budget.lastGlobalRefillTime = nowPerf - (elapsedSec % gRate) * 1000;
+          } else {
+            state.budget.lastGlobalRefillTime = nowPerf - elapsedSec * 1000;
+          }
+        } else {
+          state.budget.lastGlobalRefillTime = nowPerf;
+        }
+        state.budget.globalCredits = syncedGlobal;
+      }
       if (typeof val.userMax === 'number') {
         state.budget.userMax = val.userMax;
         state.budget.userCredits = Math.min(state.budget.userCredits, state.budget.userMax);
@@ -5423,6 +5602,7 @@ function setupGlobalBudgetSync() {
       if (typeof val.rateLimitMs === 'number') state.budget.rateLimitMs = val.rateLimitMs;
       if (typeof val.sleepBackgroundSec === 'number') state.budget.sleepBackgroundSec = val.sleepBackgroundSec;
       if (typeof val.sleepAfkSec === 'number') state.budget.sleepAfkSec = val.sleepAfkSec;
+      if (typeof val.remoteGhostTimeoutSec === 'number') state.budget.remoteGhostTimeoutSec = val.remoteGhostTimeoutSec;
       if (typeof val.fadeInactive === 'boolean') state.budget.fadeInactive = val.fadeInactive;
       if (typeof val.syncRemoteAvatars === 'boolean') {
         state.budget.syncRemoteAvatars = val.syncRemoteAvatars;
@@ -5609,6 +5789,7 @@ function onUserAdded(snap) {
   }
 
   state.players[uid] = remoteC;
+  spawnAppearEffect(remoteC);
   updateOnlineCounter();
 }
 
@@ -5730,12 +5911,25 @@ function onUserRemoved(snap) {
 function updateBudgetUi() {
   const now = performance.now();
   const dt = (now - state.budget.lastUserRefillTime) / 1000;
-  const userRate = state.budget.userRechargeSec || 2.0;
+  const userRate = Math.max(0.1, state.budget.userRechargeSec || 2.0);
   const userQty = state.budget.userRechargeAmount || 1;
   if (dt >= userRate) {
     const steps = Math.floor(dt / userRate);
     state.budget.userCredits = Math.min(state.budget.userMax, state.budget.userCredits + steps * userQty);
     state.budget.lastUserRefillTime = now - (dt % userRate) * 1000;
+  }
+
+  // Recharge locale optimiste de l'énergie réseau (au taux Firebase) si l'app Godot n'est pas lancée
+  const gRate = Math.max(0.1, state.budget.globalRechargeSec || 3.0);
+  const gQty = state.budget.globalRechargeAmount || 1;
+  if (typeof state.budget.lastGlobalRefillTime !== 'number') {
+    state.budget.lastGlobalRefillTime = now;
+  }
+  const dtG = (now - state.budget.lastGlobalRefillTime) / 1000;
+  if (dtG >= gRate) {
+    const stepsG = Math.floor(dtG / gRate);
+    state.budget.globalCredits = Math.min(state.budget.globalMax, state.budget.globalCredits + stepsG * gQty);
+    state.budget.lastGlobalRefillTime = now - (dtG % gRate) * 1000;
   }
 
   const uNum = document.getElementById('userBudgetNum');
@@ -5758,8 +5952,6 @@ function updateBudgetUi() {
     gBar.style.width = `${pctG}%`;
     const boxG = gNum.closest('.budget-box');
     if (boxG) {
-      const gQty = state.budget.globalRechargeAmount || 1;
-      const gRate = state.budget.globalRechargeSec || 3.0;
       boxG.title = `Network Energy: +${gQty} every ${gRate.toFixed(1)}s`;
     }
   }
@@ -5772,6 +5964,13 @@ function updateBudgetUi() {
 
 function consumeActionToken() {
   if (state.budget.userCredits >= 1) {
+    const now = performance.now();
+    if (state.budget.userCredits >= state.budget.userMax) {
+      state.budget.lastUserRefillTime = now;
+    }
+    if (state.budget.globalCredits >= state.budget.globalMax) {
+      state.budget.lastGlobalRefillTime = now;
+    }
     state.budget.userCredits -= 1;
     state.budget.globalCredits = Math.max(0, state.budget.globalCredits - 1);
     updateBudgetUi();
@@ -6025,6 +6224,7 @@ function gameLoop(now) {
     updateSwingWave(dt);
     updateSwingWaveHits(dt);
     updateVanishEffects(dt);
+    updateAppearEffects(dt);
     updateCreature(state.user, dt);
 
     for (const uid in state.players) {
@@ -6177,6 +6377,7 @@ function gameLoop(now) {
   drawSwingWave(ctx, now);
   drawSwingWaveHits(ctx, now);
   drawVanishEffects(ctx);
+  drawAppearEffects(ctx);
 
   // Bots autonomes
   for (const bot of state.bots) {
@@ -6624,6 +6825,7 @@ function rollNewRandomCreature(isInitialOrReset = false) {
 
   savePlayerProfile();
   updateHudUI();
+  spawnAppearEffect(state.user);
 
   // Particules d'émergence
   for (let i = 0; i < 16; i++) {
@@ -7730,6 +7932,7 @@ function wakeFromSleep() {
       onFirebaseConnected(true);
     }
   }
+  if (state.user) spawnAppearEffect(state.user);
   updateOnlineCounter();
   showToast(wasSuperseded ? '🔁 Session Hôte reprise sur cet appareil !' : '⚡ Session reactivated — creature recreated!');
 }
@@ -7817,6 +8020,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.1</div>
+<div class="version-badge">v0.11</div>
 </body>
 </html>
