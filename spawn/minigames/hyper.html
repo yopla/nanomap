@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Dérive Hyper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); cursor: none; touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "hyper",
+  "name": "Dérive Hyper",
+  "family": "topMouseMut",
+  "icon": "🌌",
+  "controls": "Éloigner le curseur pour pousser (3 paliers de vitesse), rapprocher pour freiner",
+  "description": "Navigation spatiale à poussée progressive sur grille parallaxe infinie avec radar de secteurs.",
+  "goal": "Collecter les 8 balises hyperespace avant la fin du chrono sans détruire votre bouclier !",
+  "fields": [
+    { "key": "beaconCount", "label": "Balises à collecter", "type": "number", "default": 8 },
+    { "key": "durationSec", "label": "Durée (sec)", "type": "number", "default": 42 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🌌 <b>Dérive Hyper</b></span>
+  <span id="stat">Balises: 0/8 • 42s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "hyper";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const SECTOR = 512;
+const WORLD_RAD = 1450;
+
+let mouse = { x: 256, y: 256 };
+let camx = -256, camy = -256;
+let cx = 0, cy = 0, vx = 0, vy = 0, ang = 0, gear = 0;
+let beacons = [], mines = [], trail = [];
+let hp = 3, invuln = 0, timeLeft = 42, score = 0, won = false, over = false;
+let targetCount = 8;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+function setM(e) {
+  const r = cv.getBoundingClientRect();
+  mouse.x = (e.clientX - r.left) * (512 / r.width);
+  mouse.y = (e.clientY - r.top) * (512 / r.height);
+}
+cv.addEventListener("pointermove", setM);
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  setM(e);
+});
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  targetCount = Math.max(3, Number(custom.beaconCount) || 8);
+  timeLeft = Math.max(15, Number(custom.durationSec) || 42);
+  score = 0; hp = 3; invuln = 0; won = false; over = false;
+  cx = 0; cy = 0; vx = 0; vy = 0; ang = 0; gear = 0;
+  camx = -256; camy = -256;
+  mouse = { x: 256, y: 256 };
+  trail = [];
+
+  beacons = [];
+  for (let i = 0; i < targetCount; i++) {
+    const a = (i / targetCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.45;
+    const dist = 340 + (i % 3) * 320 + Math.random() * 140;
+    beacons.push({ x: Math.cos(a) * dist, y: Math.sin(a) * dist, got: false, pulse: Math.random() * 6.28 });
+  }
+
+  mines = [];
+  for (let i = 0; i < 18; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const dist = 260 + Math.random() * (WORLD_RAD - 320);
+    const ma = Math.random() * Math.PI * 2;
+    const spd = 25 + Math.random() * 45;
+    mines.push({ x: Math.cos(a) * dist, y: Math.sin(a) * dist, vx: Math.cos(ma) * spd, vy: Math.sin(ma) * spd, r: 16 });
+  }
+}
+
+function drawGrid(sx, sy, step, color, lw) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lw;
+  let kx = Math.floor(sx / step) * step - sx;
+  if (kx < 0) kx += step;
+  for (let x = kx; x <= 512; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke();
+  }
+  let ky = Math.floor(sy / step) * step - sy;
+  if (ky < 0) ky += step;
+  for (let y = ky; y <= 512; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(512, y); ctx.stroke();
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const f = dt * 60;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+    if (timeLeft <= 0) over = true;
+
+    const wmx = camx + mouse.x;
+    const wmy = camy + mouse.y;
+    ang = Math.atan2(wmy - cy, wmx - cx);
+    const d = Math.hypot(wmx - cx, wmy - cy);
+
+    gear = 0;
+    if (d > 80) {
+      let ms = 0.14; gear = 1;
+      if (d > 140) { ms = 0.28; gear = 2; }
+      if (d > 210) { ms = 0.44; gear = 3; }
+      vx += Math.cos(ang) * ms * f;
+      vy += Math.sin(ang) * ms * f;
+    } else if (d < 70) {
+      const brake = Math.pow(0.90, f);
+      vx *= brake; vy *= brake;
+      gear = -1;
+    }
+
+    const drag = Math.pow(0.988, f);
+    vx *= drag; vy *= drag;
+    cx += vx * f; cy += vy * f;
+
+    // Soft world boundary
+    const distOrigin = Math.hypot(cx, cy);
+    if (distOrigin > WORLD_RAD) {
+      const nx = cx / distOrigin, ny = cy / distOrigin;
+      cx = nx * WORLD_RAD; cy = ny * WORLD_RAD;
+      vx -= nx * 2; vy -= ny * 2;
+    }
+
+    const camLerp = 1 - Math.pow(0.9, f);
+    camx += (cx - (camx + 256)) * camLerp;
+    camy += (cy - (camy + 256)) * camLerp;
+
+    trail.push({ x: cx, y: cy, a: 1 });
+    if (trail.length > 26) trail.shift();
+    for (const t of trail) t.a -= dt * 2.2;
+
+    for (const b of beacons) {
+      b.pulse += dt * 4;
+      if (!b.got && Math.hypot(b.x - cx, b.y - cy) < 34) {
+        b.got = true;
+        score += 45;
+      }
+    }
+
+    for (const m of mines) {
+      m.x += m.vx * dt; m.y += m.vy * dt;
+      if (Math.hypot(m.x, m.y) > WORLD_RAD - 40) { m.vx *= -1; m.vy *= -1; }
+      const dm = Math.hypot(m.x - cx, m.y - cy);
+      if (dm < m.r + 16 && invuln <= 0) {
+        hp--;
+        invuln = 1.1;
+        const nx = (cx - m.x) / (dm || 1), ny = (cy - m.y) / (dm || 1);
+        vx = nx * 8; vy = ny * 8;
+        if (hp <= 0) over = true;
+      }
+    }
+
+    if (beacons.every(b => b.got)) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 6 + hp * 25);
+    }
+  }
+
+  const gotN = beacons.filter(b => b.got).length;
+  document.getElementById("stat").textContent = `Balises: ${gotN}/${targetCount} • 🛡️${hp} • ${Math.ceil(timeLeft)}s • Score ${score}`;
+
+  // Background & 2-layer parallax grid from hyper.as
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+  drawGrid(camx * 0.5, camy * 0.5, 256, "rgba(56,214,255,0.10)", 1);
+  drawGrid(camx, camy, 256, "rgba(56,214,255,0.24)", 1.5);
+
+  // World border circle
+  ctx.beginPath();
+  ctx.arc(-camx, -camy, WORLD_RAD, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(248,113,113,0.35)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Trail
+  for (const t of trail) {
+    if (t.a <= 0) continue;
+    ctx.beginPath();
+    ctx.arc(t.x - camx, t.y - camy, 4 * t.a, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(56,214,255,${t.a * 0.45})`;
+    ctx.fill();
+  }
+
+  // Mines
+  for (const m of mines) {
+    const sx = m.x - camx, sy = m.y - camy;
+    if (sx < -30 || sx > 542 || sy < -30 || sy > 542) continue;
+    ctx.beginPath();
+    ctx.arc(sx, sy, m.r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(248,113,113,0.25)";
+    ctx.fill();
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx - 6, sy - 6); ctx.lineTo(sx + 6, sy + 6);
+    ctx.moveTo(sx + 6, sy - 6); ctx.lineTo(sx - 6, sy + 6);
+    ctx.stroke();
+  }
+
+  // Beacons & offscreen edge pointers
+  for (const b of beacons) {
+    if (b.got) continue;
+    const sx = b.x - camx, sy = b.y - camy;
+    if (sx >= -24 && sx <= 536 && sy >= -24 && sy <= 536) {
+      const r = 14 + Math.sin(b.pulse) * 3;
+      ctx.beginPath(); ctx.arc(sx, sy, r + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(253,224,71,0.35)"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx, sy, 12, 0, Math.PI * 2);
+      ctx.fillStyle = "#fde047"; ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+    } else {
+      const a = Math.atan2(sy - 256, sx - 256);
+      const ex = 256 + Math.cos(a) * 238, ey = 256 + Math.sin(a) * 238;
+      ctx.save(); ctx.translate(ex, ey); ctx.rotate(a);
+      ctx.fillStyle = "#fde047";
+      ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-6, -5); ctx.lineTo(-6, 5); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Ship (cx, cy)
+  const kx = cx - camx, ky = cy - camy;
+  if (invuln <= 0 || Math.floor(invuln * 16) % 2 === 0) {
+    if (gear > 0) {
+      ctx.beginPath();
+      ctx.moveTo(kx - Math.cos(ang) * 16, ky - Math.sin(ang) * 16);
+      ctx.lineTo(kx - Math.cos(ang) * (20 + gear * 9), ky - Math.sin(ang) * (20 + gear * 9));
+      ctx.strokeStyle = gear === 3 ? "#f472b6" : gear === 2 ? "#fde047" : "#38d6ff";
+      ctx.lineWidth = 4 + gear;
+      ctx.stroke();
+    } else if (gear === -1) {
+      ctx.beginPath(); ctx.arc(kx, ky, 23, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(74,222,128,0.6)"; ctx.lineWidth = 2; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(kx, ky, 16, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(56,214,255,0.22)"; ctx.fill();
+    ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(kx, ky);
+    ctx.lineTo(kx + Math.cos(ang) * 16, ky + Math.sin(ang) * 16);
+    ctx.strokeStyle = "#e6f4ff"; ctx.lineWidth = 2.5; ctx.stroke();
+  }
+
+  // Crosshair
+  ctx.strokeStyle = gear === 3 ? "#f472b6" : gear > 0 ? "#38d6ff" : "#4ade80";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(mouse.x, mouse.y - 9); ctx.lineTo(mouse.x, mouse.y + 9);
+  ctx.moveTo(mouse.x - 9, mouse.y); ctx.lineTo(mouse.x + 9, mouse.y);
+  ctx.stroke();
+
+  // Sector radar minimap (top-left, inspired by hyper.as)
+  const mw = 84, mx0 = 10, my0 = 10;
+  ctx.fillStyle = "rgba(10,14,24,0.82)";
+  ctx.fillRect(mx0, my0, mw, mw);
+  ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 1.5;
+  ctx.strokeRect(mx0, my0, mw, mw);
+  const sc = (mw * 0.44) / WORLD_RAD;
+  for (const m of mines) {
+    ctx.fillStyle = "rgba(248,113,113,0.7)";
+    ctx.fillRect(mx0 + mw / 2 + m.x * sc - 1, my0 + mw / 2 + m.y * sc - 1, 2.5, 2.5);
+  }
+  for (const b of beacons) {
+    if (b.got) continue;
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath();
+    ctx.arc(mx0 + mw / 2 + b.x * sc, my0 + mw / 2 + b.y * sc, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#38d6ff";
+  ctx.beginPath();
+  ctx.arc(mx0 + mw / 2 + cx * sc, my0 + mw / 2 + cy * sc, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "BALISES COLLECTÉES !" : (hp <= 0 ? "BOUCLIER DÉTRUIT" : "TEMPS ÉCOULÉ"), 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

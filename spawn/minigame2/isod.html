@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Forêt de Piliers (IsoD)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "isod",
+  "name": "Forêt de Piliers (IsoD)",
+  "family": "topOrthoClav",
+  "icon": "🏛️",
+  "controls": "Flèches / ZQSD (ou maintenir clic/doigt sur le sol isométrique)",
+  "description": "Navigation isométrique en losange dans une forêt de piliers fil de fer avec curseur au sol.",
+  "goal": "Récolter les 8 cristaux dorés en évitant les sentinelles rouges.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 55 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🏛️ <b>Forêt IsoD</b></span>
+  <span id="stat">Cristaux: 0/8 • ♥♥♥ • 55s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "isod";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const MW = 28, MH = 28, CW = 32, CH = 32, RENDW = 256;
+let vecGrid = new Int16Array(MW * MH);
+let cx = 256, cy = 16, cz = 256;
+let camx = 0, camz = 0;
+let keys = {}, down = false, mx = 256, my = 256;
+let crystals = [], sentinels = [];
+let hp = 3, invuln = 0, timeLeft = 55, score = 0, won = false, over = false, pulse = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  down = true; const p = getPos(e); mx = p.x; my = p.y;
+});
+cv.addEventListener("pointermove", (e) => { const p = getPos(e); mx = p.x; my = p.y; });
+window.addEventListener("pointerup", () => { down = false; });
+
+function getTile(ax, az) {
+  if (ax < 0 || ax >= MW || az < 0 || az >= MH) return 70;
+  return vecGrid[az * MW + ax];
+}
+function isWall(ax, az) {
+  return getTile(Math.floor(ax / CW), Math.floor(az / CH)) > 0;
+}
+
+// Exact isoD.as diamond isometric projection
+function proj(ax, ay, az) {
+  const x = ax - camx, z = az - camz;
+  return { sx: x - z + RENDW, sy: x * 0.5 + z * 0.5 - ay + 64 };
+}
+
+// Exact isoD.as inverse isometric floor picking
+function screenToWorld(sx, sy) {
+  const adjY = sy - 64;
+  const az = (2 * adjY - (sx - RENDW)) * 0.5;
+  const ax = (sx - RENDW) + az;
+  return { x: ax + camx, z: az + camz };
+}
+
+function findOpenCell(minDist) {
+  for (let tries = 0; tries < 100; tries++) {
+    const gx = 2 + Math.floor(Math.random() * (MW - 4));
+    const gz = 2 + Math.floor(Math.random() * (MH - 4));
+    if (getTile(gx, gz) === 0) {
+      const wx = gx * CW + CW * 0.5, wz = gz * CH + CH * 0.5;
+      if (Math.hypot(wx - cx, wz - cz) >= minDist) return { x: wx, z: wz };
+    }
+  }
+  return { x: cx + 64, z: cz + 64 };
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 55;
+  hp = 3; invuln = 0; score = 0; won = false; over = false;
+  vecGrid.fill(0);
+
+  // Scatter pillars (faithful to isoD.as random pillar grid)
+  for (let i = 0; i < 115; i++) {
+    const gx = Math.floor(Math.random() * MW);
+    const gz = Math.floor(Math.random() * MH);
+    vecGrid[gz * MW + gx] = 52 + Math.floor(Math.random() * 28);
+  }
+  // Clear spawn area at center
+  const scx = Math.floor(MW / 2), scz = Math.floor(MH / 2);
+  for (let dz = -2; dz <= 2; dz++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      vecGrid[(scz + dz) * MW + (scx + dx)] = 0;
+    }
+  }
+  cx = scx * CW + 16; cz = scz * CH + 16; cy = 16;
+  camx = cx - 220; camz = cz - 220;
+
+  crystals = [];
+  for (let i = 0; i < 8; i++) {
+    const pos = findOpenCell(90);
+    crystals.push({ x: pos.x, z: pos.z, done: false });
+  }
+  sentinels = [];
+  for (let i = 0; i < 3; i++) {
+    const pos = findOpenCell(180);
+    const a = Math.random() * Math.PI * 2;
+    sentinels.push({ x: pos.x, z: pos.z, vx: Math.cos(a) * 85, vz: Math.sin(a) * 85 });
+  }
+}
+
+function drawBox(ax, ay, az, bx, by, bz, stroke, fillTop, lw) {
+  const p = [
+    proj(ax, ay, az), proj(bx, ay, az), proj(bx, ay, bz), proj(ax, ay, bz),
+    proj(ax, by, az), proj(bx, by, az), proj(bx, by, bz), proj(ax, by, bz)
+  ];
+  if (fillTop) {
+    ctx.beginPath();
+    ctx.moveTo(p[4].sx, p[4].sy); ctx.lineTo(p[5].sx, p[5].sy);
+    ctx.lineTo(p[6].sx, p[6].sy); ctx.lineTo(p[7].sx, p[7].sy);
+    ctx.closePath();
+    ctx.fillStyle = fillTop; ctx.fill();
+  }
+  const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.2;
+  ctx.beginPath();
+  for (const [u, v] of edges) {
+    ctx.moveTo(p[u].sx, p[u].sy); ctx.lineTo(p[v].sx, p[v].sy);
+  }
+  ctx.stroke();
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  pulse += dt * 4;
+  const wCursor = screenToWorld(mx, my);
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) { over = true; won = false; }
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+
+    let kx = 0, kz = 0;
+    const ms = 165 * dt;
+    // Exact isoD.as diagonal-aligned isometric controls
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) { kz -= 1; kx -= 1; }
+    if (keys.ArrowDown || keys.KeyS) { kz += 1; kx += 1; }
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) { kx -= 1; kz += 1; }
+    if (keys.ArrowRight || keys.KeyD) { kx += 1; kz -= 1; }
+
+    if (down) {
+      const dx = wCursor.x - cx, dz = wCursor.z - cz;
+      if (Math.hypot(dx, dz) > 8) { kx = dx; kz = dz; }
+    }
+
+    const len = Math.hypot(kx, kz);
+    if (len > 0.01) {
+      const stepX = (kx / len) * ms, stepZ = (kz / len) * ms;
+      const r = 10;
+      if (!isWall(cx + stepX + Math.sign(stepX) * r, cz) && !isWall(cx + stepX + Math.sign(stepX) * r, cz + r * 0.6) && !isWall(cx + stepX + Math.sign(stepX) * r, cz - r * 0.6)) {
+        cx += stepX;
+      }
+      if (!isWall(cx, cz + stepZ + Math.sign(stepZ) * r) && !isWall(cx + r * 0.6, cz + stepZ + Math.sign(stepZ) * r) && !isWall(cx - r * 0.6, cz + stepZ + Math.sign(stepZ) * r)) {
+        cz += stepZ;
+      }
+    }
+
+    // Smooth camera lerp (exact isoD.as: camx += (ax - camx) * 0.1)
+    const targetCamX = cx - 200, targetCamZ = cz - 200;
+    camx += (targetCamX - camx) * Math.min(1, dt * 6);
+    camz += (targetCamZ - camz) * Math.min(1, dt * 6);
+
+    for (const c of crystals) {
+      if (!c.done && Math.hypot(cx - c.x, cz - c.z) < 22) {
+        c.done = true;
+        score += 45;
+      }
+    }
+    if (crystals.every(c => c.done)) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 5) + hp * 25;
+    }
+
+    for (const s of sentinels) {
+      const nx = s.x + s.vx * dt, nz = s.z + s.vz * dt;
+      if (isWall(nx, s.z)) s.vx = -s.vx; else s.x = nx;
+      if (isWall(s.x, nz)) s.vz = -s.vz; else s.z = nz;
+      if (Math.hypot(s.x - cx, s.z - cz) < 22 && invuln <= 0) {
+        hp--; invuln = 1.2;
+        if (hp <= 0) { over = true; won = false; }
+      }
+    }
+  }
+
+  const doneN = crystals.filter(c => c.done).length;
+  const hearts = "♥".repeat(Math.max(0, hp)) + "♡".repeat(Math.max(0, 3 - hp));
+  document.getElementById("stat").textContent = `Cristaux: ${doneN}/${crystals.length} • ${hearts} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422"; ctx.fillRect(0, 0, 512, 512);
+
+  // World border floor
+  drawBox(0, 0, 0, MW * CW, 0, MH * CH, "rgba(56,214,255,0.35)", null, 1.5);
+
+  // Subtle isometric grid around camera
+  const ax = Math.max(0, Math.floor(camx / CW) - 2);
+  const az = Math.max(0, Math.floor(camz / CH) - 2);
+  const ex = Math.min(MW, ax + 18);
+  const ez = Math.min(MH, az + 18);
+
+  ctx.strokeStyle = "rgba(56,214,255,0.08)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let gx = ax; gx <= ex; gx++) {
+    const p1 = proj(gx * CW, 0, az * CH), p2 = proj(gx * CW, 0, ez * CH);
+    ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
+  }
+  for (let gz = az; gz <= ez; gz++) {
+    const p1 = proj(ax * CW, 0, gz * CH), p2 = proj(ex * CW, 0, gz * CH);
+    ctx.moveTo(p1.sx, p1.sy); ctx.lineTo(p2.sx, p2.sy);
+  }
+  ctx.stroke();
+
+  // Isometric ground cursor (exact isoD.as drawBox2(wmx, 0, wmz, 4, 1, 4))
+  drawBox(wCursor.x - 6, 0, wCursor.z - 6, wCursor.x + 6, 2, wCursor.z + 6, "#4ade80", "rgba(74,222,128,0.35)", 1.5);
+
+  // Collect visible renderables sorted by depth (x + z)
+  const items = [];
+  for (let gz = az; gz < ez; gz++) {
+    for (let gx = ax; gx < ex; gx++) {
+      const h = vecGrid[gz * MW + gx];
+      if (h >= 4) {
+        items.push({ depth: (gx + 0.5) * CW + (gz + 0.5) * CH, type: "pillar", gx, gz, h });
+      }
+    }
+  }
+  for (const c of crystals) {
+    if (!c.done) items.push({ depth: c.x + c.z, type: "crystal", obj: c });
+  }
+  for (const s of sentinels) {
+    items.push({ depth: s.x + s.z, type: "sentinel", obj: s });
+  }
+  items.push({ depth: cx + cz, type: "player" });
+
+  items.sort((a, b) => a.depth - b.depth);
+
+  for (const it of items) {
+    if (it.type === "pillar") {
+      drawBox(it.gx * CW, 0, it.gz * CH, (it.gx + 1) * CW, it.h, (it.gz + 1) * CH, "rgba(56,214,255,0.48)", "rgba(30,58,95,0.55)", 1.1);
+    } else if (it.type === "crystal") {
+      const c = it.obj, hov = 8 + Math.sin(pulse + c.x) * 4;
+      drawBox(c.x - 7, hov, c.z - 7, c.x + 7, hov + 14, c.z + 7, "#fde047", "rgba(253,224,71,0.65)", 1.8);
+    } else if (it.type === "sentinel") {
+      const s = it.obj;
+      drawBox(s.x - 10, 2, s.z - 10, s.x + 10, 24, s.z + 10, "#f87171", "rgba(239,68,68,0.55)", 1.8);
+    } else if (it.type === "player") {
+      const flash = invuln > 0 && Math.floor(invuln * 14) % 2 === 0;
+      drawBox(cx - 11, 0, cz - 11, cx + 11, 22, cz + 11, flash ? "#f87171" : "#ffffff", flash ? "rgba(248,113,113,0.6)" : "rgba(56,214,255,0.7)", 2);
+    }
+  }
+
+  // Radar arrow toward nearest crystal
+  let nearest = null, bestD = Infinity;
+  for (const c of crystals) {
+    if (c.done) continue;
+    const d = Math.hypot(c.x - cx, c.z - cz);
+    if (d < bestD) { bestD = d; nearest = c; }
+  }
+  if (nearest) {
+    const pp = proj(cx, 12, cz), tp = proj(nearest.x, 12, nearest.z);
+    const ang = Math.atan2(tp.sy - pp.sy, tp.sx - pp.sx);
+    ctx.save(); ctx.translate(468, 44); ctx.rotate(ang);
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -7); ctx.lineTo(-4, 0); ctx.lineTo(-8, 7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "TOUS LES CRISTAUX RÉCOLTÉS !" : "DÉTRUIT / EXPIRÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

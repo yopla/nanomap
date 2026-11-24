@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Recadrage Spatial (89xO)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "89xo",
+  "name": "Recadrage Spatial (89xO)",
+  "family": "income",
+  "icon": "📐",
+  "controls": "Glisser un bloc pour le déplacer ; Glisser la poignée bas-droite pour le redimensionner (Tab + Flèches / Shift+Flèches au clavier)",
+  "description": "Calibrage de modules sur grille magnétique : déplacez et redimensionnez chaque bloc sur son gabarit.",
+  "goal": "Compléter les 4 plans de calibrage avant la fin du chrono.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 60 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>📐 <b>Recadrage 89xO</b></span>
+  <span id="stat">Plan: 1/4 • Blocs: 0/3 • 60s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "89xo";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const GRID = 16;
+const COLORS = ["#38d6ff", "#a78bfa", "#f472b6", "#fb923c", "#fde047"];
+
+const LEVELS = [
+  [
+    { tx: 64, ty: 80, tw: 128, th: 96, cx: 288, cy: 320, cw: 64, ch: 64 },
+    { tx: 240, ty: 80, tw: 192, th: 96, cx: 64, cy: 336, cw: 80, ch: 64 },
+    { tx: 112, ty: 240, tw: 272, th: 112, cx: 288, cy: 208, cw: 96, ch: 64 }
+  ],
+  [
+    { tx: 48, ty: 64, tw: 112, th: 176, cx: 320, cy: 304, cw: 64, ch: 64 },
+    { tx: 192, ty: 64, tw: 256, th: 80, cx: 48, cy: 352, cw: 96, ch: 48 },
+    { tx: 192, ty: 176, tw: 128, th: 128, cx: 352, cy: 176, cw: 64, ch: 80 },
+    { tx: 352, ty: 176, tw: 96, th: 240, cx: 176, cy: 368, cw: 80, ch: 64 }
+  ],
+  [
+    { tx: 64, ty: 64, tw: 160, th: 80, cx: 288, cy: 368, cw: 64, ch: 64 },
+    { tx: 256, ty: 64, tw: 192, th: 128, cx: 48, cy: 336, cw: 80, ch: 64 },
+    { tx: 64, ty: 176, tw: 160, th: 144, cx: 320, cy: 240, cw: 64, ch: 64 },
+    { tx: 256, ty: 224, tw: 192, th: 96, cx: 160, cy: 384, cw: 80, ch: 48 }
+  ],
+  [
+    { tx: 48, ty: 48, tw: 192, th: 96, cx: 320, cy: 368, cw: 64, ch: 64 },
+    { tx: 272, ty: 48, tw: 192, th: 96, cx: 64, cy: 368, cw: 64, ch: 64 },
+    { tx: 48, ty: 176, tw: 112, th: 160, cx: 208, cy: 352, cw: 64, ch: 64 },
+    { tx: 192, ty: 176, tw: 128, th: 160, cx: 352, cy: 224, cw: 64, ch: 64 },
+    { tx: 352, ty: 176, tw: 112, th: 160, cx: 192, cy: 80, cw: 64, ch: 64 }
+  ]
+];
+
+let rects = [], curSel = null, curOver = null;
+let dragMode = 0, dragx = 0, dragy = 0, mx = 256, my = 256, mbutton = 0;
+let levelIdx = 0, timeLeft = 60, score = 0, won = false, over = false, flash = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+window.addEventListener("keydown", (e) => {
+  if (over) return;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
+  if (e.code === "Tab" && rects.length) {
+    const idx = rects.indexOf(curSel);
+    curSel = rects[(idx + 1) % rects.length];
+    return;
+  }
+  if (!curSel) curSel = rects[0];
+  if (!curSel) return;
+  let dx = 0, dy = 0;
+  if (e.code === "ArrowLeft" || e.code === "KeyA" || e.code === "KeyQ") dx = -GRID;
+  if (e.code === "ArrowRight" || e.code === "KeyD") dx = GRID;
+  if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "KeyZ") dy = -GRID;
+  if (e.code === "ArrowDown" || e.code === "KeyS") dy = GRID;
+  if (dx || dy) {
+    if (e.shiftKey) {
+      curSel.cw = Math.max(GRID * 2, Math.min(512 - curSel.cx, curSel.cw + dx));
+      curSel.ch = Math.max(GRID * 2, Math.min(512 - curSel.cy, curSel.ch + dy));
+    } else {
+      curSel.cx = Math.max(0, Math.min(512 - curSel.cw, curSel.cx + dx));
+      curSel.cy = Math.max(0, Math.min(512 - curSel.ch, curSel.cy + dy));
+    }
+    checkMatches();
+  }
+});
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+function hitRect(x, y, rx, ry, rw, rh) { return x >= rx && y >= ry && x <= rx + rw && y <= ry + rh; }
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const pos = getPos(e); mx = pos.x; my = pos.y; mbutton = 1;
+  // Check resize handle of curSel first (89xO.as dragMode = 2)
+  if (curSel && hitRect(mx, my, curSel.cx + curSel.cw - 12, curSel.cy + curSel.ch - 12, 24, 24)) {
+    dragMode = 2;
+    return;
+  }
+  // Check any rect handle or body (top-most first)
+  for (let i = rects.length - 1; i >= 0; i--) {
+    const a = rects[i];
+    if (hitRect(mx, my, a.cx + a.cw - 12, a.cy + a.ch - 12, 24, 24)) {
+      curSel = a; dragMode = 2; return;
+    }
+    if (hitRect(mx, my, a.cx, a.cy, a.cw, a.ch)) {
+      curSel = a; dragMode = 1; dragx = a.cx - mx; dragy = a.cy - my;
+      // Bring to front
+      rects.splice(i, 1); rects.push(a);
+      return;
+    }
+  }
+  curSel = null; dragMode = 0;
+});
+
+cv.addEventListener("pointermove", (e) => {
+  const pos = getPos(e); mx = pos.x; my = pos.y;
+  if (!mbutton || !curSel || over) return;
+  if (dragMode === 1) {
+    let nx = Math.round((mx + dragx) / GRID) * GRID;
+    let ny = Math.round((my + dragy) / GRID) * GRID;
+    curSel.cx = Math.max(0, Math.min(512 - curSel.cw, nx));
+    curSel.cy = Math.max(0, Math.min(512 - curSel.ch, ny));
+    checkMatches();
+  } else if (dragMode === 2) {
+    let nw = Math.round((mx - curSel.cx) / GRID) * GRID;
+    let nh = Math.round((my - curSel.cy) / GRID) * GRID;
+    curSel.cw = Math.max(GRID * 2, Math.min(512 - curSel.cx, nw));
+    curSel.ch = Math.max(GRID * 2, Math.min(512 - curSel.cy, nh));
+    checkMatches();
+  }
+});
+
+window.addEventListener("pointerup", () => { mbutton = 0; dragMode = 0; });
+
+function loadLevel(idx) {
+  levelIdx = idx;
+  rects = LEVELS[idx].map((d, i) => ({
+    id: i + 1,
+    col: COLORS[i % COLORS.length],
+    cx: d.cx, cy: d.cy, cw: d.cw, ch: d.ch,
+    tx: d.tx, ty: d.ty, tw: d.tw, th: d.th,
+    matched: false
+  }));
+  curSel = rects[0];
+  dragMode = 0;
+}
+
+function checkMatches() {
+  let allDone = true;
+  for (const a of rects) {
+    const ok = a.cx === a.tx && a.cy === a.ty && a.cw === a.tw && a.ch === a.th;
+    if (ok && !a.matched) score += 40;
+    a.matched = ok;
+    if (!ok) allDone = false;
+  }
+  if (allDone) {
+    flash = 0.5;
+    score += 80;
+    if (levelIdx + 1 < LEVELS.length) {
+      loadLevel(levelIdx + 1);
+    } else {
+      won = true; over = true;
+      score += Math.round(timeLeft * 6);
+    }
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 60;
+  score = 0; won = false; over = false; flash = 0;
+  loadLevel(0);
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (flash > 0) flash = Math.max(0, flash - dt);
+    if (timeLeft <= 0) { won = false; over = true; }
+  }
+
+  const doneN = rects.filter(r => r.matched).length;
+  document.getElementById("stat").textContent = `Plan: ${levelIdx + 1}/${LEVELS.length} • Blocs: ${doneN}/${rects.length} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422"; ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle 16px magnetic grid
+  ctx.strokeStyle = "rgba(56,214,255,0.08)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let g = GRID; g < 512; g += GRID) {
+    ctx.moveTo(g, 0); ctx.lineTo(g, 512);
+    ctx.moveTo(0, g); ctx.lineTo(512, g);
+  }
+  ctx.stroke();
+
+  // Draw target silhouettes
+  for (const a of rects) {
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = a.matched ? "#4ade80" : a.col;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(a.tx, a.ty, a.tw, a.th);
+    ctx.setLineDash([]);
+    ctx.fillStyle = a.matched ? "rgba(74,222,128,0.12)" : "rgba(255,255,255,0.03)";
+    ctx.fillRect(a.tx, a.ty, a.tw, a.th);
+    ctx.fillStyle = a.matched ? "#4ade80" : a.col;
+    ctx.font = "bold 12px sans-serif"; ctx.textAlign = "left";
+    ctx.fillText(`#${a.id} (${a.tw / GRID}×${a.th / GRID})`, a.tx + 6, a.ty + 16);
+    ctx.restore();
+  }
+
+  // Draw interactive xRect blocks
+  for (const a of rects) {
+    const isSel = a === curSel;
+    ctx.fillStyle = a.matched ? "rgba(74,222,128,0.28)" : a.col + "33";
+    ctx.fillRect(a.cx, a.cy, a.cw, a.ch);
+    ctx.strokeStyle = a.matched ? "#4ade80" : isSel ? "#ffffff" : a.col;
+    ctx.lineWidth = isSel ? 2.5 : 1.5;
+    ctx.strokeRect(a.cx, a.cy, a.cw, a.ch);
+
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(`#${a.id}`, a.cx + a.cw / 2, a.cy + a.ch / 2 + 5);
+
+    // Bottom-right 16x16 resize handle (faithful to 89xO.as)
+    if (isSel && dragMode !== 1) {
+      const ax = a.cx + a.cw - 8, ay = a.cy + a.ch - 8;
+      ctx.fillStyle = "#fde047";
+      ctx.fillRect(ax, ay, 16, 16);
+      ctx.strokeStyle = "#0a0e18"; ctx.lineWidth = 2;
+      ctx.strokeRect(ax, ay, 16, 16);
+    }
+  }
+
+  if (flash > 0) {
+    ctx.fillStyle = `rgba(74,222,128,${flash * 0.35})`;
+    ctx.fillRect(0, 0, 512, 512);
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "PLANS CALIBRÉS !" : "TEMPS ÉCOULÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

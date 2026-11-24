@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Triade RPS (Cooz)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; gap: 6px; flex-wrap: wrap; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "cooz",
+  "name": "Triade RPS (Cooz)",
+  "family": "zooEcosys",
+  "icon": "🔴",
+  "controls": "Clic pour émettre une onde de conversion • 1/2/3 ou Espace pour changer d'élément (🔴>🔵>🟢>🔴)",
+  "description": "Particules rebondissantes qui se convertissent par contact selon le cycle Rouge bat Bleu, Bleu bat Vert, Vert bat Rouge.",
+  "goal": "Amener la colonie Rouge à 70% de dominance avant la fin du chrono.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🔴 <b>Triade Cooz</b></span>
+  <span id="stat">🔴 33% • 45s</span>
+  <div>
+    <button id="btnCol" onclick="cycleColor()">Onde: 🔴</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "cooz";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const NUM = 320;
+const GRID_N = 16;
+const CELL = 512 / GRID_N;
+const COLORS = ["#ff5c7c", "#4ade80", "#38b6ff"]; // 0: Red, 1: Green, 2: Blue
+const LABELS = ["🔴 Rouge", "🟢 Vert", "🔵 Bleu"];
+
+let agents = [], pulses = [], grid = [];
+let selectedType = 0; // 0=Red, 1=Green, 2=Blue
+let pulseCd = 0;
+let counts = [0, 0, 0];
+let timeLeft = 45, score = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+function updateColBtn() {
+  const b = document.getElementById("btnCol");
+  b.textContent = "Onde: " + LABELS[selectedType].split(" ")[0];
+  b.style.borderColor = COLORS[selectedType];
+  b.style.color = COLORS[selectedType];
+}
+function cycleColor() { selectedType = (selectedType + 1) % 3; updateColBtn(); }
+
+window.addEventListener("keydown", (e) => {
+  if (over) return;
+  if (e.key === "1") { selectedType = 0; updateColBtn(); }
+  else if (e.key === "2") { selectedType = 1; updateColBtn(); }
+  else if (e.key === "3") { selectedType = 2; updateColBtn(); }
+  else if (e.code === "Space") { e.preventDefault(); cycleColor(); }
+});
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  if (pulseCd > 0) return;
+  const r = cv.getBoundingClientRect();
+  const x = (e.clientX - r.left) * (512 / r.width);
+  const y = (e.clientY - r.top) * (512 / r.height);
+  if (y < 52) return;
+  pulses.push({ x, y, r: 8, maxR: 62, type: selectedType, alpha: 1 });
+  pulseCd = 0.65;
+  for (const a of agents) {
+    const d = Math.hypot(a.x - x, a.y - y);
+    if (d < 62) {
+      a.type = selectedType;
+      const ang = Math.atan2(a.y - y, a.x - x);
+      a.vx += Math.cos(ang) * 45;
+      a.vy += Math.sin(ang) * 45;
+    }
+  }
+});
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 45;
+  score = 0; won = false; over = false; pulseCd = 0;
+  selectedType = 0; updateColBtn();
+  pulses = [];
+  agents = [];
+  for (let i = 0; i < NUM; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const spd = 45 + Math.random() * 55;
+    agents.push({
+      x: 16 + Math.random() * 480,
+      y: 62 + Math.random() * 434,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      type: i % 3
+    });
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    pulseCd = Math.max(0, pulseCd - dt);
+
+    // Spatial hash grid like cooz.as
+    grid = Array.from({ length: GRID_N * GRID_N }, () => []);
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      const gx = Math.max(0, Math.min(GRID_N - 1, (a.x / CELL) | 0));
+      const gy = Math.max(0, Math.min(GRID_N - 1, (a.y / CELL) | 0));
+      grid[gy * GRID_N + gx].push(a);
+    }
+
+    counts = [0, 0, 0];
+    for (let i = 0; i < agents.length; i++) {
+      const a = agents[i];
+      const gx = Math.max(0, Math.min(GRID_N - 1, (a.x / CELL) | 0));
+      const gy = Math.max(0, Math.min(GRID_N - 1, (a.y / CELL) | 0));
+
+      for (let oy = -1; oy <= 1; oy++) {
+        const ny = gy + oy;
+        if (ny < 0 || ny >= GRID_N) continue;
+        for (let ox = -1; ox <= 1; ox++) {
+          const nx = gx + ox;
+          if (nx < 0 || nx >= GRID_N) continue;
+          const bucket = grid[ny * GRID_N + nx];
+          for (let j = 0; j < bucket.length; j++) {
+            const b = bucket[j];
+            if (b === a) continue;
+            const dx = b.x - a.x, dy = b.y - a.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 < 121 && d2 > 0.01) { // radius ~5.5
+              // RPS conversion from cooz.as: Blue(2)>Green(1)>Red(0)>Blue(2)
+              if (Math.random() < 0.72) {
+                if (b.type === 2 && a.type === 1) a.type = 2;
+                else if (b.type === 1 && a.type === 0) a.type = 1;
+                else if (b.type === 0 && a.type === 2) a.type = 0;
+              }
+              const tx = a.vx, ty = a.vy;
+              a.vx = b.vx; a.vy = b.vy;
+              b.vx = tx; b.vy = ty;
+              b.x += dx * 0.08; b.y += dy * 0.08;
+            }
+          }
+        }
+      }
+
+      // Clamp speed
+      const sp = Math.hypot(a.vx, a.vy);
+      if (sp > 125) { a.vx = (a.vx / sp) * 125; a.vy = (a.vy / sp) * 125; }
+      else if (sp < 35) { a.vx *= 1.05; a.vy *= 1.05; }
+
+      a.x += a.vx * dt;
+      a.y += a.vy * dt;
+      if (a.x < 8) { a.x = 8; a.vx = Math.abs(a.vx); }
+      if (a.x > 504) { a.x = 504; a.vx = -Math.abs(a.vx); }
+      if (a.y < 58) { a.y = 58; a.vy = Math.abs(a.vy); }
+      if (a.y > 504) { a.y = 504; a.vy = -Math.abs(a.vy); }
+      counts[a.type]++;
+    }
+
+    for (let i = pulses.length - 1; i >= 0; i--) {
+      const p = pulses[i];
+      p.r += (p.maxR - p.r) * 12 * dt;
+      p.alpha -= 2.2 * dt;
+      if (p.alpha <= 0) pulses.splice(i, 1);
+    }
+
+    const redPct = (counts[0] / NUM) * 100;
+    if (redPct >= 70) {
+      won = true; over = true;
+      score = Math.round(300 + timeLeft * 12 + redPct * 2);
+    } else if (counts[0] === 0) {
+      won = false; over = true;
+      score = 0;
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+      score = Math.round(redPct * 3);
+    }
+  }
+
+  const redPct = Math.round((counts[0] / NUM) * 100);
+  document.getElementById("stat").textContent = `🔴 ${redPct}% / 70% • ${Math.ceil(timeLeft)}s`;
+
+  // Render
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Top live R/G/B bars like cooz.as
+  ctx.fillStyle = "#111a2c";
+  ctx.fillRect(0, 0, 512, 52);
+  ctx.strokeStyle = "#223654";
+  ctx.beginPath(); ctx.moveTo(0, 52); ctx.lineTo(512, 52); ctx.stroke();
+
+  const barMax = 290;
+  for (let c = 0; c < 3; c++) {
+    const y = 7 + c * 14;
+    ctx.fillStyle = COLORS[c];
+    ctx.font = "bold 11px system-ui, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(["R", "G", "B"][c] + ": " + counts[c], 12, y + 9);
+    ctx.fillStyle = "#1c2a42";
+    ctx.fillRect(68, y + 1, barMax, 9);
+    ctx.fillStyle = COLORS[c];
+    ctx.fillRect(68, y + 1, (counts[c] / NUM) * barMax, 9);
+  }
+  // 70% goal line on Red bar
+  ctx.strokeStyle = "#fde047";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(68 + barMax * 0.7, 6); ctx.lineTo(68 + barMax * 0.7, 19); ctx.stroke();
+
+  ctx.fillStyle = "#94a3b8"; ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "right";
+  ctx.fillText("🔴 > 🔵 > 🟢 > 🔴", 500, 22);
+  ctx.fillStyle = pulseCd > 0 ? "#64748b" : COLORS[selectedType];
+  ctx.fillText(pulseCd > 0 ? "Recharge..." : "Onde prête !", 500, 40);
+
+  // Pulses
+  for (const p of pulses) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.strokeStyle = COLORS[p.type];
+    ctx.globalAlpha = Math.max(0, p.alpha);
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Particles
+  for (let i = 0; i < agents.length; i++) {
+    const a = agents[i];
+    ctx.fillStyle = COLORS[a.type];
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, 4.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 26px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "DOMINANCE ROUGE !" : (counts[0] === 0 ? "ROUGE ÉLIMINÉ" : "TEMPS ÉCOULÉ"), 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

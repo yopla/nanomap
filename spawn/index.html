@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>SPAWN — Arcade 113 Mini-Jeux</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; height: 100dvh;
+    background: #070b14; color: #e6f4ff;
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    overflow: hidden;
+  }
+  .app {
+    display: flex; flex-direction: column;
+    width: 100%; height: 100%; height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .topbar {
+    flex: 0 0 auto;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    padding: 7px 10px;
+    background: #0f1728;
+    border-bottom: 1.5px solid #244a69;
+    z-index: 20;
+  }
+  .sel-wrap {
+    flex: 1 1 200px; min-width: 150px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  select#gameSel {
+    width: 100%;
+    background: #16233b; color: #e6f4ff;
+    border: 1px solid #38d6ff; border-radius: 8px;
+    padding: 7px 8px; font-size: 13px; font-weight: 600;
+    outline: none; cursor: pointer;
+  }
+  .file-badge {
+    flex: 0 1 auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: #7dd3fc;
+    background: #0b1322; border: 1px solid #23415c;
+    border-radius: 7px; padding: 5px 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 220px;
+  }
+  .counter {
+    font-size: 11px; color: #94a3b8; font-weight: 700; white-space: nowrap;
+  }
+  .btns {
+    display: flex; align-items: center; gap: 6px; flex-wrap: nowrap;
+  }
+  button.ctrl {
+    background: #18304d; color: #dff7ff;
+    border: 1px solid #38d6ff; border-radius: 8px;
+    padding: 7px 10px; font-size: 13px; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.12s, transform 0.08s;
+  }
+  button.ctrl:active { transform: scale(0.96); background: #22466e; }
+  button.ctrl.accent { background: #1e4268; border-color: #67e8f9; }
+  .stage {
+    position: relative; flex: 1 1 auto; width: 100%; min-height: 0;
+    background: #0a0e18;
+  }
+  iframe#gameFrame {
+    width: 100%; height: 100%; border: 0; display: block;
+    background: #0a0e18;
+  }
+  /* Fullscreen / Immersive mode */
+  .app.immersive .topbar { display: none; }
+  .fs-float {
+    position: fixed;
+    top: calc(8px + env(safe-area-inset-top));
+    right: calc(8px + env(safe-area-inset-right));
+    display: none; gap: 5px; z-index: 9000;
+  }
+  .app.immersive .fs-float { display: flex; }
+  .fs-pill {
+    background: rgba(15, 23, 40, 0.78);
+    color: #e6f4ff; border: 1px solid rgba(56, 214, 255, 0.7);
+    border-radius: 999px; padding: 6px 10px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+  .fs-name-pill {
+    position: fixed;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%);
+    display: none;
+    background: rgba(11, 19, 34, 0.72);
+    color: #7dd3fc; border: 1px solid rgba(56, 214, 255, 0.35);
+    border-radius: 999px; padding: 3px 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px; z-index: 8999; pointer-events: none;
+  }
+  .app.immersive .fs-name-pill { display: block; }
+  /* Result toast */
+  #resToast {
+    position: fixed;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%);
+    display: none; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+    background: rgba(12, 20, 36, 0.95);
+    border: 1.5px solid #38d6ff; border-radius: 12px;
+    padding: 10px 14px; z-index: 9500;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.65);
+    max-width: 94vw; font-size: 13px;
+  }
+  #resToast.show { display: flex; }
+  @media (max-width: 600px) {
+    .topbar { padding: 6px 8px; gap: 5px; }
+    .file-badge { max-width: 55vw; font-size: 11px; padding: 4px 7px; }
+    button.ctrl { padding: 6px 8px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <div class="sel-wrap">
+      <select id="gameSel" aria-label="Choisir un mini-jeu"></select>
+    </div>
+    <span class="file-badge" id="fileLabel" title="Fichier HTML chargé">—</span>
+    <span class="counter" id="counterLabel">1/113</span>
+    <div class="btns">
+      <button class="ctrl accent" id="btnRandom" title="Mini-jeu aléatoire">🎲 Random</button>
+      <button class="ctrl" id="btnNext" title="Mini-jeu suivant">⏭️ Suivant</button>
+      <button class="ctrl" id="btnFs" title="Plein écran">⛶ Plein écran</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <iframe id="gameFrame" allow="fullscreen" allowfullscreen></iframe>
+  </main>
+
+  <div class="fs-float">
+    <button class="fs-pill" id="fsRandom" title="Aléatoire">🎲</button>
+    <button class="fs-pill" id="fsNext" title="Suivant">⏭️</button>
+    <button class="fs-pill" id="fsExit" title="Quitter plein écran">✕ Barre</button>
+  </div>
+  <div class="fs-name-pill" id="fsNameLabel"></div>
+
+  <div id="resToast">
+    <span id="resText"></span>
+    <button class="ctrl" id="toastReplay">🔄</button>
+    <button class="ctrl accent" id="toastRandom">🎲 Random</button>
+    <button class="ctrl" id="toastNext">⏭️ Suivant</button>
+    <button class="ctrl" id="toastClose">✕</button>
+  </div>
+</div>
+
+<script>
+const CATALOG = [{"folder":"minigames","file":"aster.html","path":"minigames/aster.html","id":"aster","name":"Atterrisseur Caverne (Aster)","icon":"🛸","family":"sideClavSimple"},{"folder":"minigames","file":"barque.html","path":"minigames/barque.html","id":"barque","name":"Barges Dérivantes (Barque)","icon":"🛶","family":"clavDir"},{"folder":"minigames","file":"blocs.html","path":"minigames/blocs.html","id":"blocs","name":"Nuée Blocs","icon":"🔴","family":"topMouseMut"},{"folder":"minigames","file":"bugg.html","path":"minigames/bugg.html","id":"bugg","name":"Évolution Génétique (Bugg)","icon":"🪲","family":"zooEcosys"},{"folder":"minigames","file":"catchemall.html","path":"minigames/catchemall.html","id":"catchemall","name":"Lasso Ruban (CatchEmAll)","icon":"🪢","family":"clavDir"},{"folder":"minigames","file":"creuseur.html","path":"minigames/creuseur.html","id":"creuseur","name":"Creuseur Radial","icon":"⛏️","family":"core"},{"folder":"minigames","file":"diabi.html","path":"minigames/diabi.html","id":"diabi","name":"Crêtes Isométriques (Diabi)","icon":"⛰️","family":"topMouseHnS"},{"folder":"minigames","file":"diger.html","path":"minigames/diger.html","id":"diger","name":"Foreuse Autonome (Diger)","icon":"💎","family":"core"},{"folder":"minigames","file":"fluid.html","path":"minigames/fluid.html","id":"fluid","name":"Courant Fluide","icon":"🌊","family":"core"},{"folder":"minigames","file":"folotete.html","path":"minigames/folotete.html","id":"folotete","name":"Duel Vectoriel (FoloTete)","icon":"🚀","family":"clavDir"},{"folder":"minigames","file":"fusee.html","path":"minigames/fusee.html","id":"fusee","name":"Fusée Propulsée (Fusée)","icon":"🚀","family":"income"},{"folder":"minigames","file":"glide.html","path":"minigames/glide.html","id":"glide","name":"Glisseur Astéroïdes (Glide)","icon":"🛰️","family":"clavDir"},{"folder":"minigames","file":"gliss.html","path":"minigames/gliss.html","id":"gliss","name":"Pare-Chocs Gliss","icon":"🧊","family":"topMouseMut"},{"folder":"minigames","file":"grav.html","path":"minigames/grav.html","id":"grav","name":"Orbite Planétoïde (Grav)","icon":"🪐","family":"sideClavSimple"},{"folder":"minigames","file":"grf.html","path":"minigames/grf.html","id":"grf","name":"Complexe 2.5D (GRF)","icon":"🗺️","family":"topMouseMut"},{"folder":"minigames","file":"hyper.html","path":"minigames/hyper.html","id":"hyper","name":"Dérive Hyper","icon":"🌌","family":"topMouseMut"},{"folder":"minigames","file":"invaiz.html","path":"minigames/invaiz.html","id":"invaiz","name":"Quarantaine Virale (Invaiz)","icon":"🦠","family":"zooEcosys"},{"folder":"minigames","file":"invglid.html","path":"minigames/invglid.html","id":"invglid","name":"Journal Inertiel (InvGlid)","icon":"📜","family":"core"},{"folder":"minigames","file":"isobo.html","path":"minigames/isobo.html","id":"isobo","name":"Automate Isométrique (IsoBo)","icon":"🦿","family":"clavDir"},{"folder":"minigames","file":"isoo.html","path":"minigames/isoo.html","id":"isoo","name":"Sphère Iso (Isoo)","icon":"🔮","family":"topMouseHnS"},{"folder":"minigames","file":"isotir.html","path":"minigames/isotir.html","id":"isotir","name":"Arène Isométrique (IsoTir)","icon":"💎","family":"topOrthoClav"},{"folder":"minigames","file":"labycool.html","path":"minigames/labycool.html","id":"labycool","name":"Labyrinthe Éclair (LabyCool)","icon":"🌈","family":"topOrthoClav"},{"folder":"minigames","file":"lurd.html","path":"minigames/lurd.html","id":"lurd","name":"Culbuto Daruma (Lurd)","icon":"🎯","family":"core"},{"folder":"minigames","file":"mazy.html","path":"minigames/mazy.html","id":"mazy","name":"Couloirs Piliers (Mazy)","icon":"🏛️","family":"topOrthoClav"},{"folder":"minigames","file":"micromach.html","path":"minigames/micromach.html","id":"micromach","name":"Sprint MicroMach","icon":"🏎️","family":"clavDir"},{"folder":"minigames","file":"minjap.html","path":"minigames/minjap.html","id":"minjap","name":"Donjon Lanterne (MinJap)","icon":"🔦","family":"topOrthoClav"},{"folder":"minigames","file":"mongolfiere.html","path":"minigames/mongolfiere.html","id":"mongolfiere","name":"Enveloppe Montgolfière (Mongolfière)","icon":"🎈","family":"income"},{"folder":"minigames","file":"pab.html","path":"minigames/pab.html","id":"pab","name":"Tranche-Éclair (PAB)","icon":"⚡","family":"topMouseHnS"},{"folder":"minigames","file":"pac.html","path":"minigames/pac.html","id":"pac","name":"Moisson Wireframe (Pac)","icon":"🍒","family":"topOrthoClav"},{"folder":"minigames","file":"pacver.html","path":"minigames/pacver.html","id":"pacver","name":"Propulseur Vers (PacVer)","icon":"🍎","family":"topOrthoClav"},{"folder":"minigames","file":"pat.html","path":"minigames/pat.html","id":"pat","name":"Moisson Furtive (Pat AI)","icon":"👁️","family":"rogTil"},{"folder":"minigames","file":"plat.html","path":"minigames/plat.html","id":"plat","name":"Plateformes Néon (Plat)","icon":"🏃","family":"sideClavSimple"},{"folder":"minigames","file":"proie.html","path":"minigames/proie.html","id":"proie","name":"Biosphère Trophique (Proie)","icon":"🌿","family":"zooEcosys"},{"folder":"minigames","file":"robots.html","path":"minigames/robots.html","id":"robots","name":"Robots Tactiques","icon":"🤖","family":"core"},{"folder":"minigames","file":"roul.html","path":"minigames/roul.html","id":"roul","name":"Sphère Roulante (Roul)","icon":"🟢","family":"sideClavSimple"},{"folder":"minigames","file":"saut.html","path":"minigames/saut.html","id":"saut","name":"Lancer-Saut (Saut)","icon":"📦","family":"sideClavSimple"},{"folder":"minigames","file":"sim.html","path":"minigames/sim.html","id":"sim","name":"Soute Polyomino (SIM)","icon":"🧩","family":"core"},{"folder":"minigames","file":"sok.html","path":"minigames/sok.html","id":"sok","name":"Pousseur Sokoban (Sok)","icon":"📦","family":"topOrthoClav"},{"folder":"minigames","file":"swarm.html","path":"minigames/swarm.html","id":"swarm","name":"Swarm Floy","icon":"🐝","family":"core"},{"folder":"minigames","file":"telep.html","path":"minigames/telep.html","id":"telep","name":"Chambres de Warp (Telep)","icon":"🌀","family":"topOrthoClav"},{"folder":"minigames","file":"tir.html","path":"minigames/tir.html","id":"tir","name":"Laisse Inertielle (Tir)","icon":"☄️","family":"topMouseMut"},{"folder":"minigames","file":"trail.html","path":"minigames/trail.html","id":"trail","name":"Sillage Anneaux (Trail)","icon":"〰️","family":"topOrthoClav"},{"folder":"minigames","file":"vol.html","path":"minigames/vol.html","id":"vol","name":"Vol Caverne (Vol)","icon":"🦇","family":"sideClavSimple"},{"folder":"minigames","file":"wg.html","path":"minigames/wg.html","id":"wg","name":"Escarmouche Labyrinthe (WG)","icon":"⚔️","family":"tactical"},{"folder":"minigames","file":"zombies.html","path":"minigames/zombies.html","id":"zombies","name":"Vague de Zombies (Zombies)","icon":"🧟","family":"income"},{"folder":"minigame2","file":"aig.html","path":"minigame2/aig.html","id":"aig","name":"Aiguillage Rail (Aig)","icon":"🚂","family":"topOrthoClav"},{"folder":"minigame2","file":"appr.html","path":"minigame2/appr.html","id":"appr","name":"Approche Tactique","icon":"🎯","family":"topMouseHnS"},{"folder":"minigame2","file":"bon.html","path":"minigame2/bon.html","id":"bon","name":"Sonde Caverne (Bon)","icon":"🧭","family":"sideClavSimple"},{"folder":"minigame2","file":"bound.html","path":"minigame2/bound.html","id":"bound","name":"Rebond Stomp (Bound)","icon":"⚡","family":"sideClavSimple"},{"folder":"minigame2","file":"bravewar.html","path":"minigame2/bravewar.html","id":"bravewar","name":"Bataille Spatiale (BraveWar)","icon":"⚔️","family":"tactical"},{"folder":"minigame2","file":"coin.html","path":"minigame2/coin.html","id":"coin","name":"Grimpeur de Corniches (Coin)","icon":"🪙","family":"sideClavSimple"},{"folder":"minigame2","file":"coli.html","path":"minigame2/coli.html","id":"coli","name":"Labyrinthe Glissant (Coli)","icon":"🧩","family":"topOrthoClav"},{"folder":"minigame2","file":"cont.html","path":"minigame2/cont.html","id":"cont","name":"Caisse-Rebond (Cont)","icon":"📦","family":"sideClavSimple"},{"folder":"minigame2","file":"cooz.html","path":"minigame2/cooz.html","id":"cooz","name":"Triade RPS (Cooz)","icon":"🔴","family":"zooEcosys"},{"folder":"minigame2","file":"depl.html","path":"minigame2/depl.html","id":"depl","name":"Grappin Magnétique","icon":"🧲","family":"topMouseMut"},{"folder":"minigame2","file":"dess.html","path":"minigame2/dess.html","id":"dess","name":"Ascension Blocs (Dess)","icon":"🧱","family":"sideClavSimple"},{"folder":"minigame2","file":"diag.html","path":"minigame2/diag.html","id":"diag","name":"Labyrinthe Diagonal","icon":"⚡","family":"topMouseMut"},{"folder":"minigame2","file":"dkay.html","path":"minigame2/dkay.html","id":"dkay","name":"Escouade dKaY","icon":"⚔️","family":"income"},{"folder":"minigame2","file":"ech.html","path":"minigame2/ech.html","id":"ech","name":"Échelles & Sauts (Ech)","icon":"🪜","family":"sideClavSimple"},{"folder":"minigame2","file":"essc.html","path":"minigame2/essc.html","id":"essc","name":"Escalade Murale (Essc)","icon":"🧗","family":"sideClavSimple"},{"folder":"minigame2","file":"eu7a.html","path":"minigame2/eu7a.html","id":"eu7a","name":"Sonde Gravité (Eu7a)","icon":"🛰️","family":"income"},{"folder":"minigame2","file":"foloinf.html","path":"minigame2/foloinf.html","id":"foloinf","name":"Essaim Infini (FoloInf)","icon":"🛸","family":"topOrthoClav"},{"folder":"minigame2","file":"folosup.html","path":"minigame2/folosup.html","id":"folosup","name":"Essaim Poursuivant","icon":"🤖","family":"topMouseMut"},{"folder":"minigame2","file":"folotil.html","path":"minigame2/folotil.html","id":"folotil","name":"Essaim Tuilé","icon":"💠","family":"topMouseMut"},{"folder":"minigame2","file":"glu.html","path":"minigame2/glu.html","id":"glu","name":"Cellule Gluante (Glu)","icon":"🦠","family":"topOrthoClav"},{"folder":"minigame2","file":"gluu.html","path":"minigame2/gluu.html","id":"gluu","name":"Gluu Pulsant","icon":"🫧","family":"topMouseMut"},{"folder":"minigame2","file":"gros.html","path":"minigame2/gros.html","id":"gros","name":"Absorption Cellulaire (Gros)","icon":"🟢","family":"topOrthoClav"},{"folder":"minigame2","file":"hit.html","path":"minigame2/hit.html","id":"hit","name":"Zone de Verrouillage (Hit)","icon":"🎯","family":"topOrthoClav"},{"folder":"minigame2","file":"inf.html","path":"minigame2/inf.html","id":"inf","name":"Tore Infini","icon":"🌌","family":"topMouseMut"},{"folder":"minigame2","file":"isod.html","path":"minigame2/isod.html","id":"isod","name":"Forêt de Piliers (IsoD)","icon":"🏛️","family":"topOrthoClav"},{"folder":"minigame2","file":"isohau.html","path":"minigame2/isohau.html","id":"isohau","name":"Terrasses Iso (IsoHau)","icon":"🪜","family":"topOrthoClav"},{"folder":"minigame2","file":"labiso.html","path":"minigame2/labiso.html","id":"labiso","name":"Labyrinthe Wireframe (LabIso)","icon":"🧊","family":"topOrthoClav"},{"folder":"minigame2","file":"liatan.html","path":"minigame2/liatan.html","id":"liatan","name":"Ombres Liatan","icon":"🔦","family":"topMouseMut"},{"folder":"minigame2","file":"lk.html","path":"minigame2/lk.html","id":"lk","name":"Verrouillage Arène","icon":"⚔️","family":"topMouseHnS"},{"folder":"minigame2","file":"marchebug.html","path":"minigame2/marchebug.html","id":"marchebug","name":"Marche Insecte (MarcheBug)","icon":"🪲","family":"clavDir"},{"folder":"minigame2","file":"minmap.html","path":"minigame2/minmap.html","id":"minmap","name":"Cartographe Secteur (MinMap)","icon":"🗺️","family":"topOrthoClav"},{"folder":"minigame2","file":"msd8.html","path":"minigame2/msd8.html","id":"msd8","name":"Lignes Stellaires","icon":"✨","family":"income"},{"folder":"minigame2","file":"pie.html","path":"minigame2/pie.html","id":"pie","name":"Chasse à la Tarte (Pie)","icon":"🥧","family":"topOrthoClav"},{"folder":"minigame2","file":"plein2.html","path":"minigame2/plein2.html","id":"plein2","name":"Essaim Labyrinthe (Plein2)","icon":"🐜","family":"zooEcosys"},{"folder":"minigame2","file":"pleinz.html","path":"minigame2/pleinz.html","id":"pleinz","name":"Foule PleinZ","icon":"🐝","family":"topMouseMut"},{"folder":"minigame2","file":"pousseur.html","path":"minigame2/pousseur.html","id":"pousseur","name":"Pousseur de Caisses (Pousseur)","icon":"📦","family":"topOrthoClav"},{"folder":"minigame2","file":"res.html","path":"minigame2/res.html","id":"res","name":"Escouade Triple (Res)","icon":"👥","family":"sideClavSimple"},{"folder":"minigame2","file":"rndtile.html","path":"minigame2/rndtile.html","id":"rndtile","name":"Grille Rebond","icon":"🧱","family":"topMouseMut"},{"folder":"minigame2","file":"specc.html","path":"minigame2/specc.html","id":"specc","name":"Archipel Symbiose (Specc)","icon":"🌱","family":"zooEcosys"},{"folder":"minigame2","file":"tech.html","path":"minigame2/tech.html","id":"tech","name":"Sonde Raycast (Tech)","icon":"📡","family":"sideClavSimple"},{"folder":"minigame2","file":"tiran.html","path":"minigame2/tiran.html","id":"tiran","name":"Glisse Triangulaire","icon":"📐","family":"topMouseMut"},{"folder":"minigame2","file":"trigo.html","path":"minigame2/trigo.html","id":"trigo","name":"Automate RGB (Trigo)","icon":"🔥","family":"zooEcosys"},{"folder":"minigame2","file":"tsou.html","path":"minigame2/tsou.html","id":"tsou","name":"Écosystème Peak (Tsou)","icon":"🧬","family":"zooEcosys"},{"folder":"minigame2","file":"volan.html","path":"minigame2/volan.html","id":"volan","name":"Volant Articulé (Volan)","icon":"🚚","family":"clavDir"},{"folder":"minigame2","file":"zvis.html","path":"minigame2/zvis.html","id":"zvis","name":"Essaim Grille","icon":"🐝","family":"topMouseMut"},{"folder":"minigame3","file":"89xo.html","path":"minigame3/89xo.html","id":"89xo","name":"Recadrage Spatial (89xO)","icon":"📐","family":"income"},{"folder":"minigame3","file":"ast.html","path":"minigame3/ast.html","id":"ast","name":"Sonde Caverne (Ast)","icon":"☄️","family":"sideClavSimple"},{"folder":"minigame3","file":"att.html","path":"minigame3/att.html","id":"att","name":"Cercle de Commandement","icon":"🎯","family":"topMouseMut"},{"folder":"minigame3","file":"aut.html","path":"minigame3/aut.html","id":"aut","name":"Automate Cellulaire (Aut)","icon":"🧬","family":"zooEcosys"},{"folder":"minigame3","file":"diad.html","path":"minigame3/diad.html","id":"diad","name":"Fléau Élastique","icon":"☄️","family":"topMouseHnS"},{"folder":"minigame3","file":"diadd.html","path":"minigame3/diadd.html","id":"diadd","name":"Laisse d'Aggro","icon":"⛓️","family":"topMouseHnS"},{"folder":"minigame3","file":"diaddd.html","path":"minigame3/diaddd.html","id":"diaddd","name":"Exploration Tactique","icon":"🧭","family":"topMouseHnS"},{"folder":"minigame3","file":"diia.html","path":"minigame3/diia.html","id":"diia","name":"Bélier Cinétique","icon":"💥","family":"topMouseHnS"},{"folder":"minigame3","file":"esc.html","path":"minigame3/esc.html","id":"esc","name":"Escalade Ninja (Esc)","icon":"🧗","family":"sideClavSimple"},{"folder":"minigame3","file":"escc.html","path":"minigame3/escc.html","id":"escc","name":"Rebond Mural (Escc)","icon":"⚡","family":"sideClavSimple"},{"folder":"minigame3","file":"grrav.html","path":"minigame3/grrav.html","id":"grrav","name":"Échasse & Tunnel (Grrav)","icon":"🦿","family":"sideClavSimple"},{"folder":"minigame3","file":"im5m.html","path":"minigame3/im5m.html","id":"im5m","name":"Champ de Perception (im5M)","icon":"👁️","family":"income"},{"folder":"minigame3","file":"minimap.html","path":"minigame3/minimap.html","id":"minimap","name":"Carte Spirale Infinie (MiniMap)","icon":"🗺️","family":"income"},{"folder":"minigame3","file":"olo.html","path":"minigame3/olo.html","id":"olo","name":"Berger Olo","icon":"🧲","family":"topMouseMut"},{"folder":"minigame3","file":"pleinpf.html","path":"minigame3/pleinpf.html","id":"pleinpf","name":"Essaim Labyrinthe (PleinPF)","icon":"🧭","family":"zooEcosys"},{"folder":"minigame3","file":"pous.html","path":"minigame3/pous.html","id":"pous","name":"Bulldozer Pous","icon":"🚜","family":"topOrthoClav"},{"folder":"minigame3","file":"pouss.html","path":"minigame3/pouss.html","id":"pouss","name":"Levier Pouss","icon":"⚖️","family":"topOrthoClav"},{"folder":"minigame3","file":"pro.html","path":"minigame3/pro.html","id":"pro","name":"Équilibre Trophique (Pro)","icon":"🌿","family":"zooEcosys"},{"folder":"minigame3","file":"rrle.html","path":"minigame3/rrle.html","id":"rrle","name":"Micro-Marche & Zoom (RRLE)","icon":"🔬","family":"income"},{"folder":"minigame3","file":"swi.html","path":"minigame3/swi.html","id":"swi","name":"Escouade Swi","icon":"🎯","family":"topMouseMut"},{"folder":"minigame3","file":"viv.html","path":"minigame3/viv.html","id":"viv","name":"Relais Vivant (Viv)","icon":"📡","family":"topMouseHnS"},{"folder":"minigame3","file":"vois.html","path":"minigame3/vois.html","id":"vois","name":"Essaim Vois","icon":"🫧","family":"topMouseMut"},{"folder":"minigame3","file":"zkne.html","path":"minigame3/zkne.html","id":"zkne","name":"Tri à Ressorts (zknE)","icon":"🗂️","family":"income"}];
+const FOLDER_LABELS = {
+  minigames: "📁 minigames (45)",
+  minigame2: "📁 minigame2 (45)",
+  minigame3: "📁 minigame3 (23)"
+};
+
+const app = document.getElementById("app");
+const sel = document.getElementById("gameSel");
+const frame = document.getElementById("gameFrame");
+const fileLabel = document.getElementById("fileLabel");
+const counterLabel = document.getElementById("counterLabel");
+const fsNameLabel = document.getElementById("fsNameLabel");
+const resToast = document.getElementById("resToast");
+const resText = document.getElementById("resText");
+
+let curIdx = 0;
+let randomBag = [];
+
+// Build hierarchical <optgroup> dropdown by folder
+const groups = {};
+CATALOG.forEach((g, idx) => {
+  if (!groups[g.folder]) {
+    const og = document.createElement("optgroup");
+    og.label = FOLDER_LABELS[g.folder] || ("📁 " + g.folder);
+    sel.appendChild(og);
+    groups[g.folder] = og;
+  }
+  const opt = document.createElement("option");
+  opt.value = String(idx);
+  opt.textContent = g.icon + " " + g.name + "  [" + g.file + "]";
+  groups[g.folder].appendChild(opt);
+});
+
+function hideToast() {
+  resToast.classList.remove("show");
+}
+
+function loadIndex(idx, updateHash = true) {
+  curIdx = ((idx % CATALOG.length) + CATALOG.length) % CATALOG.length;
+  const g = CATALOG[curIdx];
+  sel.value = String(curIdx);
+  fileLabel.textContent = g.path;
+  fileLabel.title = g.path;
+  counterLabel.textContent = (curIdx + 1) + "/" + CATALOG.length;
+  fsNameLabel.textContent = g.path + " (" + (curIdx + 1) + "/" + CATALOG.length + ")";
+  document.title = g.icon + " " + g.file + " — SPAWN Arcade";
+  hideToast();
+  frame.src = g.path;
+  if (updateHash) {
+    try { history.replaceState(null, "", "#" + g.path); } catch (e) {}
+  }
+}
+
+function pickRandom() {
+  if (randomBag.length === 0) {
+    randomBag = CATALOG.map((_, i) => i).filter(i => i !== curIdx);
+    for (let i = randomBag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = randomBag[i]; randomBag[i] = randomBag[j]; randomBag[j] = tmp;
+    }
+  }
+  const next = randomBag.pop();
+  loadIndex(typeof next === "number" ? next : 0);
+}
+
+function nextGame() {
+  loadIndex(curIdx + 1);
+}
+
+function setImmersive(on) {
+  app.classList.toggle("immersive", on);
+  if (on) {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if (req) { try { req.call(el).catch(() => {}); } catch (e) {} }
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+    if (exit && (document.fullscreenElement || document.webkitFullscreenElement)) {
+      try { exit.call(document).catch(() => {}); } catch (e) {}
+    }
+  }
+}
+
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    app.classList.remove("immersive");
+  }
+});
+
+sel.addEventListener("change", () => loadIndex(Number(sel.value)));
+document.getElementById("btnRandom").addEventListener("click", pickRandom);
+document.getElementById("btnNext").addEventListener("click", nextGame);
+document.getElementById("btnFs").addEventListener("click", () => setImmersive(!app.classList.contains("immersive")));
+document.getElementById("fsRandom").addEventListener("click", pickRandom);
+document.getElementById("fsNext").addEventListener("click", nextGame);
+document.getElementById("fsExit").addEventListener("click", () => setImmersive(false));
+
+document.getElementById("toastReplay").addEventListener("click", () => loadIndex(curIdx, false));
+document.getElementById("toastRandom").addEventListener("click", pickRandom);
+document.getElementById("toastNext").addEventListener("click", nextGame);
+document.getElementById("toastClose").addEventListener("click", hideToast);
+
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_result") {
+    const icon = e.data.won ? "🏆 Victoire" : "🎮 Terminé";
+    resText.textContent = icon + " (" + CATALOG[curIdx].file + ") • Score " + (e.data.score || 0);
+    resToast.classList.add("show");
+  }
+});
+
+// Init from URL hash if present
+const hash = (location.hash || "").replace(/^#/, "");
+const found = hash ? CATALOG.findIndex(g => g.path === hash || g.file === hash || g.id === hash) : -1;
+loadIndex(found >= 0 ? found : 0, false);
+</script>
+</body>
+</html>

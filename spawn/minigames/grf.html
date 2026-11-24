@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Complexe 2.5D (GRF)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); cursor: crosshair; touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "grf",
+  "name": "Complexe 2.5D (GRF)",
+  "family": "topMouseMut",
+  "icon": "🗺️",
+  "controls": "Déplacer la souris / doigt autour de l'explorateur pour le propulser dans les couloirs",
+  "description": "Exploration fluide à caméra centrée dans un complexe 2.5D à murs en relief et glissement physique.",
+  "goal": "Récupérer les 6 cœurs d'énergie dispersés dans les salles avant la fin du chrono !",
+  "fields": [
+    { "key": "coreCount", "label": "Cœurs à récupérer", "type": "number", "default": 6 },
+    { "key": "durationSec", "label": "Durée (sec)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🗺️ <b>Complexe 2.5D (GRF)</b></span>
+  <span id="stat">Cœurs: 0/6 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "grf";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const TILE = 32;
+// Exact 32x18 dungeon layout from grf.as (1 = wall, 0 = floor)
+const MAP = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+const MAP_H_T = MAP.length, MAP_W_T = MAP[0].length;
+const MAP_W = MAP_W_T * TILE, MAP_H = MAP_H_T * TILE;
+
+const CORE_SPOTS = [
+  [3, 5], [11, 5], [11, 12], [20, 4], [25, 9], [23, 13], [19, 13], [26, 4]
+];
+
+let mouse = { x: 256, y: 256 }, pointerActive = false;
+let player = { x: 3.5 * TILE, y: 12.5 * TILE, vx: 0, vy: 0, r: 10, dir: 1 };
+let cam = { x: 0, y: 0 };
+let cores = [], drones = [];
+let hp = 3, invuln = 0, timeLeft = 45, score = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+function setM(e) {
+  const r = cv.getBoundingClientRect();
+  mouse.x = (e.clientX - r.left) * (512 / r.width);
+  mouse.y = (e.clientY - r.top) * (512 / r.height);
+  pointerActive = true;
+}
+cv.addEventListener("pointermove", setM);
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  setM(e);
+});
+cv.addEventListener("pointerleave", () => { pointerActive = false; });
+
+function resolveCircleTileMap(ent) {
+  const tx0 = Math.max(0, Math.floor((ent.x - ent.r) / TILE) - 1);
+  const tx1 = Math.min(MAP_W_T - 1, Math.floor((ent.x + ent.r) / TILE) + 1);
+  const ty0 = Math.max(0, Math.floor((ent.y - ent.r) / TILE) - 1);
+  const ty1 = Math.min(MAP_H_T - 1, Math.floor((ent.y + ent.r) / TILE) + 1);
+  for (let ty = ty0; ty <= ty1; ty++) {
+    for (let tx = tx0; tx <= tx1; tx++) {
+      if (MAP[ty][tx] !== 1) continue;
+      const rx = tx * TILE, ry = ty * TILE;
+      const cx = Math.max(rx, Math.min(rx + TILE, ent.x));
+      const cy = Math.max(ry, Math.min(ry + TILE, ent.y));
+      const dx = ent.x - cx, dy = ent.y - cy;
+      const d = Math.hypot(dx, dy);
+      if (d < ent.r && d > 0.0001) {
+        const push = ent.r - d;
+        ent.x += (dx / d) * push;
+        ent.y += (dy / d) * push;
+      }
+    }
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  const cnt = Math.min(CORE_SPOTS.length, Math.max(3, Number(custom.coreCount) || 6));
+  timeLeft = Math.max(20, Number(custom.durationSec) || 45);
+  score = 0; hp = 3; invuln = 0; won = false; over = false;
+  player = { x: 3.5 * TILE, y: 12.5 * TILE, vx: 0, vy: 0, r: 10, dir: 1 };
+  pointerActive = false;
+
+  cores = CORE_SPOTS.slice(0, cnt).map(([tx, ty]) => ({
+    x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE, got: false
+  }));
+
+  drones = [
+    { x: 11.5 * TILE, y: 5.5 * TILE, vx: 0, vy: 85, minY: 3.5 * TILE, maxY: 7.5 * TILE },
+    { x: 19.5 * TILE, y: 9.0 * TILE, vx: 105, vy: 0, minX: 17.5 * TILE, maxX: 27.5 * TILE },
+    { x: 24.5 * TILE, y: 5.5 * TILE, vx: 0, vy: 100, minY: 3.5 * TILE, maxY: 14.5 * TILE }
+  ];
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+    if (timeLeft <= 0) over = true;
+
+    // Force-based mouse steering with deadzone & linear ramp (from grf.as)
+    if (pointerActive) {
+      const gx = mouse.x - (player.x - cam.x);
+      const gy = mouse.y - (player.y - cam.y);
+      const gl = Math.hypot(gx, gy);
+      const GAP_MIN = 12, GAP_MAX = 48;
+      if (gl > GAP_MIN) {
+        let ratio = Math.min(1, (gl - GAP_MIN) / (GAP_MAX - GAP_MIN));
+        const nx = gx / gl, ny = gy / gl;
+        player.vx += nx * 1250 * ratio * dt;
+        player.vy += ny * 1250 * ratio * dt;
+        if (Math.abs(nx) > Math.abs(ny)) player.dir = nx > 0 ? 1 : 3;
+        else player.dir = ny > 0 ? 2 : 0;
+      }
+    }
+
+    const damp = Math.pow(0.9, dt * 30);
+    player.vx *= damp; player.vy *= damp;
+    player.x += player.vx * dt;
+    player.y += player.vy * dt;
+    resolveCircleTileMap(player);
+
+    // Update patrolling security drones
+    for (const d of drones) {
+      d.x += d.vx * dt; d.y += d.vy * dt;
+      if (d.minX !== undefined && (d.x < d.minX || d.x > d.maxX)) d.vx *= -1;
+      if (d.minY !== undefined && (d.y < d.minY || d.y > d.maxY)) d.vy *= -1;
+      const dist = Math.hypot(player.x - d.x, player.y - d.y);
+      if (dist < player.r + 12 && invuln <= 0) {
+        hp--; invuln = 1.1;
+        const nx = (player.x - d.x) / (dist || 1), ny = (player.y - d.y) / (dist || 1);
+        player.vx = nx * 240; player.vy = ny * 240;
+        if (hp <= 0) over = true;
+      }
+    }
+
+    for (const c of cores) {
+      if (!c.got && Math.hypot(player.x - c.x, player.y - c.y) < 20) {
+        c.got = true;
+        score += 50;
+      }
+    }
+    if (cores.every(c => c.got)) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 6 + hp * 20);
+    }
+  }
+
+  // Clamped centered camera (from grf.as)
+  cam.x = Math.max(0, Math.min(MAP_W - 512, player.x - 256));
+  cam.y = Math.max(0, Math.min(MAP_H - 512, player.y - 256));
+
+  const gotN = cores.filter(c => c.got).length;
+  document.getElementById("stat").textContent = `Cœurs: ${gotN}/${cores.length} • 🛡️${hp} • ${Math.ceil(timeLeft)}s • Score ${score}`;
+
+  ctx.fillStyle = "#0a0e18";
+  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.save();
+  ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
+
+  // 1. Floor layer
+  for (let ty = 0; ty < MAP_H_T; ty++) {
+    for (let tx = 0; tx < MAP_W_T; tx++) {
+      if (MAP[ty][tx] === 0) {
+        ctx.fillStyle = (tx + ty) % 2 === 0 ? "#101b2e" : "#0e1728";
+        ctx.fillRect(tx * TILE, ty * TILE, TILE, TILE);
+        ctx.strokeStyle = "rgba(56,214,255,0.06)";
+        ctx.strokeRect(tx * TILE, ty * TILE, TILE, TILE);
+      }
+    }
+  }
+
+  // 2. Wall front faces (2.5D depth where wall is above floor)
+  for (let ty = 0; ty < MAP_H_T; ty++) {
+    for (let tx = 0; tx < MAP_W_T; tx++) {
+      if (MAP[ty][tx] === 1 && ty + 1 < MAP_H_T && MAP[ty + 1][tx] === 0) {
+        ctx.fillStyle = "#1c314d";
+        ctx.fillRect(tx * TILE, ty * TILE + 8, TILE, TILE - 8);
+        ctx.strokeStyle = "#38d6ff";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tx * TILE + 0.5, ty * TILE + 8.5, TILE - 1, TILE - 9);
+      }
+    }
+  }
+
+  // Cores
+  const pulse = Math.sin(now * 0.006) * 2.5;
+  for (const c of cores) {
+    if (c.got) continue;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 9 + pulse * 0.4, 0, Math.PI * 2);
+    ctx.fillStyle = "#fde047"; ctx.fill();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // Drones
+  for (const d of drones) {
+    ctx.beginPath(); ctx.arc(d.x, d.y, 11, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(248,113,113,0.3)"; ctx.fill();
+    ctx.strokeStyle = "#f87171"; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // Player
+  if (invuln <= 0 || Math.floor(invuln * 16) % 2 === 0) {
+    ctx.beginPath(); ctx.ellipse(player.x, player.y + 6, 10, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.45)"; ctx.fill();
+    ctx.beginPath(); ctx.arc(player.x, player.y - 3, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "#38d6ff"; ctx.fill();
+    ctx.strokeStyle = "#e6f4ff"; ctx.lineWidth = 2; ctx.stroke();
+    const dx = [0, 6, 0, -6][player.dir], dy = [-6, 0, 6, 0][player.dir];
+    ctx.beginPath(); ctx.arc(player.x + dx * 0.7, player.y - 3 + dy * 0.7, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = "#0a0e18"; ctx.fill();
+  }
+
+  // 3. Ceiling layer (shifted up for 2.5D depth, like grf.as)
+  for (let ty = 0; ty < MAP_H_T; ty++) {
+    for (let tx = 0; tx < MAP_W_T; tx++) {
+      if (MAP[ty][tx] === 1) {
+        ctx.fillStyle = "#0b1220";
+        ctx.fillRect(tx * TILE, ty * TILE - 12, TILE, TILE);
+        ctx.strokeStyle = "rgba(56,214,255,0.22)";
+        ctx.lineWidth = 1;
+        if (ty + 1 < MAP_H_T && MAP[ty + 1][tx] === 0) {
+          ctx.beginPath(); ctx.moveTo(tx * TILE, ty * TILE + 20); ctx.lineTo((tx + 1) * TILE, ty * TILE + 20); ctx.stroke();
+        }
+      }
+    }
+  }
+  ctx.restore();
+
+  // Minimap (top-right)
+  const ms = 4, mx0 = 512 - MAP_W_T * ms - 10, my0 = 10;
+  ctx.fillStyle = "rgba(10,14,24,0.82)";
+  ctx.fillRect(mx0 - 2, my0 - 2, MAP_W_T * ms + 4, MAP_H_T * ms + 4);
+  ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 1;
+  ctx.strokeRect(mx0 - 2, my0 - 2, MAP_W_T * ms + 4, MAP_H_T * ms + 4);
+  for (let ty = 0; ty < MAP_H_T; ty++) {
+    for (let tx = 0; tx < MAP_W_T; tx++) {
+      if (MAP[ty][tx] === 0) {
+        ctx.fillStyle = "#1e3a5f";
+        ctx.fillRect(mx0 + tx * ms, my0 + ty * ms, ms, ms);
+      }
+    }
+  }
+  for (const c of cores) if (!c.got) {
+    ctx.fillStyle = "#fde047";
+    ctx.fillRect(mx0 + (c.x / TILE) * ms - 1.5, my0 + (c.y / TILE) * ms - 1.5, 3, 3);
+  }
+  ctx.fillStyle = "#38d6ff";
+  ctx.fillRect(mx0 + (player.x / TILE) * ms - 2, my0 + (player.y / TILE) * ms - 2, 4, 4);
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "COMPLEXE SÉCURISÉ !" : (hp <= 0 ? "BOUCLIER DÉTRUIT" : "TEMPS ÉCOULÉ"), 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

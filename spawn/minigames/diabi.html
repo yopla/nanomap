@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Crêtes Isométriques (Diabi)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); cursor: crosshair; touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "diabi",
+  "name": "Crêtes Isométriques (Diabi)",
+  "family": "topMouseHnS",
+  "icon": "⛰️",
+  "controls": "Maintenir clic/doigt ou Flèches pour marcher sur le relief isométrique 3D",
+  "description": "Marcheur sur relief filaire isométrique avec collines, cratères et radar en coin d'écran.",
+  "goal": "Activer les 5 balises lumineuses sur les sommets avant la fin du chrono.",
+  "fields": [
+    { "key": "beaconCount", "label": "Balises de crête", "type": "number", "default": 5 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>⛰️ <b>Crêtes Diabi</b></span>
+  <span id="stat">Balises: 0/5 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "diabi";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const MAP = 32;
+let keys = {}, hmap = [], p = { x: 16, z: 16 }, beacons = [], down = false, mx = 256, my = 256, timeLeft = 45, score = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => { keys[e.code] = true; });
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  down = true; const r = cv.getBoundingClientRect();
+  mx = (e.clientX - r.left) * (512 / r.width); my = (e.clientY - r.top) * (512 / r.height);
+});
+cv.addEventListener("pointermove", (e) => {
+  const r = cv.getBoundingClientRect();
+  mx = (e.clientX - r.left) * (512 / r.width); my = (e.clientY - r.top) * (512 / r.height);
+});
+window.addEventListener("pointerup", () => { down = false; });
+
+function getH(x, z) {
+  const ix = Math.max(0, Math.min(MAP - 2, Math.floor(x))), iz = Math.max(0, Math.min(MAP - 2, Math.floor(z)));
+  const fx = x - ix, fz = z - iz;
+  const a = hmap[iz][ix] * (1 - fx) + hmap[iz][ix + 1] * fx;
+  const b = hmap[iz + 1][ix] * (1 - fx) + hmap[iz + 1][ix + 1] * fx;
+  return a * (1 - fz) + b * fz;
+}
+
+function iso(wx, wz, wy) {
+  const rx = wx - p.x, rz = wz - p.z;
+  return { sx: 256 + (rx - rz) * 20, sy: 270 + (rx + rz) * 10 - wy };
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  const cnt = Number(custom.beaconCount) || 5;
+  timeLeft = 45; score = 0; won = false; over = false; p = { x: 16, z: 16 };
+  hmap = Array.from({ length: MAP }, (_, z) => Array.from({ length: MAP }, (_, x) =>
+    Math.sin(x * 0.45) * 18 + Math.cos(z * 0.42) * 18 + Math.sin((x + z) * 0.28) * 12
+  ));
+  beacons = Array.from({ length: cnt }, () => ({ x: 4 + Math.random() * (MAP - 8), z: 4 + Math.random() * (MAP - 8), done: false }));
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) over = true;
+    let dx = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA || keys.KeyQ ? 1 : 0);
+    let dz = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW || keys.KeyZ ? 1 : 0);
+    if (dx === 0 && dz === 0 && down) {
+      const rx = (mx - 256) / 20, ry = (my - 270) / 10;
+      dx = (rx + ry) * 0.5; dz = (ry - rx) * 0.5;
+    }
+    const l = Math.hypot(dx, dz);
+    if (l > 0.1) {
+      p.x = Math.max(1, Math.min(MAP - 2, p.x + (dx / l) * 6.5 * dt));
+      p.z = Math.max(1, Math.min(MAP - 2, p.z + (dz / l) * 6.5 * dt));
+    }
+    for (const b of beacons) {
+      if (!b.done && Math.hypot(p.x - b.x, p.z - b.z) < 1.2) { b.done = true; score += 45; }
+    }
+    if (beacons.every(b => b.done)) { won = true; over = true; score += Math.round(timeLeft * 5); }
+  }
+  const doneN = beacons.filter(b => b.done).length;
+  document.getElementById("stat").textContent = `Balises: ${doneN}/${beacons.length} • ${Math.ceil(timeLeft)}s • Score ${score}`;
+  ctx.fillStyle = "#0d1422"; ctx.fillRect(0, 0, 512, 512);
+  ctx.strokeStyle = "rgba(148,163,184,0.38)"; ctx.lineWidth = 1;
+  const x0 = Math.max(0, Math.floor(p.x) - 8), x1 = Math.min(MAP - 2, Math.floor(p.x) + 8);
+  const z0 = Math.max(0, Math.floor(p.z) - 8), z1 = Math.min(MAP - 2, Math.floor(p.z) + 8);
+  for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
+    const a = iso(x, z, hmap[z][x]), b = iso(x + 1, z, hmap[z][x + 1]), c = iso(x, z + 1, hmap[z + 1][x]);
+    ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.moveTo(a.sx, a.sy); ctx.lineTo(c.sx, c.sy); ctx.stroke();
+  }
+  for (const b of beacons) if (!b.done) {
+    const pt = iso(b.x, b.z, getH(b.x, b.z));
+    ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(pt.sx, pt.sy); ctx.lineTo(pt.sx, pt.sy - 28); ctx.stroke();
+    ctx.fillStyle = "#4ade80"; ctx.beginPath(); ctx.arc(pt.sx, pt.sy - 30, 6, 0, Math.PI * 2); ctx.fill();
+  }
+  const pp = iso(p.x, p.z, getH(p.x, p.z));
+  ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 2.5;
+  ctx.strokeRect(pp.sx - 8, pp.sy - 24, 16, 24);
+  // Radar top-left (fidèle à diabi.as)
+  ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(10, 10, 74, 74);
+  ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 1.5; ctx.strokeRect(10, 10, 74, 74);
+  for (const b of beacons) if (!b.done) { ctx.fillStyle = "#4ade80"; ctx.fillRect(10 + (b.x / MAP) * 74 - 2, 10 + (b.z / MAP) * 74 - 2, 4, 4); }
+  ctx.fillStyle = "#f97316"; ctx.fillRect(10 + (p.x / MAP) * 74 - 2.5, 10 + (p.z / MAP) * 74 - 2.5, 5, 5);
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "CRÊTES CARTOGRAPHIÉES !" : "TEMPS ÉCOULÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

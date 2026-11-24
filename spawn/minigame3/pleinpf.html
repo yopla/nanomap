@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Essaim Labyrinthe (PleinPF)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "pleinpf",
+  "name": "Essaim Labyrinthe (PleinPF)",
+  "family": "zooEcosys",
+  "icon": "🧭",
+  "controls": "Cliquer/Toucher (ou Flèches + Espace) pour placer la balise de ralliement ; Z pour afficher les zones",
+  "description": "Pathfinding massif par décomposition en zones rectangulaires : guidez votre essaim à travers un labyrinthe procédural.",
+  "goal": "Évacuer 60 unités dans les portails dorés avant la fin du chrono.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🧭 <b>Essaim PleinPF</b></span>
+  <span id="stat">Évacués: 0/60 • Essaim: 140 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "pleinpf";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const GW = 128, GH = 128, SCALE = 4;
+const TARGET_EVAC = 60;
+const INITIAL_ACTORS = 140;
+
+let grid = new Uint8Array(GW * GH);
+let zones = [], bestGroup = 0, mapCanvas = null;
+let actors = [], hazards = [];
+let rally = null, portal = { x: 64, y: 64 }, curX = 256, curY = 256;
+let keys = {}, showZones = true;
+let evacuated = 0, portalCount = 0, timeLeft = 45, score = 0, won = false, over = false, endReason = "";
+let curFrame = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "KeyZ" && !e.repeat) showZones = !showZones;
+  if (e.code === "Space" && !over) placeRally(curX / SCALE, curY / SCALE);
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const pos = getPos(e); curX = pos.x; curY = pos.y;
+  placeRally(pos.x / SCALE, pos.y / SCALE);
+});
+cv.addEventListener("pointermove", (e) => {
+  const pos = getPos(e); curX = pos.x; curY = pos.y;
+});
+
+// Rectangular zone decomposition & portal pathfinder (faithful to pleinPF.as xPathFind)
+function buildZones() {
+  const copy = new Uint8Array(grid);
+  zones = [];
+  const getCloseX = (ax, ay) => {
+    const yt = ay * GW;
+    for (let k = ax; k < GW; k++) if (copy[yt + k] <= 0) return k;
+    return GW;
+  };
+  for (let i = 0; i < GH; i++) {
+    const yt = i * GW;
+    for (let k = 0; k < GW; k++) {
+      if (copy[yt + k] <= 0) continue;
+      let n = getCloseX(k, i);
+      if (n - k > 12) n = k + 12;
+      let h = i;
+      for (; h < GH; h++) {
+        const m = getCloseX(k, h);
+        if (m < n || h - i > 12) break;
+      }
+      const z = {
+        cx: k, cy: i, cw: n - k, ch: h - i,
+        mx: k + (n - k) * 0.5, my: i + (h - i) * 0.5,
+        group: 0, cost: 0, frame: 0, parent: null, next: []
+      };
+      zones.push(z);
+      for (let yy = i; yy < h; yy++) {
+        const row = yy * GW;
+        for (let xx = k; xx < n; xx++) copy[row + xx] = 0;
+      }
+      k = n - 1;
+    }
+  }
+  const num = zones.length;
+  for (let i = 0; i < num; i++) {
+    const a = zones[i];
+    for (let k = i + 1; k < num; k++) {
+      const b = zones[k];
+      if (a.cx + a.cw < b.cx || a.cy + a.ch < b.cy || b.cx + b.cw < a.cx || b.cy + b.ch < a.cy) continue;
+      if ((a.cx + a.cw === b.cx && a.cy + a.ch === b.cy) ||
+          (b.cx + b.cw === a.cx && b.cy + b.ch === a.cy) ||
+          (a.cx + a.cw === b.cx && b.cy + b.ch === a.cy) ||
+          (b.cx + b.cw === a.cx && a.cy + a.ch === b.cy)) continue;
+      a.next.push(b);
+      b.next.push(a);
+    }
+  }
+  let group = 0, bestArea = 0;
+  bestGroup = 1;
+  for (let i = 0; i < num; i++) {
+    if (zones[i].group !== 0) continue;
+    group++;
+    const stack = [zones[i]];
+    let area = 0;
+    while (stack.length) {
+      const a = stack.pop();
+      if (a.group !== 0) continue;
+      a.group = group;
+      area += a.cw * a.ch;
+      for (const b of a.next) if (b.group === 0) stack.push(b);
+    }
+    if (area > bestArea) { bestArea = area; bestGroup = group; }
+  }
+}
+
+function getZone(wx, wy) {
+  for (let i = 0; i < zones.length; i++) {
+    const a = zones[i];
+    if (wx >= a.cx && wy >= a.cy && wx <= a.cx + a.cw && wy <= a.cy + a.ch) return a;
+  }
+  return null;
+}
+
+function findZonePath(sx, sy, ex, ey) {
+  const start = getZone(sx, sy);
+  const goal = getZone(ex, ey);
+  if (!start || !goal || start.group !== goal.group) return null;
+  if (start === goal) return [{ cx: ex, cy: ey }];
+  curFrame++;
+  const open = [start];
+  start.frame = curFrame; start.parent = null; start.cost = 0;
+  let lastZone = null;
+  while (open.length) {
+    let bestIdx = 0, mcost = open[0].cost;
+    for (let k = 1; k < open.length; k++) {
+      if (open[k].cost < mcost) { mcost = open[k].cost; bestIdx = k; }
+    }
+    const a = open[bestIdx];
+    open[bestIdx] = open[open.length - 1];
+    open.pop();
+    if (a === goal) { lastZone = a; break; }
+    for (const b of a.next) {
+      if (b.frame === curFrame) continue;
+      b.frame = curFrame;
+      const dx = (a === start ? sx : a.mx) - b.mx;
+      const dy = (a === start ? sy : a.my) - b.my;
+      b.cost = mcost + Math.hypot(dx, dy);
+      b.parent = a;
+      open.push(b);
+    }
+  }
+  if (!lastZone) return null;
+  const pts = [{ cx: ex, cy: ey }];
+  let a = lastZone, prevx = -1, prevy = -1;
+  while (a && a.parent) {
+    const b = a; a = a.parent;
+    let kx, ky;
+    if (a.cx + a.cw - 0.1 < b.cx) {
+      kx = a.cx + a.cw;
+      ky = (Math.max(a.cy, b.cy) + Math.min(a.cy + a.ch, b.cy + b.ch)) * 0.5;
+      if (prevx === kx) pts.push({ cx: b.mx, cy: b.my });
+    } else if (b.cx + b.cw - 0.1 < a.cx) {
+      kx = b.cx + b.cw;
+      ky = (Math.max(a.cy, b.cy) + Math.min(a.cy + a.ch, b.cy + b.ch)) * 0.5;
+      if (prevx === kx) pts.push({ cx: b.mx, cy: b.my });
+    } else if (a.cy + a.ch - 0.1 < b.cy) {
+      ky = a.cy + a.ch;
+      kx = (Math.max(a.cx, b.cx) + Math.min(a.cx + a.cw, b.cx + b.cw)) * 0.5;
+      if (prevy === ky) pts.push({ cx: b.mx, cy: b.my });
+    } else {
+      ky = b.cy + b.ch;
+      kx = (Math.max(a.cx, b.cx) + Math.min(a.cx + a.cw, b.cx + b.cw)) * 0.5;
+      if (prevy === ky) pts.push({ cx: b.mx, cy: b.my });
+    }
+    pts.push({ cx: kx, cy: ky });
+    prevx = kx; prevy = ky;
+  }
+  return pts.reverse();
+}
+
+function randomPointInBestGroup(minDistFrom) {
+  const good = zones.filter(z => z.group === bestGroup && z.cw >= 3 && z.ch >= 3);
+  for (let tries = 0; tries < 60; tries++) {
+    const z = good[Math.floor(Math.random() * good.length)] || zones[0];
+    const x = z.cx + 1 + Math.random() * Math.max(0.5, z.cw - 2);
+    const y = z.cy + 1 + Math.random() * Math.max(0.5, z.ch - 2);
+    if (!minDistFrom || Math.hypot(x - minDistFrom.x, y - minDistFrom.y) > 45) return { x, y };
+  }
+  const z = good[0] || zones[0];
+  return { x: z.mx, y: z.my };
+}
+
+function placeRally(gx, gy) {
+  let tx = gx, ty = gy;
+  const z = getZone(tx, ty);
+  if (!z || z.group !== bestGroup) {
+    // Snap to nearest walkable zone in bestGroup
+    let bestD = 1e9, bestZ = null;
+    for (const zz of zones) {
+      if (zz.group !== bestGroup) continue;
+      const d = Math.hypot(zz.mx - tx, zz.my - ty);
+      if (d < bestD) { bestD = d; bestZ = zz; }
+    }
+    if (!bestZ) return;
+    tx = Math.max(bestZ.cx + 1, Math.min(bestZ.cx + bestZ.cw - 1, tx));
+    ty = Math.max(bestZ.cy + 1, Math.min(bestZ.cy + bestZ.ch - 1, ty));
+  }
+  rally = { x: tx, y: ty, ttl: 7 };
+  for (const a of actors) {
+    const jx = tx + (Math.random() - 0.5) * 3;
+    const jy = ty + (Math.random() - 0.5) * 3;
+    const p = findZonePath(a.cx, a.cy, jx, jy) || findZonePath(a.cx, a.cy, tx, ty);
+    if (p) { a.path = p; a.cur = 0; a.move = 1; }
+  }
+}
+
+function spawnMap() {
+  grid.fill(0);
+  // Carve 160 corridors/rooms like pleinPF.as
+  for (let i = 0; i < 160; i++) {
+    const rx = Math.floor(Math.random() * (GW - 4)) + 2;
+    const ry = Math.floor(Math.random() * (GH - 4)) + 2;
+    let rw, rh;
+    if (Math.random() < 0.5) {
+      rw = 3 + Math.floor(Math.random() * 9);
+      rh = 4 + Math.floor(Math.random() * 44);
+    } else {
+      rw = 4 + Math.floor(Math.random() * 44);
+      rh = 3 + Math.floor(Math.random() * 9);
+    }
+    const ex = Math.min(GW - 2, rx + rw);
+    const ey = Math.min(GH - 2, ry + rh);
+    for (let y = ry; y < ey; y++) {
+      const row = y * GW;
+      for (let x = rx; x < ex; x++) grid[row + x] = 1;
+    }
+  }
+  buildZones();
+  // Pre-render static map
+  mapCanvas = document.createElement("canvas");
+  mapCanvas.width = 512; mapCanvas.height = 512;
+  const mctx = mapCanvas.getContext("2d");
+  mctx.fillStyle = "#142136";
+  mctx.fillRect(0, 0, 512, 512);
+  mctx.fillStyle = "#0b111e";
+  for (let y = 0; y < GH; y++) {
+    const row = y * GW;
+    for (let x = 0; x < GW; x++) {
+      if (grid[row + x] > 0) mctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE);
+    }
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 45;
+  evacuated = 0; portalCount = 0; score = 0; won = false; over = false; endReason = "";
+  rally = null;
+  spawnMap();
+  portal = randomPointInBestGroup();
+  actors = [];
+  for (let i = 0; i < INITIAL_ACTORS; i++) {
+    const pt = randomPointInBestGroup(portal);
+    actors.push({ cx: pt.x, cy: pt.y, path: null, cur: 0, move: 0, wait: Math.random() * 25 });
+  }
+  hazards = [];
+  for (let i = 0; i < 3; i++) {
+    const pt = randomPointInBestGroup(portal);
+    hazards.push({ cx: pt.x, cy: pt.y, path: null, cur: 0, move: 0 });
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  const step = dt * 60;
+  last = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) curX -= 280 * dt;
+    if (keys.ArrowRight || keys.KeyD) curX += 280 * dt;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) curY -= 280 * dt;
+    if (keys.ArrowDown || keys.KeyS) curY += 280 * dt;
+    curX = Math.max(8, Math.min(504, curX));
+    curY = Math.max(8, Math.min(504, curY));
+    if (rally) { rally.ttl -= dt; if (rally.ttl <= 0) rally = null; }
+
+    // Patrol hazards using same xPathFind
+    for (const h of hazards) {
+      if (!h.move || !h.path || h.cur >= h.path.length) {
+        const dst = randomPointInBestGroup();
+        const p = findZonePath(h.cx, h.cy, dst.x, dst.y);
+        if (p) { h.path = p; h.cur = 0; h.move = 1; }
+      }
+      if (h.move && h.path && h.cur < h.path.length) {
+        const t = h.path[h.cur];
+        const dx = t.cx - h.cx, dy = t.cy - h.cy;
+        const d = Math.hypot(dx, dy);
+        if (d < 1.5) h.cur++;
+        else { h.cx += (dx / d) * 0.45 * step; h.cy += (dy / d) * 0.45 * step; }
+      }
+    }
+
+    // Update actors
+    for (let i = actors.length - 1; i >= 0; i--) {
+      const a = actors[i];
+      if (a.move <= 0) {
+        a.wait += (1 + Math.random() * 4) * step;
+        if (a.wait >= 30) {
+          a.wait = 0;
+          const dst = rally ? rally : randomPointInBestGroup();
+          const p = findZonePath(a.cx, a.cy, dst.x, dst.y);
+          if (p) { a.path = p; a.cur = 0; a.move = 1; }
+        }
+      } else {
+        if (!a.path || a.cur >= a.path.length) { a.move = 0; }
+        else {
+          const t = a.path[a.cur];
+          const dx = t.cx - a.cx, dy = t.cy - a.cy;
+          const d = Math.hypot(dx, dy);
+          const spd = 0.72 * step;
+          if (d <= 2) a.cur++;
+          else { a.cx += (dx / d) * spd; a.cy += (dy / d) * spd; }
+        }
+      }
+
+      // Check portal evacuation
+      if (Math.hypot(a.cx - portal.x, a.cy - portal.y) < 5.5) {
+        actors.splice(i, 1);
+        evacuated++;
+        portalCount++;
+        score += 15;
+        if (portalCount >= 20 && evacuated < TARGET_EVAC) {
+          portalCount = 0;
+          portal = randomPointInBestGroup(portal);
+        }
+        continue;
+      }
+
+      // Check hazard collision
+      let hit = false;
+      for (const h of hazards) {
+        if (Math.hypot(a.cx - h.cx, a.cy - h.cy) < 3.6) { hit = true; break; }
+      }
+      if (hit) actors.splice(i, 1);
+    }
+
+    if (evacuated >= TARGET_EVAC) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 10);
+      endReason = "ESSAIM ÉVACUÉ !";
+    } else if (actors.length + evacuated < TARGET_EVAC) {
+      won = false; over = true;
+      endReason = "ESSAIM DÉCIMÉ";
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+      endReason = "TEMPS ÉCOULÉ";
+    }
+  }
+
+  document.getElementById("stat").textContent = `Évacués: ${evacuated}/${TARGET_EVAC} • Essaim: ${actors.length} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.drawImage(mapCanvas, 0, 0);
+
+  if (showZones) {
+    ctx.strokeStyle = "rgba(56,214,255,0.12)";
+    ctx.lineWidth = 1;
+    for (const z of zones) {
+      if (z.group === bestGroup) ctx.strokeRect(z.cx * SCALE, z.cy * SCALE, z.cw * SCALE, z.ch * SCALE);
+    }
+  }
+
+  // Draw golden extraction portal
+  const pulse = 1 + Math.sin(now * 0.008) * 0.15;
+  ctx.fillStyle = "rgba(253,224,71,0.22)";
+  ctx.beginPath(); ctx.arc(portal.x * SCALE, portal.y * SCALE, 22 * pulse, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#fde047"; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(portal.x * SCALE, portal.y * SCALE, 15, 0, Math.PI * 2); ctx.stroke();
+
+  // Draw rally beacon
+  if (rally) {
+    ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rally.x * SCALE, rally.y * SCALE, 10 + (7 - rally.ttl) * 1.2, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#38d6ff";
+    ctx.beginPath(); ctx.arc(rally.x * SCALE, rally.y * SCALE, 4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Draw actors (green idle, cyan moving)
+  for (const a of actors) {
+    ctx.fillStyle = a.move > 0 ? "#38d6ff" : "#4ade80";
+    ctx.fillRect(a.cx * SCALE - 2, a.cy * SCALE - 2, 4, 4);
+  }
+
+  // Draw hazards
+  for (const h of hazards) {
+    ctx.fillStyle = "rgba(248,113,113,0.28)";
+    ctx.beginPath(); ctx.arc(h.cx * SCALE, h.cy * SCALE, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#f87171";
+    ctx.beginPath(); ctx.arc(h.cx * SCALE, h.cy * SCALE, 6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Cursor crosshair
+  if (!over) {
+    ctx.strokeStyle = "rgba(174,240,255,0.6)"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(curX - 7, curY); ctx.lineTo(curX + 7, curY);
+    ctx.moveTo(curX, curY - 7); ctx.lineTo(curX, curY + 7);
+    ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(endReason, 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Évacués ${evacuated}/${TARGET_EVAC} • Score ${score} — Cliquez pour revenir`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

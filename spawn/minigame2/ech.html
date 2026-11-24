@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Échelles & Sauts (Ech)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "ech",
+  "name": "Échelles & Sauts (Ech)",
+  "family": "sideClavSimple",
+  "icon": "🪜",
+  "controls": "Flèches / ZQSD pour courir, sauter et grimper aux échelles (ou toucher/cliquer vers la cible)",
+  "description": "Plateforme à échelles avec impulsion au sommet des barreaux et drones de patrouille.",
+  "goal": "Collecter les 6 cellules dorées sur les étages avant la fin du chrono sans perdre vos 3 vies.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🪜 <b>Échelles Ech</b></span>
+  <span id="stat">Cellules: 0/6 • Vies: 3 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "ech";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const FLOOR_Y = 472;
+let keys = {}, down = false, mx = 256, my = 256;
+let p = {}, plats = [], ladders = [], cells = [], drones = [];
+let timeLeft = 45, score = 0, hp = 3, invuln = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  down = true;
+  const pt = getPos(e); mx = pt.x; my = pt.y;
+});
+cv.addEventListener("pointermove", (e) => { const pt = getPos(e); mx = pt.x; my = pt.y; });
+window.addEventListener("pointerup", () => { down = false; });
+
+function isWall(ax, ay) { return ax < 6 || ax > 506 || ay > FLOOR_Y; }
+function isPlat(ax, ay) {
+  if (isWall(ax, ay)) return true;
+  for (const w of plats) {
+    if (ax >= w.x && ay >= w.y && ax <= w.x + w.w && ay <= w.y + w.h) return true;
+  }
+  return false;
+}
+function isLadder(ax, ay) {
+  for (const l of ladders) {
+    if (ax >= l.x && ay >= l.y && ax <= l.x + l.w && ay <= l.y + l.h) return true;
+  }
+  return false;
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 45;
+  p = { x: 256, y: 440, vx: 0, vy: 0, jumpTime: 0 };
+  plats = [
+    { x: 40, y: 360, w: 300, h: 14 },
+    { x: 172, y: 250, w: 300, h: 14 },
+    { x: 40, y: 140, w: 300, h: 14 }
+  ];
+  ladders = [
+    { x: 96, y: 310, w: 34, h: 162 },
+    { x: 382, y: 205, w: 34, h: 168 },
+    { x: 140, y: 95, w: 34, h: 168 }
+  ];
+  cells = [
+    { x: 64, y: 332, done: false },
+    { x: 300, y: 332, done: false },
+    { x: 210, y: 222, done: false },
+    { x: 446, y: 222, done: false },
+    { x: 72, y: 112, done: false },
+    { x: 310, y: 112, done: false }
+  ];
+  drones = [
+    { x: 240, y: 346, vx: 2.1, minX: 52, maxX: 326 },
+    { x: 320, y: 236, vx: -2.3, minX: 184, maxX: 458 }
+  ];
+  score = 0; hp = 3; invuln = 0; won = false; over = false;
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const step = dt * 60;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) { over = true; won = false; }
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+
+    const wantLeft = !!(keys.ArrowLeft || keys.KeyA || keys.KeyQ || (down && mx < p.x - 16));
+    const wantRight = !!(keys.ArrowRight || keys.KeyD || (down && mx > p.x + 16));
+    const wantUp = !!(keys.ArrowUp || keys.KeyW || keys.KeyZ || keys.Space || (down && my < p.y - 24));
+    const wantDown = !!(keys.ArrowDown || keys.KeyS || (down && my > p.y + 24));
+
+    // Faithful ech.as ladder + platform + top-of-ladder boost logic
+    const onLadder = isLadder(p.x, p.y);
+    if (!onLadder) {
+      p.vy += 0.42 * step;
+    } else {
+      p.vy = 0;
+      if (wantUp) p.vy = -4.2;
+      if (wantDown) p.vy = 4.2;
+    }
+
+    p.vx = 0;
+    if (wantLeft) p.vx = -4.0;
+    if (wantRight) p.vx = 4.0;
+
+    if (!onLadder && wantUp && isPlat(p.x, p.y + 18)) {
+      p.vy = -8.6;
+      p.jumpTime = 8;
+    }
+
+    if (p.vx > 0 && isWall(p.x + 8, p.y)) p.vx = 0;
+    else if (p.vx < 0 && isWall(p.x - 8, p.y)) p.vx = 0;
+
+    const dy = p.vy * step;
+    if (onLadder) {
+      if (dy > 0 && isWall(p.x, p.y + 16 + dy)) {
+        p.vy = 0;
+        for (let i = 0; i < 16; i++) { if (!isWall(p.x, p.y + 16)) p.y += 1; else break; }
+      }
+      for (let i = 0; i < 16; i++) { if (isWall(p.x, p.y + 16)) p.y -= 1; else break; }
+    } else {
+      if (dy > 0 && isPlat(p.x, p.y + 16 + dy)) {
+        p.vy = 0;
+        for (let i = 0; i < 16; i++) { if (!isPlat(p.x, p.y + 16)) p.y += 1; else break; }
+      }
+      for (let i = 0; i < 16; i++) { if (isPlat(p.x, p.y + 16)) p.y -= 1; else break; }
+    }
+
+    p.x += p.vx * step;
+    p.y += p.vy * step;
+    if (p.y < 20) { p.y = 20; p.vy = 0; }
+
+    // Signature ech.as top-of-ladder pop-jump!
+    if (onLadder && !isLadder(p.x, p.y) && p.vy < 0) {
+      p.vy = -8.2;
+      p.jumpTime = 8;
+    }
+
+    // Collect cells
+    for (const c of cells) {
+      if (!c.done && Math.hypot(p.x - c.x, p.y - c.y) < 20) {
+        c.done = true;
+        score += 55;
+      }
+    }
+    if (cells.every(c => c.done)) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 5);
+    }
+
+    // Patrol drones
+    for (const d of drones) {
+      d.x += d.vx * step;
+      if (d.x < d.minX) { d.x = d.minX; d.vx = Math.abs(d.vx); }
+      if (d.x > d.maxX) { d.x = d.maxX; d.vx = -Math.abs(d.vx); }
+      if (invuln <= 0 && Math.abs(p.x - d.x) < 16 && Math.abs(p.y - d.y) < 22) {
+        hp--;
+        invuln = 1.2;
+        p.vy = -6;
+        p.jumpTime = 6;
+        if (hp <= 0) { over = true; won = false; }
+      }
+    }
+  }
+
+  // Squash & stretch recovery (ech.as)
+  p.jumpTime += (0 - p.jumpTime) * Math.min(1, 0.2 * step);
+
+  const doneN = cells.filter(c => c.done).length;
+  document.getElementById("stat").textContent = `Cellules: ${doneN}/${cells.length} • Vies: ${hp} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422"; ctx.fillRect(0, 0, 512, 512);
+
+  // Floor
+  ctx.fillStyle = "#1c3552"; ctx.fillRect(0, FLOOR_Y, 512, 512 - FLOOR_Y);
+  ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, FLOOR_Y); ctx.lineTo(512, FLOOR_Y); ctx.stroke();
+
+  // Platforms
+  for (const w of plats) {
+    ctx.fillStyle = "#263954"; ctx.fillRect(w.x, w.y, w.w, w.h);
+    ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 1.5; ctx.strokeRect(w.x, w.y, w.w, w.h);
+  }
+
+  // Ladders with rungs (ech.as style)
+  for (const l of ladders) {
+    ctx.strokeStyle = "#60a5fa"; ctx.lineWidth = 2;
+    ctx.strokeRect(l.x, l.y, l.w, l.h);
+    ctx.fillStyle = "#38d6ff";
+    for (let y = 0; y < l.h; y += 12) {
+      ctx.fillRect(l.x, l.y + y, l.w, 2);
+    }
+  }
+
+  // Cells
+  for (const c of cells) {
+    if (c.done) continue;
+    const pulse = 7 + Math.sin(now * 0.007 + c.x) * 2;
+    ctx.fillStyle = "rgba(253,224,71,0.28)";
+    ctx.beginPath(); ctx.arc(c.x, c.y, pulse + 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.arc(c.x, c.y, 7, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Drones
+  for (const d of drones) {
+    ctx.fillStyle = "#f87171";
+    ctx.beginPath(); ctx.arc(d.x, d.y, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#fecaca"; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  // Player with squash & stretch
+  const blink = invuln > 0 && Math.floor(now / 80) % 2 === 0;
+  const pw = 16 + p.jumpTime * 2;
+  const ph = 32 - p.jumpTime * 2;
+  ctx.fillStyle = blink ? "#f87171" : "#38d6ff";
+  ctx.fillRect(p.x - pw / 2, p.y - ph / 2, pw, ph);
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2;
+  ctx.strokeRect(p.x - pw / 2, p.y - ph / 2, pw, ph);
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "ÉTAGES SÉCURISÉS !" : (hp <= 0 ? "DRONE TOUCHÉ !" : "TEMPS ÉCOULÉ"), 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

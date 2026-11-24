@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Sillage Anneaux (Trail)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "trail",
+  "name": "Sillage Anneaux (Trail)",
+  "family": "topOrthoClav",
+  "icon": "〰️",
+  "controls": "Flèches / ZQSD (8 directions) ou maintenir clic/doigt pour guider la chaîne d'anneaux",
+  "description": "Chaîne articulée d'anneaux néon qui se déploie sur grille 32×32 : votre sillage électrifié repousse les étincelles hostiles.",
+  "goal": "Collecter les 18 noyaux dorés avant la fin du chrono sans laisser une étincelle toucher votre tête.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 42 },
+    { "key": "nodeCount", "label": "Noyaux", "type": "number", "default": 18 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>〰️ <b>Sillage Trail</b></span>
+  <span id="stat">Noyaux: 0/18 • ♥ 3 • 42s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "trail";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const GRID = 32, CS = 512 / GRID;
+let keys = {};
+let tx = 16, ty = 16;
+let prev = [];
+let maxTrail = 12;
+let nodes = [];
+let sparks = [];
+let pops = [];
+let ptr = null;
+let stepTimer = 0;
+let timeLeft = 42;
+let nodeGoal = 18;
+let collected = 0;
+let hp = 3;
+let invuln = 0;
+let score = 0;
+let won = false;
+let over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function setPtr(e) {
+  const r = cv.getBoundingClientRect();
+  ptr = { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  setPtr(e);
+});
+cv.addEventListener("pointermove", (e) => { if (ptr) setPtr(e); });
+window.addEventListener("pointerup", () => { ptr = null; });
+
+function spawnNode() {
+  for (let i = 0; i < 30; i++) {
+    const nx = 2 + Math.floor(Math.random() * (GRID - 4));
+    const ny = 2 + Math.floor(Math.random() * (GRID - 4));
+    if (Math.hypot(nx - tx, ny - ty) > 4) return { x: nx, y: ny, phase: Math.random() * 6 };
+  }
+  return { x: 4, y: 4, phase: 0 };
+}
+
+function spawnSpark() {
+  const side = Math.floor(Math.random() * 4);
+  let x = 24, y = 24;
+  if (side === 0) { x = Math.random() * 480 + 16; y = 18; }
+  else if (side === 1) { x = Math.random() * 480 + 16; y = 494; }
+  else if (side === 2) { x = 18; y = Math.random() * 480 + 16; }
+  else { x = 494; y = Math.random() * 480 + 16; }
+  const ang = Math.atan2(256 - y, 256 - x) + (Math.random() - 0.5) * 0.9;
+  const spd = 85 + Math.random() * 55;
+  return { x, y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd };
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 42;
+  nodeGoal = Math.max(6, Math.round(Number(custom.nodeCount) || 18));
+  tx = 16; ty = 16;
+  prev = [{ x: tx, y: ty }];
+  maxTrail = 10;
+  collected = 0;
+  hp = 3;
+  invuln = 0;
+  score = 0;
+  won = false;
+  over = false;
+  stepTimer = 0;
+  pops = [];
+  nodes = [];
+  for (let i = 0; i < 4; i++) nodes.push(spawnNode());
+  sparks = [];
+  for (let i = 0; i < 5; i++) sparks.push(spawnSpark());
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) { over = true; won = false; }
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+
+    // Grid-ticked movement faithful to trail.as (gt % 4 == 0 -> ~15 Hz)
+    stepTimer += dt;
+    const stepInterval = 1 / 15;
+    if (stepTimer >= stepInterval) {
+      stepTimer -= stepInterval;
+      let dx = 0, dy = 0;
+      if (keys.ArrowUp || keys.KeyW || keys.KeyZ) dy -= 1;
+      if (keys.ArrowDown || keys.KeyS) dy += 1;
+      if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) dx -= 1;
+      if (keys.ArrowRight || keys.KeyD) dx += 1;
+      if (dx === 0 && dy === 0 && ptr) {
+        const pdx = ptr.x / CS - (tx + 0.5);
+        const pdy = ptr.y / CS - (ty + 0.5);
+        if (Math.abs(pdx) > 0.6) dx = Math.sign(pdx);
+        if (Math.abs(pdy) > 0.6) dy = Math.sign(pdy);
+      }
+      if (dx !== 0 || dy !== 0) {
+        const nx = Math.max(1, Math.min(GRID - 2, tx + dx));
+        const ny = Math.max(1, Math.min(GRID - 2, ty + dy));
+        if (nx !== tx || ny !== ty) {
+          tx = nx; ty = ny;
+          prev.push({ x: tx, y: ty });
+          while (prev.length > maxTrail) prev.shift();
+        }
+      }
+    }
+
+    // Collect nodes
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      n.phase += dt * 5;
+      if (Math.hypot(tx - n.x, ty - n.y) <= 1.35) {
+        collected++;
+        score += 25;
+        maxTrail = Math.min(26, maxTrail + 1);
+        pops.push({ x: (n.x + 0.5) * CS, y: (n.y + 0.5) * CS, r: 8, life: 0.35, color: "#fde047" });
+        nodes.splice(i, 1);
+        if (collected + nodes.length < nodeGoal) nodes.push(spawnNode());
+      }
+    }
+
+    // Update red sparks: bounce/zap off the ring trail, damage if hitting the head
+    const hx = (tx + 0.5) * CS, hy = (ty + 0.5) * CS;
+    for (const s of sparks) {
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      if (s.x < 12 || s.x > 500) { s.vx *= -1; s.x = Math.max(12, Math.min(500, s.x)); }
+      if (s.y < 12 || s.y > 500) { s.vy *= -1; s.y = Math.max(12, Math.min(500, s.y)); }
+
+      // Check head hit
+      if (invuln <= 0 && Math.hypot(s.x - hx, s.y - hy) < 17) {
+        hp--;
+        invuln = 1.2;
+        pops.push({ x: hx, y: hy, r: 12, life: 0.45, color: "#f87171" });
+        // Push spark away
+        const a = Math.atan2(s.y - hy, s.x - hx);
+        const sp = Math.hypot(s.vx, s.vy);
+        s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp;
+        if (hp <= 0) { over = true; won = false; }
+        continue;
+      }
+
+      // Check trail shield deflection (exclude newest 2 segments near head)
+      for (let k = 0; k < prev.length - 2; k++) {
+        const sx = (prev[k].x + 0.5) * CS;
+        const sy = (prev[k].y + 0.5) * CS;
+        const dist = Math.hypot(s.x - sx, s.y - sy);
+        if (dist < 18) {
+          const a = Math.atan2(s.y - sy, s.x - sx);
+          const sp = Math.hypot(s.vx, s.vy);
+          s.vx = Math.cos(a) * sp;
+          s.vy = Math.sin(a) * sp;
+          s.x = sx + Math.cos(a) * 19;
+          s.y = sy + Math.sin(a) * 19;
+          score += 5;
+          pops.push({ x: sx, y: sy, r: 10, life: 0.25, color: "#38d6ff" });
+          break;
+        }
+      }
+    }
+
+    for (let i = pops.length - 1; i >= 0; i--) {
+      pops[i].life -= dt;
+      pops[i].r += 48 * dt;
+      if (pops[i].life <= 0) pops.splice(i, 1);
+    }
+
+    if (collected >= nodeGoal) {
+      won = true;
+      over = true;
+      score += 100 + Math.round(timeLeft * 5) + hp * 20;
+    }
+  }
+
+  document.getElementById("stat").textContent = `Noyaux: ${collected}/${nodeGoal} • ♥ ${hp} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle grid
+  ctx.strokeStyle = "rgba(45, 91, 123, 0.18)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < GRID; i++) {
+    ctx.beginPath(); ctx.moveTo(i * CS, 0); ctx.lineTo(i * CS, 512); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * CS); ctx.lineTo(512, i * CS); ctx.stroke();
+  }
+
+  // Energy nodes
+  for (const n of nodes) {
+    const nx = (n.x + 0.5) * CS, ny = (n.y + 0.5) * CS;
+    const r = 7 + Math.sin(n.phase) * 2;
+    ctx.fillStyle = "rgba(253, 224, 71, 0.22)";
+    ctx.beginPath(); ctx.arc(nx, ny, r + 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.arc(nx, ny, r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Trail circles (faithful to trail.as: overlapping circles + connecting spine)
+  for (let i = 0; i < prev.length; i++) {
+    const seg = prev[i];
+    const t = (i + 1) / prev.length;
+    const ax = (seg.x + 0.5) * CS;
+    const ay = (seg.y + 0.5) * CS;
+    ctx.strokeStyle = `rgba(56, 214, 255, ${0.22 + 0.65 * t})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ax, ay, 13, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Connecting spine line
+  if (prev.length > 1) {
+    ctx.strokeStyle = "#aef0ff";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < prev.length; i++) {
+      const ax = (prev[i].x + 0.5) * CS;
+      const ay = (prev[i].y + 0.5) * CS;
+      if (i === 0) ctx.moveTo(ax, ay);
+      else ctx.lineTo(ax, ay);
+    }
+    ctx.stroke();
+  }
+
+  // Head circle
+  const hx = (tx + 0.5) * CS, hy = (ty + 0.5) * CS;
+  if (invuln <= 0 || Math.floor(now / 70) % 2 === 0) {
+    ctx.fillStyle = "rgba(56, 214, 255, 0.35)";
+    ctx.beginPath(); ctx.arc(hx, hy, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(hx, hy, 4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Hostile sparks
+  for (const s of sparks) {
+    ctx.fillStyle = "#f87171";
+    ctx.beginPath(); ctx.arc(s.x, s.y, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#fecaca"; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // Pop rings
+  for (const p of pops) {
+    ctx.strokeStyle = p.color;
+    ctx.globalAlpha = Math.max(0, p.life * 2.5);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)";
+    ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "SILLAGE COMPLET !" : "INTERCEPTÉ / EXPIRÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

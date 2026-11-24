@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Tri à Ressorts (zknE)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "zkne",
+  "name": "Tri à Ressorts (zknE)",
+  "family": "income",
+  "icon": "🗂️",
+  "controls": "Glisser-déposer les modules entre colonnes (ou Flèches + Espace)",
+  "description": "Menu à 4 colonnes à ressorts élastiques avec écartement fluide à l'insertion.",
+  "goal": "Trier les 12 modules dans leur colonne de couleur (bonus si classés 1-2-3).",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 50 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🗂️ <b>Tri à Ressorts zknE</b></span>
+  <span id="stat">Triés: 0/12 • 50s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "zkne";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+// Faithful spring constants & geometry inspired by zknE.as
+const CELL_W = 104, CELL_H = 390, UNIT_W = 68, UNIT_H = 56, UNIT_MARGIN = 10;
+const STEP_Y = UNIT_H + UNIT_MARGIN;
+const K = 0.2, U = 0.4; // spring stiffness & damping from zknE.as
+const COL_COLORS = [
+  { name: "CYAN", hex: "#38d6ff", dark: "#0c3a4d" },
+  { name: "VERT", hex: "#4ade80", dark: "#0f3d24" },
+  { name: "OR",   hex: "#fde047", dark: "#473b0b" },
+  { name: "ROSE", hex: "#fb7185", dark: "#4a1222" }
+];
+
+let cells = [], dragUnit = null, dragOrigin = null, dragX = 256, dragY = 256;
+let scrollCell = null, scrollStartY = 0, scrollBasePos = 0;
+let kbCol = 0, kbIdx = 0;
+let timeLeft = 50, score = 0, moves = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+function makeCell(colIdx) {
+  const gap = 16;
+  const totalW = 4 * CELL_W + 3 * gap;
+  const startX = (512 - totalW) / 2;
+  return {
+    idx: colIdx,
+    x: startX + colIdx * (CELL_W + gap),
+    cy: 278,
+    color: COL_COLORS[colIdx],
+    units: [],
+    baseY: 0,
+    vy: 0,
+    position: 0,
+    insertIdx: null
+  };
+}
+
+function layoutCellTargets(cell) {
+  const n = cell.units.length;
+  const hasGap = cell.insertIdx !== null;
+  const count = hasGap ? n + 1 : n;
+  for (let i = 0; i < n; i++) {
+    const u = cell.units[i];
+    const slot = (hasGap && i >= cell.insertIdx) ? i + 1 : i;
+    u.targetX = (CELL_W - UNIT_W) * 0.5;
+    u.targetY = STEP_Y * slot - 0.5 * STEP_Y * count + 0.5 * STEP_Y;
+  }
+  const maxScroll = Math.max(0, Math.ceil((n - 5) * 0.5));
+  cell.position = Math.max(-maxScroll, Math.min(maxScroll, cell.position));
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 50;
+  score = 0; moves = 0; won = false; over = false;
+  dragUnit = null; dragOrigin = null; scrollCell = null;
+  kbCol = 0; kbIdx = 0;
+  cv.classList.remove("dragging");
+
+  cells = [0, 1, 2, 3].map(makeCell);
+
+  // Create 12 units (3 per color, numbered 1..3) and shuffle across columns
+  const deck = [];
+  for (let c = 0; c < 4; c++) {
+    for (let num = 1; num <= 3; num++) {
+      deck.push({ colIdx: c, num, x: 0, y: 0, targetX: 0, targetY: 0 });
+    }
+  }
+  // Fisher-Yates shuffle, ensure not already solved
+  do {
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+  } while (deck.every((u, i) => u.colIdx === Math.floor(i / 3)));
+
+  // Distribute with varied initial counts [2, 4, 3, 3] nodding to zknE's uneven columns
+  const counts = [2, 4, 3, 3];
+  let idx = 0;
+  for (let c = 0; c < 4; c++) {
+    for (let k = 0; k < counts[c]; k++) {
+      const u = deck[idx++];
+      cells[c].units.push(u);
+    }
+    layoutCellTargets(cells[c]);
+    for (const u of cells[c].units) { u.x = u.targetX; u.y = u.targetY; }
+  }
+}
+
+function getPtr(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+
+function updateHoverGaps(px, py) {
+  for (const cell of cells) {
+    if (px >= cell.x && px <= cell.x + CELL_W && py >= cell.cy - CELL_H / 2 && py <= cell.cy + CELL_H / 2) {
+      const localY = py - cell.cy - cell.baseY;
+      let ins = cell.units.length;
+      for (let i = 0; i < cell.units.length; i++) {
+        if (localY < cell.units[i].y) { ins = i; break; }
+      }
+      cell.insertIdx = ins;
+    } else {
+      cell.insertIdx = null;
+    }
+    layoutCellTargets(cell);
+  }
+}
+
+function dropUnitAt(px, py) {
+  if (!dragUnit) return;
+  let placed = false;
+  for (const cell of cells) {
+    if (cell.insertIdx !== null) {
+      const idx = Math.max(0, Math.min(cell.units.length, cell.insertIdx));
+      dragUnit.x = px - cell.x - UNIT_W / 2;
+      dragUnit.y = py - cell.cy - cell.baseY;
+      cell.units.splice(idx, 0, dragUnit);
+      placed = true;
+      moves++;
+      break;
+    }
+  }
+  if (!placed && dragOrigin) {
+    const c = dragOrigin.cell;
+    dragUnit.x = px - c.x - UNIT_W / 2;
+    dragUnit.y = py - c.cy - c.baseY;
+    c.units.splice(Math.min(dragOrigin.index, c.units.length), 0, dragUnit);
+  }
+  dragUnit = null;
+  dragOrigin = null;
+  cv.classList.remove("dragging");
+  for (const cell of cells) { cell.insertIdx = null; layoutCellTargets(cell); }
+  checkWin();
+}
+
+function countSorted() {
+  let ok = 0;
+  for (const cell of cells) {
+    for (const u of cell.units) {
+      if (u.colIdx === cell.idx) ok++;
+    }
+  }
+  return ok;
+}
+
+function checkWin() {
+  const allMatch = cells.every(c => c.units.length === 3 && c.units.every(u => u.colIdx === c.idx));
+  if (allMatch) {
+    let orderedCols = 0;
+    for (const c of cells) {
+      if (c.units[0].num === 1 && c.units[1].num === 2 && c.units[2].num === 3) orderedCols++;
+    }
+    won = true; over = true;
+    score = 120 + Math.round(timeLeft * 6) + orderedCols * 25;
+  }
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const pt = getPtr(e);
+  dragX = pt.x; dragY = pt.y;
+
+  // Check if clicking a unit
+  for (const cell of cells) {
+    if (pt.x < cell.x || pt.x > cell.x + CELL_W) continue;
+    if (pt.y < cell.cy - CELL_H / 2 || pt.y > cell.cy + CELL_H / 2) continue;
+    for (let i = cell.units.length - 1; i >= 0; i--) {
+      const u = cell.units[i];
+      const ux = cell.x + u.x;
+      const uy = cell.cy + cell.baseY + u.y - UNIT_H / 2;
+      if (pt.x >= ux && pt.x <= ux + UNIT_W && pt.y >= uy && pt.y <= uy + UNIT_H) {
+        dragUnit = cell.units.splice(i, 1)[0];
+        dragOrigin = { cell, index: i };
+        kbCol = cell.idx;
+        cv.classList.add("dragging");
+        updateHoverGaps(pt.x, pt.y);
+        cv.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+    // Otherwise allow spring-scrolling the column background if > 5 units
+    if (cell.units.length > 5) {
+      scrollCell = cell;
+      scrollStartY = pt.y;
+      scrollBasePos = cell.position;
+      cv.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+});
+
+cv.addEventListener("pointermove", (e) => {
+  const pt = getPtr(e);
+  dragX = pt.x; dragY = pt.y;
+  if (dragUnit && !over) {
+    updateHoverGaps(pt.x, pt.y);
+  } else if (scrollCell && !over) {
+    const dy = pt.y - scrollStartY;
+    scrollCell.position = scrollBasePos + Math.round(dy / STEP_Y);
+    layoutCellTargets(scrollCell);
+  }
+});
+
+cv.addEventListener("pointerup", (e) => {
+  const pt = getPtr(e);
+  if (dragUnit) dropUnitAt(pt.x, pt.y);
+  scrollCell = null;
+});
+
+cv.addEventListener("wheel", (e) => {
+  if (over) return;
+  const pt = getPtr(e);
+  for (const cell of cells) {
+    if (pt.x >= cell.x && pt.x <= cell.x + CELL_W && cell.units.length > 5) {
+      e.preventDefault();
+      cell.position += e.deltaY > 0 ? -1 : 1;
+      layoutCellTargets(cell);
+    }
+  }
+}, { passive: false });
+
+// Full keyboard support: Arrows to navigate, Space/Enter to pick up & drop
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (over) {
+    if (e.code === "Space" || e.code === "Enter") sendResultAndExit(won, score);
+    return;
+  }
+  if (e.code === "ArrowLeft" || e.code === "KeyA" || e.code === "KeyQ") {
+    kbCol = (kbCol + 3) % 4;
+    kbIdx = Math.min(kbIdx, Math.max(0, cells[kbCol].units.length - (dragUnit ? 0 : 1)));
+  } else if (e.code === "ArrowRight" || e.code === "KeyD") {
+    kbCol = (kbCol + 1) % 4;
+    kbIdx = Math.min(kbIdx, Math.max(0, cells[kbCol].units.length - (dragUnit ? 0 : 1)));
+  } else if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "KeyZ") {
+    kbIdx = Math.max(0, kbIdx - 1);
+  } else if (e.code === "ArrowDown" || e.code === "KeyS") {
+    const maxI = dragUnit ? cells[kbCol].units.length : Math.max(0, cells[kbCol].units.length - 1);
+    kbIdx = Math.min(maxI, kbIdx + 1);
+  } else if (e.code === "Space" || e.code === "Enter") {
+    const cell = cells[kbCol];
+    if (!dragUnit) {
+      if (cell.units.length > 0) {
+        const i = Math.min(kbIdx, cell.units.length - 1);
+        dragUnit = cell.units.splice(i, 1)[0];
+        dragOrigin = { cell, index: i };
+        cell.insertIdx = i;
+        layoutCellTargets(cell);
+      }
+    } else {
+      for (const c of cells) c.insertIdx = null;
+      cell.insertIdx = Math.min(kbIdx, cell.units.length);
+      dropUnitAt(cell.x + CELL_W / 2, cell.cy);
+      kbIdx = Math.min(kbIdx, Math.max(0, cell.units.length - 1));
+    }
+  }
+  if (dragUnit) {
+    for (const c of cells) {
+      c.insertIdx = (c.idx === kbCol) ? Math.min(kbIdx, c.units.length) : null;
+      layoutCellTargets(c);
+    }
+    const c = cells[kbCol];
+    dragX = c.x + CELL_W / 2;
+    const count = c.units.length + 1;
+    dragY = c.cy + c.baseY + STEP_Y * Math.min(kbIdx, c.units.length) - 0.5 * STEP_Y * count + 0.5 * STEP_Y;
+  }
+});
+
+function drawUnit(u, x, y, isFloating, isSelected) {
+  const col = COL_COLORS[u.colIdx];
+  ctx.save();
+  if (isFloating) {
+    ctx.shadowColor = col.hex;
+    ctx.shadowBlur = 14;
+  }
+  ctx.fillStyle = col.dark;
+  ctx.strokeStyle = isSelected ? "#ffffff" : col.hex;
+  ctx.lineWidth = isSelected ? 2.8 : 2;
+  ctx.beginPath();
+  ctx.roundRect(x, y, UNIT_W, UNIT_H, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  // Accent bar
+  ctx.fillStyle = col.hex;
+  ctx.fillRect(x + 8, y + 6, UNIT_W - 16, 4);
+
+  // Number label
+  ctx.fillStyle = "#e6f4ff";
+  ctx.font = "bold 22px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(String(u.num), x + UNIT_W / 2, y + UNIT_H / 2 + 4);
+  ctx.restore();
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const step = Math.min(1.5, dt * 60);
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) { over = true; won = false; score = countSorted() * 10; }
+  }
+
+  // Faithful spring physics from zknE.as
+  for (const cell of cells) {
+    for (const u of cell.units) {
+      u.y += (u.targetY - u.y) * Math.min(1, 0.45 * step);
+      u.x += (u.targetX - u.x) * Math.min(1, 0.30 * step);
+    }
+    const targetBaseY = cell.position * STEP_Y;
+    const ay = K * (targetBaseY - cell.baseY);
+    cell.vy += (ay - U * cell.vy) * step;
+    cell.baseY += cell.vy * step;
+  }
+
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Draw 4 columns
+  for (const cell of cells) {
+    const top = cell.cy - CELL_H / 2;
+    const isComplete = cell.units.length === 3 && cell.units.every(u => u.colIdx === cell.idx);
+
+    // Column header pill
+    ctx.fillStyle = cell.color.dark;
+    ctx.strokeStyle = cell.color.hex;
+    ctx.lineWidth = isComplete ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.roundRect(cell.x, 22, CELL_W, 38, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = cell.color.hex;
+    ctx.font = "bold 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(isComplete ? `✓ ${cell.color.name}` : cell.color.name, cell.x + CELL_W / 2, 41);
+
+    // Column body
+    ctx.fillStyle = cell.insertIdx !== null ? "rgba(56, 214, 255, 0.08)" : "#111a2d";
+    ctx.strokeStyle = (cell.idx === kbCol && !over) ? cell.color.hex : "#233652";
+    ctx.lineWidth = (cell.idx === kbCol && !over) ? 2 : 1.2;
+    ctx.beginPath();
+    ctx.roundRect(cell.x, top, CELL_W, CELL_H, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // Clipped unit container (like base_mc.mask in zknE.as)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(cell.x + 1, top + 1, CELL_W - 2, CELL_H - 2);
+    ctx.clip();
+
+    // Insertion guide line
+    if (cell.insertIdx !== null) {
+      const count = cell.units.length + 1;
+      const gy = cell.cy + cell.baseY + STEP_Y * cell.insertIdx - 0.5 * STEP_Y * count + 0.5 * STEP_Y;
+      ctx.strokeStyle = "rgba(56, 214, 255, 0.65)";
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(cell.x + (CELL_W - UNIT_W) / 2, gy - UNIT_H / 2, UNIT_W, UNIT_H);
+      ctx.setLineDash([]);
+    }
+
+    for (let i = 0; i < cell.units.length; i++) {
+      const u = cell.units[i];
+      const isSel = !dragUnit && cell.idx === kbCol && i === Math.min(kbIdx, cell.units.length - 1);
+      drawUnit(u, cell.x + u.x, cell.cy + cell.baseY + u.y - UNIT_H / 2, false, isSel);
+    }
+    ctx.restore();
+  }
+
+  // Floating dragged unit on top
+  if (dragUnit) {
+    drawUnit(dragUnit, dragX - UNIT_W / 2, dragY - UNIT_H / 2, true, true);
+  }
+
+  const sortedN = countSorted();
+  document.getElementById("stat").textContent = `Triés: ${sortedN}/12 • Coups: ${moves} • ${Math.ceil(timeLeft)}s`;
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "COLONNES TRIÉES !" : "TEMPS ÉCOULÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

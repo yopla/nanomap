@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Essaim Infini (FoloInf)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "foloinf",
+  "name": "Essaim Infini (FoloInf)",
+  "family": "topOrthoClav",
+  "icon": "🛸",
+  "controls": "Flèches / ZQSD (ou maintenir clic/doigt pour diriger le vaisseau)",
+  "description": "Espace torique infini où des drones alliés rallient votre orbite en essaim.",
+  "goal": "Rallier 12 drones endormis dans votre essaim avant la fin du chrono en évitant les mines.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🛸 <b>Essaim FoloInf</b></span>
+  <span id="stat">Essaim: 0/12 • ❤️3 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "foloinf";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const CX = 256, CY = 256, TARGET = 12;
+let keys = {}, pts = [], gt = 0, hp = 3, invuln = 0, recruited = 0;
+let down = false, mx = 256, my = 256;
+let timeLeft = 45, score = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  down = true; updatePtr(e);
+});
+cv.addEventListener("pointermove", (e) => { if (down) updatePtr(e); });
+window.addEventListener("pointerup", () => { down = false; });
+function updatePtr(e) {
+  const r = cv.getBoundingClientRect();
+  mx = (e.clientX - r.left) * (512 / r.width);
+  my = (e.clientY - r.top) * (512 / r.height);
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 45;
+  score = 0; won = false; over = false; gt = 0; hp = 3; invuln = 0; recruited = 0;
+  pts = [];
+  // 42 background stars (spec 0), 12 dormant allies (spec 2 -> become spec 1), 6 mines (spec 3)
+  for (let i = 0; i < 60; i++) {
+    let x = Math.random() * 1024 - 256;
+    let y = Math.random() * 1024 - 256;
+    let spec = 0;
+    if (i < TARGET) spec = 2;
+    else if (i < TARGET + 6) spec = 3;
+    if (spec >= 2 && Math.hypot(x - CX, y - CY) < 110) { x += 180; y += 140; }
+    pts.push({
+      cx: x, cy: y, gx: CX, gy: CY,
+      spec, ang: Math.random() * Math.PI * 2,
+      vx: (Math.random() - 0.5) * 45, vy: (Math.random() - 0.5) * 45
+    });
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const f = dt * 60;
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+    if (timeLeft <= 0) { over = true; won = false; }
+
+    let dx = 0, dy = 0, ms = 280 * dt;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) dy -= ms;
+    if (keys.ArrowDown || keys.KeyS) dy += ms;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) dx -= ms;
+    if (keys.ArrowRight || keys.KeyD) dx += ms;
+    if (down) {
+      const px = mx - CX, py = my - CY, d = Math.hypot(px, py);
+      if (d > 10) { dx = (px / d) * ms; dy = (py / d) * ms; }
+    }
+    if (dx !== 0 && dy !== 0 && !down) { dx *= 0.707; dy *= 0.707; }
+
+    // Camera stays fixed at (CX, CY); shift world opposite to movement & wrap in [-256, 768]
+    const ax = -dx, ay = -dy;
+    for (const a of pts) {
+      a.cx += ax; a.cy += ay;
+      if (a.spec === 3) { a.cx += a.vx * dt; a.cy += a.vy * dt; }
+
+      if (a.cx < -256) a.cx += 1024;
+      else if (a.cx > 768) a.cx -= 1024;
+      if (a.cy < -256) a.cy += 1024;
+      else if (a.cy > 768) a.cy -= 1024;
+
+      if (a.spec === 2 && Math.hypot(a.cx - CX, a.cy - CY) < 42) {
+        a.spec = 1;
+        a.gx = CX + Math.cos(a.ang) * 64;
+        a.gy = CY + Math.sin(a.ang) * 64;
+        recruited++;
+        score += 50;
+      }
+
+      // Faithful foloInf.as orbiting follower AI
+      if (a.spec === 1) {
+        if (gt % 60 === 0) {
+          a.gx = CX + Math.cos(a.ang) * 64;
+          a.gy = CY + Math.sin(a.ang) * 64;
+        }
+        if (gt % 30 !== 0 && Math.random() < 0.4) {
+          a.ang += (Math.random() - 0.5) * 0.2;
+        }
+        const mag = Math.hypot(a.cx - a.gx, a.cy - a.gy);
+        let ta = Math.atan2(a.gy - a.cy, a.gx - a.cx);
+        let spd = 0;
+        if (mag > 128) spd = 4.2;
+        else if (mag < 64) spd = -1;
+        else { spd = Math.sin(a.ang) * 4; ta += 1.57; }
+        a.cx += Math.cos(ta) * spd * f;
+        a.cy += Math.sin(ta) * spd * f;
+      }
+
+      if (a.spec === 3 && invuln <= 0 && Math.hypot(a.cx - CX, a.cy - CY) < 28) {
+        hp--; invuln = 1.2;
+        a.cx += 260;
+        if (hp <= 0) { over = true; won = false; }
+      }
+    }
+    gt++;
+    if (recruited >= TARGET) {
+      won = true; over = true; score += Math.round(timeLeft * 10) + hp * 50;
+    }
+  }
+
+  document.getElementById("stat").textContent = `Essaim: ${recruited}/${TARGET} • ❤️${hp} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422"; ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle radar ring around player
+  ctx.strokeStyle = "#38d6ff22"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(CX, CY, 64, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(CX, CY, 128, 0, Math.PI * 2); ctx.stroke();
+
+  let nearest = null, bestD = Infinity;
+  for (const a of pts) {
+    if (a.spec === 2) {
+      const d = Math.hypot(a.cx - CX, a.cy - CY);
+      if (d < bestD) { bestD = d; nearest = a; }
+    }
+    if (a.cx < -20 || a.cx > 532 || a.cy < -20 || a.cy > 532) continue;
+    if (a.spec === 0) {
+      ctx.fillStyle = "#334155";
+      ctx.beginPath(); ctx.arc(a.cx, a.cy, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (a.spec === 1) {
+      ctx.fillStyle = "#4ade80";
+      ctx.beginPath(); ctx.arc(a.cx, a.cy, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#bbf7d0"; ctx.lineWidth = 1.5; ctx.stroke();
+    } else if (a.spec === 2) {
+      ctx.fillStyle = "#fde047";
+      ctx.beginPath(); ctx.arc(a.cx, a.cy, 9 + Math.sin(now / 150) * 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+    } else if (a.spec === 3) {
+      ctx.fillStyle = "#f43f5e";
+      ctx.beginPath(); ctx.arc(a.cx, a.cy, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#fda4af"; ctx.lineWidth = 2; ctx.stroke();
+    }
+  }
+
+  // Direction indicator toward nearest unrecruited drone
+  if (nearest && bestD > 190) {
+    const ang = Math.atan2(nearest.cy - CY, nearest.cx - CX);
+    const ix = CX + Math.cos(ang) * 44, iy = CY + Math.sin(ang) * 44;
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.arc(ix, iy, 4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  if (invuln <= 0 || Math.floor(now / 80) % 2 === 0) {
+    ctx.fillStyle = "#38d6ff";
+    ctx.beginPath(); ctx.arc(CX, CY, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "ESSAIM AU COMPLET !" : "COQUE PERCÉE / EXPIRÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

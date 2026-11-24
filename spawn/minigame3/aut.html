@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Automate Cellulaire (Aut)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "aut",
+  "name": "Automate Cellulaire (Aut)",
+  "family": "zooEcosys",
+  "icon": "🧬",
+  "controls": "Maintenir clic/doigt ou Espace pour attirer & nourrir d'éther ; Clic droit ou Shift pour disperser ; Flèches/ZQSD pour déplacer le curseur",
+  "description": "Écosystème de cellules bipolaires : les opposés s'attirent et se reproduisent, les semblables se repoussent, la surpopulation est fatale.",
+  "goal": "Provoquer 25 naissances avant la fin du chrono sans extinction.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🧬 <b>Automate Aut</b></span>
+  <span id="stat">Pop: 50 • Naiss: 0/25 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "aut";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const MIN_DIST = 512 / 10;
+const SPRING_AMOUNT = 0.0015;
+const DAMAGE = 0.16;
+const ETHER = 1.6;
+const MAX_MP = 100;
+const DEF_HP = 100;
+const MAX_CHILD = 3;
+const MAX_CONN = 10;
+const TARGET_BIRTHS = 25;
+
+let keys = {}, particles = [], sparks = [], links = [];
+let curX = 256, curY = 256, down = false, repel = false;
+let timeLeft = 45, births = 0, score = 0, won = false, over = false, endReason = "";
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (512 / r.width), y: (e.clientY - r.top) * (512 / r.height) };
+}
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const pos = getPos(e); curX = pos.x; curY = pos.y;
+  if (e.button === 2) repel = true; else down = true;
+});
+cv.addEventListener("pointermove", (e) => { const pos = getPos(e); curX = pos.x; curY = pos.y; });
+window.addEventListener("pointerup", () => { down = false; repel = false; });
+
+function makeNode(x, y, forceSex) {
+  const sex = forceSex !== undefined ? forceSex : Math.random() < 0.5;
+  particles.push({
+    x, y,
+    vx: (Math.random() * MIN_DIST / 50 - MIN_DIST / 100) * 1.4,
+    vy: (Math.random() * MIN_DIST / 50 - MIN_DIST / 100) * 1.4,
+    radius: 4.5,
+    sex,
+    HP: DEF_HP,
+    MP: 0,
+    bornChild: 0,
+    conn: 0
+  });
+}
+
+function addSpark(x, y, col) {
+  for (let i = 0; i < 8; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 0.6 + Math.random() * 1.8;
+    sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, col });
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 45;
+  particles = []; sparks = []; links = [];
+  births = 0; score = 0; won = false; over = false; endReason = "";
+  curX = 256; curY = 256; down = false; repel = false;
+  for (let i = 0; i < 50; i++) {
+    makeNode(Math.random() * 512, Math.random() * 512, i % 2 === 0);
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  const step = dt * 60;
+  last = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) curX -= 280 * dt;
+    if (keys.ArrowRight || keys.KeyD) curX += 280 * dt;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) curY -= 280 * dt;
+    if (keys.ArrowDown || keys.KeyS) curY += 280 * dt;
+    curX = Math.max(10, Math.min(502, curX));
+    curY = Math.max(10, Math.min(502, curY));
+
+    const attractActive = down || !!keys.Space;
+    const repelActive = repel || !!keys.ShiftLeft || !!keys.ShiftRight;
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      if (p.HP <= 0 || p.bornChild >= MAX_CHILD) {
+        addSpark(p.x, p.y, p.bornChild >= MAX_CHILD ? "#fde047" : "#475569");
+        particles.splice(i, 1);
+        continue;
+      }
+      p.HP -= DAMAGE * step;
+
+      if (attractActive || repelActive) {
+        const dx = curX - p.x;
+        const dy = curY - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 110 && dist > 1) {
+          const f = (1 - dist / 110) * 0.12 * step;
+          if (repelActive) {
+            p.vx -= (dx / dist) * f * 2.2;
+            p.vy -= (dy / dist) * f * 2.2;
+          } else {
+            p.vx += (dx / dist) * f;
+            p.vy += (dy / dist) * f;
+            p.MP = Math.min(MAX_MP + 10, p.MP + 0.55 * step);
+            p.HP = Math.min(DEF_HP, p.HP + 0.14 * step);
+          }
+        }
+      }
+
+      const spd = Math.hypot(p.vx, p.vy);
+      if (spd > 3.2) { p.vx *= 3.2 / spd; p.vy *= 3.2 / spd; }
+      p.vx *= Math.pow(0.992, step);
+      p.vy *= Math.pow(0.992, step);
+      p.x += p.vx * step;
+      p.y += p.vy * step;
+
+      if (p.x > 518) p.x = -6;
+      else if (p.x < -6) p.x = 518;
+      if (p.y > 518) p.y = -6;
+      else if (p.y < -6) p.y = 518;
+      p.conn = 0;
+    }
+
+    links = [];
+    const curLen = particles.length;
+    for (let i = 0; i < curLen - 1; i++) {
+      const a = particles[i];
+      for (let j = i + 1; j < curLen; j++) {
+        const b = particles[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < MIN_DIST) {
+          a.conn++; b.conn++;
+          if (a.conn >= MAX_CONN) a.HP = 0;
+          if (b.conn >= MAX_CONN) b.HP = 0;
+          const ax = dx * SPRING_AMOUNT * step;
+          const ay = dy * SPRING_AMOUNT * step;
+          if (a.sex !== b.sex) {
+            if (a.MP > MAX_MP && b.MP > MAX_MP && particles.length < 140) {
+              const mx = (a.x + b.x) * 0.5, my = (a.y + b.y) * 0.5;
+              makeNode(mx, my);
+              a.MP = 0; b.MP = 0;
+              a.bornChild++; b.bornChild++;
+              births++;
+              score += 20;
+              addSpark(mx, my, "#4ade80");
+            }
+            a.vx += ax; a.vy += ay;
+            b.vx -= ax; b.vy -= ay;
+            a.HP = Math.min(DEF_HP, a.HP + (DAMAGE / 3) * step);
+            b.HP = Math.min(DEF_HP, b.HP + (DAMAGE / 3) * step);
+            a.MP += ETHER * step;
+            b.MP += ETHER * step;
+            links.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, alpha: (1 - dist / MIN_DIST) * 0.65, same: false });
+          } else {
+            a.vx -= ax; a.vy -= ay;
+            b.vx += ax; b.vy += ay;
+            a.HP -= (DAMAGE / 4) * step;
+            b.HP -= (DAMAGE / 4) * step;
+            links.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, alpha: (1 - dist / MIN_DIST) * 0.45, same: true });
+          }
+        }
+      }
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.x += s.vx * step; s.y += s.vy * step;
+      s.life -= 0.03 * step;
+      if (s.life <= 0) sparks.splice(i, 1);
+    }
+
+    if (births >= TARGET_BIRTHS) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 8 + particles.length * 2);
+      endReason = "COLONIE FLORISSANTE !";
+    } else if (particles.length === 0) {
+      won = false; over = true;
+      endReason = "EXTINCTION TOTALE";
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+      endReason = "TEMPS ÉCOULÉ";
+    }
+  }
+
+  let fem = 0, mal = 0;
+  for (const p of particles) { if (p.sex) fem++; else mal++; }
+  document.getElementById("stat").textContent = `Pop: ${particles.length} (${fem}🔵/${mal}🔴) • Naiss: ${births}/${TARGET_BIRTHS} • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle field indicator
+  const attractActive = down || !!keys.Space;
+  const repelActive = repel || !!keys.ShiftLeft || !!keys.ShiftRight;
+  if (!over) {
+    ctx.beginPath();
+    ctx.arc(curX, curY, attractActive || repelActive ? 110 : 34, 0, Math.PI * 2);
+    ctx.strokeStyle = repelActive ? "rgba(244,114,182,0.55)" : attractActive ? "rgba(56,214,255,0.55)" : "rgba(56,214,255,0.22)";
+    ctx.lineWidth = attractActive || repelActive ? 2 : 1;
+    ctx.stroke();
+    if (attractActive || repelActive) {
+      ctx.fillStyle = repelActive ? "rgba(244,114,182,0.08)" : "rgba(56,214,255,0.08)";
+      ctx.fill();
+    }
+  }
+
+  for (const l of links) {
+    ctx.strokeStyle = l.same ? `rgba(244,114,182,${l.alpha})` : `rgba(174,240,255,${l.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
+  }
+
+  for (const p of particles) {
+    const a = Math.max(0.18, Math.min(1, p.HP / DEF_HP));
+    ctx.fillStyle = p.sex ? `rgba(56,214,255,${a})` : `rgba(248,113,113,${a})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+    if (p.MP > 35) {
+      const ratio = Math.min(1, p.MP / MAX_MP);
+      ctx.strokeStyle = `rgba(74,222,128,${ratio})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.radius + 2.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio); ctx.stroke();
+    }
+  }
+
+  for (const s of sparks) {
+    ctx.globalAlpha = Math.max(0, s.life);
+    ctx.fillStyle = s.col;
+    ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
+  }
+  ctx.globalAlpha = 1;
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(endReason, 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Naissances ${births}/${TARGET_BIRTHS} • Score ${score} — Cliquez pour revenir`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

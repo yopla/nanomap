@@ -1,0 +1,987 @@
+{
+	"minigames": [
+		{
+			"controls": "Souris / Clic pour poser une balise magnétique orientant les drones",
+			"custom": {
+				"durationSec": 40.0,
+				"gridSize": 25.0
+			},
+			"description": "Essaim de drones mineurs (xActor) partant du centre pour excaver des filons sombres sur une grille 25×25 et rapporter le minerai à la base.",
+			"enabled": true,
+			"family": "core",
+			"filename": "creuseur.html",
+			"goal": "Excaver tous les blocs de minerai noir avant la fin du chrono.",
+			"icon": "⛏️",
+			"id": "creuseur",
+			"name": "Creuseur Radial",
+			"rewards": {
+				"coque": 0.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 2.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou clic sur cases adjacentes (tour par tour)",
+			"custom": {
+				"botCount": 9.0,
+				"mineCount": 28.0
+			},
+			"description": "Survie tactique inspirée de Daleks : à chaque pas, les automates ennemis avancent vers vous en alternant axe X et axe Y. Attirez-les dans les mines et débris !",
+			"enabled": true,
+			"family": "core",
+			"filename": "robots.html",
+			"goal": "Détruire tous les robots poursuivants par collision sans être touché.",
+			"icon": "🤖",
+			"id": "robots",
+			"name": "Robots Tactiques",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Déplacer la souris / glisser pour attirer l'essaim Floy",
+			"custom": {
+				"boidsCount": 56.0,
+				"durationSec": 38.0
+			},
+			"description": "Nuée émergente d'agents Floy liés dynamiquement à leurs voisins les plus proches. Guidez la résonance collective vers l'anneau capteur.",
+			"enabled": true,
+			"family": "core",
+			"filename": "swarm.html",
+			"goal": "Maintenir au moins 75% de l'essaim dans l'anneau cible jusqu'à charge complète.",
+			"icon": "🐝",
+			"id": "swarm",
+			"name": "Swarm Floy",
+			"rewards": {
+				"coque": 0.0,
+				"fuel": 6.0,
+				"lum": 0.0,
+				"scan": 8.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Maintenir clic et glisser pour sculpter le champ de vélocité",
+			"custom": {
+				"durationSec": 40.0,
+				"particleCount": 420.0
+			},
+			"description": "Grille eulérienne de courants entraînant des centaines de particules luminescentes dans le vide.",
+			"enabled": true,
+			"family": "core",
+			"filename": "fluid.html",
+			"goal": "Balayer 70% des particules dans le vortex collecteur avant expiration.",
+			"icon": "🌊",
+			"id": "fluid",
+			"name": "Courant Fluide",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Déplacer la souris pour propulser la sphère de frappe reliée au curseur",
+			"custom": {
+				"durationSec": 35.0
+			},
+			"description": "Arène physique à contrepoids : deux figurines auto-redressantes (Delta vert et Daruma rouge) oscillent sur des paliers néon.",
+			"enabled": true,
+			"family": "core",
+			"filename": "lurd.html",
+			"goal": "Propulser les deux culbutos hors du puits supérieur ou dans l'anneau d'éjection.",
+			"icon": "🎯",
+			"id": "lurd",
+			"name": "Culbuto Daruma (Lurd)",
+			"rewards": {
+				"coque": 4.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 2.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Clic gauche pour saisir / déposer / échanger un module, Clic droit ou R pour tourner",
+			"custom": {
+				"durationSec": 45.0
+			},
+			"description": "Agencement spatial des modules de cargaison dans le cadre 12×8 de la soute orbitale avec échange intelligent à un seul chevauchement.",
+			"enabled": true,
+			"family": "core",
+			"filename": "sim.html",
+			"goal": "Ranger intégralement toutes les pièces dans la grille de soute 12×8.",
+			"icon": "🧩",
+			"id": "sim",
+			"name": "Soute Polyomino (SIM)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 12.0
+			}
+		},
+		{
+			"controls": "Clic pour sélectionner/déplacer une unité ou tirer en ligne de vue, Espace = Fin de tour",
+			"custom": {
+				"mazeSize": 13.0
+			},
+			"description": "Escarmouche tactique d'escouade dans un labyrinthe généré : gérez les points d'énergie (AP) de vos éclaireurs et les lignes de tir.",
+			"enabled": true,
+			"family": "tactical",
+			"filename": "wg.html",
+			"goal": "Neutraliser toutes les tourelles rouges adverses avec votre escouade.",
+			"icon": "⚔️",
+			"id": "wg",
+			"name": "Escarmouche Labyrinthe (WG)",
+			"rewards": {
+				"coque": 5.0,
+				"fuel": 10.0,
+				"lum": 1.0,
+				"scan": 3.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou glisser vers la direction souhaitée",
+			"custom": {
+				"grassCount": 36.0
+			},
+			"description": "Infiltration temps réel face à des traqueurs A* (magenta), des vigiles à rayon laser (rouge) et une volée de pigeons gloutons (jaunes).",
+			"enabled": true,
+			"family": "rogTil",
+			"filename": "pat.html",
+			"goal": "Récolter plus de parcelles d'herbe énergétique que les pigeons sans être intercepté.",
+			"icon": "👁️",
+			"id": "pat",
+			"name": "Moisson Furtive (Pat AI)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 6.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches Haut/Bas (accélérer/freiner) et Gauche/Droite (braquer), ou suivi tactile",
+			"custom": {
+				"durationSec": 35.0,
+				"trackLength": 2400.0
+			},
+			"description": "Course verticale à dérapage inertiel sur un long couloir semé de chicanes et de plots rebondissants.",
+			"enabled": true,
+			"family": "clavDir",
+			"filename": "micromach.html",
+			"goal": "Franchir la ligne d'arrivée à damier tout en haut avant la fin du compte à rebours.",
+			"icon": "🏎️",
+			"id": "micromach",
+			"name": "Sprint MicroMach",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 14.0,
+				"lum": 0.0,
+				"scan": 2.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Flèches pour piloter + Espace / Clic maintenu pour tracer une corde verte rebondissante",
+			"custom": {
+				"durationSec": 45.0,
+				"enemyCount": 12.0
+			},
+			"description": "Marquez en bleu tous les disques rouges errants tout en utilisant votre sillage vert pour confiner la cible et contrer le libérateur magenta !",
+			"enabled": true,
+			"family": "clavDir",
+			"filename": "catchemall.html",
+			"goal": "Convertir simultanément les 12 disques en bleu.",
+			"icon": "🪢",
+			"id": "catchemall",
+			"name": "Lasso Ruban (CatchEmAll)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches pour tourner/avancer + Espace/Clic pour tir rapide et Shift/Clic droit pour missile guidé",
+			"custom": {
+				"durationSec": 40.0,
+				"unitCount": 5.0
+			},
+			"description": "Combat tournoyant en arène face à des drones autonomes qui maintiennent une distance d'engagement tactique.",
+			"enabled": true,
+			"family": "clavDir",
+			"filename": "folotete.html",
+			"goal": "Abattre les 5 unités autonomes sans perdre votre blindage.",
+			"icon": "🚀",
+			"id": "folotete",
+			"name": "Duel Vectoriel (FoloTete)",
+			"rewards": {
+				"coque": 4.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou boutons directionnels (R pour réinitialiser la salle)",
+			"custom": {
+				"crateCount": 4.0,
+				"durationSec": 50.0
+			},
+			"description": "Glissement orthogonal fluide de caisses magnétiques sur une grille 10×10 vers les socles récepteurs.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "sok.html",
+			"goal": "Pousser une caisse sur chacun des 4 socles lumineux.",
+			"icon": "📦",
+			"id": "sok",
+			"name": "Pousseur Sokoban (Sok)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 10.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou suivi souris/doigt",
+			"custom": {
+				"guardCount": 3.0,
+				"pelletCount": 32.0
+			},
+			"description": "Collecte effrénée de pastilles carrées en fil de fer tout en esquivant les patrouilleurs rebondissants.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "pac.html",
+			"goal": "Ramasser les 32 pastilles énergétiques sans percuter un gardien.",
+			"icon": "🍒",
+			"id": "pac",
+			"name": "Moisson Wireframe (Pac)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 11.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD avec alignement automatique dans les carrefours",
+			"custom": {
+				"durationSec": 42.0,
+				"keyCount": 4.0
+			},
+			"description": "Exploration rapide d'une grille à piliers façon Bomberman avec glissement assisté dans les virages.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "mazy.html",
+			"goal": "Récupérer les 4 clés-cristaux puis franchir le portail de sortie.",
+			"icon": "🏛️",
+			"id": "mazy",
+			"name": "Couloirs Piliers (Mazy)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 9.0,
+				"lum": 0.0,
+				"scan": 5.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD pour naviguer entre les dalles de téléportation couplées",
+			"custom": {
+				"durationSec": 40.0,
+				"orbCount": 8.0
+			},
+			"description": "Salles cloisonnées reliées par des paires de dalles vibrantes qui téléportent instantanément d'un secteur à l'autre.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "telep.html",
+			"goal": "Collecter tous les orbes de résonance en empruntant les téléporteurs.",
+			"icon": "🌀",
+			"id": "telep",
+			"name": "Chambres de Warp (Telep)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 8.0,
+				"lum": 1.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Maintenir clic / toucher en direction des balises sur le maillage 3D isométrique",
+			"custom": {
+				"beaconCount": 5.0,
+				"durationSec": 45.0
+			},
+			"description": "Marcheur sur relief filaire isométrique avec collines, cratères et radar topographique en coin d'écran.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "diabi.html",
+			"goal": "Activer les 5 balises de crête indiquées sur le radar.",
+			"icon": "⛰️",
+			"id": "diabi",
+			"name": "Crêtes Isométriques (Diabi)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 6.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Déplacer le curseur : la sonde accélère au bout d'une laisse élastique et rebondit sur les blocs",
+			"custom": {
+				"durationSec": 42.0,
+				"roomsToClear": 4.0
+			},
+			"description": "Navigation inertielle à travers une succession de salles d'obstacles générées procéduralement.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "tir.html",
+			"goal": "Franchir 4 portails de salle consécutifs en maîtrisant l'inertie.",
+			"icon": "☄️",
+			"id": "tir",
+			"name": "Laisse Inertielle (Tir)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Déplacer la souris pour glisser le long des coins arrondis et pousser les sphères",
+			"custom": {
+				"durationSec": 38.0,
+				"orbCount": 5.0
+			},
+			"description": "Physique de glissement doux sur coins arrondis autour d'un pilier central.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "gliss.html",
+			"goal": "Pousser les 5 sphères dérivantes dans les poches d'angle.",
+			"icon": "🧊",
+			"id": "gliss",
+			"name": "Pare-Chocs Gliss",
+			"rewards": {
+				"coque": 3.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèche Haut (propulseur principal) + Gauche/Droite (propulseurs latéraux)",
+			"custom": {
+				"durationSec": 45.0,
+				"padCount": 4.0
+			},
+			"description": "Pilotage fin sous gravité lunaire dans une caverne à corniches étroites.",
+			"enabled": true,
+			"family": "sideClavSimple",
+			"filename": "aster.html",
+			"goal": "Se poser en douceur sur les 4 plateformes de ravitaillement.",
+			"icon": "🛸",
+			"id": "aster",
+			"name": "Atterrisseur Caverne (Aster)",
+			"rewards": {
+				"coque": 3.0,
+				"fuel": 14.0,
+				"lum": 0.0,
+				"scan": 2.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Clic gauche = pluie nutritive (fait germer des plantes) • Clic droit / Espace = onde répulsive",
+			"custom": {
+				"surviveSec": 25.0
+			},
+			"description": "Simulateur d'écosystème à 3 niveaux trophiques : Plantes vertes, Herbivores bleus et Carnivores rouges avec courbe démographique en direct.",
+			"enabled": true,
+			"family": "zooEcosys",
+			"filename": "proie.html",
+			"goal": "Maintenir les 3 espèces vivantes simultanément jusqu'à stabilisation du biome.",
+			"icon": "🌿",
+			"id": "proie",
+			"name": "Biosphère Trophique (Proie)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 8.0,
+				"lum": 1.0,
+				"scan": 5.0,
+				"t2s": 10.0
+			}
+		},
+		{
+			"controls": "Maintenir clic / glisser sur la roche pour tracer les galeries (ou Flèches/ZQSD + Espace)",
+			"custom": {
+				"durationSec": 45.0,
+				"gemCount": 10.0
+			},
+			"description": "Tracez des ordres d'excavation jaunes sur une grille 32×32 pour guider un robot foreur autonome vers les filons cristallins en évitant les poches instables.",
+			"enabled": true,
+			"family": "core",
+			"filename": "diger.html",
+			"goal": "Extraire tous les cristaux lumineux avant la fin du chrono sans percer 3 poches instables.",
+			"icon": "💎",
+			"id": "diger",
+			"name": "Foreuse Autonome (Diger)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Glisser/lancer à la souris ou au doigt (ou Molette / Flèches Haut/Bas) puis cliquer sur la fiche cible",
+			"custom": {
+				"durationSec": 40.0,
+				"targetCount": 8.0
+			},
+			"description": "Liste défilante à inertie élastique et rebond de fin de course inspirée du journal de bord : lancez le flux pour repérer et valider les fiches demandées.",
+			"enabled": true,
+			"family": "core",
+			"filename": "invglid.html",
+			"goal": "Retrouver et valider les 8 fiches du journal avant la fin du chrono sans faire 3 erreurs.",
+			"icon": "📜",
+			"id": "invglid",
+			"name": "Journal Inertiel (InvGlid)",
+			"rewards": {
+				"coque": 0.0,
+				"fuel": 6.0,
+				"lum": 0.0,
+				"scan": 7.0,
+				"t2s": 10.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD (rotation + avance/recul) ou maintenir clic/doigt pour diriger",
+			"custom": {
+				"beaconCount": 8.0,
+				"durationSec": 45.0
+			},
+			"description": "Embarquez sur des plateformes carrées rebondissantes qui vous entraînent sur le bassin ionisé : sautez d'une barge à l'autre pour récupérer les balises avant d'épuiser votre bouclier.",
+			"enabled": true,
+			"family": "clavDir",
+			"filename": "barque.html",
+			"goal": "Collecter les 8 balises flottantes avant la fin du chrono sans vider votre énergie hors des barges.",
+			"icon": "🛶",
+			"id": "barque",
+			"name": "Barges Dérivantes (Barque)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD (pilotage tank isométrique) ou maintenir clic/doigt vers la destination",
+			"custom": {
+				"crystalCount": 7.0,
+				"durationSec": 45.0
+			},
+			"description": "Pilotez un automate humanoïde articulé en fil de fer 3D isométrique sur un plateau orbital gardé par des cubes sentinelles.",
+			"enabled": true,
+			"family": "clavDir",
+			"filename": "isobo.html",
+			"goal": "Collecter les 7 pylônes de données dorés avant la fin du chrono sans perdre vos 3 points de blindage.",
+			"icon": "🦿",
+			"id": "isobo",
+			"name": "Automate Isométrique (IsoBo)",
+			"rewards": {
+				"coque": 3.0,
+				"fuel": 9.0,
+				"lum": 0.0,
+				"scan": 5.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD (glisse inertielle) + Espace pour tirer (ou maintenir clic/doigt pour viser et tirer)",
+			"custom": {
+				"asteroidCount": 3.0,
+				"durationSec": 45.0
+			},
+			"description": "Pilotage à faible friction dans une arène rebondissante : chaque astéroïde détruit se scinde perpendiculairement en deux fragments plus petits.",
+			"enabled": true,
+			"family": "clavDir",
+			"filename": "glide.html",
+			"goal": "Pulvériser tous les astéroïdes et leurs fragments avant la fin du chrono sans perdre vos 3 points de coque.",
+			"icon": "🛰️",
+			"id": "glide",
+			"name": "Glisseur Astéroïdes (Glide)",
+			"rewards": {
+				"coque": 4.0,
+				"fuel": 11.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD pour courir et grimper aux échelles, Espace / Haut pour sauter (ou clic/toucher sur les zones)",
+			"custom": {
+				"durationSec": 50.0
+			},
+			"description": "Plateformer à défilement multi-surfaces : glace glissante, tapis roulants, nuages traversables, échelles, trampolines et porte verrouillée.",
+			"enabled": true,
+			"family": "sideClavSimple",
+			"filename": "plat.html",
+			"goal": "Récupérer la clé et collecter les 5 jetons dorés en évitant pics et patrouilleurs.",
+			"icon": "🏃",
+			"id": "plat",
+			"name": "Plateformes Néon (Plat)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Gauche/Droite (Q/D) pour courir autour du planétoïde, Haut/Espace pour propulser en orbite (ou maintenir clic/doigt)",
+			"custom": {
+				"beaconCount": 8.0,
+				"durationSec": 45.0
+			},
+			"description": "Gravité radiale 360° autour d'un planétoïde central : marchez sur sa circonférence et bondissez en orbite basse.",
+			"enabled": true,
+			"family": "sideClavSimple",
+			"filename": "grav.html",
+			"goal": "Collecter les 8 balises orbitales sans vous faire toucher par les satellites rouges.",
+			"icon": "🪐",
+			"id": "grav",
+			"name": "Orbite Planétoïde (Grav)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 12.0,
+				"lum": 1.0,
+				"scan": 4.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Gauche/Droite (Q/D) pour rouler, Haut/Espace (W/Z) pour sauter (ou maintenir clic/doigt pour diriger)",
+			"custom": {
+				"durationSec": 45.0
+			},
+			"description": "Parcours acrobatique à sphère roulante avec rebonds muraux, dômes circulaires et caméra fluide.",
+			"enabled": true,
+			"family": "sideClavSimple",
+			"filename": "roul.html",
+			"goal": "Collecter les 6 noyaux dorés et franchir le portail final avant la fin du chrono.",
+			"icon": "🟢",
+			"id": "roul",
+			"name": "Sphère Roulante (Roul)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 11.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD pour propulser dans les 4 directions sous gravité (ou maintenir clic/doigt vers la cible)",
+			"custom": {
+				"crystalCount": 7.0,
+				"durationSec": 45.0
+			},
+			"description": "Exploration en vol libre d'une caverne souterraine cloisonnée avec caméra fluide, gravité douce et radar de cristaux.",
+			"enabled": true,
+			"family": "sideClavSimple",
+			"filename": "vol.html",
+			"goal": "Collecter les 7 cristaux lumineux avant la fin du chrono sans briser la coque.",
+			"icon": "🦇",
+			"id": "vol",
+			"name": "Vol Caverne (Vol)",
+			"rewards": {
+				"coque": 3.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 6.0
+			}
+		},
+		{
+			"controls": "Gauche/Droite (Q/D) pour bouger, Haut (W/Z) pour sauter sur un cube, Bas / Espace pour soulever puis lancer (ou clic/toucher)",
+			"custom": {
+				"durationSec": 45.0,
+				"targetCount": 6.0
+			},
+			"description": "Mécanique de portage et lancer : sautez sur des cubes bondissants, soulevez-les au-dessus de votre tête et projetez-les sur les cibles.",
+			"enabled": true,
+			"family": "sideClavSimple",
+			"filename": "saut.html",
+			"goal": "Détruire les 6 cibles lumineuses en leur lançant les cubes bondissants.",
+			"icon": "📦",
+			"id": "saut",
+			"name": "Lancer-Saut (Saut)",
+			"rewards": {
+				"coque": 3.0,
+				"fuel": 9.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou clic/glisser : glisse automatiquement jusqu'au prochain carrefour",
+			"custom": {
+				"durationSec": 45.0,
+				"mazeSize": 25.0
+			},
+			"description": "Labyrinthe procédural à caméra zoomée et course automatique dans les couloirs, avec sillage arc-en-ciel pénalisant les retours en arrière.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "labycool.html",
+			"goal": "Rejoindre la brèche de sortie verte en bas à droite avant la fin du chrono.",
+			"icon": "🌈",
+			"id": "labycool",
+			"name": "Labyrinthe Éclair (LabyCool)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 9.0,
+				"lum": 0.0,
+				"scan": 5.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD pour bouger • Souris / Clic maintenu (ou Espace) pour viser et tirer • Dalles vertes = saut",
+			"custom": {
+				"durationSec": 45.0,
+				"targetCount": 10.0
+			},
+			"description": "Combat 2.5D en vue isométrique avec dalles tremplins vertes pour bondir en altitude et abattre les drones de l'arène.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "isotir.html",
+			"goal": "Détruire les 10 drones de l'arène isométrique avant expiration sans perdre vos 3 points de coque.",
+			"icon": "💎",
+			"id": "isotir",
+			"name": "Arène Isométrique (IsoTir)",
+			"rewards": {
+				"coque": 4.0,
+				"fuel": 8.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD (8 directions) ou maintenir clic/doigt pour guider la chaîne d'anneaux",
+			"custom": {
+				"durationSec": 42.0,
+				"nodeCount": 18.0
+			},
+			"description": "Chaîne articulée d'anneaux néon qui se déploie sur grille 32×32 : votre sillage électrifié repousse les étincelles hostiles.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "trail.html",
+			"goal": "Collecter les 18 noyaux dorés avant la fin du chrono sans laisser une étincelle toucher votre tête.",
+			"icon": "〰️",
+			"id": "trail",
+			"name": "Sillage Anneaux (Trail)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou maintenir clic/doigt pour propulser la sonde (bords toriques)",
+			"custom": {
+				"appleGoal": 20.0,
+				"durationSec": 45.0
+			},
+			"description": "Pilotage à propulseurs et particules sur arène torique : cueillez les pommes rouges avant qu'elles ne mûrissent et n'éclosent en vers traqueurs !",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "pacver.html",
+			"goal": "Récolter 20 pommes avant la fin du chrono sans vous faire dévorer par les vers éclos.",
+			"icon": "🍎",
+			"id": "pacver",
+			"name": "Propulseur Vers (PacVer)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 11.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou maintenir clic/doigt dans la direction souhaitée",
+			"custom": {
+				"durationSec": 55.0,
+				"relicCount": 5.0
+			},
+			"description": "Donjon procédural multi-salles avec champ de vision par lancer de rayons (FOV), brouillard de guerre persistant et minicarte tactique.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "minjap.html",
+			"goal": "Explorer le donjon à la lanterne et récupérer les 5 reliques lumineuses en esquivant les sentinelles d'ombre.",
+			"icon": "🔦",
+			"id": "minjap",
+			"name": "Donjon Lanterne (MinJap)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 8.0,
+				"lum": 1.0,
+				"scan": 6.0,
+				"t2s": 9.0
+			}
+		},
+		{
+			"controls": "Éloigner le curseur pour pousser (3 paliers de vitesse), rapprocher pour freiner",
+			"custom": {
+				"beaconCount": 8.0,
+				"durationSec": 42.0
+			},
+			"description": "Navigation spatiale à poussée progressive sur grille parallaxe infinie avec radar de secteurs.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "hyper.html",
+			"goal": "Collecter les 8 balises hyperespace avant la fin du chrono sans détruire votre bouclier !",
+			"icon": "🌌",
+			"id": "hyper",
+			"name": "Dérive Hyper",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Déplacer la souris / doigt : le leurre rouge attire les drones qui évitent de se chevaucher",
+			"custom": {
+				"droneCount": 12.0,
+				"durationSec": 40.0
+			},
+			"description": "Guidage d'un essaim de drones à évitement mutuel strict attirés par un leurre à inertie douce.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "blocs.html",
+			"goal": "Guider 10 drones dans les zones vertes d'extraction en évitant les mines rouges !",
+			"icon": "🔴",
+			"id": "blocs",
+			"name": "Nuée Blocs",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 9.0,
+				"lum": 0.0,
+				"scan": 5.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Déplacer la souris / doigt autour de l'explorateur pour le propulser dans les couloirs",
+			"custom": {
+				"coreCount": 6.0,
+				"durationSec": 45.0
+			},
+			"description": "Exploration fluide à caméra centrée dans un complexe 2.5D à murs en relief et glissement physique.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "grf.html",
+			"goal": "Récupérer les 6 cœurs d'énergie dispersés dans les salles avant la fin du chrono !",
+			"icon": "🗺️",
+			"id": "grf",
+			"name": "Complexe 2.5D (GRF)",
+			"rewards": {
+				"coque": 3.0,
+				"fuel": 10.0,
+				"lum": 0.0,
+				"scan": 5.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Viser avec la souris et cliquer / toucher pour foncer et trancher tous les ennemis sur la trajectoire",
+			"custom": {
+				"bossHp": 10.0
+			},
+			"description": "Hack'n'slash éclair (Touch & Kill) : enchaînez les combos en traversant les vagues tout en épargnant les otages verts et en évitant les boules de feu du boss.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "pab.html",
+			"goal": "Vaincre le Boss final sans perdre vos 5 boucliers !",
+			"icon": "⚡",
+			"id": "pab",
+			"name": "Tranche-Éclair (PAB)",
+			"rewards": {
+				"coque": 5.0,
+				"fuel": 8.0,
+				"lum": 1.0,
+				"scan": 3.0,
+				"t2s": 9.0
+			}
+		},
+		{
+			"controls": "Maintenir clic / toucher sur le plateau isométrique pour faire rouler la sphère 3D (Espace / clic droit = saut)",
+			"custom": {
+				"crystalCount": 8.0,
+				"durationSec": 42.0
+			},
+			"description": "Sphère 3D filaire à rotation quaternionique roulant et rebondissant sur un plateau isométrique suspendu.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "isoo.html",
+			"goal": "Collecter les 8 cristaux flottants sans tomber dans le vide ni percuter les pylônes rouges !",
+			"icon": "🔮",
+			"id": "isoo",
+			"name": "Sphère Iso (Isoo)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 10.0,
+				"lum": 1.0,
+				"scan": 5.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Clic / Glisser (ou Flèches/ZQSD + Espace) pour semer des bactéries • B = bordures • E = zone Éden",
+			"custom": {
+				"durationSec": 45.0,
+				"targetBugs": 22.0
+			},
+			"description": "Algorithme génétique à 6 vecteurs de mouvement : les bugs colorent leur génome, dévorent les bactéries et se reproduisent par mutation.",
+			"enabled": true,
+			"family": "zooEcosys",
+			"filename": "bugg.html",
+			"goal": "Faire prospérer la colonie jusqu'à 22 bugs vivants avant la fin du chrono.",
+			"icon": "🪲",
+			"id": "bugg",
+			"name": "Évolution Génétique (Bugg)",
+			"rewards": {
+				"coque": 1.0,
+				"fuel": 8.0,
+				"lum": 1.0,
+				"scan": 6.0,
+				"t2s": 10.0
+			}
+		},
+		{
+			"controls": "Souris / Flèches/ZQSD pour déplacer l'anneau médical • Maintenir Clic / Espace pour purifier les particules infectées",
+			"custom": {
+				"durationSec": 40.0,
+				"particleCount": 160.0
+			},
+			"description": "Simulation de contagion particulaire : les porteurs rouges contaminent leur voisinage avant de guérir. Contenez la propagation et éradiquez le foyer.",
+			"enabled": true,
+			"family": "zooEcosys",
+			"filename": "invaiz.html",
+			"goal": "Ramener le nombre d'infectés à 0 avant la fin du chrono (et avant 60% de contagion).",
+			"icon": "🦠",
+			"id": "invaiz",
+			"name": "Quarantaine Virale (Invaiz)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 8.0,
+				"lum": 1.0,
+				"scan": 5.0,
+				"t2s": 9.0
+			}
+		},
+		{
+			"controls": "Souris pour orienter + Maintenir Clic pour booster (ou Flèches/ZQSD + Espace)",
+			"custom": {
+				"durationSec": 40.0,
+				"targetStars": 10.0
+			},
+			"description": "Pilotage inertiel d'une fusée à ailerons rotatifs et anneaux de fumée : dérapez dans les virages serrés et accélérez pour rafler les étoiles d'énergie.",
+			"enabled": true,
+			"family": "income",
+			"filename": "fusee.html",
+			"goal": "Collecter 10 étoiles d'énergie sans détruire votre coque (3 PV).",
+			"icon": "🚀",
+			"id": "fusee",
+			"name": "Fusée Propulsée (Fusée)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 14.0,
+				"lum": 0.0,
+				"scan": 3.0,
+				"t2s": 7.0
+			}
+		},
+		{
+			"controls": "Flèches / ZQSD ou Souris pour guider le survivant • Clic / Espace = Flash EMP répulsif",
+			"custom": {
+				"coreCount": 8.0,
+				"durationSec": 45.0
+			},
+			"description": "Champ de distance BFS lumineux en temps réel : la lueur de votre balise contourne les murs tandis que les orbes zombies descendent le gradient pour vous traquer.",
+			"enabled": true,
+			"family": "income",
+			"filename": "zombies.html",
+			"goal": "Récupérer les 8 noyaux dorés dans le dédale sans perdre vos 3 vies.",
+			"icon": "🧟",
+			"id": "zombies",
+			"name": "Vague de Zombies (Zombies)",
+			"rewards": {
+				"coque": 4.0,
+				"fuel": 9.0,
+				"lum": 1.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		},
+		{
+			"controls": "Souris / Flèches/ZQSD pour piloter le noyau • Maintenir Clic / Espace pour activer le brûleur (gonfle l'enveloppe)",
+			"custom": {
+				"durationSec": 42.0,
+				"targetCells": 10.0
+			},
+			"description": "Montgolfière à enveloppe molle reliée par ressorts au noyau central : balancez votre membrane souple pour capturer les courants dorés et esquiver les éclairs.",
+			"enabled": true,
+			"family": "income",
+			"filename": "mongolfiere.html",
+			"goal": "Capturer 10 cellules thermiques dorées avec votre enveloppe avant la fin du chrono.",
+			"icon": "🎈",
+			"id": "mongolfiere",
+			"name": "Enveloppe Montgolfière (Mongolfière)",
+			"rewards": {
+				"coque": 2.0,
+				"fuel": 12.0,
+				"lum": 0.0,
+				"scan": 4.0,
+				"t2s": 8.0
+			}
+		}
+	],
+	"version": 1.0
+}

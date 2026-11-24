@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Journal Inertiel (InvGlid)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "invglid",
+  "name": "Journal Inertiel (InvGlid)",
+  "family": "core",
+  "icon": "📜",
+  "controls": "Glisser/lancer à la souris ou au doigt (ou Molette / Flèches Haut/Bas) puis cliquer sur la fiche cible",
+  "description": "Liste défilante à inertie élastique et rebond de fin de course inspirée du journal de bord : lancez le flux pour repérer et valider les fiches demandées.",
+  "goal": "Retrouver et valider les 8 fiches du journal avant la fin du chrono sans faire 3 erreurs.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 40 },
+    { "key": "targetCount", "label": "Fiches cibles", "type": "number", "default": 8 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>📜 <b>Journal InvGlid</b></span>
+  <span id="stat">Fiches: 0/8 • Erreurs: 0/3 • 40s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "invglid";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const HEADER_H = 66;
+const VIEW_H = 512 - HEADER_H;
+const TAGS = [
+  ["SONDE", "Relevé orbital de dérive magnétique", "#38d6ff"],
+  ["CARGO", "Manifeste de conteneur pressurisé", "#4ade80"],
+  ["ANOM", "Distorsion de phase en secteur profond", "#f472b6"],
+  ["FLUX", "Transfert de plasma vers réacteur B", "#fbbf24"],
+  ["RELAIS", "Balise de transmission sous-spatiale", "#a78bfa"],
+  ["COQUE", "Inspection micro-impacts secteur nord", "#fb923c"]
+];
+
+let items = [], totalH = 0;
+let listY = 0, moveY = 0;
+let dragging = false, downY = 0, downListY = 0, mouseY1 = 0, mouseY2 = 0, movedDist = 0;
+let keys = {};
+let targetIdx = 0, found = 0, targetGoal = 8, mistakes = 0;
+let timeLeft = 40, score = 0, won = false, over = false;
+let flashCol = "", flashT = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp","ArrowDown","Space","Enter"].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+  if (over && (e.code === "Space" || e.code === "Enter")) { sendResultAndExit(won, score); return; }
+  if (!over && (e.code === "Space" || e.code === "Enter")) {
+    // Select item at center of viewport
+    const mid = HEADER_H + VIEW_H * 0.5;
+    pickItemAt(mid);
+  }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function toCanvasY(e) {
+  const r = cv.getBoundingClientRect();
+  return (e.clientY - r.top) * (512 / r.height);
+}
+
+cv.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  if (over) return;
+  moveY = Math.max(-45, Math.min(45, moveY - e.deltaY * 0.16));
+}, { passive: false });
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const cy = toCanvasY(e);
+  if (cy < HEADER_H) return;
+  dragging = true;
+  downY = cy;
+  downListY = listY;
+  mouseY1 = listY;
+  mouseY2 = listY;
+  moveY = 0;
+  movedDist = 0;
+});
+
+cv.addEventListener("pointermove", (e) => {
+  if (!dragging || over) return;
+  const cy = toCanvasY(e);
+  movedDist = Math.max(movedDist, Math.abs(cy - downY));
+  listY = downListY + (cy - downY);
+  mouseY2 = mouseY1;
+  mouseY1 = listY;
+});
+
+window.addEventListener("pointerup", (e) => {
+  if (!dragging) return;
+  dragging = false;
+  if (movedDist < 8) {
+    pickItemAt(toCanvasY(e));
+  } else {
+    // Exact invGlid.as inertial flick boost
+    const dy = mouseY1 - mouseY2;
+    moveY = dy * (Math.floor(Math.abs(dy / 20)) + 1);
+  }
+});
+
+function pickItemAt(canvasY) {
+  if (canvasY < HEADER_H) return;
+  const relY = canvasY - HEADER_H - listY;
+  const hit = items.find(it => relY >= it.y && relY <= it.y + it.h);
+  if (!hit) return;
+  if (hit.idx === targetIdx) {
+    hit.done = true;
+    found++;
+    score += 50;
+    flashCol = "#4ade80"; flashT = 0.25;
+    if (found >= targetGoal) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 6) + (3 - mistakes) * 20;
+    } else {
+      pickNextTarget();
+    }
+  } else {
+    mistakes++;
+    timeLeft = Math.max(0, timeLeft - 2.5);
+    flashCol = "#f87171"; flashT = 0.3;
+    if (mistakes >= 3 || timeLeft <= 0) { won = false; over = true; }
+  }
+}
+
+function pickNextTarget() {
+  const pool = items.filter(it => !it.done);
+  // Prefer a card at least 5 entries away so flicking is engaging
+  const far = pool.filter(it => Math.abs(it.idx - targetIdx) >= 5);
+  const src = far.length ? far : pool;
+  targetIdx = src[Math.floor(Math.random() * src.length)].idx;
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 40;
+  targetGoal = Math.max(4, Math.min(16, Number(custom.targetCount) || 8));
+  found = 0; mistakes = 0; score = 0; won = false; over = false;
+  listY = 0; moveY = 0; dragging = false; flashT = 0;
+
+  items = [];
+  let y = 8;
+  const count = 34;
+  for (let i = 0; i < count; i++) {
+    const t = TAGS[i % TAGS.length];
+    const code = `${t[0]}-${String(10 + ((i * 7 + 3) % 89)).padStart(2, "0")}`;
+    const h = 44 + (i % 3) * 14;
+    items.push({ idx: i + 1, code, desc: t[1], col: t[2], y, h, done: false });
+    y += h + 6;
+  }
+  totalH = y + 8;
+  targetIdx = 1;
+  pickNextTarget();
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const stepScale = dt * 60;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) { over = true; won = false; }
+
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) moveY += 1.6 * stepScale;
+    if (keys.ArrowDown || keys.KeyS) moveY -= 1.6 * stepScale;
+
+    if (!dragging) {
+      // Faithful invGlid.as inertial glide & elastic overscroll bounce
+      moveY *= Math.pow(0.94, stepScale);
+      const minY = Math.min(0, VIEW_H - totalH);
+      if (listY > 0 || listY < minY) moveY *= Math.pow(0.55, stepScale);
+      if (Math.abs(moveY) < 0.4 && listY > 0) listY -= (listY / 4) * Math.min(1, stepScale);
+      if (Math.abs(moveY) < 0.4 && listY < minY) listY += ((minY - listY) / 4) * Math.min(1, stepScale);
+      const clampedV = Math.max(-50, Math.min(50, moveY));
+      listY += clampedV * stepScale;
+      if (Math.abs(moveY) < 0.05) moveY = 0;
+    }
+  }
+
+  if (flashT > 0) flashT = Math.max(0, flashT - dt);
+
+  document.getElementById("stat").textContent = `Fiches: ${found}/${targetGoal} • Erreurs: ${mistakes}/3 • ${Math.ceil(timeLeft)}s`;
+
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Clipped ListView area
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, HEADER_H, 512, VIEW_H);
+  ctx.clip();
+
+  for (const it of items) {
+    const sy = HEADER_H + listY + it.y;
+    if (sy + it.h < HEADER_H || sy > 512) continue;
+    ctx.fillStyle = it.done ? "#102822" : "#141f35";
+    ctx.fillRect(14, sy, 470, it.h);
+    ctx.fillStyle = it.done ? "#4ade80" : it.col;
+    ctx.fillRect(14, sy, 62, it.h);
+
+    ctx.strokeStyle = it.done ? "#22c55e" : "#243b5c";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(14, sy, 470, it.h);
+
+    ctx.fillStyle = "#07101d";
+    ctx.font = "bold 16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`#${it.idx}`, 45, sy + it.h * 0.5 + 6);
+
+    ctx.fillStyle = it.done ? "#86efac" : "#e6f4ff";
+    ctx.font = "bold 15px sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(it.done ? `${it.code} ✓ VALIDÉE` : it.code, 88, sy + 20);
+
+    ctx.fillStyle = "#94b8d8";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(it.desc, 88, sy + 37);
+  }
+
+  // Scrollbar (barSp from invGlid.as)
+  const barH = Math.max(44, Math.min(VIEW_H, VIEW_H - (totalH - VIEW_H) * 0.15));
+  const maxScroll = Math.max(1, totalH - VIEW_H);
+  const ratio = Math.max(0, Math.min(1, -listY / maxScroll));
+  const barY = HEADER_H + ratio * (VIEW_H - barH);
+  ctx.fillStyle = "rgba(56, 214, 255, 0.25)";
+  ctx.fillRect(496, HEADER_H + 4, 6, VIEW_H - 8);
+  ctx.fillStyle = "#38d6ff";
+  ctx.fillRect(496, barY, 6, barH);
+
+  // Target position marker on scrollbar track
+  const targ = items[targetIdx - 1];
+  if (targ) {
+    const tRatio = targ.y / Math.max(1, totalH);
+    ctx.fillStyle = "#fde047";
+    ctx.fillRect(493, HEADER_H + tRatio * (VIEW_H - 12), 12, 4);
+  }
+  ctx.restore();
+
+  // Top "Journal de bord" target banner
+  ctx.fillStyle = "#121c30";
+  ctx.fillRect(0, 0, 512, HEADER_H);
+  ctx.strokeStyle = "#38d6ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, HEADER_H); ctx.lineTo(512, HEADER_H); ctx.stroke();
+
+  if (targ) {
+    const targScreenY = HEADER_H + listY + targ.y + targ.h * 0.5;
+    const dirHint = targScreenY < HEADER_H ? "▲ HAUT" : (targScreenY > 512 ? "▼ BAS" : "● VISIBLE");
+    ctx.fillStyle = targ.col;
+    ctx.fillRect(14, 13, 12, 40);
+    ctx.fillStyle = "#94b8d8"; ctx.font = "11px sans-serif"; ctx.textAlign = "left";
+    ctx.fillText("JOURNAL DE BORD — FICHE À EXTRAIRE", 34, 24);
+    ctx.fillStyle = "#ffffff"; ctx.font = "bold 19px sans-serif";
+    ctx.fillText(`#${targ.idx}  •  ${targ.code}`, 34, 48);
+    ctx.fillStyle = dirHint.startsWith("●") ? "#4ade80" : "#fde047";
+    ctx.font = "bold 14px sans-serif"; ctx.textAlign = "right";
+    ctx.fillText(dirHint, 494, 42);
+  }
+
+  if (flashT > 0) {
+    ctx.fillStyle = flashCol === "#4ade80" ? `rgba(74,222,128,${flashT * 0.5})` : `rgba(248,113,113,${flashT * 0.6})`;
+    ctx.fillRect(0, HEADER_H, 512, VIEW_H);
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "ARCHIVE DÉCRYPTÉE !" : (mistakes >= 3 ? "TROP D'ERREURS" : "TEMPS ÉCOULÉ"), 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

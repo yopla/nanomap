@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Escalade Ninja (Esc)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "esc",
+  "name": "Escalade Ninja (Esc)",
+  "family": "sideClavSimple",
+  "icon": "🧗",
+  "controls": "Flèches / ZQSD (Gauche/Droite + Haut pour saut, double-saut et glissade/saut mural) ou clic/doigt",
+  "description": "Plateforme agile avec double-saut, hauteur variable et glissade murale dans une tour 16×16.",
+  "goal": "Activer les 6 balises lumineuses puis atteindre le portail au sommet avant la fin du chrono.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 45 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🧗 <b>Escalade Esc</b></span>
+  <span id="stat">Balises: 0/6 • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "esc";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const MW = 16, MH = 16, CW = 32, CH = 32;
+
+let keys = {}, grid = [], p = {}, beacons = [], portal = {}, puffs = [];
+let down = false, mx = 256, my = 256, ptrJumpQueued = false;
+let timeLeft = 45, score = 0, won = false, over = false, animT = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  down = true; updatePtr(e);
+  if (my < p.cy - 18) ptrJumpQueued = true;
+});
+cv.addEventListener("pointermove", (e) => { updatePtr(e); });
+window.addEventListener("pointerup", () => { down = false; });
+function updatePtr(e) {
+  const r = cv.getBoundingClientRect();
+  mx = (e.clientX - r.left) * (512 / r.width);
+  my = (e.clientY - r.top) * (512 / r.height);
+}
+
+function setTile(ax, ay, v) {
+  if (ax < 0 || ax >= MW || ay < 0 || ay >= MH) return;
+  grid[ay * MW + ax] = v;
+}
+function getTile(ax, ay) {
+  if (ax < 0 || ax >= MW || ay < 0 || ay >= MH) return 1;
+  return grid[ay * MW + ax];
+}
+function isWall(ax, ay) {
+  if (ax < 0 || ay < 0 || ax >= 512 || ay >= 512) return true;
+  return getTile(Math.floor(ax / CW), Math.floor(ay / CH)) > 0;
+}
+
+function buildTower() {
+  grid = new Array(MW * MH).fill(0);
+  // Outer walls & floor (faithful to esc.as 16x16 layout)
+  for (let i = 0; i < MW; i++) {
+    setTile(i, 0, 1); setTile(i, 15, 1);
+    setTile(0, i, 1); setTile(15, i, 1);
+  }
+  // Floors at y=4, y=8, y=12 with guaranteed climb gaps
+  const g1 = 2 + Math.floor(Math.random() * 3);
+  const g2 = 10 + Math.floor(Math.random() * 3);
+  const g3 = 6 + Math.floor(Math.random() * 3);
+  for (let i = 1; i < 15; i++) {
+    if (Math.abs(i - g1) > 1 && Math.random() < 0.85) setTile(i, 12, 1);
+    if (Math.abs(i - g2) > 1 && Math.random() < 0.85) setTile(i, 8, 1);
+    if (Math.abs(i - g3) > 1 && Math.random() < 0.85) setTile(i, 4, 1);
+  }
+  // Vertical climb walls inspired by esc.as col 5 & col 10 (with passages)
+  for (let y = 2; y < 14; y++) {
+    if (y !== 3 && y !== 7 && y !== 11 && y !== 13 && Math.random() < 0.65) setTile(5, y, 1);
+    if (y !== 2 && y !== 6 && y !== 10 && y !== 14 && Math.random() < 0.65) setTile(10, y, 1);
+  }
+  // Ensure clean spawn & portal tiles
+  setTile(2, 14, 0); setTile(3, 14, 0); setTile(2, 13, 0);
+  setTile(13, 2, 0); setTile(13, 3, 0); setTile(12, 3, 1); setTile(13, 4, 1); setTile(14, 4, 1);
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  timeLeft = Number(custom.durationSec) || 45;
+  buildTower();
+  p = { cx: 80, cy: 456, vx: 0, vy: 0, canJump: false, djump: 0, holdJump: 0, sliding: 0 };
+  score = 0; won = false; over = false; puffs = [];
+  portal = { x: 13 * CW + 16, y: 2 * CH + 24 };
+
+  // Place 6 beacons on open tiles across upper/mid/lower tiers
+  const spots = [];
+  for (let y = 2; y <= 14; y++) {
+    for (let x = 1; x <= 14; x++) {
+      if (getTile(x, y) === 0 && !(x <= 3 && y >= 13) && !(x >= 12 && y <= 3)) {
+        spots.push([x, y]);
+      }
+    }
+  }
+  for (let i = spots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [spots[i], spots[j]] = [spots[j], spots[i]];
+  }
+  beacons = [];
+  for (let i = 0; i < Math.min(6, spots.length); i++) {
+    beacons.push({ x: spots[i][0] * CW + 16, y: spots[i][1] * CH + 16, done: false, phase: Math.random() * 6.28 });
+  }
+}
+
+function addPuff(x, y, color) {
+  for (let i = 0; i < 6; i++) {
+    const a = Math.random() * Math.PI * 2;
+    puffs.push({ x, y, vx: Math.cos(a) * 55, vy: Math.sin(a) * 55, life: 0.3, color });
+  }
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  animT += dt;
+  const step = dt * 60;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) { over = true; won = false; }
+
+    // Input (keyboard + touch/pointer)
+    const left = !!(keys.ArrowLeft || keys.KeyA || keys.KeyQ || (down && mx < p.cx - 18));
+    const right = !!(keys.ArrowRight || keys.KeyD || (down && mx > p.cx + 18));
+    const keyJump = !!(keys.ArrowUp || keys.KeyW || keys.KeyZ || keys.Space || ptrJumpQueued || (down && my < p.cy - 40));
+    ptrJumpQueued = false;
+
+    if (keyJump) p.holdJump += 1; else p.holdJump = 0;
+    if (p.canJump) p.djump = 0;
+
+    // Faithful esc.as movement, variable jump, wall-slide, wall-jump, double-jump
+    const ms = 0.52 * step, ws = 4.2;
+    if (left) { p.vx -= ms; if (p.vx < -ws) p.vx = -ws; }
+    if (right) { p.vx += ms; if (p.vx > ws) p.vx = ws; }
+
+    let jumped = false;
+    if (keyJump && p.canJump) {
+      p.vy = -7.6; p.canJump = false; jumped = true;
+      addPuff(p.cx, p.cy + 8, "#38d6ff");
+    }
+    if (!keyJump && p.vy < 0) p.vy += 0.32 * step;
+    if (p.canJump && !left && !right) p.vx *= Math.pow(0.88, step);
+
+    // Wall slide & wall jump
+    p.sliding = 0;
+    if (!jumped && isWall(p.cx - 12, p.cy) && p.vy > 0) {
+      p.vy *= Math.pow(0.72, step); p.djump = 0; p.canJump = false; p.sliding = -1;
+      if (p.holdJump === 1) { p.vx = 3.4; p.vy = -6.6; jumped = true; addPuff(p.cx - 8, p.cy, "#38d6ff"); }
+    } else if (!jumped && isWall(p.cx + 12, p.cy) && p.vy > 0) {
+      p.vy *= Math.pow(0.72, step); p.djump = 0; p.canJump = false; p.sliding = 1;
+      if (p.holdJump === 1) { p.vx = -3.4; p.vy = -6.6; jumped = true; addPuff(p.cx + 8, p.cy, "#38d6ff"); }
+    }
+
+    // Double jump
+    if (!jumped && p.holdJump === 1 && !p.canJump && p.djump < 1) {
+      p.djump += 1; p.vy = -6.4;
+      addPuff(p.cx, p.cy + 8, "#a78bfa");
+    }
+
+    // Gravity & collision update
+    p.vy = Math.min(8, p.vy + 0.3 * step);
+    p.vx *= Math.pow(0.98, step);
+    if (p.vy > 1 || p.vy < -1) p.canJump = false;
+
+    const nx = p.cx + p.vx * step;
+    if (p.vx > 0 && isWall(nx + 8, p.cy)) { p.vx = 0; }
+    else if (p.vx < 0 && isWall(nx - 8, p.cy)) { p.vx = 0; }
+    else { p.cx = nx; }
+
+    const ny = p.cy + p.vy * step;
+    if (p.vy > 0 && isWall(p.cx, ny + 8)) { p.vy = 0; p.canJump = true; p.cy = Math.floor((ny + 8) / CH) * CH - 8.1; }
+    else if (p.vy < 0 && isWall(p.cx, ny - 8)) { p.vy = 0; p.cy = Math.ceil((ny - 8) / CH) * CH + 8.1; }
+    else { p.cy = ny; }
+
+    // Collect beacons
+    for (const b of beacons) {
+      if (!b.done && Math.hypot(p.cx - b.x, p.cy - b.y) < 18) {
+        b.done = true; score += 45;
+        addPuff(b.x, b.y, "#fde047");
+      }
+    }
+    const allDone = beacons.every(b => b.done);
+    if (allDone && Math.hypot(p.cx - portal.x, p.cy - portal.y) < 22) {
+      won = true; over = true;
+      score += 100 + Math.round(timeLeft * 6);
+    }
+  }
+
+  for (let i = puffs.length - 1; i >= 0; i--) {
+    const f = puffs[i]; f.x += f.vx * dt; f.y += f.vy * dt; f.life -= dt;
+    if (f.life <= 0) puffs.splice(i, 1);
+  }
+
+  const doneN = beacons.filter(b => b.done).length;
+  const allDone = doneN === beacons.length;
+  document.getElementById("stat").textContent = `Balises: ${doneN}/${beacons.length} • ${allDone ? "Portail OUVERT" : "2×Saut"} • ${Math.ceil(timeLeft)}s`;
+
+  // Render
+  ctx.fillStyle = "#0d1422"; ctx.fillRect(0, 0, 512, 512);
+  for (let y = 0; y < MH; y++) {
+    for (let x = 0; x < MW; x++) {
+      if (grid[y * MW + x] > 0) {
+        ctx.fillStyle = "#1e293b";
+        ctx.fillRect(x * CW + 1, y * CH + 1, CW - 2, CH - 2);
+        ctx.strokeStyle = "#2d5b7b";
+        ctx.strokeRect(x * CW + 1.5, y * CH + 1.5, CW - 3, CH - 3);
+      }
+    }
+  }
+
+  // Summit portal
+  ctx.save();
+  ctx.strokeStyle = allDone ? "#4ade80" : "#475569";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(portal.x, portal.y, 13 + Math.sin(animT * 6) * 2, 0, Math.PI * 2);
+  ctx.stroke();
+  if (allDone) {
+    ctx.fillStyle = "rgba(74,222,128,0.28)";
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Beacons
+  for (const b of beacons) {
+    if (b.done) continue;
+    const pulse = 6 + Math.sin(animT * 5 + b.phase) * 2;
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath(); ctx.arc(b.x, b.y, pulse, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // Wall slide sparks
+  if (p.sliding !== 0 && !over) {
+    ctx.fillStyle = "#f97316";
+    ctx.fillRect(p.cx + p.sliding * 8 - 2, p.cy - 4 + Math.random() * 8, 4, 4);
+  }
+
+  // Player
+  ctx.fillStyle = p.djump === 0 ? "#38d6ff" : "#a78bfa";
+  ctx.beginPath(); ctx.arc(p.cx, p.cy, 8.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke();
+
+  // Puffs
+  for (const f of puffs) {
+    ctx.globalAlpha = Math.max(0, f.life * 3);
+    ctx.fillStyle = f.color;
+    ctx.beginPath(); ctx.arc(f.x, f.y, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)"; ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171"; ctx.font = "bold 28px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText(won ? "SOMMET ATTEINT !" : "TEMPS ÉCOULÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff"; ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>
