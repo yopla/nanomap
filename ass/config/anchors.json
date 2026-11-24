@@ -1,0 +1,24 @@
+{
+	"anchors": [
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "",
+			"emoji": "⚓",
+			"id": "ancre_1",
+			"maxAngle": 360.0,
+			"maxDistance": 25.0,
+			"minAngle": 0.0,
+			"minDistance": 15.0,
+			"minSeparation": 15.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"useAngleRange": false,
+			"x": 0.0,
+			"y": 0.0
+		}
+	],
+	"version": 1
+}

@@ -6,6 +6,7 @@
 <title>Assemblage - Exploration Alien</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  button { font-family: inherit; }
   html, body {
     width: 100%; height: 100%; overflow: hidden;
     background: #14121f;
@@ -341,14 +342,33 @@
   }
   .biome-card-icon { font-size: 46px; line-height: 1.05; }
   .biome-card-title { font-size: 16px; font-weight: 800; color: #ffffff; line-height: 1.2; }
+  .biome-elems-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    width: 100%;
+    padding: 2px 0;
+  }
   .biome-n1-icons {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    flex: 1 1 auto;
-    padding: 2px 0;
+    width: 100%;
+  }
+  .biome-other-icons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    margin-top: 4px;
+    padding-left: 18px;
   }
   .biome-n1-badge {
     width: 36px;
@@ -368,6 +388,25 @@
     color: rgba(145, 174, 206, 0.85);
     background: rgba(14, 22, 38, 0.85);
     border: 1.5px solid rgba(86, 112, 148, 0.55);
+  }
+  .biome-other-badge {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    line-height: 1;
+    background: rgba(41, 36, 61, 0.95);
+    border: 2px solid #ffd166;
+  }
+  .biome-other-badge.unknown {
+    font-size: 14px;
+    font-weight: 800;
+    color: rgba(214, 189, 133, 0.88);
+    background: rgba(26, 23, 41, 0.85);
+    border: 1.5px solid rgba(173, 143, 87, 0.60);
   }
   .biome-go-btn {
     width: 100%;
@@ -647,6 +686,41 @@
   #desc-uses-btn:disabled { opacity: 0.6; cursor: default; border-color: rgba(110, 130, 160, 0.45); }
   #desc-uses { display: none; font-size: 11.5px; line-height: 1.4; color: #b8cce6; white-space: pre-line; }
   #desc-uses.open { display: block; }
+  #desc-ext-actions {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(102, 184, 232, 0.24);
+  }
+  #desc-ext-actions.open { display: flex; }
+  .desc-ext-action-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 9px;
+    background: rgba(31, 52, 82, 0.94);
+    border: 1.5px solid var(--ext-action-accent, rgba(102, 217, 255, 0.85));
+    color: #eef8ff;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+    transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease, box-shadow 0.14s ease;
+  }
+  .desc-ext-action-btn:hover {
+    background: rgba(44, 72, 114, 0.98);
+    box-shadow: 0 0 0 1px var(--ext-action-accent, rgba(107, 240, 255, 0.65)), 0 4px 12px rgba(0, 0, 0, 0.36);
+    transform: translateY(-1px);
+  }
+  .desc-ext-action-btn:active { transform: scale(0.97); }
   #drag-ghost {
     position: fixed;
     left: 0;
@@ -717,7 +791,8 @@
     }
     .biome-card-icon { font-size: 36px; }
     .biome-card-title { font-size: 13.5px; }
-    .biome-n1-icons { gap: 5px; padding: 2px 0; }
+    .biome-n1-icons { gap: 5px; }
+    .biome-other-icons { gap: 4px; margin-top: 3px; padding-left: 12px; }
     .biome-n1-badge {
       width: 28px;
       height: 28px;
@@ -725,6 +800,13 @@
       border-radius: 7px;
     }
     .biome-n1-badge.unknown { font-size: 14px; }
+    .biome-other-badge {
+      width: 24px;
+      height: 24px;
+      font-size: 13px;
+      border-radius: 6px;
+    }
+    .biome-other-badge.unknown { font-size: 12px; }
     .biome-go-btn {
       padding: 7px 6px;
       font-size: 11px;
@@ -1295,47 +1377,67 @@
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 18px;
-    background: rgba(4, 8, 16, 0.72);
-    backdrop-filter: blur(6px);
+    padding: 16px;
+    background: rgba(5, 8, 18, 0.74);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
   #ext-modal-overlay.open { display: flex; }
   #ext-modal-card {
-    width: min(460px, 94vw);
-    border-radius: 18px;
-    padding: 20px 22px;
-    background: rgba(12, 20, 34, 0.98);
-    border: 2px solid rgba(115, 250, 209, 0.72);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+    width: min(560px, 94vw);
+    max-height: 90dvh;
+    border-radius: 16px;
+    padding: 18px 20px;
+    background: rgba(18, 25, 43, 0.97);
+    border: 2px solid rgba(72, 214, 245, 0.85);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65);
+    color: #e6f4ff;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    overflow: hidden;
   }
   .ext-modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    flex-shrink: 0;
   }
   #ext-modal-title {
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 800;
-    color: #e8faff;
+    letter-spacing: 0.6px;
+    color: #6bf0ff;
+    line-height: 1.2;
   }
   #ext-modal-close {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    border: 1px solid rgba(115, 250, 209, 0.5);
-    background: rgba(24, 48, 66, 0.85);
-    color: #e8faff;
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid rgba(115, 235, 255, 0.7);
+    background: rgba(41, 143, 173, 0.28);
+    color: #e6f4ff;
+    font-family: inherit;
     font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.14s ease, transform 0.1s ease;
   }
+  #ext-modal-close:hover { background: rgba(56, 173, 201, 0.45); }
+  #ext-modal-close:active { transform: scale(0.95); }
   #ext-modal-body {
-    font-size: 14px;
+    font-size: 13.5px;
     line-height: 1.5;
-    color: #cde0ef;
+    color: #d6e6f5;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
   }
 
   .hub-btn.ext-hub {
@@ -1543,6 +1645,7 @@
           </div>
           <div class="desc-col-right">
             <div id="desc-recipe"></div>
+            <div id="desc-ext-actions"></div>
             <button id="desc-uses-btn" type="button">🔗 Utilisé dans</button>
             <div id="desc-uses"></div>
           </div>
@@ -1604,10 +1707,11 @@
 			"groundColorC": "#213838",
 			"icon": "🌌",
 			"id": "plaine_astrale",
+			"locked": false,
 			"name": "Plaines Astrales",
 			"rockDensity": 1.0,
 			"theme": "astral",
-			"worldSeed": 4242.0
+			"worldSeed": 152077
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -1622,7 +1726,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 7777.0
+			"worldSeed": 810998
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -1637,7 +1741,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 9191.0
+			"worldSeed": 827005
 		},
 		{
 			"accentColor": "#b66dff",
@@ -1652,7 +1756,23 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 6363.0
+			"worldSeed": 236886
+		},
+		{
+			"accentColor": "#ffd24c",
+			"biomeScale": 1.1,
+			"crystalDensity": 1.35,
+			"description": "Dunes chargées d'électricité statique et tempêtes ioniques (verrouillé pour l'instant).",
+			"groundColorA": "#2a2318",
+			"groundColorB": "#3e2f1c",
+			"groundColorC": "#1f2b38",
+			"icon": "⚡",
+			"id": "desert_ionique",
+			"locked": false,
+			"name": "Désert Ionique",
+			"rockDensity": 1.15,
+			"theme": "astral",
+			"worldSeed": 448930
 		}
 	],
 	"cameraSmoothing": 6.5,
@@ -1660,19 +1780,35 @@
 	"crystalDensity": 1.0,
 	"deadzonePx": 14.0,
 	"exitButtonText": "Sortir",
-	"maxCollectedChunks": 1000.0,
+	"maxCollectedChunks": 1000,
 	"moveSpeed": 240.0,
 	"rockDensity": 1.0,
 	"shipSubtitle": "Systèmes nominaux • Base (0, 0)",
 	"shipTitle": "VAISSEAU",
 	"showCompass": true,
-	"worldSeed": 4242
+	"worldSeed": 152077
 }/*GAME_CONFIG_JSON_END*/;
 
   let ELEMENTS_DATA = /*ELEMENTS_DATA_JSON*/{
 	"elements": [
 		{
 			"biome": "plaine_astrale",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				},
+				{
+					"biome": "desert_ionique",
+					"showInBiomeMenu": true,
+					"weight": 20.1
+				}
+			],
+			"biomes": [
+				"plaine_astrale",
+				"desert_ionique"
+			],
 			"color": "#9ea8c2",
 			"description": "Minéral granuleux récolté autour des cratères rocheux. Riche en silicates purs.",
 			"icon": "🪨",
@@ -1683,6 +1819,16 @@
 		},
 		{
 			"biome": "caldeira_magma",
+			"biomeSpawns": [
+				{
+					"biome": "caldeira_magma",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"caldeira_magma"
+			],
 			"color": "#38e8d8",
 			"description": "Éclat énergétique vibrant extrait des formations cristallines des zones volcaniques.",
 			"icon": "💎",
@@ -1693,6 +1839,16 @@
 		},
 		{
 			"biome": "plaine_astrale",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"plaine_astrale"
+			],
 			"color": "#52e585",
 			"description": "Organisme vivant cueilli dans la flore phosphorescente alien.",
 			"icon": "🌿",
@@ -1703,6 +1859,16 @@
 		},
 		{
 			"biome": "caldeira_magma",
+			"biomeSpawns": [
+				{
+					"biome": "caldeira_magma",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"caldeira_magma"
+			],
 			"color": "#c98b63",
 			"description": "Métal brut dense et magnétique affleurant dans le basalte volcanique.",
 			"icon": "⚙️",
@@ -1713,6 +1879,16 @@
 		},
 		{
 			"biome": "caldeira_magma",
+			"biomeSpawns": [
+				{
+					"biome": "caldeira_magma",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"caldeira_magma"
+			],
 			"color": "#ff7a45",
 			"description": "Résidu thermique instable qui suinte des micro-failles volcaniques.",
 			"icon": "🔥",
@@ -1723,6 +1899,16 @@
 		},
 		{
 			"biome": "plaine_astrale",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"plaine_astrale"
+			],
 			"color": "#5cb8ff",
 			"description": "Fluide cryogénique et visqueux condensé dans les zones moussues.",
 			"icon": "💧",
@@ -1733,6 +1919,16 @@
 		},
 		{
 			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
 			"color": "#9ee7ff",
 			"description": "Glace cosmique ultra-dense formée sous des températures proches du zéro absolu.",
 			"icon": "🧊",
@@ -1743,6 +1939,16 @@
 		},
 		{
 			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
 			"color": "#dff6ff",
 			"description": "Poudre cristalline légère qui scintille à la surface des étendues gelées.",
 			"icon": "🌨️",
@@ -1753,6 +1959,16 @@
 		},
 		{
 			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
 			"color": "#6bc5ff",
 			"description": "Gaz cryogénique condensé en blocs translucides au fond des crevasses glaciaires.",
 			"icon": "🫧",
@@ -1763,6 +1979,16 @@
 		},
 		{
 			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
 			"color": "#7ef5d8",
 			"description": "Organisme extrêmophile prospérant sur la banquise alien malgré le froid extrême.",
 			"icon": "🪸",
@@ -1773,6 +1999,16 @@
 		},
 		{
 			"biome": "jungle_fongique",
+			"biomeSpawns": [
+				{
+					"biome": "jungle_fongique",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"jungle_fongique"
+			],
 			"color": "#d977ff",
 			"description": "Réseau filamenteux vivant récolté sous les chapeaux géants de la jungle fongique.",
 			"icon": "🍄",
@@ -1783,6 +2019,16 @@
 		},
 		{
 			"biome": "jungle_fongique",
+			"biomeSpawns": [
+				{
+					"biome": "jungle_fongique",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"jungle_fongique"
+			],
 			"color": "#c2ff52",
 			"description": "Sève épaisse et phosphorescente qui perle le long des troncs fongiques.",
 			"icon": "🍯",
@@ -1793,6 +2039,16 @@
 		},
 		{
 			"biome": "jungle_fongique",
+			"biomeSpawns": [
+				{
+					"biome": "jungle_fongique",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"jungle_fongique"
+			],
 			"color": "#ff6ec7",
 			"description": "Nuage de micro-spores mutagènes très réactives au contact d'autres composés.",
 			"icon": "🦠",
@@ -1803,6 +2059,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ffd966",
 			"description": "Silice vitrifiée par le plasma en une plaque optique ultra-résistante.",
 			"icon": "🪟",
@@ -1816,6 +2074,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#d9a577",
 			"description": "Ferrite purifiée à haute température, idéale pour la charpente spatiale.",
 			"icon": "🔩",
@@ -1829,6 +2089,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#45f0b8",
 			"description": "Noyau métallique dopé au cristal capable de stocker une charge énergétique.",
 			"icon": "🔋",
@@ -1842,6 +2104,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#8be9fd",
 			"description": "Lentille cristalline taillée dans la silice pour focaliser la lumière.",
 			"icon": "🔮",
@@ -1855,6 +2119,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#5ef2a8",
 			"description": "Culture organique stabilisée dans un gel nutritif cryogénique.",
 			"icon": "🧪",
@@ -1868,6 +2134,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#a3f77b",
 			"description": "Organisme symbiotique convertissant la résonance cristalline en lumière douce.",
 			"icon": "✨",
@@ -1881,6 +2149,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#7fd4ff",
 			"description": "Plaque de ferrite parcourue de micro-canaux de gel refroidissant.",
 			"icon": "❄️",
@@ -1894,6 +2164,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#c9a8ff",
 			"description": "Choc thermique entre plasma et gel produisant un gaz ionisé sous pression.",
 			"icon": "☁️",
@@ -1907,6 +2179,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#52fff2",
 			"description": "Double résonance cristalline amplifiant les ondes et signaux quantiques.",
 			"icon": "💠",
@@ -1920,6 +2194,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#82c46c",
 			"description": "Substrat minéral enrichi de spores alien, prêt pour la culture embarquée.",
 			"icon": "🪴",
@@ -1933,6 +2209,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#b8b0c8",
 			"description": "Composite minéral-métallique léger résistant aux micrométéorites.",
 			"icon": "🧱",
@@ -1946,6 +2224,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#b5f0ff",
 			"description": "Bloc de glace poli par la neige stellaire offrant une pureté optique exceptionnelle.",
 			"icon": "🔍",
@@ -1959,6 +2239,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#52d1ff",
 			"description": "Liquide supraconducteur ultra-froid circulant dans les circuits de refroidissement.",
 			"icon": "⚗️",
@@ -1972,6 +2254,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#a6d4f2",
 			"description": "Ferrite trempée dans la glace éternelle, insensible aux chocs thermiques.",
 			"icon": "🪩",
@@ -1985,6 +2269,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#6df7c9",
 			"description": "Molécule organique protégeant les cellules vivantes lors de la stase cryogénique.",
 			"icon": "🧴",
@@ -1998,6 +2284,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#b580ff",
 			"description": "Tissu organique souple et auto-réparateur tissé à partir de mycélium résineux.",
 			"icon": "🧵",
@@ -2011,6 +2299,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ff5ea8",
 			"description": "Catalyseur bio-chimique capable de dissoudre les alliages ou stimuler des mutations.",
 			"icon": "☠️",
@@ -2024,6 +2314,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ffd15c",
 			"description": "Résine fossilisée instantanément dans la silice, piégeant une lueur dorée durable.",
 			"icon": "🟠",
@@ -2037,6 +2329,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#8ce6ff",
 			"description": "Hybride cryogénique né de la rencontre entre mycélium fongique et glace éternelle.",
 			"icon": "🪻",
@@ -2050,6 +2344,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ffe066",
 			"description": "Panneau optique de précision transformant le rayonnement stellaire en énergie.",
 			"icon": "☀️",
@@ -2063,6 +2359,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#80b8d9",
 			"description": "Segment de blindage régulé supportant les températures extrêmes du vide.",
 			"icon": "🛡️",
@@ -2076,6 +2374,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ff9e44",
 			"description": "Batterie haute densité alimentant les systèmes critiques du vaisseau.",
 			"icon": "⚡",
@@ -2089,6 +2389,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#4ce07a",
 			"description": "Écosystème autonome produisant oxygène et nutriments à bord.",
 			"icon": "🌱",
@@ -2102,6 +2404,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#6be8ff",
 			"description": "Puce de calcul exploitant la résonance d'un cœur de quartz alimenté.",
 			"icon": "🖥️",
@@ -2115,6 +2419,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#b48cff",
 			"description": "Propulseur compact éjectant un flux continu de vapeur ionisée.",
 			"icon": "🚀",
@@ -2128,6 +2434,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#5ce1e6",
 			"description": "Instrument optique à longue portée cartographiant les gisements planétaires.",
 			"icon": "📡",
@@ -2141,6 +2449,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#d4ff70",
 			"description": "Éclairage vivant encapsulé sous verre solaire, sans consommation électrique.",
 			"icon": "💡",
@@ -2154,6 +2464,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#9ec5e6",
 			"description": "Bouclier ablatif refroidi permettant de traverser les atmosphères denses.",
 			"icon": "☄️",
@@ -2167,6 +2479,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#64f5c8",
 			"description": "Organisme régénérateur capable de réparer les tissus de l'explorateur.",
 			"icon": "🧬",
@@ -2180,6 +2494,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#5ce1ff",
 			"description": "Bobine refroidie à l'azote permettant un transfert d'énergie sans aucune perte.",
 			"icon": "🧲",
@@ -2193,6 +2509,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#7cf2e6",
 			"description": "Caisson biologique suspendant le vieillissement de l'équipage pour les longs trajets.",
 			"icon": "⏳",
@@ -2206,6 +2524,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#9b72ff",
 			"description": "Paroi organique semi-perméable filtrant l'air et colmatant automatiquement les brèches.",
 			"icon": "🕸️",
@@ -2219,6 +2539,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#b8ff4d",
 			"description": "Cellule énergétique convertissant la fermentation toxique en courant continu.",
 			"icon": "☣️",
@@ -2232,6 +2554,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ff9ee0",
 			"description": "Balise bioluminescente froide guidant les explorateurs dans les brumes épaisses.",
 			"icon": "🏮",
@@ -2245,6 +2569,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ff884d",
 			"description": "Propulseur principal capable d'arracher le vaisseau à l'attraction planétaire.",
 			"icon": "🔥",
@@ -2258,6 +2584,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#66d9ff",
 			"description": "Ordinateur de bord autonome calculant les trajectoires interstellaires.",
 			"icon": "🤖",
@@ -2271,6 +2599,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#a8c6e8",
 			"description": "Structure complète renforcée et isolée pour les longs voyages spatiaux.",
 			"icon": "🛸",
@@ -2284,6 +2614,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#5ef2b5",
 			"description": "Quartier d'habitation autonome combinant culture vivrière et soins biologiques.",
 			"icon": "🏥",
@@ -2297,6 +2629,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ffd24d",
 			"description": "Générateur à haut rendement fournissant une énergie quasi illimitée au vaisseau.",
 			"icon": "⚛️",
@@ -2310,6 +2644,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#c792ea",
 			"description": "Interface lumineuse 3D projetant cartes stellaires et schémas d'assemblage.",
 			"icon": "🌌",
@@ -2323,6 +2659,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#75c8ff",
 			"description": "Champ de force électromagnétique déviant radiations stellaires et débris spatiaux.",
 			"icon": "🌐",
@@ -2336,6 +2674,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#c084fc",
 			"description": "Armure vivante fusionnant blindage thermique et fibres fongiques adaptatives.",
 			"icon": "🦾",
@@ -2349,6 +2689,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#ffb84d",
 			"description": "Système de propulsion ultime capable de plier l'espace-temps entre deux étoiles.",
 			"icon": "🌠",
@@ -2362,6 +2704,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#6ee7b7",
 			"description": "Vaisseau-mère autosuffisant conçu pour explorer et peupler de nouveaux mondes.",
 			"icon": "🌍",
@@ -2375,6 +2719,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#a5b4fc",
 			"description": "Cartographie holographique consciente répertoriant toute la galaxie connue.",
 			"icon": "🧭",
@@ -2388,6 +2734,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#a8f0ff",
 			"description": "Quartier cryogénique complet permettant à l'équipage de traverser des siècles entre les étoiles.",
 			"icon": "❄️",
@@ -2401,6 +2749,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#5ef29b",
 			"description": "Dôme écologique complet où flore fongique et systèmes vitaux s'équilibrent indéfiniment.",
 			"icon": "🌳",
@@ -2414,6 +2764,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#66d9ff",
 			"description": "",
 			"icon": "☄️",
@@ -2427,6 +2779,8 @@
 		},
 		{
 			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
 			"color": "#66d9ff",
 			"description": "",
 			"icon": "🌍",
@@ -2449,58 +2803,288 @@
 			"activationBehavior": "Affiche un carton titre, injecte un interrupteur « Passer l'alien en noir et blanc » dans le menu Paramètres du HTML de base, et intercepte la fonction drawAlien() pour appliquer un filtre grayscale(100%) tant que l'option est active.",
 			"announcementMode": "title_card",
 			"condition": {
+				"anchorId": "",
 				"biomeId": "",
 				"count": 1,
 				"elementId": "",
 				"expression": "",
+				"extra": [],
+				"logic": "and",
 				"requiredExtension": "",
 				"type": "discovered_count"
+			},
+			"deactivateCondition": {
+				"anchorId": "",
+				"announcementMode": "toast",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"permanent": false,
+				"requiredExtension": "",
+				"type": "none"
 			},
 			"description": "Ajoute un mode visuel rétro monochrome pour l'alien, contrôlable à tout moment depuis le menu Paramètres..",
 			"enabled": true,
 			"filename": "alien_noir_et_blanc.html",
 			"icon": "🎞️",
-			"name": "Filtre Alien Noir & Blanc"
+			"name": "Filtre Alien Noir & Blanc",
+			"tags": [
+				"visuel",
+				"avatar"
+			],
+			"ui": {
+				"custom": {},
+				"titleCardBadge": "",
+				"titleCardButtonText": "",
+				"titleCardDurationMs": 6500,
+				"titleCardShowFile": true,
+				"titleCardText": "",
+				"titleCardTitle": "",
+				"toastText": ""
+			}
 		},
 		{
 			"accentColor": "#73fad1",
 			"activationBehavior": "Affiche un carton titre de déblocage puis un panneau/bandeau de confirmation indiquant « Vous avez activé cette extension demo_bienvenue.html » (et permet de le rouvrir depuis les Paramètres).",
 			"announcementMode": "title_card",
 			"condition": {
+				"anchorId": "",
 				"biomeId": "",
 				"count": 25,
 				"elementId": "",
 				"expression": "",
+				"extra": [],
+				"logic": "and",
 				"requiredExtension": "",
 				"type": "distance_traveled"
+			},
+			"deactivateCondition": {
+				"anchorId": "",
+				"announcementMode": "toast",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"permanent": false,
+				"requiredExtension": "",
+				"type": "none"
 			},
 			"description": "Extension de démonstration minimaliste qui confirme son activation avec son nom de fichier HTML.",
 			"enabled": true,
 			"filename": "demo_bienvenue.html",
 			"icon": "🧩",
-			"name": "Extension Démo Bienvenue"
+			"name": "Extension Démo Bienvenue",
+			"tags": [
+				"démo"
+			],
+			"ui": {
+				"custom": {
+					"modalMainText": "Vous avez activé cette extension {filename} !",
+					"modalSubText": "Cette extension est chargée dynamiquement depuis extensions/{filename} sans modifier le HTML de base.",
+					"modalTitle": "{name}",
+					"settingButtonText": "Afficher",
+					"settingDesc": "Affiche le message de confirmation de l'extension.",
+					"settingLabel": "Extension {filename}",
+					"toastText": "🧩 Vous avez activé cette extension {filename}"
+				},
+				"titleCardBadge": "",
+				"titleCardButtonText": "",
+				"titleCardDurationMs": 0,
+				"titleCardShowFile": false,
+				"titleCardText": "",
+				"titleCardTitle": "",
+				"toastText": ""
+			}
 		},
 		{
 			"accentColor": "#7ae8ff",
 			"activationBehavior": "Enregistre 3 éléments supplémentaires via host.game.registerElements() (ou postMessage en file://), met à jour l'index, les recettes et les chunks autour du joueur.",
 			"announcementMode": "title_card",
 			"condition": {
+				"anchorId": "",
 				"biomeId": "",
 				"count": 1,
 				"elementId": "",
 				"expression": "",
+				"extra": [],
+				"logic": "and",
 				"requiredExtension": "",
 				"type": "always"
+			},
+			"deactivateCondition": {
+				"anchorId": "",
+				"announcementMode": "toast",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"permanent": false,
+				"requiredExtension": "",
+				"type": "none"
 			},
 			"description": "Ajoute 3 nouveaux éléments (Éclat de Comète récoltable en Plaines Astrales + Lame Cométaire et Cœur de Comète) avec support du remplacement à chaud.",
 			"enabled": false,
 			"filename": "pack_elements_demo.html",
 			"icon": "☄️",
-			"name": "Pack d'Éléments Démo"
+			"name": "Pack d'Éléments Démo",
+			"tags": [
+				"démo",
+				"éléments"
+			],
+			"ui": {
+				"custom": {},
+				"titleCardBadge": "",
+				"titleCardButtonText": "",
+				"titleCardDurationMs": 6500,
+				"titleCardShowFile": true,
+				"titleCardText": "",
+				"titleCardTitle": "",
+				"toastText": ""
+			}
+		},
+		{
+			"accentColor": "#ff8ce6",
+			"activationBehavior": "Ajoute un menu spécial avec le bouton « Ouvrir l'élément » dans le menu Craft lorsque l'élément choisi dans ses paramètres perso est sélectionné. Cliquer dessus ouvre une fenêtre permettant de choisir entre 4 gammes de couleurs (Solaire Magma, Cryo Glacial, Nébuleuse Violette, Cyber Or & Néon) pour reskinner l'avatar.",
+			"announcementMode": "title_card",
+			"condition": {
+				"anchorId": "",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "silice",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"requiredExtension": "",
+				"type": "crafted_element"
+			},
+			"deactivateCondition": {
+				"anchorId": "",
+				"announcementMode": "toast",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"permanent": false,
+				"requiredExtension": "",
+				"type": "none"
+			},
+			"description": "Ajoute un menu spécial sur un élément du menu Craft pour ouvrir l'Atelier Chroma et choisir parmi 4 gammes de couleurs afin de reskinner l'avatar.",
+			"enabled": true,
+			"filename": "avatar_reskin.html",
+			"icon": "🎨",
+			"name": "Atelier Chroma Avatar",
+			"tags": [
+				"visuel",
+				"avatar",
+				"craft"
+			],
+			"ui": {
+				"custom": {
+					"buttonText": "Ouvrir l'élément",
+					"modalSubtitle": "Choisissez une gamme de couleurs pour reskinner votre avatar :",
+					"modalTitle": "Atelier Chroma — Reskin de l'avatar",
+					"targetElementId": "silice"
+				},
+				"titleCardBadge": "",
+				"titleCardButtonText": "ok cool",
+				"titleCardDurationMs": 6500,
+				"titleCardShowFile": false,
+				"titleCardText": "",
+				"titleCardTitle": "",
+				"toastText": ""
+			}
+		},
+		{
+			"accentColor": "#ff9a3c",
+			"activationBehavior": "Active le tir au deuxième doigt pendant un déplacement : vise le 2e doigt en mode normal (persistant si le 1er doigt est relâché puis reposé), ou démarre dans la direction de l'alien puis tourne en twin-stick en mode joystick de direction, avec une grosse décharge visuelle au relâchement du doigt de tir.",
+			"announcementMode": "title_card",
+			"condition": {
+				"anchorId": "",
+				"biomeId": "",
+				"count": 10,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"requiredExtension": "",
+				"type": "distance_traveled"
+			},
+			"deactivateCondition": {
+				"anchorId": "",
+				"announcementMode": "toast",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"logic": "and",
+				"permanent": false,
+				"requiredExtension": "",
+				"type": "none"
+			},
+			"description": "Active le tir énergétique de l'alien avec un deuxième doigt pendant le déplacement (visée directe ou twin-stick en mode joystick) et une grosse décharge finale au relâchement.",
+			"enabled": true,
+			"filename": "tir_alien.html",
+			"icon": "🔫",
+			"name": "Tir de l'Alien",
+			"tags": [
+				"gameplay",
+				"combat",
+				"tir"
+			],
+			"ui": {
+				"custom": {
+					"finisherColor": "#ff4fd8",
+					"fireRate": 7.0,
+					"projectileSpeed": 690.0,
+					"shotColor": "#ff9a3c"
+				},
+				"titleCardBadge": "",
+				"titleCardButtonText": "",
+				"titleCardDurationMs": 6500,
+				"titleCardShowFile": false,
+				"titleCardText": "",
+				"titleCardTitle": "",
+				"toastText": ""
+			}
 		}
 	],
 	"version": 1
 }/*EXTENSIONS_DATA_JSON_END*/;
+
+  let ANCHORS_DATA = /*ANCHORS_DATA_JSON*/{
+	"anchors": [
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "",
+			"emoji": "⚓",
+			"id": "ancre_1",
+			"maxAngle": 360.0,
+			"maxDistance": 25.0,
+			"minAngle": 0.0,
+			"minDistance": 15.0,
+			"minSeparation": 15.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"useAngleRange": false,
+			"x": 0.0,
+			"y": 0.0
+		}
+	],
+	"version": 1
+}/*ANCHORS_DATA_JSON_END*/;
 
   const fetchJsonNoCache = async (url) => {
     try {
@@ -2538,6 +3122,7 @@
         cfg: extractEmbeddedJsonFromHtml(htmlText, "GAME_CONFIG_JSON"),
         elems: extractEmbeddedJsonFromHtml(htmlText, "ELEMENTS_DATA_JSON"),
         exts: extractEmbeddedJsonFromHtml(htmlText, "EXTENSIONS_DATA_JSON"),
+        anchors: extractEmbeddedJsonFromHtml(htmlText, "ANCHORS_DATA_JSON"),
       };
     } catch (_e) {
       return null;
@@ -2547,13 +3132,15 @@
   let lastRemoteCfgSnap = "";
   let lastRemoteElemsSnap = "";
   let lastRemoteExtsSnap = "";
+  let lastRemoteAnchorsSnap = "";
 
   // En HTTP/HTTPS : charge en priorité les JSON en ligne s'ils existent (fallback sur les données embarquées)
   if (window.location.protocol === "http:" || window.location.protocol === "https:") {
-    const [remoteCfg, remoteElems, remoteExts] = await Promise.all([
+    const [remoteCfg, remoteElems, remoteExts, remoteAnchors] = await Promise.all([
       fetchJsonNoCache("game_config.json"),
       fetchJsonNoCache("config/elements_data.json"),
       fetchJsonNoCache("config/extensions.json"),
+      fetchJsonNoCache("config/anchors.json"),
     ]);
     if (remoteCfg && typeof remoteCfg === "object") {
       Object.assign(GAME_CONFIG, remoteCfg);
@@ -2566,6 +3153,10 @@
     if (remoteExts && Array.isArray(remoteExts.extensions)) {
       EXTENSIONS_DATA = remoteExts;
       lastRemoteExtsSnap = JSON.stringify(remoteExts);
+    }
+    if (remoteAnchors && Array.isArray(remoteAnchors.anchors)) {
+      ANCHORS_DATA = remoteAnchors;
+      lastRemoteAnchorsSnap = JSON.stringify(remoteAnchors);
     }
   }
 
@@ -2610,6 +3201,8 @@
   const descRecipeEl = document.getElementById("desc-recipe");
   const descUsesBtnEl = document.getElementById("desc-uses-btn");
   const descUsesEl = document.getElementById("desc-uses");
+  const descExtActionsEl = document.getElementById("desc-ext-actions");
+  const extElementActions = [];
   const descCloseBtnEl = document.getElementById("desc-close-btn");
   const dragGhostEl = document.getElementById("drag-ghost");
   const settingsBtnEl = document.getElementById("settings-btn");
@@ -2684,7 +3277,9 @@
 
   function refreshWorldAndUiAfterElementsChange({ pruneState = false, refreshChunks = true } = {}) {
     rebuildElementsIndex();
-    if (typeof getLevel1ElementsForBiome === "function") {
+    if (typeof getSpawnableElementsForBiome === "function") {
+      activeLevel1Elements = getSpawnableElementsForBiome(activeBiomeId);
+    } else if (typeof getLevel1ElementsForBiome === "function") {
       activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
     }
     let statePruned = false;
@@ -2911,12 +3506,89 @@
     return BIOMES.find(b => b && b.id === id) || BIOMES[0];
   }
 
+  function getElementBiomeSpawns(el) {
+    const out = [];
+    const seen = new Set();
+    const lvl = Math.max(1, Number(el && el.level) || 1);
+    if (el && Array.isArray(el.biomeSpawns)) {
+      for (const raw of el.biomeSpawns) {
+        if (!raw || typeof raw !== "object") continue;
+        const b = String(raw.biome || "").trim();
+        if (!b || seen.has(b)) continue;
+        seen.add(b);
+        const w = Math.max(0.1, Math.min(1000, Number(raw.weight ?? 100) || 100));
+        const show = raw.showInBiomeMenu !== undefined ? Boolean(raw.showInBiomeMenu) : true;
+        out.push({ biome: b, weight: w, showInBiomeMenu: show });
+      }
+    } else if (el) {
+      let legacy = [];
+      if (Array.isArray(el.biomes)) {
+        legacy = el.biomes.map(x => String(x || "").trim()).filter(Boolean);
+      }
+      if (legacy.length === 0 && el.biome) {
+        legacy = String(el.biome).split(",").map(x => x.trim()).filter(Boolean);
+      }
+      for (const b of legacy) {
+        if (!seen.has(b)) {
+          seen.add(b);
+          out.push({ biome: b, weight: 100, showInBiomeMenu: true });
+        }
+      }
+    }
+    if (lvl === 1 && out.length === 0) {
+      out.push({ biome: "plaine_astrale", weight: 100, showInBiomeMenu: true });
+    }
+    return out;
+  }
+
+  function getElementSpawnForBiome(el, biomeId) {
+    const spawns = getElementBiomeSpawns(el);
+    if (!biomeId) return spawns[0] || null;
+    let allFallback = null;
+    for (const sp of spawns) {
+      if (sp.biome === biomeId) return sp;
+      if (sp.biome === "all" && !allFallback) allFallback = sp;
+    }
+    return allFallback;
+  }
+
   function getLevel1ElementsForBiome(biomeId) {
-    const filtered = level1Elements.filter(el => {
-      const b = String(el.biome || "plaine_astrale").trim();
-      return !biomeId || b === biomeId || b === "all";
-    });
+    const filtered = level1Elements.filter(el => Boolean(getElementSpawnForBiome(el, biomeId)));
     return filtered.length > 0 ? filtered : level1Elements;
+  }
+
+  function getSpawnableElementsForBiome(biomeId) {
+    const filtered = [];
+    for (const el of elementsList) {
+      const sp = getElementSpawnForBiome(el, biomeId);
+      if (sp) {
+        filtered.push(Object.assign({}, el, {
+          spawnWeight: Number(sp.weight ?? 100),
+          showInBiomeMenu: sp.showInBiomeMenu !== undefined ? Boolean(sp.showInBiomeMenu) : true
+        }));
+      }
+    }
+    if (biomeId && filtered.length === 0) {
+      return level1Elements.map(el => Object.assign({}, el, { spawnWeight: 100, showInBiomeMenu: true }));
+    }
+    return filtered;
+  }
+
+  function getBiomeMenuElementsForBiome(biomeId) {
+    const n1 = [];
+    const other = [];
+    for (const el of getSpawnableElementsForBiome(biomeId)) {
+      if (!el.showInBiomeMenu) continue;
+      if (Number(el.level) === 1) n1.push(el);
+      else other.push(el);
+    }
+    other.sort((a, b) => {
+      const la = Number(a.level) || 2;
+      const lb = Number(b.level) || 2;
+      if (la !== lb) return la - lb;
+      return String(a.name || "").localeCompare(String(b.name || ""));
+    });
+    return { n1, other };
   }
 
   let activeBiome = getBiomeById(String(GAME_CONFIG.activeBiomeId || BIOMES[0].id));
@@ -2930,7 +3602,7 @@
   let groundColB = hexToRgb(activeBiome.groundColorB, [71, 54, 46]);
   let groundColC = hexToRgb(activeBiome.groundColorC, [33, 56, 56]);
   let accentRgb = hexToRgb(activeBiome.accentColor, [56, 224, 209]);
-  let activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
+  let activeLevel1Elements = getSpawnableElementsForBiome(activeBiomeId);
   let shipViewMode = "hub";
 
   function applyActiveBiomeParams(biomeId) {
@@ -2948,8 +3620,194 @@
     groundColB = hexToRgb(activeBiome.groundColorB, isVolc ? [61, 30, 20] : (isGlac ? [39, 63, 89] : (isFung ? [44, 31, 54] : [71, 54, 46])));
     groundColC = hexToRgb(activeBiome.groundColorC, isVolc ? [28, 26, 36] : (isGlac ? [22, 51, 66] : (isFung ? [23, 51, 42] : [33, 56, 56])));
     accentRgb = hexToRgb(activeBiome.accentColor, isVolc ? [255, 106, 43] : (isGlac ? [123, 227, 255] : (isFung ? [182, 109, 255] : [56, 224, 209])));
-    activeLevel1Elements = getLevel1ElementsForBiome(activeBiomeId);
+    activeLevel1Elements = getSpawnableElementsForBiome(activeBiomeId);
+    resolveAnchors();
   }
+
+  const ANCHOR_PIXELS_PER_METER = 18;
+  const resolvedAnchorsById = new Map();
+
+  function hashAnchorSeed(worldSeed, key) {
+    let h = (2166136261 ^ (worldSeed >>> 0)) >>> 0;
+    const bytes = new TextEncoder().encode(String(key));
+    for (let i = 0; i < bytes.length; i++) {
+      h = (h ^ bytes[i]) >>> 0;
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  function nextAnchorPrng(state) {
+    const t = (state + 0x6D2B79F5) >>> 0;
+    let x = Math.imul(t ^ (t >>> 15), (t | 1) >>> 0) >>> 0;
+    x = (x ^ ((x + Math.imul(x ^ (x >>> 7), (x | 61) >>> 0)) >>> 0)) >>> 0;
+    const out = (x ^ (x >>> 14)) >>> 0;
+    return { state: t, value: out / 4294967296 };
+  }
+
+  function anchorMatchesBiome(a, biomeId) {
+    if (!biomeId) return true;
+    if (Array.isArray(a?.biomes)) {
+      return a.biomes.includes("all") || a.biomes.includes(biomeId);
+    }
+    const single = String(a?.biome || "").trim();
+    if (single) {
+      const parts = single.split(",").map((s) => s.trim()).filter(Boolean);
+      return parts.includes("all") || parts.includes(biomeId);
+    }
+    return true;
+  }
+
+  function resolveAnchors() {
+    resolvedAnchorsById.clear();
+    const list = Array.isArray(ANCHORS_DATA?.anchors) ? ANCHORS_DATA.anchors : [];
+    const byId = new Map();
+    for (const a of list) {
+      if (!a || typeof a !== "object") continue;
+      if (!anchorMatchesBiome(a, activeBiomeId)) continue;
+      const aid = String(a.id || "").trim();
+      if (aid && !byId.has(aid)) byId.set(aid, a);
+    }
+
+    const ordered = [];
+    const seenOrder = new Set();
+    for (const a of byId.values()) {
+      const aid = String(a.id || "").trim();
+      if (String(a.positionMode || "fixed") === "fixed") {
+        ordered.push(a);
+        seenOrder.add(aid);
+      }
+    }
+    for (const a of byId.values()) {
+      const aid = String(a.id || "").trim();
+      if (seenOrder.has(aid)) continue;
+      if (String(a.positionMode || "fixed") === "generative_ship") {
+        ordered.push(a);
+        seenOrder.add(aid);
+      }
+    }
+    let progress = true;
+    while (progress) {
+      progress = false;
+      for (const a of byId.values()) {
+        const aid = String(a.id || "").trim();
+        if (seenOrder.has(aid)) continue;
+        const refId = String(a.referenceAnchorId || "").trim();
+        if (!refId || seenOrder.has(refId) || !byId.has(refId)) {
+          ordered.push(a);
+          seenOrder.add(aid);
+          progress = true;
+        }
+      }
+    }
+    for (const a of byId.values()) {
+      const aid = String(a.id || "").trim();
+      if (!seenOrder.has(aid)) {
+        ordered.push(a);
+        seenOrder.add(aid);
+      }
+    }
+
+    const placedList = [];
+    for (const a of ordered) {
+      const aid = String(a.id || "").trim();
+      const mode = String(a.positionMode || "fixed");
+      let xm = 0;
+      let ym = 0;
+
+      if (mode === "fixed") {
+        xm = Number(a.x || 0);
+        ym = Number(a.y || 0);
+      } else {
+        let refXm = 0;
+        let refYm = 0;
+        if (mode === "generative_anchor") {
+          const refEntry = resolvedAnchorsById.get(String(a.referenceAnchorId || "").trim());
+          if (refEntry) {
+            refXm = refEntry.xm;
+            refYm = refEntry.ym;
+          }
+        }
+        const minD = Math.max(0, Number(a.minDistance ?? 20));
+        const maxD = Math.max(minD, Number(a.maxDistance ?? 60));
+        const minSep = Math.max(0, Number(a.minSeparation ?? 15));
+        const useAngleRange = Boolean(a.useAngleRange);
+        const minAngleDeg = Number(a.minAngle ?? 0);
+        const maxAngleDeg = Number(a.maxAngle ?? 360);
+        let adjMaxDeg = maxAngleDeg;
+        while (adjMaxDeg < minAngleDeg) adjMaxDeg += 360;
+        const angleSpanDeg = Math.max(0, Math.min(360, adjMaxDeg - minAngleDeg));
+
+        let st = hashAnchorSeed(WORLD_SEED, "anchor|" + aid);
+        let found = false;
+        const initAngle = useAngleRange ? ((minAngleDeg + angleSpanDeg * 0.5) * Math.PI / 180) : 0;
+        let bestXm = refXm + Math.cos(initAngle) * minD;
+        let bestYm = refYm + Math.sin(initAngle) * minD;
+        let bestClearance = -1e9;
+
+        for (let attempt = 0; attempt < 256; attempt++) {
+          const r1 = nextAnchorPrng(st);
+          st = r1.state;
+          const r2 = nextAnchorPrng(st);
+          st = r2.state;
+
+          const angle = useAngleRange
+            ? ((minAngleDeg + r1.value * angleSpanDeg) * Math.PI / 180)
+            : (r1.value * Math.PI * 2);
+          const dist = minD + r2.value * (maxD - minD);
+          const cx = refXm + Math.cos(angle) * dist;
+          const cy = refYm + Math.sin(angle) * dist;
+
+          let worstClearance = 1e9;
+          let ok = true;
+          for (const other of placedList) {
+            const reqSep = Math.max(minSep, other.minSeparation);
+            if (reqSep <= 0) continue;
+            const dOther = Math.hypot(cx - other.xm, cy - other.ym);
+            const clearance = dOther - reqSep;
+            if (clearance < worstClearance) worstClearance = clearance;
+            if (dOther < reqSep) ok = false;
+          }
+          if (ok) {
+            xm = cx;
+            ym = cy;
+            found = true;
+            break;
+          } else if (worstClearance > bestClearance) {
+            bestClearance = worstClearance;
+            bestXm = cx;
+            bestYm = cy;
+          }
+        }
+        if (!found) {
+          xm = bestXm;
+          ym = bestYm;
+        }
+      }
+
+      const entry = {
+        id: aid,
+        emoji: String(a.emoji || a.icon || "⚓"),
+        description: String(a.description || ""),
+        showOnMap: Boolean(a.showOnMap),
+        positionMode: mode,
+        xm: Math.round(xm * 10) / 10,
+        ym: Math.round(ym * 10) / 10,
+        x: xm * ANCHOR_PIXELS_PER_METER,
+        y: ym * ANCHOR_PIXELS_PER_METER,
+        minSeparation: mode !== "fixed" ? Math.max(0, Number(a.minSeparation ?? 0)) : 0,
+      };
+      resolvedAnchorsById.set(aid, entry);
+      placedList.push(entry);
+    }
+  }
+
+  function getDistanceToAnchorMeters(anchorId) {
+    const entry = resolvedAnchorsById.get(String(anchorId || "").trim());
+    if (!entry) return null;
+    return Math.hypot(alien.x - entry.x, alien.y - entry.y) / ANCHOR_PIXELS_PER_METER;
+  }
+
   applyActiveBiomeParams(activeBiomeId);
 
   let MOVE_SPEED = Math.max(60, Math.min(800, Number(GAME_CONFIG.moveSpeed ?? 240)));
@@ -3204,6 +4062,10 @@
     }
 
     if (activeLevel1Elements.length > 0) {
+      let totalWeight = 0;
+      for (const elW of activeLevel1Elements) {
+        totalWeight += Math.max(0, Number(elW.spawnWeight ?? 100));
+      }
       const pickupCount = randInt(3, 5);
       const chunkMask = getChunkMask(activeBiomeId, cx, cy);
       for (let i = 0; i < pickupCount; i++) {
@@ -3211,7 +4073,19 @@
         const ly = randRange(40, CHUNK_SIZE - 40);
         const wx = ox + lx, wy = oy + ly;
         if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS - 35) continue;
-        const el = activeLevel1Elements[randInt(0, activeLevel1Elements.length - 1)];
+        let elIdx = 0;
+        if (totalWeight > 0) {
+          const roll = rng() * totalWeight;
+          let acc = 0;
+          elIdx = activeLevel1Elements.length - 1;
+          for (let j = 0; j < activeLevel1Elements.length; j++) {
+            acc += Math.max(0, Number(activeLevel1Elements[j].spawnWeight ?? 100));
+            if (roll <= acc) { elIdx = j; break; }
+          }
+        } else {
+          elIdx = randInt(0, activeLevel1Elements.length - 1);
+        }
+        const el = activeLevel1Elements[elIdx];
         if ((chunkMask & (1 << i)) !== 0) continue;
         pickups.push({
           index: i,
@@ -3283,6 +4157,7 @@
 
   // Input state: tap/drag-to-move OR pop-up directional joystick
   let isHolding = false;
+  let moveTouchId = null;
   let hasTarget = false;
   let targetWorldX = alien.x;
   let targetWorldY = alien.y;
@@ -3291,6 +4166,7 @@
   let pointerScreenY = 0;
   let lastTouchMs = 0;
   const keys = new Set();
+  const extClaimedTouchIds = new Set();
 
   // Floating directional joystick state
   const JOY_MAX_RADIUS = 56;
@@ -3409,15 +4285,37 @@
     descBodyEl.textContent = el.description || "";
 
     if (Number(el.level) === 1 || !Array.isArray(el.recipe) || el.recipe.length === 0) {
-      const bInfo = getBiomeById(String(el.biome || "plaine_astrale"));
-      const bLabel = bInfo ? `${bInfo.icon || "🌍"} ${bInfo.name || bInfo.id}` : String(el.biome || "");
-      descRecipeEl.textContent = `🌍 Ressource naturelle (Niveau 1)\nBiome : ${bLabel}`;
+      const spawns = getElementBiomeSpawns(el);
+      const bIds = spawns.map(sp => sp.biome);
+      let bLabel = "";
+      if (bIds.includes("all")) {
+        bLabel = "🌐 Tous les biomes";
+      } else {
+        bLabel = bIds.map(bid => {
+          const bInfo = getBiomeById(bid);
+          return bInfo ? `${bInfo.icon || "🌍"} ${bInfo.name || bInfo.id}` : bid;
+        }).join(", ");
+      }
+      const prefix = (bIds.length > 1 || bIds.includes("all")) ? "Biomes" : "Biome";
+      descRecipeEl.textContent = `🌍 Ressource naturelle (Niveau 1)\n${prefix} : ${bLabel}`;
     } else if (el.recipe.length === 2) {
       const a = elementsById.get(el.recipe[0]);
       const b = elementsById.get(el.recipe[1]);
       const aTxt = a ? `${a.icon} ${a.name}` : el.recipe[0];
       const bTxt = b ? `${b.icon} ${b.name}` : el.recipe[1];
-      descRecipeEl.textContent = `🧪 Recette : ${aTxt} + ${bTxt}`;
+      let recText = `🧪 Recette : ${aTxt} + ${bTxt}`;
+      const visSpawns = getElementBiomeSpawns(el).filter(sp => sp.showInBiomeMenu);
+      if (visSpawns.length > 0) {
+        const bIds = visSpawns.map(sp => sp.biome);
+        const bLabel = bIds.includes("all")
+          ? "🌐 Tous les biomes"
+          : bIds.map(bid => {
+              const bInfo = getBiomeById(bid);
+              return bInfo ? `${bInfo.icon || "🌍"} ${bInfo.name || bInfo.id}` : bid;
+            }).join(", ");
+        recText += `\n🌍 Aussi trouvable dans : ${bLabel}`;
+      }
+      descRecipeEl.textContent = recText;
     } else {
       descRecipeEl.textContent = "";
     }
@@ -3441,6 +4339,35 @@
         }
         if (unknownCount > 0) lines.push(`• ❓ ${unknownCount} assemblage(s) encore à découvrir`);
         descUsesEl.textContent = lines.join("\n");
+      }
+    }
+
+    if (descExtActionsEl) {
+      descExtActionsEl.innerHTML = "";
+      const matching = extElementActions.filter(act => {
+        if (typeof act.match === "function") {
+          try { return Boolean(act.match(el)); } catch (_e) { return false; }
+        }
+        return Boolean(act.elementId) && act.elementId === el.id;
+      });
+      if (matching.length > 0) {
+        for (const act of matching) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "desc-ext-action-btn";
+          if (act.accentColor) btn.style.setProperty("--ext-action-accent", act.accentColor);
+          const prefix = act.icon ? `${act.icon} ` : "";
+          btn.textContent = `${prefix}${act.buttonText || "Ouvrir l'élément"}`;
+          btn.addEventListener("click", () => {
+            if (typeof act.onClick === "function") {
+              try { act.onClick(el); } catch (err) { console.error(err); }
+            }
+          });
+          descExtActionsEl.appendChild(btn);
+        }
+        descExtActionsEl.classList.add("open");
+      } else {
+        descExtActionsEl.classList.remove("open");
       }
     }
   }
@@ -3859,14 +4786,35 @@
     biomesListEl.innerHTML = "";
     for (const b of BIOMES) {
       if (!b || !b.id) continue;
+      if (b.locked) {
+        const card = document.createElement("div");
+        card.className = "biome-card locked";
+        card.innerHTML = `
+          <div class="biome-card-icon">${b.icon || "🔒"}</div>
+          <div class="biome-card-title">${b.name || b.id}</div>
+          <div class="biome-n1-icons">
+            <div class="biome-n1-badge unknown">?</div>
+            <div class="biome-n1-badge unknown">?</div>
+            <div class="biome-n1-badge unknown">?</div>
+          </div>
+        `;
+        const lockBtn = document.createElement("button");
+        lockBtn.type = "button";
+        lockBtn.className = "biome-go-btn";
+        lockBtn.disabled = true;
+        lockBtn.textContent = "🔒 Bloqué pour l'instant";
+        card.appendChild(lockBtn);
+        biomesListEl.appendChild(card);
+        continue;
+      }
       const isCurrent = b.id === activeBiomeId;
       const accent = b.accentColor || "#38e0d1";
       const card = document.createElement("div");
       card.className = "biome-card";
       card.style.borderColor = isCurrent ? "#73fad1" : accent;
 
-      const n1s = getLevel1ElementsForBiome(b.id);
-      const badgesHtml = n1s.map(el => {
+      const menuElems = getBiomeMenuElementsForBiome(b.id);
+      const n1BadgesHtml = menuElems.n1.map(el => {
         const isDisc = discovered.has(el.id);
         if (isDisc) {
           const col = el.color || "#66d9ff";
@@ -3875,10 +4823,25 @@
         return `<div class="biome-n1-badge unknown" title="Élément non découvert">?</div>`;
       }).join("");
 
+      const otherBadgesHtml = menuElems.other.length > 0
+        ? `<div class="biome-other-icons">${menuElems.other.map(el => {
+            const isDisc = discovered.has(el.id);
+            const lvl = Number(el.level) || 2;
+            if (isDisc) {
+              const col = el.color || "#ffd166";
+              return `<div class="biome-other-badge" style="border-color:${col}" title="${el.name} (N${lvl})">${el.icon}</div>`;
+            }
+            return `<div class="biome-other-badge unknown" title="Élément rare non découvert (N${lvl})">?</div>`;
+          }).join("")}</div>`
+        : "";
+
       card.innerHTML = `
         <div class="biome-card-icon">${b.icon || "🌍"}</div>
         <div class="biome-card-title">${b.name || b.id}</div>
-        <div class="biome-n1-icons">${badgesHtml}</div>
+        <div class="biome-elems-wrap">
+          <div class="biome-n1-icons">${n1BadgesHtml}</div>
+          ${otherBadgesHtml}
+        </div>
       `;
 
       const goBtn = document.createElement("button");
@@ -3897,33 +4860,11 @@
       card.appendChild(goBtn);
       biomesListEl.appendChild(card);
     }
-
-    const lockedBiomes = [
-      { icon: "⚡", name: "Désert Ionique" }
-    ];
-    for (const lb of lockedBiomes) {
-      const card = document.createElement("div");
-      card.className = "biome-card locked";
-      card.innerHTML = `
-        <div class="biome-card-icon">${lb.icon}</div>
-        <div class="biome-card-title">${lb.name}</div>
-        <div class="biome-n1-icons">
-          <div class="biome-n1-badge unknown">?</div>
-          <div class="biome-n1-badge unknown">?</div>
-          <div class="biome-n1-badge unknown">?</div>
-        </div>
-      `;
-      const lockBtn = document.createElement("button");
-      lockBtn.type = "button";
-      lockBtn.className = "biome-go-btn";
-      lockBtn.disabled = true;
-      lockBtn.textContent = "🔒 Bloqué pour l'instant";
-      card.appendChild(lockBtn);
-      biomesListEl.appendChild(card);
-    }
   }
 
   function travelToBiome(biomeId) {
+    const targetB = BIOMES.find(x => x && x.id === biomeId);
+    if (!targetB || targetB.locked) return;
     applyActiveBiomeParams(biomeId);
     chunks.clear();
     lastCenterKey = "";
@@ -4077,20 +5018,22 @@
     }
 
     const savedSeeds = (data.world.biome_seeds && typeof data.world.biome_seeds === "object") ? data.world.biome_seeds : {};
-    const seedChangedBiomes = new Set();
+    const cleanSeeds = {};
     for (const [bid, b] of biomeMap.entries()) {
-      if (bid in savedSeeds && (Number(savedSeeds[bid]) | 0) !== (Number(b.worldSeed ?? 4242) | 0)) {
-        seedChangedBiomes.add(bid);
-        warnings.push(`Graine du biome « ${bid} » modifiée : ressources au sol réinitialisées.`);
+      if (bid in savedSeeds && Number.isFinite(Number(savedSeeds[bid]))) {
+        cleanSeeds[bid] = Math.floor(Number(savedSeeds[bid]));
+      } else {
+        cleanSeeds[bid] = Math.floor(Number(b.worldSeed ?? 4242));
       }
     }
+    data.world.biome_seeds = cleanSeeds;
 
     const cleanChunks = [];
     if (Array.isArray(data.world.collected_chunks) && MAX_COLLECTED_CHUNKS > 0) {
       for (const entry of data.world.collected_chunks) {
         if (!Array.isArray(entry) || entry.length !== 4) continue;
         const bid = String(entry[0] || "");
-        if (!biomeMap.has(bid) || seedChangedBiomes.has(bid)) continue;
+        if (!biomeMap.has(bid)) continue;
         const mask = (Number(entry[3]) | 0) & 0x3F;
         if (mask > 0) cleanChunks.push([bid, Number(entry[1]) | 0, Number(entry[2]) | 0, mask]);
       }
@@ -4132,6 +5075,8 @@
           enabled: st.enabled === undefined ? true : Boolean(st.enabled),
           unlocked_at: String(st.unlocked_at || ""),
           condition_sig: String(st.condition_sig || ""),
+          deactivate_sig: String(st.deactivate_sig || ""),
+          permanently_disabled: Boolean(st.permanently_disabled),
           state: (st.state && typeof st.state === "object") ? st.state : {},
         };
       }
@@ -4146,7 +5091,7 @@
     data.player.hint_dismissed = Boolean(data.player.hint_dismissed);
 
     let status = "valid";
-    if (removedInv.length > 0 || removedDisc.length > 0 || seedChangedBiomes.size > 0 || biomeMissing) status = "partial";
+    if (removedInv.length > 0 || removedDisc.length > 0 || biomeMissing) status = "partial";
     else if (migrated) status = "migrated";
     return { status, data, warnings, errors, needsResave: migrated || status === "partial" || hashChanged };
   }
@@ -4210,6 +5155,29 @@
     }
   }
 
+  let slotBiomeSeeds = {};
+
+  function applySlotBiomeSeeds(seedsObj) {
+    if (!seedsObj || typeof seedsObj !== "object") return;
+    slotBiomeSeeds = {};
+    for (const b of BIOMES) {
+      if (b.id in seedsObj && Number.isFinite(Number(seedsObj[b.id]))) {
+        const s = Math.floor(Number(seedsObj[b.id]));
+        b.worldSeed = s;
+        slotBiomeSeeds[b.id] = s;
+      }
+    }
+  }
+
+  function randomizeBiomeSeeds() {
+    slotBiomeSeeds = {};
+    for (const b of BIOMES) {
+      const s = 1 + Math.floor(Math.random() * 999999);
+      b.worldSeed = s;
+      slotBiomeSeeds[b.id] = s;
+    }
+  }
+
   function applySaveObject(parsed, slotId, silentIfValid = false, rawStr = "") {
     const val = validateAndPrepareSave(parsed);
     if (val.status === "invalid") {
@@ -4229,6 +5197,7 @@
     deactivateAllExtensions();
     importExtensionStatesObj(d.progress.extensions || {});
 
+    applySlotBiomeSeeds(d.world.biome_seeds);
     applyActiveBiomeParams(d.world.active_biome_id);
     importCollectedChunksLRU(d.world.collected_chunks);
     chunks.clear();
@@ -4284,6 +5253,7 @@
     extensionStates.clear();
     collectedChunks.clear();
     collectedChunkOrder.length = 0;
+    randomizeBiomeSeeds();
     applyActiveBiomeParams(BIOMES[0]?.id || "plaine_astrale");
     chunks.clear();
     lastCenterKey = "";
@@ -4527,6 +5497,7 @@
 
   function cancelActivePointer() {
     isHolding = false;
+    moveTouchId = null;
     hasTarget = false;
     joyActive = false;
     joyTouchId = null;
@@ -4773,6 +5744,7 @@
 
     resetZoomToAlien();
     isHolding = true;
+    moveTouchId = touchId;
     pointerScreenX = pos.x;
     pointerScreenY = pos.y;
     targetWorldX = w.x;
@@ -4821,6 +5793,7 @@
 
   function handlePressEnd() {
     isHolding = false;
+    moveTouchId = null;
     joyActive = false;
     joyTouchId = null;
     joyDirX = 0;
@@ -4830,6 +5803,9 @@
   }
 
   // Universal Mouse + Touch events (100% compatible Safari, Chrome, Firefox, iOS, Android, iframes)
+  canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
   canvas.addEventListener("mousedown", (e) => {
     if (performance.now() - lastTouchMs < 500) return;
     if (e.button !== 0) return;
@@ -4839,8 +5815,9 @@
     if (performance.now() - lastTouchMs < 500) return;
     handlePressMove(e.clientX, e.clientY);
   });
-  window.addEventListener("mouseup", () => {
+  window.addEventListener("mouseup", (e) => {
     if (performance.now() - lastTouchMs < 500) return;
+    if (e.button !== 0) return;
     handlePressEnd();
   });
 
@@ -4849,37 +5826,47 @@
     lastTouchMs = performance.now();
     e.preventDefault();
     if (useJoystick && joyActive && joyTouchId !== null) return;
-    const t = e.changedTouches[0];
-    handlePressStart(t.clientX, t.clientY, t.identifier);
+    if (!useJoystick && isHolding && moveTouchId !== null) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (extClaimedTouchIds.has(t.identifier)) continue;
+      handlePressStart(t.clientX, t.clientY, t.identifier);
+      break;
+    }
   }, { passive: false });
   canvas.addEventListener("touchmove", (e) => {
     if (e.touches.length === 0) return;
     lastTouchMs = performance.now();
     e.preventDefault();
-    let t = e.touches[0];
-    if (joyTouchId !== null) {
-      let found = null;
-      for (let i = 0; i < e.touches.length; i++) {
-        if (e.touches[i].identifier === joyTouchId) { found = e.touches[i]; break; }
-      }
-      if (!found) return;
-      t = found;
+    const activeId = useJoystick ? joyTouchId : moveTouchId;
+    if (activeId === null) return;
+    let found = null;
+    for (let i = 0; i < e.touches.length; i++) {
+      if (e.touches[i].identifier === activeId) { found = e.touches[i]; break; }
     }
-    handlePressMove(t.clientX, t.clientY);
+    if (!found) return;
+    handlePressMove(found.clientX, found.clientY);
   }, { passive: false });
   canvas.addEventListener("touchend", (e) => {
     lastTouchMs = performance.now();
-    if (joyTouchId !== null) {
-      let ended = e.touches.length === 0;
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === joyTouchId) { ended = true; break; }
-      }
-      if (!ended) return;
+    const activeId = useJoystick ? joyTouchId : moveTouchId;
+    if (activeId === null) return;
+    let ended = e.touches.length === 0;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === activeId) { ended = true; break; }
     }
+    if (!ended) return;
     handlePressEnd();
   });
-  canvas.addEventListener("touchcancel", () => {
+  canvas.addEventListener("touchcancel", (e) => {
     lastTouchMs = performance.now();
+    const activeId = useJoystick ? joyTouchId : moveTouchId;
+    if (activeId === null) return;
+    let ended = e.touches.length === 0;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === activeId) { ended = true; break; }
+    }
+    if (!ended) return;
     handlePressEnd();
   });
 
@@ -5264,6 +6251,74 @@
     }
   }
 
+  function drawAnchors(timeSec) {
+    if (resolvedAnchorsById.size === 0) return;
+    const halfW = (viewW * 0.5) / currentZoom + 120;
+    const halfH = (viewH * 0.5) / currentZoom + 120;
+    const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2.6);
+
+    for (const a of resolvedAnchorsById.values()) {
+      if (!a.showOnMap) continue;
+      if (a.x < cam.x - halfW || a.x > cam.x + halfW || a.y < cam.y - halfH || a.y > cam.y + halfH) continue;
+
+      ctx.save();
+      ctx.translate(a.x, a.y);
+
+      // Halo pulsant
+      ctx.fillStyle = `rgba(250, 194, 76, ${(0.14 + pulse * 0.08).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(0, 0, 26 + pulse * 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(250, 199, 87, 0.38)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, 24 + pulse * 4, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Badge sombre + anneau doré
+      ctx.fillStyle = "rgba(0, 0, 0, 0.40)";
+      ctx.beginPath();
+      ctx.arc(0, 2, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(23, 28, 46, 0.92)";
+      ctx.beginPath();
+      ctx.arc(0, 0, 17.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(250, 194, 82, 0.92)";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(0, 0, 18, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Emoji centré
+      ctx.font = "20px system-ui, -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(a.emoji || "⚓", 0, 1);
+
+      // Étiquette ID sous le badge
+      if (a.id) {
+        ctx.font = "600 11px system-ui, -apple-system, sans-serif";
+        const tw = ctx.measureText(a.id).width;
+        const pw = tw + 12;
+        const ph = 16;
+        ctx.fillStyle = "rgba(15, 20, 36, 0.80)";
+        ctx.strokeStyle = "rgba(250, 194, 82, 0.45)";
+        ctx.lineWidth = 1;
+        ctx.fillRect(-pw * 0.5, 21, pw, ph);
+        ctx.strokeRect(-pw * 0.5, 21, pw, ph);
+        ctx.fillStyle = "rgba(255, 235, 184, 0.95)";
+        ctx.fillText(a.id, 0, 29.5);
+      }
+
+      ctx.restore();
+    }
+  }
+
   function drawSpaceship(timeSec) {
     const pulse = 0.5 + 0.5 * Math.sin(timeSec * 3);
 
@@ -5611,13 +6666,25 @@
   const shipHubChoicesEl = document.querySelector("#ship-view-hub .hub-choices");
 
   const customExprCache = new Map(); // expr -> Function | null
+  const isExtensionUnlockedFn = (f) => Boolean(extensionStates.get(String(f))?.unlocked);
+
+  function hashExtensionHtml(str) {
+    const s = String(str || "");
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return `${s.length}:${(h >>> 0).toString(36)}`;
+  }
 
   window.AssemblageExtensions = window.AssemblageExtensions || {};
   const hookWrappers = new Map(); // hookName -> Array<{ id, fn }>
   let nextHookId = 1;
   const activeExtensions = new Map(); // filename -> { cleanups: Array<Function>, iframe: HTMLIFrameElement | null }
   const loadingExtensions = new Set();
-  const loadedExtensionHtml = new Map(); // filename -> dernier HTML chargé (pour détecter les MAJ à chaud)
+  const loadedExtensionHtmlHash = new Map(); // filename -> hash léger du dernier HTML chargé (évite de garder tout le HTML en RAM)
+  const loadedExtensionStyles = new Map(); // filename -> Array<string> de CSS à réinjecter si réactivation
   let extSlotGeneration = 0;
   const titleCardQueue = [];
   let titleCardTimer = null;
@@ -5701,14 +6768,24 @@
     };
   }
 
+  function hasMeaningfulExtensionState(st) {
+    if (!st || typeof st !== "object") return false;
+    if (st.unlocked || st.permanently_disabled || st.enabled === false) return true;
+    if (st.state && typeof st.state === "object" && Object.keys(st.state).length > 0) return true;
+    return false;
+  }
+
   function exportExtensionStatesObj() {
     const out = {};
     for (const [fname, st] of extensionStates.entries()) {
+      if (!hasMeaningfulExtensionState(st)) continue;
       out[fname] = {
         unlocked: Boolean(st.unlocked),
         enabled: st.enabled === undefined ? true : Boolean(st.enabled),
         unlocked_at: String(st.unlocked_at || ""),
         condition_sig: String(st.condition_sig || ""),
+        deactivate_sig: String(st.deactivate_sig || ""),
+        permanently_disabled: Boolean(st.permanently_disabled),
         state: (st.state && typeof st.state === "object") ? st.state : {},
       };
     }
@@ -5719,12 +6796,14 @@
     extensionStates.clear();
     if (!obj || typeof obj !== "object") return;
     for (const [fname, st] of Object.entries(obj)) {
-      if (!fname || !st || typeof st !== "object") continue;
+      if (!fname || !hasMeaningfulExtensionState(st)) continue;
       extensionStates.set(String(fname), {
         unlocked: Boolean(st.unlocked),
         enabled: st.enabled === undefined ? true : Boolean(st.enabled),
         unlocked_at: String(st.unlocked_at || ""),
         condition_sig: String(st.condition_sig || ""),
+        deactivate_sig: String(st.deactivate_sig || ""),
+        permanently_disabled: Boolean(st.permanently_disabled),
         state: (st.state && typeof st.state === "object") ? JSON.parse(JSON.stringify(st.state)) : {},
       });
     }
@@ -5732,7 +6811,7 @@
 
   function getExtensionStateRecord(filename) {
     if (!extensionStates.has(filename)) {
-      extensionStates.set(filename, { unlocked: false, enabled: true, unlocked_at: "", condition_sig: "", state: {} });
+      extensionStates.set(filename, { unlocked: false, enabled: true, unlocked_at: "", condition_sig: "", deactivate_sig: "", permanently_disabled: false, state: {} });
     }
     return extensionStates.get(filename);
   }
@@ -5758,12 +6837,16 @@
     }
   }
 
-  function showExtModal({ icon = "🧩", title = "Extension", html = "", text = "" }) {
+  function showExtModal({ icon = "🧩", title = "Extension", html = "", text = "", onMount = null }) {
     extModalTitleEl.textContent = `${icon} ${title}`;
     if (html) extModalBodyEl.innerHTML = html;
     else extModalBodyEl.textContent = text;
     extModalOpen = true;
     extModalOverlayEl.classList.add("open");
+    if (typeof onMount === "function") {
+      try { onMount(extModalBodyEl); } catch (e) { console.error(e); }
+    }
+    return extModalBodyEl;
   }
 
   function closeExtModal() {
@@ -5812,6 +6895,55 @@
     }
   }
 
+  function interpolateExtText(template, extDef, extraVars = null) {
+    const raw = String(template ?? "");
+    const fname = String(extDef?.filename || "");
+    const name = String(extDef?.name || fname);
+    const icon = String(extDef?.icon || "🧩");
+    let out = raw
+      .replaceAll("{filename}", fname)
+      .replaceAll("{name}", name)
+      .replaceAll("{icon}", icon);
+    if (extraVars && typeof extraVars === "object") {
+      for (const [k, v] of Object.entries(extraVars)) {
+        out = out.replaceAll(`{${k}}`, String(v ?? ""));
+      }
+    }
+    return out;
+  }
+
+  function buildExtTitleCardOptions(extDef, overrides = null) {
+    const fname = String(extDef?.filename || "");
+    const ui = (extDef && typeof extDef.ui === "object" && extDef.ui) ? extDef.ui : {};
+    const rawBadge = String(ui.titleCardBadge || "").trim();
+    const rawTitle = String(ui.titleCardTitle || "").trim();
+    const rawText = String(ui.titleCardText || "").trim();
+    const rawBtn = String(ui.titleCardButtonText || "").trim();
+    const durationVal = (ui.titleCardDurationMs !== undefined && ui.titleCardDurationMs !== null)
+      ? Math.max(0, Number(ui.titleCardDurationMs))
+      : 6500;
+    const base = {
+      filename: fname,
+      badge: rawBadge ? interpolateExtText(rawBadge, extDef) : "NOUVELLE EXTENSION ACTIVÉE",
+      icon: extDef?.icon || "🧩",
+      title: rawTitle ? interpolateExtText(rawTitle, extDef) : (extDef?.name || fname),
+      description: rawText ? interpolateExtText(rawText, extDef) : (extDef?.description || extDef?.activationBehavior || ""),
+      buttonText: rawBtn ? interpolateExtText(rawBtn, extDef) : "Continuer",
+      showFile: ui.titleCardShowFile !== false,
+      durationMs: Number.isFinite(durationVal) ? durationVal : 6500,
+      accentColor: extDef?.accentColor || "#73fad1",
+    };
+    return overrides ? Object.assign(base, overrides) : base;
+  }
+
+  function buildExtToastMessage(extDef) {
+    const fname = String(extDef?.filename || "");
+    const ui = (extDef && typeof extDef.ui === "object" && extDef.ui) ? extDef.ui : {};
+    const customToast = String(ui.toastText || "").trim();
+    if (customToast) return interpolateExtText(customToast, extDef);
+    return `${extDef?.icon || "🧩"} Extension activée : ${extDef?.name || fname}`;
+  }
+
   function showNextTitleCard() {
     if (extTitleCardOpen || titleCardQueue.length === 0) return;
     const item = titleCardQueue.shift();
@@ -5819,13 +6951,19 @@
     extTcBadgeEl.textContent = item.badge || "NOUVELLE EXTENSION ACTIVÉE";
     extTcIconEl.textContent = item.icon || "🧩";
     extTcTitleEl.textContent = item.title || item.filename || "Extension";
+    extTcDescEl.style.whiteSpace = "pre-line";
     extTcDescEl.textContent = item.description || "";
     extTcFileEl.textContent = item.fileLabel || `📄 ${item.filename || ""}`;
+    extTcFileEl.style.display = (item.showFile === false) ? "none" : "";
+    extTcCloseBtnEl.textContent = item.buttonText || "Continuer";
     updateTitleCardSkipBtn();
     extTitleCardOpen = true;
     extTitleCardOverlayEl.classList.add("open");
-    if (titleCardTimer) clearTimeout(titleCardTimer);
-    titleCardTimer = setTimeout(() => closeTitleCard(), item.durationMs || 6500);
+    if (titleCardTimer) { clearTimeout(titleCardTimer); titleCardTimer = null; }
+    const dur = (item.durationMs !== undefined && item.durationMs !== null) ? Number(item.durationMs) : 6500;
+    if (Number.isFinite(dur) && dur > 0) {
+      titleCardTimer = setTimeout(() => closeTitleCard(), dur);
+    }
   }
 
   function closeTitleCard() {
@@ -5858,6 +6996,11 @@
   function createScopedHost(filename, extDef) {
     const cleanups = [];
     const registerCleanup = (fn) => { if (typeof fn === "function") cleanups.push(fn); };
+    const ownedTouchIds = new Set();
+    registerCleanup(() => {
+      for (const id of ownedTouchIds) extClaimedTouchIds.delete(id);
+      ownedTouchIds.clear();
+    });
 
     const scopedHost = {
       version: 1,
@@ -5886,9 +7029,44 @@
       },
       ui: {
         showToast(msg) { showToast(String(msg || "")); },
-        showTitleCard(opts) { queueTitleCard(Object.assign({ filename, icon: extDef.icon, title: extDef.name, description: extDef.description, accentColor: extDef.accentColor }, opts || {})); },
-        showModal(opts) { showExtModal(Object.assign({ icon: extDef.icon || "🧩", title: extDef.name || filename }, opts || {})); },
+        showTitleCard(opts) { queueTitleCard(buildExtTitleCardOptions(extDef, opts || {})); },
+        showModal(opts) { return showExtModal(Object.assign({ icon: extDef.icon || "🧩", title: extDef.name || filename }, opts || {})); },
         closeModal: closeExtModal,
+        addElementAction({ id = "", elementId = "", match = null, buttonText = "Ouvrir l'élément", icon = "", accentColor = "", onClick = null }) {
+          const entry = {
+            id: id || `${filename}_${Date.now()}`,
+            filename,
+            elementId: String(elementId || ""),
+            match: typeof match === "function" ? match : null,
+            buttonText: String(buttonText || "Ouvrir l'élément"),
+            icon: String(icon || ""),
+            accentColor: String(accentColor || extDef.accentColor || "#73fad1"),
+            onClick,
+          };
+          const existingIdx = extElementActions.findIndex(a => a.filename === filename && a.id === entry.id);
+          if (existingIdx >= 0) extElementActions[existingIdx] = entry;
+          else extElementActions.push(entry);
+          if (typeof renderDescriptionPanel === "function") renderDescriptionPanel();
+          const removeAction = () => {
+            const idx = extElementActions.indexOf(entry);
+            if (idx >= 0) extElementActions.splice(idx, 1);
+            if (typeof renderDescriptionPanel === "function") renderDescriptionPanel();
+          };
+          registerCleanup(removeAction);
+          return removeAction;
+        },
+        getConfig(key, fallback = "") {
+          const custom = (extDef && extDef.ui && typeof extDef.ui.custom === "object" && extDef.ui.custom) ? extDef.ui.custom : null;
+          if (!custom || !Object.prototype.hasOwnProperty.call(custom, key)) return fallback;
+          const val = custom[key];
+          return (val === undefined || val === null) ? fallback : val;
+        },
+        getAllConfig() {
+          return Object.assign({}, (extDef && extDef.ui && typeof extDef.ui.custom === "object" && extDef.ui.custom) ? extDef.ui.custom : {});
+        },
+        interpolate(template, extraVars = null) {
+          return interpolateExtText(template, extDef, extraVars);
+        },
         addSettingToggle({ id, label, desc = "", checked = false, onChange }) {
           const sec = ensureSettingsExtContainer();
           const rowId = `ext-setting-${id || filename.replace(/[^a-z0-9]/gi, "_")}`;
@@ -6037,10 +7215,47 @@
         get ctx() { return ctx; },
         get canvas() { return canvas; },
         get alien() { return alien; },
+        get cam() { return cam; },
+        get currentZoom() { return currentZoom; },
+        get viewW() { return viewW; },
+        get viewH() { return viewH; },
+        get useJoystick() { return useJoystick; },
+        isAnyUIOpen() { return isAnyUIOpen(); },
+        getCanvasPos(clientX, clientY) { return getCanvasPos(clientX, clientY); },
+        screenToWorld(sx, sy) { return screenToWorld(sx, sy); },
+        isMoveActive() { return useJoystick ? joyActive : isHolding; },
+        getMoveTouchId() { return useJoystick ? joyTouchId : moveTouchId; },
+        claimTouch(id) {
+          if (id === null || id === undefined) return;
+          extClaimedTouchIds.add(id);
+          ownedTouchIds.add(id);
+        },
+        releaseTouch(id) {
+          extClaimedTouchIds.delete(id);
+          ownedTouchIds.delete(id);
+        },
+        checkColliderHit(wx, wy, radius = 0) {
+          if (Math.hypot(wx, wy) <= SHIP_COLLISION_RADIUS + radius) return true;
+          const cx = Math.floor(wx / CHUNK_SIZE);
+          const cy = Math.floor(wy / CHUNK_SIZE);
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const ch = chunks.get((cx + dx) + "," + (cy + dy));
+              if (!ch || !ch.colliders) continue;
+              for (const col of ch.colliders) {
+                if (Math.hypot(wx - col.x, wy - col.y) <= col.r + radius) return true;
+              }
+            }
+          }
+          return false;
+        },
         get activeBiomeId() { return activeBiomeId; },
         get discovered() { return discovered; },
         get inventory() { return inventory; },
         get elementsById() { return elementsById; },
+        get anchors() { return Array.from(resolvedAnchorsById.values()); },
+        getAnchor(id) { return resolvedAnchorsById.get(String(id || "").trim()) || null; },
+        getAnchorDistance(id) { return getDistanceToAnchorMeters(id); },
         get playTimeSec() { return playTimeSec; },
         getQty(id) { return getQty(id); },
         addItem(id, amount = 1) {
@@ -6101,11 +7316,98 @@
     const host = iframeBridgeHosts.get(fname);
     if (!host) return;
     if (msg.cmd === "toast") host.ui.showToast(msg.text || "");
-    else if (msg.cmd === "modal") host.ui.showModal(msg.opts || {});
-    else if (msg.cmd === "state_set") host.state.set(msg.patch || {}, true);
+    else if (msg.cmd === "modal") {
+      const opts = Object.assign({}, msg.opts || {});
+      opts.onMount = (bodyEl) => {
+        bodyEl.querySelectorAll("[data-ext-click]").forEach((el) => {
+          el.addEventListener("click", () => {
+            const rec = activeExtensions.get(fname);
+            if (rec && rec.iframe && rec.iframe.contentWindow) {
+              rec.iframe.contentWindow.postMessage({
+                channel: "assemblage_host",
+                event: "modal_click",
+                action: String(el.dataset.extClick || ""),
+                value: String(el.dataset.extValue || ""),
+              }, "*");
+            }
+          });
+        });
+      };
+      host.ui.showModal(opts);
+    } else if (msg.cmd === "inject_style") {
+      const cssText = String(msg.css || "");
+      if (cssText) {
+        const stId = `ext-iframe-style-${fname.replace(/[^a-z0-9]/gi, "_")}`;
+        const prev = document.getElementById(stId);
+        if (prev) prev.remove();
+        const st = document.createElement("style");
+        st.id = stId;
+        st.dataset.extFile = fname;
+        st.textContent = cssText;
+        document.head.appendChild(st);
+      }
+    } else if (msg.cmd === "state_set") host.state.set(msg.patch || {}, true);
     else if (msg.cmd === "register_elements") host.game.registerElements(Array.isArray(msg.elements) ? msg.elements : []);
     else if (msg.cmd === "unregister_elements") host.game.unregisterElements();
-    else if (msg.cmd === "add_setting_toggle") {
+    else if (msg.cmd === "add_element_action") {
+      const actionId = String(msg.id || fname);
+      host.ui.addElementAction({
+        id: actionId,
+        elementId: String(msg.elementId || ""),
+        buttonText: msg.buttonText || "Ouvrir l'élément",
+        icon: msg.icon || "",
+        accentColor: msg.accentColor || "",
+        onClick: (el) => {
+          const rec = activeExtensions.get(fname);
+          if (rec && rec.iframe && rec.iframe.contentWindow) {
+            rec.iframe.contentWindow.postMessage({
+              channel: "assemblage_host",
+              event: "element_action_click",
+              id: actionId,
+              elementId: el ? el.id : "",
+            }, "*");
+          }
+        },
+      });
+    } else if (msg.cmd === "set_alien_color_map") {
+      if (host._alienColorMapUnhook) { host._alienColorMapUnhook(); host._alienColorMapUnhook = null; }
+      const colorMap = (msg.colorMap && typeof msg.colorMap === "object") ? msg.colorMap : null;
+      if (colorMap && Object.keys(colorMap).length > 0) {
+        if (!ctx.__assemblageColorHooked) {
+          const proto = Object.getPrototypeOf(ctx);
+          const fillDesc = Object.getOwnPropertyDescriptor(proto, "fillStyle");
+          const strokeDesc = Object.getOwnPropertyDescriptor(proto, "strokeStyle");
+          if (fillDesc && fillDesc.set && strokeDesc && strokeDesc.set) {
+            ctx.__assemblageColorMapper = null;
+            ctx.__assemblageColorHooked = true;
+            Object.defineProperty(ctx, "fillStyle", {
+              configurable: true,
+              get() { return fillDesc.get.call(this); },
+              set(val) { fillDesc.set.call(this, this.__assemblageColorMapper ? this.__assemblageColorMapper(val) : val); },
+            });
+            Object.defineProperty(ctx, "strokeStyle", {
+              configurable: true,
+              get() { return strokeDesc.get.call(this); },
+              set(val) { strokeDesc.set.call(this, this.__assemblageColorMapper ? this.__assemblageColorMapper(val) : val); },
+            });
+          }
+        }
+        host._alienColorMapUnhook = host.hooks.wrap("drawAlien", (orig, t) => {
+          const prevMapper = ctx.__assemblageColorMapper;
+          ctx.__assemblageColorMapper = (value) => {
+            const mapped = (typeof value === "string" && Object.prototype.hasOwnProperty.call(colorMap, value))
+              ? colorMap[value]
+              : value;
+            return prevMapper ? prevMapper(mapped) : mapped;
+          };
+          try {
+            return orig(t);
+          } finally {
+            ctx.__assemblageColorMapper = prevMapper;
+          }
+        });
+      }
+    } else if (msg.cmd === "add_setting_toggle") {
       const toggleId = String(msg.id || fname);
       host.ui.addSettingToggle({
         id: toggleId,
@@ -6203,7 +7505,7 @@
           }
           host._alienFilterUnhook = host.hooks.wrap("drawAlien", (orig, t) => {
             const prevMapper = ctx.__assemblageColorMapper;
-            ctx.__assemblageColorMapper = toGray;
+            ctx.__assemblageColorMapper = (value) => toGray(prevMapper ? prevMapper(value) : value);
             try {
               return orig(t);
             } finally {
@@ -6256,8 +7558,23 @@
     const isHttp = (window.location.protocol === "http:" || window.location.protocol === "https:");
     const fetchUrl = isHttp ? `${url}?_ts=${Date.now()}` : url;
 
+    const injectCachedStyles = () => {
+      const styles = loadedExtensionStyles.get(filename);
+      if (!Array.isArray(styles) || styles.length === 0) return;
+      document.querySelectorAll(`style[data-ext-file="${filename}"]`).forEach(el => el.remove());
+      for (const cssText of styles) {
+        const clone = document.createElement("style");
+        clone.dataset.extFile = filename;
+        clone.textContent = cssText;
+        document.head.appendChild(clone);
+      }
+    };
+
     const finishActivateModule = (mod) => {
       if (gen !== extSlotGeneration) return;
+      const st = getExtensionStateRecord(filename);
+      if (st.permanently_disabled || evaluateDeactivateCondition(extDef)) return;
+      injectCachedStyles();
       activeExtensions.set(filename, { cleanups, iframe: null, scopedHost, extDef });
       if (mod && typeof mod.onActivate === "function") {
         try {
@@ -6280,18 +7597,21 @@
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const htmlText = await resp.text();
       if (gen !== extSlotGeneration) return;
-      loadedExtensionHtml.set(filename, htmlText);
+      loadedExtensionHtmlHash.set(filename, hashExtensionHtml(htmlText));
       const doc = new DOMParser().parseFromString(htmlText, "text/html");
 
+      const extractedStyles = [];
       doc.querySelectorAll("style").forEach(st => {
-        const clone = document.createElement("style");
-        clone.dataset.extFile = filename;
-        clone.textContent = st.textContent;
-        document.head.appendChild(clone);
+        if (st.textContent) extractedStyles.push(st.textContent);
       });
+      loadedExtensionStyles.set(filename, extractedStyles);
 
       const scripts = Array.from(doc.querySelectorAll("script"));
       for (const sc of scripts) {
+        const stype = String(sc.getAttribute("type") || "").trim().toLowerCase();
+        if (sc.hasAttribute("data-assemblage-ui-schema") || (stype && stype !== "text/javascript" && stype !== "application/javascript")) {
+          continue;
+        }
         if (sc.textContent && sc.textContent.trim()) {
           const fn = new Function("host", "ext", sc.textContent);
           fn(scopedHost, extDef);
@@ -6299,6 +7619,9 @@
       }
       finishActivateModule(window.AssemblageExtensions[filename] || null);
     } catch (_fetchErr) {
+      if (gen !== extSlotGeneration) return;
+      const st = getExtensionStateRecord(filename);
+      if (st.permanently_disabled || evaluateDeactivateCondition(extDef)) return;
       // Fallback file:// via iframe + postMessage
       const iframe = document.createElement("iframe");
       iframe.style.display = "none";
@@ -6322,19 +7645,23 @@
     }
   }
 
-  function evaluateExtensionCondition(extDef) {
-    if (!extDef || extDef.enabled === false) return false;
-    const cond = extDef.condition || {};
-    const ctype = String(cond.type || "always");
-    const cnt = Math.max(0, Number(cond.count || 0));
+  function evaluateSingleCondition(cond, defaultType = "always") {
+    const c = (cond && typeof cond === "object") ? cond : {};
+    const ctype = String(c.type || defaultType);
+    const cnt = Math.max(0, Number(c.count || 0));
+    if (ctype === "none") return false;
     if (ctype === "always") return true;
     if (ctype === "crafted_element") {
-      const eid = String(cond.elementId || "");
+      const eid = String(c.elementId || "");
       return Boolean(eid) && discovered.has(eid);
     }
     if (ctype === "element_count") {
-      const eid = String(cond.elementId || "");
+      const eid = String(c.elementId || "");
       return Boolean(eid) && getQty(eid) >= Math.max(1, cnt);
+    }
+    if (ctype === "element_count_below") {
+      const eid = String(c.elementId || "");
+      return Boolean(eid) && getQty(eid) < Math.max(1, cnt);
     }
     if (ctype === "discovered_count") {
       return discovered.size >= Math.max(1, cnt);
@@ -6342,15 +7669,25 @@
     if (ctype === "distance_traveled") {
       return Math.floor(alien.distance / 18) >= Math.max(1, cnt);
     }
+    if (ctype === "anchor_near") {
+      const aid = String(c.anchorId || "");
+      const distM = getDistanceToAnchorMeters(aid);
+      return distM !== null && distM <= Math.max(1, cnt);
+    }
+    if (ctype === "anchor_far") {
+      const aid = String(c.anchorId || "");
+      const distM = getDistanceToAnchorMeters(aid);
+      return distM !== null && distM >= Math.max(1, cnt);
+    }
     if (ctype === "biome_visited") {
-      const bid = String(cond.biomeId || "");
+      const bid = String(c.biomeId || "");
       return Boolean(bid) && activeBiomeId === bid;
     }
     if (ctype === "play_time") {
       return playTimeSec >= Math.max(1, cnt);
     }
     if (ctype === "extension_unlocked") {
-      const req = String(cond.requiredExtension || "");
+      const req = String(c.requiredExtension || "");
       if (!req) return false;
       const reqDef = getExtensionsByFilenameMap().get(req);
       if (!reqDef || reqDef.enabled === false) return false;
@@ -6358,12 +7695,12 @@
       return Boolean(st && st.unlocked);
     }
     if (ctype === "custom_expr") {
-      const expr = String(cond.expression || "").trim();
+      const expr = String(c.expression || "").trim();
       if (!expr) return false;
       if (!customExprCache.has(expr)) {
         try {
           customExprCache.set(expr, new Function(
-            "discovered", "inventory", "getQty", "alien", "activeBiomeId", "playTimeSec", "isUnlocked",
+            "discovered", "inventory", "getQty", "alien", "activeBiomeId", "playTimeSec", "isUnlocked", "anchors", "getAnchorDist",
             `return Boolean(${expr});`
           ));
         } catch (err) {
@@ -6381,7 +7718,9 @@
           alien,
           activeBiomeId,
           playTimeSec,
-          (f) => Boolean(extensionStates.get(String(f))?.unlocked)
+          isExtensionUnlockedFn,
+          resolvedAnchorsById,
+          getDistanceToAnchorMeters
         ));
       } catch (_e) {
         return false;
@@ -6390,26 +7729,104 @@
     return false;
   }
 
-  function getExtensionConditionSignature(extDef) {
-    const c = (extDef && extDef.condition && typeof extDef.condition === "object") ? extDef.condition : {};
-    return JSON.stringify({
-      type: String(c.type || "always"),
+  // Conditions multiples : une condition principale + des conditions supplémentaires
+  // (cond.extra = [...]) combinées selon cond.logic ("and" = toutes, "or" = au moins une).
+  function getExtraConditions(cond) {
+    if (!cond || typeof cond !== "object" || !Array.isArray(cond.extra)) return [];
+    return cond.extra.filter((e) => e && typeof e === "object");
+  }
+
+  function combineWithExtraConditions(primaryResult, cond) {
+    const extras = getExtraConditions(cond);
+    if (!extras.length) return Boolean(primaryResult);
+    if (String(cond.logic || "and") === "or") {
+      return Boolean(primaryResult) || extras.some((e) => evaluateSingleCondition(e, "none"));
+    }
+    return Boolean(primaryResult) && extras.every((e) => evaluateSingleCondition(e, "none"));
+  }
+
+  function conditionUsesType(cond, types) {
+    if (!cond || typeof cond !== "object") return false;
+    if (types.includes(String(cond.type || ""))) return true;
+    return getExtraConditions(cond).some((e) => types.includes(String(e.type || "")));
+  }
+
+  function serializeConditionForSig(c, defaultType) {
+    return {
+      type: String(c.type || defaultType),
       elementId: String(c.elementId || ""),
       biomeId: String(c.biomeId || ""),
+      anchorId: String(c.anchorId || ""),
       count: Math.max(0, Number(c.count || 0)),
       requiredExtension: String(c.requiredExtension || ""),
       expression: String(c.expression || ""),
-    });
+    };
   }
 
-  function revokeChangedExtensions(prevCondSigs = null) {
+  function evaluateExtensionCondition(extDef) {
+    if (!extDef || extDef.enabled === false) return false;
+    return combineWithExtraConditions(evaluateSingleCondition(extDef.condition, "always"), extDef.condition);
+  }
+
+  function evaluateDeactivateCondition(extDef) {
+    if (!extDef || extDef.enabled === false) return false;
+    const deact = extDef.deactivateCondition;
+    if (!deact || typeof deact !== "object") return false;
+    const dtype = String(deact.type || "none");
+    if (dtype === "none") return false;
+    if (dtype === "condition_not_met") return combineWithExtraConditions(!evaluateExtensionCondition(extDef), deact);
+    return combineWithExtraConditions(evaluateSingleCondition(deact, "none"), deact);
+  }
+
+  function getExtensionConditionSignature(extDef) {
+    const c = (extDef && extDef.condition && typeof extDef.condition === "object") ? extDef.condition : {};
+    const sig = serializeConditionForSig(c, "always");
+    const extras = getExtraConditions(c);
+    if (extras.length) {
+      sig.logic = String(c.logic || "and") === "or" ? "or" : "and";
+      sig.extra = extras.map((e) => serializeConditionForSig(e, "none"));
+    }
+    return JSON.stringify(sig);
+  }
+
+  function getExtensionDeactivateSignature(extDef) {
+    const d = (extDef && extDef.deactivateCondition && typeof extDef.deactivateCondition === "object") ? extDef.deactivateCondition : {};
+    const sig = serializeConditionForSig(d, "none");
+    sig.permanent = Boolean(d.permanent);
+    const extras = getExtraConditions(d);
+    if (extras.length) {
+      sig.logic = String(d.logic || "and") === "or" ? "or" : "and";
+      sig.extra = extras.map((e) => serializeConditionForSig(e, "none"));
+    }
+    return JSON.stringify(sig);
+  }
+
+  function revokeChangedExtensions(prevCondSigs = null, prevDeactSigs = null) {
     const list = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
     let revokedAny = false;
 
     for (const extDef of list) {
       const fname = String(extDef?.filename || "");
       if (!fname || extDef.enabled === false) continue;
-      const rec = getExtensionStateRecord(fname);
+      const rec = extensionStates.get(fname);
+      if (!rec) continue;
+
+      // Si la condition de désactivation a été modifiée ou retirée, réinitialise le verrouillage définitif
+      if (rec.permanently_disabled) {
+        const newDeactSig = getExtensionDeactivateSignature(extDef);
+        const knownDeactSig = String(rec.deactivate_sig || (prevDeactSigs ? prevDeactSigs.get(fname) : "") || "");
+        if (knownDeactSig && knownDeactSig !== newDeactSig) {
+          const isStillPermanent = Boolean(extDef.deactivateCondition?.permanent) && String(extDef.deactivateCondition?.type || "none") !== "none";
+          if (!isStillPermanent || !evaluateDeactivateCondition(extDef)) {
+            rec.permanently_disabled = false;
+            rec.deactivate_sig = newDeactSig;
+            revokedAny = true;
+          }
+        } else if (!rec.deactivate_sig) {
+          rec.deactivate_sig = newDeactSig;
+        }
+      }
+
       if (!rec.unlocked) continue;
       const newSig = getExtensionConditionSignature(extDef);
       const knownSig = String(rec.condition_sig || (prevCondSigs ? prevCondSigs.get(fname) : "") || "");
@@ -6419,6 +7836,8 @@
           rec.unlocked = false;
           rec.unlocked_at = "";
           rec.condition_sig = "";
+          rec.permanently_disabled = false;
+          rec.deactivate_sig = "";
           revokedAny = true;
         } else {
           rec.condition_sig = newSig;
@@ -6435,15 +7854,17 @@
       for (const extDef of list) {
         const fname = String(extDef?.filename || "");
         if (!fname || extDef.enabled === false) continue;
-        const rec = getExtensionStateRecord(fname);
-        if (!rec.unlocked) continue;
-        const ctype = String(extDef?.condition?.type || "always");
-        if (ctype === "extension_unlocked" || (revokedAny && ctype === "custom_expr")) {
+        const rec = extensionStates.get(fname);
+        if (!rec || !rec.unlocked) continue;
+        const cond = extDef?.condition;
+        if (conditionUsesType(cond, ["extension_unlocked"]) || (revokedAny && conditionUsesType(cond, ["custom_expr"]))) {
           if (!evaluateExtensionCondition(extDef)) {
             deactivateExtension(fname);
             rec.unlocked = false;
             rec.unlocked_at = "";
             rec.condition_sig = "";
+            rec.permanently_disabled = false;
+            rec.deactivate_sig = "";
             revokedAny = true;
             changed = true;
           }
@@ -6459,6 +7880,7 @@
     const extDef = getExtensionsByFilenameMap().get(fname);
     if (!extDef || extDef.enabled === false) return false;
     const rec = getExtensionStateRecord(fname);
+    if (rec.permanently_disabled || evaluateDeactivateCondition(extDef)) return false;
     if (rec.unlocked) {
       if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
       if (rec.enabled && !activeExtensions.has(fname)) loadAndActivateExtension(extDef, false);
@@ -6471,15 +7893,9 @@
     if (announce) {
       const mode = String(extDef.announcementMode || "title_card");
       if (mode === "title_card") {
-        queueTitleCard({
-          filename: fname,
-          icon: extDef.icon || "🧩",
-          title: extDef.name || fname,
-          description: extDef.description || extDef.activationBehavior || "",
-          accentColor: extDef.accentColor || "#73fad1",
-        });
+        queueTitleCard(buildExtTitleCardOptions(extDef));
       } else if (mode === "toast") {
-        showToast(`${extDef.icon || "🧩"} Extension activée : ${extDef.name || fname}`);
+        showToast(buildExtToastMessage(extDef));
       }
     }
     loadAndActivateExtension(extDef, announce);
@@ -6492,46 +7908,85 @@
     const toLoad = [];
     const freshTitleCards = [];
     const freshToasts = [];
+    const freshDeactTitleCards = [];
+    const freshDeactToasts = [];
     let anyStateChange = false;
-    if (silentRestore && revokeChangedExtensions(null)) {
+    if (silentRestore && revokeChangedExtensions(null, null)) {
       anyStateChange = true;
     }
     for (const extDef of list) {
       const fname = String(extDef?.filename || "");
       if (!fname || extDef.enabled === false) continue;
-      const rec = getExtensionStateRecord(fname);
+      const rec = extensionStates.get(fname);
 
-      if (rec.unlocked && rec.enabled) {
-        if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
-        if (!activeExtensions.has(fname) && !loadingExtensions.has(fname)) {
-          toLoad.push({ extDef, isFreshUnlock: false });
+      if (rec && rec.permanently_disabled) {
+        if (activeExtensions.has(fname)) deactivateExtension(fname);
+        continue;
+      }
+
+      if (rec && rec.unlocked) {
+        const shouldDeactivate = evaluateDeactivateCondition(extDef);
+        if (shouldDeactivate) {
+          const wasActive = activeExtensions.has(fname);
+          if (wasActive) {
+            deactivateExtension(fname);
+            if (!silentRestore) {
+              const dmode = String(extDef.deactivateCondition?.announcementMode || "toast");
+              if (dmode === "title_card") {
+                freshDeactTitleCards.push({
+                  badge: "EXTENSION DÉSACTIVÉE",
+                  filename: fname,
+                  icon: extDef.icon || "🛑",
+                  title: extDef.name || fname,
+                  description: extDef.description || "Condition de désactivation atteinte.",
+                  accentColor: "#ff6b8a",
+                });
+              } else if (dmode === "toast") {
+                freshDeactToasts.push(`🛑 Extension désactivée : ${extDef.name || fname}`);
+              }
+            }
+          }
+          if (Boolean(extDef.deactivateCondition?.permanent)) {
+            rec.permanently_disabled = true;
+            rec.deactivate_sig = getExtensionDeactivateSignature(extDef);
+            anyStateChange = true;
+          }
+          continue;
+        }
+        if (rec.enabled) {
+          if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
+          if (!activeExtensions.has(fname) && !loadingExtensions.has(fname)) {
+            toLoad.push({ extDef, isFreshUnlock: false });
+          }
         }
         continue;
       }
 
-      if (!rec.unlocked && evaluateExtensionCondition(extDef)) {
-        rec.unlocked = true;
-        rec.enabled = true;
-        rec.unlocked_at = new Date().toISOString();
-        rec.condition_sig = getExtensionConditionSignature(extDef);
-        anyStateChange = true;
-
-        if (!silentRestore) {
-          const mode = String(extDef.announcementMode || "title_card");
-          if (mode === "title_card") {
-            freshTitleCards.push({
-              filename: fname,
-              icon: extDef.icon || "🧩",
-              title: extDef.name || fname,
-              description: extDef.description || extDef.activationBehavior || "",
-              accentColor: extDef.accentColor || "#73fad1",
-            });
-          } else if (mode === "toast") {
-            freshToasts.push(`${extDef.icon || "🧩"} Extension activée : ${extDef.name || fname}`);
-          }
-        }
-        toLoad.push({ extDef, isFreshUnlock: !silentRestore });
+      // Extension non encore débloquée : on évalue la condition d'activation d'abord,
+      // et la condition de désactivation uniquement si l'activation est remplie.
+      if (!evaluateExtensionCondition(extDef)) continue;
+      const deact = extDef.deactivateCondition;
+      const dtype = (deact && typeof deact === "object") ? String(deact.type || "none") : "none";
+      if (dtype !== "none" && dtype !== "condition_not_met" && combineWithExtraConditions(evaluateSingleCondition(deact, "none"), deact)) {
+        continue;
       }
+
+      const targetRec = getExtensionStateRecord(fname);
+      targetRec.unlocked = true;
+      targetRec.enabled = true;
+      targetRec.unlocked_at = new Date().toISOString();
+      targetRec.condition_sig = getExtensionConditionSignature(extDef);
+      anyStateChange = true;
+
+      if (!silentRestore) {
+        const mode = String(extDef.announcementMode || "title_card");
+        if (mode === "title_card") {
+          freshTitleCards.push(buildExtTitleCardOptions(extDef));
+        } else if (mode === "toast") {
+          freshToasts.push(buildExtToastMessage(extDef));
+        }
+      }
+      toLoad.push({ extDef, isFreshUnlock: !silentRestore });
     }
 
     if (freshTitleCards.length > 3) {
@@ -6553,6 +8008,25 @@
     } else if (freshToasts.length > 1) {
       showToast(`🧩 ${freshToasts.length} extensions activées !`);
     }
+    if (freshDeactTitleCards.length > 3) {
+      const preview = freshDeactTitleCards.slice(0, 4).map(c => `${c.icon} ${c.title}`).join(" • ");
+      const extra = freshDeactTitleCards.length > 4 ? ` (+${freshDeactTitleCards.length - 4} autres)` : "";
+      queueTitleCard({
+        badge: "EXTENSIONS DÉSACTIVÉES",
+        icon: "🛑",
+        title: `${freshDeactTitleCards.length} extensions désactivées`,
+        description: `${preview}${extra}`,
+        fileLabel: `📦 ${freshDeactTitleCards.length} modules HTML désactivés`,
+        accentColor: "#ff6b8a",
+      });
+    } else {
+      for (const tc of freshDeactTitleCards) queueTitleCard(tc);
+    }
+    if (freshDeactToasts.length === 1) {
+      showToast(freshDeactToasts[0]);
+    } else if (freshDeactToasts.length > 1) {
+      showToast(`🛑 ${freshDeactToasts.length} extensions désactivées`);
+    }
 
     if (anyStateChange) saveCurrentSlot(true);
     return toLoad.length > 0
@@ -6566,6 +8040,7 @@
   if (!lastRemoteCfgSnap) lastRemoteCfgSnap = JSON.stringify(GAME_CONFIG);
   if (!lastRemoteElemsSnap) lastRemoteElemsSnap = JSON.stringify(BASE_ELEMENTS_DATA);
   if (!lastRemoteExtsSnap) lastRemoteExtsSnap = JSON.stringify(EXTENSIONS_DATA);
+  if (!lastRemoteAnchorsSnap) lastRemoteAnchorsSnap = JSON.stringify(ANCHORS_DATA);
 
   async function hotRefreshRemoteData(force = false) {
     if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return false;
@@ -6576,19 +8051,21 @@
     lastHotRefreshAt = now;
 
     try {
-      let [remoteCfg, remoteElems, remoteExts] = await Promise.all([
+      let [remoteCfg, remoteElems, remoteExts, remoteAnchors] = await Promise.all([
         fetchJsonNoCache("game_config.json"),
         fetchJsonNoCache("config/elements_data.json"),
         fetchJsonNoCache("config/extensions.json"),
+        fetchJsonNoCache("config/anchors.json"),
       ]);
 
       // Fallback si les JSON séparés ne sont pas publiés (ex: seul index.html + extensions/ sur GitHub Pages)
-      if (!remoteCfg || !remoteElems || !remoteExts) {
+      if (!remoteCfg || !remoteElems || !remoteExts || !remoteAnchors) {
         const embedded = await fetchEmbeddedDataFromHtml();
         if (embedded) {
           if (!remoteCfg && embedded.cfg) remoteCfg = embedded.cfg;
           if (!remoteElems && embedded.elems) remoteElems = embedded.elems;
           if (!remoteExts && embedded.exts) remoteExts = embedded.exts;
+          if (!remoteAnchors && embedded.anchors) remoteAnchors = embedded.anchors;
         }
       }
 
@@ -6605,6 +8082,10 @@
           for (const k of Object.keys(GAME_CONFIG)) delete GAME_CONFIG[k];
           Object.assign(GAME_CONFIG, remoteCfg);
           applyGameConfigParams();
+          if (Object.keys(slotBiomeSeeds).length > 0) {
+            applySlotBiomeSeeds(slotBiomeSeeds);
+            applyActiveBiomeParams(activeBiomeId);
+          }
           const nextBiomeKey = `${activeBiomeId}|${WORLD_SEED}|${ROCK_DENSITY}|${CRYSTAL_DENSITY}|${BIOME_SCALE}|${activeBiomeTheme}|${groundColA}|${groundColB}|${groundColC}|${accentRgb}`;
           if (prevBiomeKey !== nextBiomeKey) {
             chunks.clear();
@@ -6625,15 +8106,31 @@
       }
 
       const prevCondSigs = new Map();
-      const prevExtList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
-      for (const prevDef of prevExtList) {
-        const pfname = String(prevDef?.filename || "");
-        if (pfname) prevCondSigs.set(pfname, getExtensionConditionSignature(prevDef));
-      }
+      const prevDeactSigs = new Map();
+      const prevUiSigs = new Map();
 
       if (remoteExts && Array.isArray(remoteExts.extensions)) {
         const snap = JSON.stringify(remoteExts);
         if (snap !== lastRemoteExtsSnap) {
+          const prevExtList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+          for (const prevDef of prevExtList) {
+            const pfname = String(prevDef?.filename || "");
+            if (!pfname) continue;
+            // Ne calcule les signatures que pour les extensions qui ont un état enregistré ou sont actives
+            if (extensionStates.has(pfname) || activeExtensions.has(pfname)) {
+              prevCondSigs.set(pfname, getExtensionConditionSignature(prevDef));
+              prevDeactSigs.set(pfname, getExtensionDeactivateSignature(prevDef));
+            }
+            if (activeExtensions.has(pfname)) {
+              prevUiSigs.set(pfname, JSON.stringify({
+                name: prevDef.name || "",
+                icon: prevDef.icon || "",
+                accentColor: prevDef.accentColor || "",
+                description: prevDef.description || "",
+                ui: prevDef.ui || {},
+              }));
+            }
+          }
           lastRemoteExtsSnap = snap;
           EXTENSIONS_DATA = remoteExts;
           extManifestChanged = true;
@@ -6641,26 +8138,59 @@
         }
       }
 
-      // Désactive les extensions retirées ou passées à enabled: false
-      const enabledByFile = new Map();
-      const extList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
-      for (const extDef of extList) {
-        const fname = String(extDef?.filename || "");
-        if (fname && extDef.enabled !== false) enabledByFile.set(fname, extDef);
-      }
-      for (const fname of Array.from(activeExtensions.keys())) {
-        if (!enabledByFile.has(fname)) {
-          deactivateExtension(fname);
-          delete window.AssemblageExtensions[fname];
-          loadedExtensionHtml.delete(fname);
-          extHotReloaded = true;
+      if (remoteAnchors && Array.isArray(remoteAnchors.anchors)) {
+        const snap = JSON.stringify(remoteAnchors);
+        if (snap !== lastRemoteAnchorsSnap) {
+          lastRemoteAnchorsSnap = snap;
+          ANCHORS_DATA = remoteAnchors;
+          resolveAnchors();
+          extManifestChanged = true;
         }
       }
 
-      // Re-verrouille à chaud les extensions dont la condition a changé ou dont une dépendance a été désactivée
-      if (revokeChangedExtensions(prevCondSigs)) {
-        extHotReloaded = true;
-        saveCurrentSlot(true);
+      // Désactive les extensions retirées ou passées à enabled: false (uniquement si le manifeste a changé)
+      const enabledByFile = new Map();
+      const extList = Array.isArray(EXTENSIONS_DATA?.extensions) ? EXTENSIONS_DATA.extensions : [];
+      if (extManifestChanged || activeExtensions.size > 0) {
+        for (const extDef of extList) {
+          const fname = String(extDef?.filename || "");
+          if (fname && extDef.enabled !== false) enabledByFile.set(fname, extDef);
+        }
+      }
+      if (extManifestChanged) {
+        for (const fname of Array.from(activeExtensions.keys())) {
+          if (!enabledByFile.has(fname)) {
+            deactivateExtension(fname);
+            delete window.AssemblageExtensions[fname];
+            loadedExtensionHtmlHash.delete(fname);
+            loadedExtensionStyles.delete(fname);
+            extHotReloaded = true;
+          }
+        }
+
+        // Re-verrouille à chaud les extensions dont la condition a changé ou dont une dépendance a été désactivée
+        if (revokeChangedExtensions(prevCondSigs, prevDeactSigs)) {
+          extHotReloaded = true;
+          saveCurrentSlot(true);
+        }
+
+        // Recharge à chaud les extensions actives dont la personnalisation d'interface a changé
+        for (const fname of Array.from(activeExtensions.keys())) {
+          const curDef = enabledByFile.get(fname);
+          if (!curDef) continue;
+          const nextUiSig = JSON.stringify({
+            name: curDef.name || "",
+            icon: curDef.icon || "",
+            accentColor: curDef.accentColor || "",
+            description: curDef.description || "",
+            ui: curDef.ui || {},
+          });
+          if (prevUiSigs.has(fname) && prevUiSigs.get(fname) !== nextUiSig) {
+            deactivateExtension(fname);
+            await loadAndActivateExtension(curDef, false, false);
+            extHotReloaded = true;
+          }
+        }
       }
 
       // Vérifie si le fichier HTML d'une extension déjà active a été modifié ou supprimé en ligne
@@ -6680,16 +8210,19 @@
             if (resp.status === 404) {
               deactivateExtension(fname);
               delete window.AssemblageExtensions[fname];
-              loadedExtensionHtml.delete(fname);
+              loadedExtensionHtmlHash.delete(fname);
+              loadedExtensionStyles.delete(fname);
               extHotReloaded = true;
               return;
             }
             if (!resp.ok) return;
             const newHtml = await resp.text();
-            if (loadedExtensionHtml.has(fname) && loadedExtensionHtml.get(fname) !== newHtml) {
+            const newHash = hashExtensionHtml(newHtml);
+            if (loadedExtensionHtmlHash.has(fname) && loadedExtensionHtmlHash.get(fname) !== newHash) {
               deactivateExtension(fname);
               delete window.AssemblageExtensions[fname];
-              loadedExtensionHtml.delete(fname);
+              loadedExtensionHtmlHash.delete(fname);
+              loadedExtensionStyles.delete(fname);
               await loadAndActivateExtension(enabledByFile.get(fname), false, true);
               extHotReloaded = true;
             }
@@ -7029,6 +8562,7 @@
           ch.oy + CHUNK_SIZE < cam.y - halfH || ch.oy > cam.y + halfH) continue;
       runHook("drawChunk", drawChunk, ch);
     }
+    runHook("drawAnchors", drawAnchors, timeSec);
     runHook("drawSpaceship", drawSpaceship, timeSec);
     runHook("drawAlien", drawAlien, timeSec);
     runHook("drawWorldAfter", () => {}, timeSec);
@@ -7044,6 +8578,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.2.4</div>
+<div id="version-badge" aria-hidden="true">v0.2.3</div>
 </body>
 </html>

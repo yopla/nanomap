@@ -5,6 +5,19 @@
 <title>Extension : Pack d'Éléments Démo</title>
 </head>
 <body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "toastText",
+      "label": "Toast d'activation",
+      "type": "text",
+      "default": "☄️ Extension activée : +{count} nouveaux éléments ajoutés !",
+      "hint": "Variables disponibles : {count}, {filename}, {name}"
+    }
+  ]
+}
+</script>
 <script>
 // Extension Assemblage : pack_elements_demo.html
 // Exemple d'extension ajoutant des éléments (base + recettes) avec support du remplacement à chaud.
@@ -44,13 +57,27 @@
     }
   ];
 
+  function formatToast(ext, count) {
+    const fname = (ext && ext.filename) || FILENAME;
+    const name = (ext && ext.name) || fname;
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    const raw = (custom && Object.prototype.hasOwnProperty.call(custom, "toastText") && custom.toastText !== undefined && custom.toastText !== null)
+      ? String(custom.toastText)
+      : "☄️ Extension activée : +{count} nouveaux éléments ajoutés !";
+    return raw
+      .replaceAll("{count}", String(count))
+      .replaceAll("{filename}", fname)
+      .replaceAll("{name}", name);
+  }
+
   // Mode 1 : chargement direct par index.html (HTTP/HTTPS)
   window.AssemblageExtensions = window.AssemblageExtensions || {};
   window.AssemblageExtensions[FILENAME] = {
     onActivate(host, ext) {
       const count = host.game.registerElements(EXTRA_ELEMENTS);
       if (ext.isFreshUnlock) {
-        host.ui.showToast(`☄️ Extension activée : +${count} nouveaux éléments ajoutés !`);
+        const msg = formatToast(ext, count);
+        if (msg.trim()) host.ui.showToast(msg);
       }
     },
     onDeactivate(host) {
@@ -74,12 +101,15 @@
           elements: EXTRA_ELEMENTS,
         }, "*");
         if (msg.ext && msg.ext.isFreshUnlock) {
-          window.parent.postMessage({
-            channel: "assemblage_ext",
-            filename: FILENAME,
-            cmd: "toast",
-            text: `☄️ Extension activée : +${EXTRA_ELEMENTS.length} nouveaux éléments ajoutés !`,
-          }, "*");
+          const text = formatToast(msg.ext, EXTRA_ELEMENTS.length);
+          if (text.trim()) {
+            window.parent.postMessage({
+              channel: "assemblage_ext",
+              filename: FILENAME,
+              cmd: "toast",
+              text,
+            }, "*");
+          }
         }
       }
     });

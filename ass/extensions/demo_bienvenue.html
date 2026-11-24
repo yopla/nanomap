@@ -5,20 +5,97 @@
 <title>Extension : Démo Bienvenue</title>
 </head>
 <body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "modalTitle",
+      "label": "Titre du panneau",
+      "type": "text",
+      "default": "{name}",
+      "placeholder": "Titre de la fenêtre de confirmation",
+      "hint": "Variables disponibles : {filename}, {name}"
+    },
+    {
+      "key": "modalMainText",
+      "label": "Texte principal du panneau",
+      "type": "textarea",
+      "default": "Vous avez activé cette extension {filename} !",
+      "placeholder": "Message principal affiché dans le panneau",
+      "hint": "Texte principal de la fenêtre modale (les sauts de ligne sont conservés)."
+    },
+    {
+      "key": "modalSubText",
+      "label": "Texte secondaire du panneau",
+      "type": "textarea",
+      "default": "Cette extension est chargée dynamiquement depuis extensions/{filename} sans modifier le HTML de base.",
+      "placeholder": "Sous-texte explicatif (laisser vide pour masquer)"
+    },
+    {
+      "key": "toastText",
+      "label": "Toast au déblocage",
+      "type": "text",
+      "default": "🧩 Vous avez activé cette extension {filename}",
+      "placeholder": "Laisser vide pour ne pas afficher de toast"
+    },
+    {
+      "key": "settingLabel",
+      "label": "Libellé (Paramètres)",
+      "type": "text",
+      "default": "Extension {filename}"
+    },
+    {
+      "key": "settingDesc",
+      "label": "Description (Paramètres)",
+      "type": "text",
+      "default": "Affiche le message de confirmation de l'extension."
+    },
+    {
+      "key": "settingButtonText",
+      "label": "Texte du bouton",
+      "type": "text",
+      "default": "Afficher"
+    }
+  ]
+}
+</script>
 <script>
 // Extension Assemblage : demo_bienvenue.html
 (function () {
   const FILENAME = "demo_bienvenue.html";
 
-  function buildMessageHtml(fname) {
-    return `
-      <p style="margin:0 0 10px 0;font-size:15px;color:#eefcff;">
-        Vous avez activé cette extension <strong>${fname}</strong> !
-      </p>
-      <p style="margin:0;font-size:12px;color:#9fc4dc;">
-        Cette extension est chargée dynamiquement depuis <code>extensions/${fname}</code> sans modifier le HTML de base.
-      </p>
-    `;
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function interpolate(tpl, fname, name) {
+    return String(tpl ?? "")
+      .replaceAll("{filename}", fname)
+      .replaceAll("{name}", name || fname);
+  }
+
+  function getCustomVal(ext, key, fallback) {
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    if (!custom || !Object.prototype.hasOwnProperty.call(custom, key)) return fallback;
+    const val = custom[key];
+    return (val === undefined || val === null) ? fallback : String(val);
+  }
+
+  function buildMessageHtml(ext, fname, name) {
+    const mainRaw = getCustomVal(ext, "modalMainText", "Vous avez activé cette extension {filename} !");
+    const subRaw = getCustomVal(ext, "modalSubText", "Cette extension est chargée dynamiquement depuis extensions/{filename} sans modifier le HTML de base.");
+    const mainText = escapeHtml(interpolate(mainRaw, fname, name)).replaceAll("\n", "<br>");
+    const subText = escapeHtml(interpolate(subRaw, fname, name)).replaceAll("\n", "<br>");
+    let html = `<p style="margin:0 0 10px 0;font-size:15px;color:#eefcff;">${mainText}</p>`;
+    if (subText.trim()) {
+      html += `<p style="margin:0;font-size:12px;color:#9fc4dc;">${subText}</p>`;
+    }
+    return html;
   }
 
   // Mode 1 : chargement direct par index.html
@@ -26,25 +103,32 @@
   window.AssemblageExtensions[FILENAME] = {
     onActivate(host, ext) {
       const fname = ext.filename || FILENAME;
+      const name = ext.name || fname;
+      const modalTitle = interpolate(getCustomVal(ext, "modalTitle", "{name}"), fname, name) || name;
+      const settingLabel = interpolate(getCustomVal(ext, "settingLabel", "Extension {filename}"), fname, name);
+      const settingDesc = interpolate(getCustomVal(ext, "settingDesc", "Affiche le message de confirmation de l'extension."), fname, name);
+      const settingButtonText = interpolate(getCustomVal(ext, "settingButtonText", "Afficher"), fname, name) || "Afficher";
+      const toastText = interpolate(getCustomVal(ext, "toastText", "🧩 Vous avez activé cette extension {filename}"), fname, name);
+
       const openInfo = () => {
         host.ui.showModal({
           icon: ext.icon || "🧩",
-          title: ext.name || fname,
-          html: buildMessageHtml(fname),
+          title: modalTitle,
+          html: buildMessageHtml(ext, fname, name),
         });
       };
 
       // Bouton dans Paramètres pour réafficher le message à volonté
       host.ui.addSettingButton({
         id: "demo_bienvenue_info",
-        label: "Extension " + fname,
-        desc: "Affiche le message de confirmation de l'extension.",
-        buttonText: "Afficher",
+        label: settingLabel,
+        desc: settingDesc,
+        buttonText: settingButtonText,
         onClick: openInfo,
       });
 
-      if (ext.isFreshUnlock) {
-        host.ui.showToast(`🧩 Vous avez activé cette extension ${fname}`);
+      if (ext.isFreshUnlock && toastText.trim()) {
+        host.ui.showToast(toastText);
       }
     },
     onDeactivate() {},
@@ -52,37 +136,49 @@
 
   // Mode 2 : fallback iframe + postMessage (si index.html est ouvert en file://)
   if (window.self !== window.top) {
+    let cachedExt = null;
     window.addEventListener("message", (ev) => {
       const msg = ev.data;
       if (!msg || msg.channel !== "assemblage_host") return;
       if (msg.event === "init") {
-        const fname = (msg.ext && msg.ext.filename) || FILENAME;
+        cachedExt = msg.ext || {};
+        const fname = cachedExt.filename || FILENAME;
+        const name = cachedExt.name || fname;
+        const settingLabel = interpolate(getCustomVal(cachedExt, "settingLabel", "Extension {filename}"), fname, name);
+        const settingDesc = interpolate(getCustomVal(cachedExt, "settingDesc", "Affiche le message de confirmation de l'extension."), fname, name);
+        const settingButtonText = interpolate(getCustomVal(cachedExt, "settingButtonText", "Afficher"), fname, name) || "Afficher";
+        const toastText = interpolate(getCustomVal(cachedExt, "toastText", "🧩 Vous avez activé cette extension {filename}"), fname, name);
+
         window.parent.postMessage({
           channel: "assemblage_ext",
           filename: FILENAME,
           cmd: "add_setting_button",
           id: "demo_bienvenue_info",
-          label: "Extension " + fname,
-          desc: "Affiche le message de confirmation de l'extension.",
-          buttonText: "Afficher",
+          label: settingLabel,
+          desc: settingDesc,
+          buttonText: settingButtonText,
         }, "*");
-        if (msg.ext && msg.ext.isFreshUnlock) {
+        if (cachedExt.isFreshUnlock && toastText.trim()) {
           window.parent.postMessage({
             channel: "assemblage_ext",
             filename: FILENAME,
             cmd: "toast",
-            text: `🧩 Vous avez activé cette extension ${fname}`,
+            text: toastText,
           }, "*");
         }
       } else if (msg.event === "button_click" && msg.id === "demo_bienvenue_info") {
+        const ext = cachedExt || {};
+        const fname = ext.filename || FILENAME;
+        const name = ext.name || "Extension Démo Bienvenue";
+        const modalTitle = interpolate(getCustomVal(ext, "modalTitle", "{name}"), fname, name) || name;
         window.parent.postMessage({
           channel: "assemblage_ext",
           filename: FILENAME,
           cmd: "modal",
           opts: {
-            icon: "🧩",
-            title: "Extension Démo Bienvenue",
-            html: buildMessageHtml(FILENAME),
+            icon: ext.icon || "🧩",
+            title: modalTitle,
+            html: buildMessageHtml(ext, fname, name),
           },
         }, "*");
       }

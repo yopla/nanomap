@@ -12,10 +12,11 @@
 			"groundColorC": "#213838",
 			"icon": "🌌",
 			"id": "plaine_astrale",
+			"locked": false,
 			"name": "Plaines Astrales",
 			"rockDensity": 1.0,
 			"theme": "astral",
-			"worldSeed": 4242
+			"worldSeed": 994248
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -30,7 +31,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 7777
+			"worldSeed": 35509
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -45,7 +46,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 9191
+			"worldSeed": 349928
 		},
 		{
 			"accentColor": "#b66dff",
@@ -60,7 +61,23 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 6363
+			"worldSeed": 566700
+		},
+		{
+			"accentColor": "#ffd24c",
+			"biomeScale": 1.1,
+			"crystalDensity": 1.35,
+			"description": "Dunes chargées d'électricité statique et tempêtes ioniques (verrouillé pour l'instant).",
+			"groundColorA": "#2a2318",
+			"groundColorB": "#3e2f1c",
+			"groundColorC": "#1f2b38",
+			"icon": "⚡",
+			"id": "desert_ionique",
+			"locked": false,
+			"name": "Désert Ionique",
+			"rockDensity": 1.15,
+			"theme": "astral",
+			"worldSeed": 8585
 		}
 	],
 	"cameraSmoothing": 6.5,
@@ -74,5 +91,5 @@
 	"shipSubtitle": "Systèmes nominaux • Base (0, 0)",
 	"shipTitle": "VAISSEAU",
 	"showCompass": true,
-	"worldSeed": 4242
+	"worldSeed": 994248
 }

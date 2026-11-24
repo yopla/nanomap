@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Atelier Chroma Avatar</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "targetElementId",
+      "label": "Élément déclencheur",
+      "type": "element",
+      "default": "cristal",
+      "hint": "Élément du menu Craft sur lequel afficher le bouton spécial."
+    },
+    {
+      "key": "buttonText",
+      "label": "Nom du bouton",
+      "type": "text",
+      "default": "Ouvrir l'élément",
+      "placeholder": "Ouvrir l'élément",
+      "hint": "Libellé du bouton affiché dans le menu Craft lorsque l'élément est sélectionné."
+    },
+    {
+      "key": "modalTitle",
+      "label": "Titre de la fenêtre",
+      "type": "text",
+      "default": "Atelier Chroma — Reskin de l'avatar"
+    },
+    {
+      "key": "modalSubtitle",
+      "label": "Texte d'introduction",
+      "type": "textarea",
+      "default": "Choisissez une gamme de couleurs pour reskinner votre avatar :"
+    }
+  ]
+}
+</script>
+<style>
+  .reskin-intro {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    color: rgba(202, 222, 242, 0.9);
+    line-height: 1.45;
+  }
+  .reskin-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (max-width: 520px) {
+    .reskin-grid { grid-template-columns: 1fr; }
+  }
+  .reskin-card {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(23, 36, 61, 0.95);
+    border: 1.5px solid rgba(66, 163, 209, 0.52);
+    color: #e6f4ff;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+  }
+  .reskin-card:hover {
+    transform: translateY(-1px);
+    background: rgba(31, 50, 82, 0.98);
+    border-color: var(--card-accent, #6bf0ff);
+  }
+  .reskin-card:active {
+    transform: scale(0.985);
+  }
+  .reskin-card.active {
+    border: 2px solid var(--card-accent, #6bf0ff);
+    background: rgba(30, 48, 77, 0.98);
+    box-shadow: 0 0 0 1px var(--card-accent, #6bf0ff), 0 8px 20px rgba(0, 0, 0, 0.42);
+  }
+  .reskin-card-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .reskin-preview {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(12, 19, 34, 0.88);
+    border: 1.5px solid rgba(102, 217, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .reskin-card.active .reskin-preview {
+    border-color: var(--card-accent, #6bf0ff);
+  }
+  .reskin-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    line-height: 1.2;
+  }
+  .reskin-badge {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--card-accent, #6bf0ff);
+    color: #09131c;
+    display: none;
+  }
+  .reskin-card.active .reskin-badge { display: inline-block; }
+  .reskin-desc {
+    font-size: 12px;
+    color: rgba(190, 216, 240, 0.86);
+    line-height: 1.38;
+  }
+  .reskin-swatches {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+  }
+  .reskin-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+  }
+  .reskin-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(102, 184, 232, 0.24);
+  }
+  .reskin-reset-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    padding: 7px 14px;
+    border-radius: 9px;
+    background: rgba(34, 52, 86, 0.92);
+    border: 1px solid rgba(102, 184, 232, 0.72);
+    color: #dbeeff;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.1s ease;
+  }
+  .reskin-reset-btn:hover {
+    background: rgba(46, 72, 114, 0.98);
+    border-color: rgba(128, 224, 255, 0.92);
+    color: #ffffff;
+  }
+  .reskin-reset-btn:active { transform: scale(0.97); }
+</style>
+<script>
+// Extension Assemblage : avatar_reskin.html
+(function () {
+  const FILENAME = "avatar_reskin.html";
+
+  const PALETTES = [
+    {
+      id: "solaire",
+      name: "Solaire Magma",
+      icon: "🔥",
+      accent: "#ff8c42",
+      desc: "Peau corail flamboyante, combinaison obsidienne et antennes dorées.",
+      swatches: ["#ff7a3d", "#ffe26a", "#4a2736", "#d9532f"],
+      map: {
+        "#2e3857": "#2b1724",
+        "#3d5c85": "#331a26",
+        "#527aa8": "#4a2736",
+        "#293d5c": "#22101a",
+        "#6bdb6b": "#ff8f4a",
+        "#5cd661": "#ff7a3d",
+        "rgba(128, 240, 122, 0.75)": "rgba(255, 194, 120, 0.78)",
+        "#47b852": "#d9532f",
+        "#d1ff6b": "#ffe26a",
+        "#0f1424": "#160b12",
+      },
+    },
+    {
+      id: "cryo",
+      name: "Cryo Glacial",
+      icon: "❄️",
+      accent: "#5ce1ff",
+      desc: "Peau cyan givrée, armure polaire bleu nuit et antennes cristal.",
+      swatches: ["#5ce1ff", "#d6ffff", "#294d7a", "#2bb5db"],
+      map: {
+        "#2e3857": "#1b2f4d",
+        "#3d5c85": "#1d385c",
+        "#527aa8": "#294d7a",
+        "#293d5c": "#142642",
+        "#6bdb6b": "#73e8ff",
+        "#5cd661": "#5ce1ff",
+        "rgba(128, 240, 122, 0.75)": "rgba(186, 246, 255, 0.80)",
+        "#47b852": "#2bb5db",
+        "#d1ff6b": "#d6ffff",
+        "#0f1424": "#091526",
+      },
+    },
+    {
+      id: "nebuleuse",
+      name: "Nébuleuse Violette",
+      icon: "🔮",
+      accent: "#d18eff",
+      desc: "Peau améthyste cosmique, combinaison indigo et antennes néon rose.",
+      swatches: ["#c47aff", "#ff94e8", "#432c6e", "#9a4ce0"],
+      map: {
+        "#2e3857": "#261845",
+        "#3d5c85": "#2f1d52",
+        "#527aa8": "#432c6e",
+        "#293d5c": "#1e1238",
+        "#6bdb6b": "#d18eff",
+        "#5cd661": "#c47aff",
+        "rgba(128, 240, 122, 0.75)": "rgba(234, 186, 255, 0.78)",
+        "#47b852": "#9a4ce0",
+        "#d1ff6b": "#ff94e8",
+        "#0f1424": "#140924",
+      },
+    },
+    {
+      id: "cyber",
+      name: "Cyber Or & Néon",
+      icon: "⚡",
+      accent: "#ffd447",
+      desc: "Peau dorée lumineuse, combinaison carbone et antennes vert néon.",
+      swatches: ["#ffd447", "#5cffb0", "#2b3640", "#d4a21c"],
+      map: {
+        "#2e3857": "#182026",
+        "#3d5c85": "#1d252c",
+        "#527aa8": "#2b3640",
+        "#293d5c": "#12181d",
+        "#6bdb6b": "#ffde66",
+        "#5cd661": "#ffd447",
+        "rgba(128, 240, 122, 0.75)": "rgba(255, 244, 168, 0.82)",
+        "#47b852": "#d4a21c",
+        "#d1ff6b": "#5cffb0",
+        "#0f1424": "#0b1014",
+      },
+    },
+  ];
+
+  function getPaletteById(id) {
+    return PALETTES.find((p) => p.id === id) || null;
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function ensureCtxColorHook(ctx) {
+    if (!ctx || ctx.__assemblageColorHooked) return;
+    const proto = Object.getPrototypeOf(ctx);
+    const fillDesc = Object.getOwnPropertyDescriptor(proto, "fillStyle");
+    const strokeDesc = Object.getOwnPropertyDescriptor(proto, "strokeStyle");
+    if (!fillDesc || !fillDesc.set || !strokeDesc || !strokeDesc.set) return;
+
+    ctx.__assemblageColorMapper = null;
+    ctx.__assemblageColorHooked = true;
+
+    Object.defineProperty(ctx, "fillStyle", {
+      configurable: true,
+      get() {
+        return fillDesc.get.call(this);
+      },
+      set(val) {
+        const mapper = this.__assemblageColorMapper;
+        fillDesc.set.call(this, mapper ? mapper(val) : val);
+      },
+    });
+
+    Object.defineProperty(ctx, "strokeStyle", {
+      configurable: true,
+      get() {
+        return strokeDesc.get.call(this);
+      },
+      set(val) {
+        const mapper = this.__assemblageColorMapper;
+        strokeDesc.set.call(this, mapper ? mapper(val) : val);
+      },
+    });
+  }
+
+  function buildMiniAvatarSvg(p) {
+    const m = p.map;
+    return `
+      <svg viewBox="0 0 48 48" width="38" height="38" aria-hidden="true">
+        <line x1="18" y1="15" x2="12" y2="6" stroke="${m["#47b852"]}" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="12" cy="6" r="3.2" fill="${m["#d1ff6b"]}"/>
+        <line x1="30" y1="15" x2="36" y2="6" stroke="${m["#47b852"]}" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="36" cy="6" r="3.2" fill="${m["#d1ff6b"]}"/>
+        <circle cx="24" cy="31" r="11" fill="${m["#527aa8"]}" stroke="${m["#293d5c"]}" stroke-width="1.8"/>
+        <circle cx="12" cy="30" r="3.8" fill="${m["#6bdb6b"]}"/>
+        <circle cx="36" cy="30" r="3.8" fill="${m["#6bdb6b"]}"/>
+        <circle cx="24" cy="21" r="10.2" fill="${m["#5cd661"]}"/>
+        <circle cx="20.5" cy="21.5" r="2.7" fill="${m["#0f1424"]}"/>
+        <circle cx="27.5" cy="21.5" r="2.7" fill="${m["#0f1424"]}"/>
+        <circle cx="19.8" cy="20.6" r="0.9" fill="#ffffff"/>
+        <circle cx="26.8" cy="20.6" r="0.9" fill="#ffffff"/>
+      </svg>
+    `;
+  }
+
+  function buildModalHtml(activePaletteId, modalSubtitle) {
+    const cardsHtml = PALETTES.map((p) => {
+      const isAct = p.id === activePaletteId;
+      const swatchesHtml = p.swatches
+        .map((c) => `<span class="reskin-swatch" style="background:${c};"></span>`)
+        .join("");
+      return `
+        <button type="button" class="reskin-card${isAct ? " active" : ""}" data-palette-id="${p.id}" data-ext-click="select_palette" data-ext-value="${p.id}" style="--card-accent:${p.accent};">
+          <div class="reskin-card-top">
+            <div class="reskin-preview">${buildMiniAvatarSvg(p)}</div>
+            <div>
+              <div class="reskin-title">${p.icon} ${escapeHtml(p.name)} <span class="reskin-badge">Actif</span></div>
+              <div class="reskin-swatches">${swatchesHtml}</div>
+            </div>
+          </div>
+          <div class="reskin-desc">${escapeHtml(p.desc)}</div>
+        </button>
+      `;
+    }).join("");
+
+    const introHtml = modalSubtitle
+      ? `<p class="reskin-intro">${escapeHtml(modalSubtitle).replaceAll("\n", "<br>")}</p>`
+      : "";
+
+    return `
+      ${introHtml}
+      <div class="reskin-grid">${cardsHtml}</div>
+      <div class="reskin-footer">
+        <button type="button" class="reskin-reset-btn" data-reset-palette="1" data-ext-click="reset_palette">↺ Couleurs d'origine</button>
+      </div>
+    `;
+  }
+
+  function getCustomVal(ext, key, fallback) {
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    if (!custom || !Object.prototype.hasOwnProperty.call(custom, key)) return fallback;
+    const val = custom[key];
+    return (val === undefined || val === null) ? fallback : String(val);
+  }
+
+  // Mode 1 : chargement direct par index.html (HTTP/HTTPS)
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const savedState = host.state.get() || {};
+      let activePaletteId = typeof savedState.paletteId === "string" ? savedState.paletteId : "";
+
+      const targetElementId = String(host.ui.getConfig("targetElementId", "cristal") || "").trim();
+      const buttonText = String(host.ui.getConfig("buttonText", "Ouvrir l'élément") || "Ouvrir l'élément").trim();
+      const modalTitle = String(host.ui.getConfig("modalTitle", "Atelier Chroma — Reskin de l'avatar") || "Atelier Chroma — Reskin de l'avatar").trim();
+      const modalSubtitle = String(host.ui.getConfig("modalSubtitle", "Choisissez une gamme de couleurs pour reskinner votre avatar :") || "").trim();
+
+      // Interception de drawAlien() pour remapper les couleurs de l'avatar selon la gamme choisie
+      host.hooks.wrap("drawAlien", (originalDrawAlien, timeSec) => {
+        const pal = getPaletteById(activePaletteId);
+        if (!pal) {
+          return originalDrawAlien(timeSec);
+        }
+        const ctx = host.game.ctx;
+        ensureCtxColorHook(ctx);
+        const prevMapper = ctx.__assemblageColorMapper;
+        const colorMap = pal.map;
+        ctx.__assemblageColorMapper = (value) => {
+          const mapped = (typeof value === "string" && Object.prototype.hasOwnProperty.call(colorMap, value))
+            ? colorMap[value]
+            : value;
+          return prevMapper ? prevMapper(mapped) : mapped;
+        };
+        try {
+          return originalDrawAlien(timeSec);
+        } finally {
+          ctx.__assemblageColorMapper = prevMapper;
+        }
+      });
+
+      const openReskinModal = () => {
+        host.ui.showModal({
+          icon: ext.icon || "🎨",
+          title: modalTitle,
+          html: buildModalHtml(activePaletteId, modalSubtitle),
+          onMount(bodyEl) {
+            const refreshCards = () => {
+              bodyEl.querySelectorAll(".reskin-card").forEach((card) => {
+                card.classList.toggle("active", card.dataset.paletteId === activePaletteId);
+              });
+            };
+            bodyEl.querySelectorAll(".reskin-card").forEach((card) => {
+              card.addEventListener("click", () => {
+                const pid = String(card.dataset.paletteId || "");
+                const pal = getPaletteById(pid);
+                if (!pal) return;
+                activePaletteId = pal.id;
+                host.state.set({ paletteId: activePaletteId }, true);
+                refreshCards();
+                host.ui.showToast(`${pal.icon} Avatar reskinné : ${pal.name}`);
+              });
+            });
+            const resetBtn = bodyEl.querySelector("[data-reset-palette]");
+            if (resetBtn) {
+              resetBtn.addEventListener("click", () => {
+                activePaletteId = "";
+                host.state.set({ paletteId: "" }, true);
+                refreshCards();
+                host.ui.showToast("🎨 Couleurs d'origine de l'avatar restaurées");
+              });
+            }
+          },
+        });
+      };
+
+      // Ajoute le menu spécial avec le bouton « Ouvrir l'élément » lors de la sélection de l'élément dans le menu Craft
+      if (targetElementId) {
+        host.ui.addElementAction({
+          id: "avatar_reskin_open",
+          elementId: targetElementId,
+          icon: "🎨",
+          buttonText,
+          accentColor: ext.accentColor || "#ff8ce6",
+          onClick: openReskinModal,
+        });
+      }
+    },
+    onDeactivate() {
+      // Nettoyage automatique géré par AssemblageHost (hooks + action Craft)
+    },
+  };
+
+  // Mode 2 : fallback iframe + postMessage (si index.html est ouvert en file://)
+  if (window.self !== window.top) {
+    let cachedExt = {};
+    let activePaletteId = "";
+
+    const post = (payload) => {
+      window.parent.postMessage(Object.assign({ channel: "assemblage_ext", filename: FILENAME }, payload), "*");
+    };
+
+    const sendColorMap = () => {
+      const pal = getPaletteById(activePaletteId);
+      post({ cmd: "set_alien_color_map", colorMap: pal ? pal.map : null });
+    };
+
+    const openIframeModal = () => {
+      const modalTitle = getCustomVal(cachedExt, "modalTitle", "Atelier Chroma — Reskin de l'avatar").trim() || "Atelier Chroma — Reskin de l'avatar";
+      const modalSubtitle = getCustomVal(cachedExt, "modalSubtitle", "Choisissez une gamme de couleurs pour reskinner votre avatar :").trim();
+      post({
+        cmd: "modal",
+        opts: {
+          icon: cachedExt.icon || "🎨",
+          title: modalTitle,
+          html: buildModalHtml(activePaletteId, modalSubtitle),
+        },
+      });
+    };
+
+    window.addEventListener("message", (ev) => {
+      const msg = ev.data;
+      if (!msg || msg.channel !== "assemblage_host") return;
+      if (msg.event === "init") {
+        cachedExt = msg.ext || {};
+        activePaletteId = (msg.state && typeof msg.state.paletteId === "string") ? msg.state.paletteId : "";
+        const styleEl = document.querySelector("style");
+        if (styleEl && styleEl.textContent) {
+          post({ cmd: "inject_style", css: styleEl.textContent });
+        }
+        sendColorMap();
+        const targetElementId = getCustomVal(cachedExt, "targetElementId", "cristal").trim();
+        const buttonText = getCustomVal(cachedExt, "buttonText", "Ouvrir l'élément").trim() || "Ouvrir l'élément";
+        if (targetElementId) {
+          post({
+            cmd: "add_element_action",
+            id: "avatar_reskin_open",
+            elementId: targetElementId,
+            icon: "🎨",
+            buttonText,
+            accentColor: cachedExt.accentColor || "#ff8ce6",
+          });
+        }
+      } else if (msg.event === "element_action_click" && msg.id === "avatar_reskin_open") {
+        openIframeModal();
+      } else if (msg.event === "modal_click") {
+        if (msg.action === "select_palette") {
+          const pal = getPaletteById(String(msg.value || ""));
+          if (!pal) return;
+          activePaletteId = pal.id;
+          post({ cmd: "state_set", patch: { paletteId: activePaletteId } });
+          sendColorMap();
+          post({ cmd: "toast", text: `${pal.icon} Avatar reskinné : ${pal.name}` });
+          openIframeModal();
+        } else if (msg.action === "reset_palette") {
+          activePaletteId = "";
+          post({ cmd: "state_set", patch: { paletteId: "" } });
+          sendColorMap();
+          post({ cmd: "toast", text: "🎨 Couleurs d'origine de l'avatar restaurées" });
+          openIframeModal();
+        }
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

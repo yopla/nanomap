@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Tir de l'Alien</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "shotColor",
+      "label": "Couleur des tirs",
+      "type": "color",
+      "default": "#ff9a3c",
+      "hint": "Couleur principale des projectiles continus."
+    },
+    {
+      "key": "finisherColor",
+      "label": "Couleur de l'effet final",
+      "type": "color",
+      "default": "#ff4fd8",
+      "hint": "Couleur de la grosse décharge au relâchement du doigt de tir."
+    },
+    {
+      "key": "fireRate",
+      "label": "Cadence de tir (tirs/sec)",
+      "type": "number",
+      "default": 7,
+      "min": 2,
+      "max": 20,
+      "step": 0.5
+    },
+    {
+      "key": "projectileSpeed",
+      "label": "Vitesse des projectiles",
+      "type": "number",
+      "default": 680,
+      "min": 250,
+      "max": 1400,
+      "step": 20
+    }
+  ]
+}
+</script>
+<script>
+// Extension Assemblage : tir_alien.html
+// Active le tir au deuxième doigt pendant un déplacement :
+// - Mode normal : vise la position du deuxième doigt (le tir continue si on lâche le 1er doigt,
+//   et le déplacement reprend si on rappuie avec le 1er doigt).
+// - Mode joystick de direction : commence dans la direction de l'alien puis tourne comme un
+//   twin-stick shooter selon le deuxième doigt.
+// - Au relâchement du doigt de tir : déclenche un effet plus gros de fin de tir.
+(function () {
+  const FILENAME = "tir_alien.html";
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function lerpAngle(a, b, t) {
+    let d = (b - a + Math.PI) % (Math.PI * 2) - Math.PI;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return a + d * t;
+  }
+
+  function hexToRgb(hex, fallback) {
+    const s = String(hex || "").trim();
+    if (s.charCodeAt(0) === 35) {
+      const h = s.slice(1);
+      if (h.length === 3) {
+        return [
+          parseInt(h[0] + h[0], 16),
+          parseInt(h[1] + h[1], 16),
+          parseInt(h[2] + h[2], 16),
+        ];
+      }
+      if (h.length === 6) {
+        return [
+          parseInt(h.slice(0, 2), 16),
+          parseInt(h.slice(2, 4), 16),
+          parseInt(h.slice(4, 6), 16),
+        ];
+      }
+    }
+    return fallback;
+  }
+
+  function rgbaStr(rgb, a) {
+    return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${clamp(a, 0, 1).toFixed(3)})`;
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host) {
+      const canvas = host.game.canvas;
+      if (!canvas) return;
+
+      const shotColorHex = String(host.ui.getConfig("shotColor", "#ff9a3c") || "#ff9a3c");
+      const finisherColorHex = String(host.ui.getConfig("finisherColor", "#ff4fd8") || "#ff4fd8");
+      const shotRgb = hexToRgb(shotColorHex, [255, 154, 60]);
+      const finisherRgb = hexToRgb(finisherColorHex, [255, 79, 216]);
+
+      const fireRate = clamp(Number(host.ui.getConfig("fireRate", 7)) || 7, 2, 20);
+      const shotInterval = 1 / fireRate;
+      const projectileSpeed = clamp(Number(host.ui.getConfig("projectileSpeed", 680)) || 680, 250, 1400);
+
+      const FIRE_JOY_MAX_RADIUS = 56;
+      const FIRE_JOY_DEADZONE = 8;
+      const MUZZLE_OFFSET = 22;
+
+      // État du tir actif
+      let fireActive = false;
+      let fireTouchId = null;     // identifiant tactile du 2e doigt (null si clic droit desktop)
+      let fireIsMouse = false;
+      let fireMode = "normal";    // "normal" ou "joystick"
+      let fireOriginX = 0;
+      let fireOriginY = 0;
+      let fireScreenX = 0;
+      let fireScreenY = 0;
+      let fireKnobX = 0;
+      let fireKnobY = 0;
+      let fireStickMoved = false;
+      let aimAngle = 0;
+      let targetAimAngle = 0;
+      let fireCooldown = 0;
+      let fireHoldTime = 0;
+      let muzzlePulse = 0;
+
+      // Entités visuelles (monde)
+      const projectiles = [];
+      const particles = [];
+      const shockwaves = [];
+      const flashes = [];
+
+      function getMuzzlePos(angle) {
+        const al = host.game.alien;
+        return {
+          x: al.x + Math.cos(angle) * MUZZLE_OFFSET,
+          y: al.y + Math.sin(angle) * MUZZLE_OFFSET,
+        };
+      }
+
+      function spawnSparks(x, y, count, rgb, speedMin, speedMax, sizeMin, sizeMax, lifeMin, lifeMax, baseAngle = null, spread = Math.PI * 2) {
+        for (let i = 0; i < count; i++) {
+          const ang = baseAngle === null
+            ? Math.random() * Math.PI * 2
+            : baseAngle + (Math.random() - 0.5) * spread;
+          const spd = speedMin + Math.random() * (speedMax - speedMin);
+          const life = lifeMin + Math.random() * (lifeMax - lifeMin);
+          particles.push({
+            x,
+            y,
+            vx: Math.cos(ang) * spd,
+            vy: Math.sin(ang) * spd,
+            r: sizeMin + Math.random() * (sizeMax - sizeMin),
+            life,
+            maxLife: life,
+            rgb,
+            drag: 3.4,
+          });
+        }
+      }
+
+      function spawnRegularShot(angle) {
+        const m = getMuzzlePos(angle);
+        const spread = (Math.random() - 0.5) * 0.05;
+        const a = angle + spread;
+        const vx = Math.cos(a) * projectileSpeed;
+        const vy = Math.sin(a) * projectileSpeed;
+
+        projectiles.push({
+          x: m.x,
+          y: m.y,
+          vx,
+          vy,
+          angle: a,
+          radius: 4.5,
+          hitRadius: 5,
+          tailLen: 26,
+          life: 0.75,
+          maxLife: 0.75,
+          isFinisher: false,
+          rgb: shotRgb,
+          scale: 1,
+          trailTimer: 0,
+        });
+
+        flashes.push({
+          x: m.x,
+          y: m.y,
+          angle: a,
+          radius: 13,
+          life: 0.08,
+          maxLife: 0.08,
+          rgb: shotRgb,
+          isFinisher: false,
+        });
+
+        spawnSparks(m.x, m.y, 3, shotRgb, 70, 170, 1.5, 2.8, 0.10, 0.22, a, 0.9);
+        muzzlePulse = Math.max(muzzlePulse, 0.85);
+      }
+
+      function spawnFinisherExplosion(x, y, scale) {
+        shockwaves.push({
+          x,
+          y,
+          r: 10 * scale,
+          maxR: 78 * scale,
+          life: 0.36,
+          maxLife: 0.36,
+          lineWidth: 5.5 * scale,
+          rgb: finisherRgb,
+        });
+        shockwaves.push({
+          x,
+          y,
+          r: 6 * scale,
+          maxR: 48 * scale,
+          life: 0.26,
+          maxLife: 0.26,
+          lineWidth: 3.5 * scale,
+          rgb: [255, 245, 255],
+        });
+        flashes.push({
+          x,
+          y,
+          angle: 0,
+          radius: 36 * scale,
+          life: 0.20,
+          maxLife: 0.20,
+          rgb: finisherRgb,
+          isFinisher: true,
+        });
+        spawnSparks(x, y, Math.round(18 * scale), finisherRgb, 90, 320 * scale, 2.5, 5.5 * scale, 0.22, 0.52, null, Math.PI * 2);
+        spawnSparks(x, y, Math.round(10 * scale), shotRgb, 60, 220 * scale, 2.0, 4.2 * scale, 0.18, 0.40, null, Math.PI * 2);
+      }
+
+      function spawnFinisherBlast(angle) {
+        const charge = clamp(fireHoldTime / 0.8, 0, 1);
+        const scale = 1.0 + charge * 0.42;
+        const m = getMuzzlePos(angle);
+        const speed = projectileSpeed * 0.82;
+        const vx = Math.cos(angle) * speed;
+        const vy = Math.sin(angle) * speed;
+
+        // Gros projectile de fin de tir
+        projectiles.push({
+          x: m.x,
+          y: m.y,
+          vx,
+          vy,
+          angle,
+          radius: 13.5 * scale,
+          hitRadius: 14 * scale,
+          tailLen: 58 * scale,
+          life: 0.62,
+          maxLife: 0.62,
+          isFinisher: true,
+          rgb: finisherRgb,
+          scale,
+          trailTimer: 0,
+        });
+
+        // Grosse onde de choc + flash au départ du tir final
+        shockwaves.push({
+          x: m.x,
+          y: m.y,
+          r: 8,
+          maxR: 54 * scale,
+          life: 0.28,
+          maxLife: 0.28,
+          lineWidth: 4.5 * scale,
+          rgb: finisherRgb,
+        });
+        flashes.push({
+          x: m.x,
+          y: m.y,
+          angle,
+          radius: 30 * scale,
+          life: 0.18,
+          maxLife: 0.18,
+          rgb: finisherRgb,
+          isFinisher: true,
+        });
+
+        // Gerbe directionnelle de particules
+        spawnSparks(m.x, m.y, Math.round(14 * scale), finisherRgb, 120, 340 * scale, 2.4, 5.2 * scale, 0.18, 0.42, angle, 1.35);
+        spawnSparks(m.x, m.y, Math.round(8 * scale), [255, 240, 210], 90, 240 * scale, 1.8, 3.6 * scale, 0.14, 0.30, angle, 0.85);
+        muzzlePulse = 1.4;
+      }
+
+      function beginFire(screenX, screenY, touchId, isMouse) {
+        fireActive = true;
+        fireTouchId = touchId;
+        fireIsMouse = Boolean(isMouse);
+        fireMode = host.game.useJoystick ? "joystick" : "normal";
+        fireOriginX = screenX;
+        fireOriginY = screenY;
+        fireScreenX = screenX;
+        fireScreenY = screenY;
+        fireKnobX = screenX;
+        fireKnobY = screenY;
+        fireStickMoved = false;
+        fireHoldTime = 0;
+
+        if (!isMouse && touchId !== null) {
+          host.game.claimTouch(touchId);
+        }
+
+        const al = host.game.alien;
+        if (fireMode === "joystick") {
+          // Commence dans la direction actuelle de l'alien
+          aimAngle = al.facing;
+          targetAimAngle = al.facing;
+        } else {
+          // Mode normal : vise directement le deuxième doigt posé
+          const w = host.game.screenToWorld(screenX, screenY);
+          const dx = w.x - al.x;
+          const dy = w.y - al.y;
+          aimAngle = Math.hypot(dx, dy) > 2 ? Math.atan2(dy, dx) : al.facing;
+          targetAimAngle = aimAngle;
+        }
+
+        spawnRegularShot(aimAngle);
+        fireCooldown = shotInterval;
+      }
+
+      function updateFirePointer(screenX, screenY) {
+        fireScreenX = screenX;
+        fireScreenY = screenY;
+        if (fireMode === "joystick") {
+          const dx = screenX - fireOriginX;
+          const dy = screenY - fireOriginY;
+          const dist = Math.hypot(dx, dy);
+          const clamped = Math.min(dist, FIRE_JOY_MAX_RADIUS);
+          fireKnobX = fireOriginX + (dist > 0.001 ? (dx / dist) * clamped : 0);
+          fireKnobY = fireOriginY + (dist > 0.001 ? (dy / dist) * clamped : 0);
+          if (dist > FIRE_JOY_DEADZONE) {
+            fireStickMoved = true;
+            targetAimAngle = Math.atan2(dy, dx);
+          }
+        }
+      }
+
+      function endFire(triggerFinisher) {
+        if (!fireActive) return;
+        const releaseAngle = aimAngle;
+        const shouldFinish = Boolean(triggerFinisher) && !host.game.isAnyUIOpen();
+        if (fireTouchId !== null) {
+          host.game.releaseTouch(fireTouchId);
+        }
+        fireActive = false;
+        fireTouchId = null;
+        fireIsMouse = false;
+        fireStickMoved = false;
+        if (shouldFinish) {
+          spawnFinisherBlast(releaseAngle);
+        }
+      }
+
+      // --- Écouteurs tactiles (2e doigt) ---
+      const onTouchStart = (e) => {
+        if (host.game.isAnyUIOpen()) return;
+        if (fireActive) return;
+        // Le tir ne se déclenche que lorsqu'un premier doigt est en cours de déplacement
+        if (!host.game.isMoveActive()) return;
+        const moveId = host.game.getMoveTouchId();
+        if (moveId === null) return;
+
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          if (t.identifier === moveId) continue;
+          const pos = host.game.getCanvasPos(t.clientX, t.clientY);
+          beginFire(pos.x, pos.y, t.identifier, false);
+          break;
+        }
+      };
+
+      const onTouchMove = (e) => {
+        if (!fireActive || fireIsMouse || fireTouchId === null) return;
+        for (let i = 0; i < e.touches.length; i++) {
+          const t = e.touches[i];
+          if (t.identifier === fireTouchId) {
+            const pos = host.game.getCanvasPos(t.clientX, t.clientY);
+            updateFirePointer(pos.x, pos.y);
+            break;
+          }
+        }
+      };
+
+      const onTouchEnd = (e) => {
+        if (!fireActive || fireIsMouse || fireTouchId === null) return;
+        let ended = e.touches.length === 0;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === fireTouchId) {
+            ended = true;
+            break;
+          }
+        }
+        if (ended) endFire(true);
+      };
+
+      const onTouchCancel = (e) => {
+        if (!fireActive || fireIsMouse || fireTouchId === null) return;
+        let ended = e.touches.length === 0;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          if (e.changedTouches[i].identifier === fireTouchId) {
+            ended = true;
+            break;
+          }
+        }
+        if (ended) endFire(false);
+      };
+
+      // --- Fallback pratique sur ordinateur : clic droit pendant un déplacement clic gauche ---
+      const onContextMenu = (e) => {
+        if (fireIsMouse || e.target === canvas || !host.game.isAnyUIOpen()) {
+          e.preventDefault();
+        }
+      };
+
+      const onMouseDown = (e) => {
+        if (e.button !== 2) return;
+        e.preventDefault();
+        if (host.game.isAnyUIOpen() || fireActive) return;
+        if (!host.game.isMoveActive()) return;
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        beginFire(pos.x, pos.y, null, true);
+      };
+
+      const onMouseMove = (e) => {
+        if (!fireActive || !fireIsMouse) return;
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        updateFirePointer(pos.x, pos.y);
+      };
+
+      const onMouseUp = (e) => {
+        if (e.button !== 2) return;
+        if (!fireActive || !fireIsMouse) return;
+        endFire(true);
+      };
+
+      canvas.addEventListener("touchstart", onTouchStart, { passive: true });
+      window.addEventListener("touchmove", onTouchMove, { passive: true });
+      window.addEventListener("touchend", onTouchEnd, { passive: true });
+      window.addEventListener("touchcancel", onTouchCancel, { passive: true });
+      window.addEventListener("contextmenu", onContextMenu, true);
+      canvas.addEventListener("mousedown", onMouseDown);
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+
+      host.registerCleanup(() => {
+        endFire(false);
+        canvas.removeEventListener("touchstart", onTouchStart);
+        window.removeEventListener("touchmove", onTouchMove);
+        window.removeEventListener("touchend", onTouchEnd);
+        window.removeEventListener("touchcancel", onTouchCancel);
+        window.removeEventListener("contextmenu", onContextMenu, true);
+        canvas.removeEventListener("mousedown", onMouseDown);
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+      });
+
+      // --- Boucle de mise à jour ---
+      host.hooks.after("update", (_, dt) => {
+        if (host.game.isAnyUIOpen()) {
+          if (fireActive) endFire(false);
+        }
+
+        if (muzzlePulse > 0) {
+          muzzlePulse = Math.max(0, muzzlePulse - dt * 5.5);
+        }
+
+        if (fireActive && !host.game.isAnyUIOpen()) {
+          fireHoldTime += dt;
+          const al = host.game.alien;
+
+          if (fireMode === "normal") {
+            const w = host.game.screenToWorld(fireScreenX, fireScreenY);
+            const dx = w.x - al.x;
+            const dy = w.y - al.y;
+            if (Math.hypot(dx, dy) > 4) {
+              aimAngle = Math.atan2(dy, dx);
+            }
+          } else if (fireMode === "joystick") {
+            if (fireStickMoved) {
+              aimAngle = lerpAngle(aimAngle, targetAimAngle, clamp(dt * 24, 0, 1));
+            } else {
+              aimAngle = al.facing;
+            }
+          }
+
+          fireCooldown -= dt;
+          let guard = 0;
+          while (fireCooldown <= 0 && guard < 4) {
+            spawnRegularShot(aimAngle);
+            fireCooldown += shotInterval;
+            guard++;
+          }
+        }
+
+        // Mise à jour des projectiles
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+          const p = projectiles[i];
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.life -= dt;
+
+          if (p.isFinisher) {
+            p.trailTimer -= dt;
+            if (p.trailTimer <= 0) {
+              p.trailTimer = 0.022;
+              particles.push({
+                x: p.x + (Math.random() - 0.5) * p.radius * 0.8,
+                y: p.y + (Math.random() - 0.5) * p.radius * 0.8,
+                vx: -p.vx * 0.08 + (Math.random() - 0.5) * 35,
+                vy: -p.vy * 0.08 + (Math.random() - 0.5) * 35,
+                r: (2.6 + Math.random() * 2.8) * p.scale,
+                life: 0.24,
+                maxLife: 0.24,
+                rgb: Math.random() < 0.65 ? finisherRgb : shotRgb,
+                drag: 2.5,
+              });
+            }
+          }
+
+          const hit = host.game.checkColliderHit(p.x, p.y, p.hitRadius);
+          if (hit || p.life <= 0) {
+            if (p.isFinisher) {
+              spawnFinisherExplosion(p.x, p.y, p.scale);
+            } else if (hit) {
+              shockwaves.push({
+                x: p.x,
+                y: p.y,
+                r: 3,
+                maxR: 18,
+                life: 0.16,
+                maxLife: 0.16,
+                lineWidth: 2,
+                rgb: p.rgb,
+              });
+              spawnSparks(p.x, p.y, 5, p.rgb, 50, 160, 1.5, 3.0, 0.10, 0.22, p.angle + Math.PI, 1.8);
+            }
+            projectiles.splice(i, 1);
+          }
+        }
+
+        // Mise à jour des particules
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const pt = particles[i];
+          const damp = Math.exp(-pt.drag * dt);
+          pt.vx *= damp;
+          pt.vy *= damp;
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+          pt.life -= dt;
+          if (pt.life <= 0) particles.splice(i, 1);
+        }
+
+        // Mise à jour des ondes de choc
+        for (let i = shockwaves.length - 1; i >= 0; i--) {
+          const sw = shockwaves[i];
+          sw.life -= dt;
+          if (sw.life <= 0) shockwaves.splice(i, 1);
+        }
+
+        // Mise à jour des flashs
+        for (let i = flashes.length - 1; i >= 0; i--) {
+          const fl = flashes[i];
+          fl.life -= dt;
+          if (fl.life <= 0) flashes.splice(i, 1);
+        }
+      });
+
+      // --- Rendu dans l'espace monde ---
+      host.hooks.after("drawWorldAfter", (_, timeSec) => {
+        const ctx = host.game.ctx;
+        if (!ctx) return;
+
+        // Visée & lueur de canon quand le tir est actif
+        if (fireActive && !host.game.isAnyUIOpen()) {
+          const al = host.game.alien;
+          const m = getMuzzlePos(aimAngle);
+
+          ctx.save();
+          if (fireMode === "normal") {
+            const w = host.game.screenToWorld(fireScreenX, fireScreenY);
+            // Ligne de visée discrète
+            ctx.strokeStyle = rgbaStr(shotRgb, 0.28);
+            ctx.lineWidth = 1.6;
+            ctx.setLineDash([6, 7]);
+            ctx.beginPath();
+            ctx.moveTo(m.x, m.y);
+            ctx.lineTo(w.x, w.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Réticule sur le 2e doigt
+            const pulse = 0.5 + 0.5 * Math.sin(timeSec * 10);
+            const rOuter = 13 + pulse * 3;
+            ctx.strokeStyle = rgbaStr(shotRgb, 0.78);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(w.x, w.y, rOuter, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.strokeStyle = rgbaStr(finisherRgb, 0.65);
+            ctx.lineWidth = 1.6;
+            const tick = 6;
+            for (let k = 0; k < 4; k++) {
+              const a = k * Math.PI * 0.5 + timeSec * 1.8;
+              ctx.beginPath();
+              ctx.moveTo(w.x + Math.cos(a) * (rOuter - 3), w.y + Math.sin(a) * (rOuter - 3));
+              ctx.lineTo(w.x + Math.cos(a) * (rOuter + tick), w.y + Math.sin(a) * (rOuter + tick));
+              ctx.stroke();
+            }
+
+            ctx.fillStyle = "rgba(255,255,255,0.88)";
+            ctx.beginPath();
+            ctx.arc(w.x, w.y, 2.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Lueur de charge au canon de l'alien
+          const charge = clamp(fireHoldTime / 0.8, 0, 1);
+          const glowR = 8 + charge * 7 + muzzlePulse * 4;
+          const grad = ctx.createRadialGradient(m.x, m.y, 1, m.x, m.y, glowR);
+          grad.addColorStop(0, "rgba(255,255,255,0.92)");
+          grad.addColorStop(0.45, rgbaStr(charge > 0.35 ? finisherRgb : shotRgb, 0.7));
+          grad.addColorStop(1, rgbaStr(shotRgb, 0));
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, glowR, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Flashs de tir / d'impact
+        for (const fl of flashes) {
+          const t = clamp(fl.life / fl.maxLife, 0, 1);
+          const r = fl.radius * (0.65 + 0.55 * (1 - t));
+          ctx.save();
+          const grad = ctx.createRadialGradient(fl.x, fl.y, 0.5, fl.x, fl.y, r);
+          grad.addColorStop(0, `rgba(255,255,255,${(0.95 * t).toFixed(3)})`);
+          grad.addColorStop(0.4, rgbaStr(fl.rgb, 0.78 * t));
+          grad.addColorStop(1, rgbaStr(fl.rgb, 0));
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(fl.x, fl.y, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Ondes de choc
+        for (const sw of shockwaves) {
+          const progress = 1 - clamp(sw.life / sw.maxLife, 0, 1);
+          const eased = 1 - Math.pow(1 - progress, 2.2);
+          const r = sw.r + (sw.maxR - sw.r) * eased;
+          const alpha = (1 - progress) * 0.88;
+          ctx.save();
+          ctx.strokeStyle = rgbaStr(sw.rgb, alpha);
+          ctx.lineWidth = Math.max(1, sw.lineWidth * (1 - progress * 0.7));
+          ctx.beginPath();
+          ctx.arc(sw.x, sw.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Projectiles
+        for (const p of projectiles) {
+          const fade = clamp(p.life / Math.min(0.14, p.maxLife), 0, 1);
+          const dx = Math.cos(p.angle);
+          const dy = Math.sin(p.angle);
+          const tailX = p.x - dx * p.tailLen;
+          const tailY = p.y - dy * p.tailLen;
+
+          ctx.save();
+          if (p.isFinisher) {
+            // Traînée lumineuse épaisse
+            const trailGrad = ctx.createLinearGradient(p.x, p.y, tailX, tailY);
+            trailGrad.addColorStop(0, rgbaStr(p.rgb, 0.92 * fade));
+            trailGrad.addColorStop(0.5, rgbaStr(shotRgb, 0.55 * fade));
+            trailGrad.addColorStop(1, rgbaStr(p.rgb, 0));
+            ctx.strokeStyle = trailGrad;
+            ctx.lineWidth = p.radius * 1.45;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(tailX, tailY);
+            ctx.stroke();
+
+            // Halo externe pulsant
+            const auraR = p.radius * (2.2 + 0.25 * Math.sin(timeSec * 28));
+            const aura = ctx.createRadialGradient(p.x, p.y, p.radius * 0.2, p.x, p.y, auraR);
+            aura.addColorStop(0, `rgba(255,255,255,${(0.98 * fade).toFixed(3)})`);
+            aura.addColorStop(0.38, rgbaStr(p.rgb, 0.85 * fade));
+            aura.addColorStop(1, rgbaStr(p.rgb, 0));
+            ctx.fillStyle = aura;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, auraR, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Anneau d'énergie autour du gros tir
+            ctx.strokeStyle = `rgba(255,255,255,${(0.75 * fade).toFixed(3)})`;
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * 1.05, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Noyau blanc intense
+            ctx.fillStyle = `rgba(255,255,255,${(0.98 * fade).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * 0.58, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // Projectile normal : trait énergétique + noyau lumineux
+            const trailGrad = ctx.createLinearGradient(p.x, p.y, tailX, tailY);
+            trailGrad.addColorStop(0, rgbaStr(p.rgb, 0.92 * fade));
+            trailGrad.addColorStop(1, rgbaStr(p.rgb, 0));
+            ctx.strokeStyle = trailGrad;
+            ctx.lineWidth = p.radius * 1.5;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(tailX, tailY);
+            ctx.stroke();
+
+            ctx.fillStyle = rgbaStr(p.rgb, 0.45 * fade);
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * 1.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = `rgba(255,255,255,${(0.96 * fade).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius * 0.85, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+
+        // Particules d'étincelles
+        for (const pt of particles) {
+          const t = clamp(pt.life / pt.maxLife, 0, 1);
+          ctx.save();
+          ctx.fillStyle = rgbaStr(pt.rgb, t * 0.95);
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, Math.max(0.6, pt.r * (0.4 + 0.6 * t)), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+
+      // --- Rendu HUD (twin-stick droit en mode joystick de direction) ---
+      host.hooks.after("drawHudAfter", () => {
+        if (!fireActive || fireMode !== "joystick" || host.game.isAnyUIOpen()) return;
+        const ctx = host.game.ctx;
+        if (!ctx) return;
+
+        ctx.save();
+        // Base translucide du stick de tir
+        ctx.fillStyle = "rgba(28, 18, 36, 0.36)";
+        ctx.beginPath();
+        ctx.arc(fireOriginX, fireOriginY, FIRE_JOY_MAX_RADIUS, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = rgbaStr(shotRgb, 0.72);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(fireOriginX, fireOriginY, FIRE_JOY_MAX_RADIUS, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Point central
+        ctx.fillStyle = rgbaStr(shotRgb, 0.42);
+        ctx.beginPath();
+        ctx.arc(fireOriginX, fireOriginY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Indicateur de direction de tir sur le pourtour
+        const dirX = Math.cos(aimAngle);
+        const dirY = Math.sin(aimAngle);
+        const tipX = fireOriginX + dirX * (FIRE_JOY_MAX_RADIUS + 8);
+        const tipY = fireOriginY + dirY * (FIRE_JOY_MAX_RADIUS + 8);
+        const perpX = -dirY;
+        const perpY = dirX;
+        ctx.fillStyle = rgbaStr(finisherRgb, 0.9);
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(fireOriginX + dirX * (FIRE_JOY_MAX_RADIUS - 2) + perpX * 6, fireOriginY + dirY * (FIRE_JOY_MAX_RADIUS - 2) + perpY * 6);
+        ctx.lineTo(fireOriginX + dirX * (FIRE_JOY_MAX_RADIUS - 2) - perpX * 6, fireOriginY + dirY * (FIRE_JOY_MAX_RADIUS - 2) - perpY * 6);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tige vers le pouce
+        if (fireStickMoved) {
+          ctx.strokeStyle = rgbaStr(finisherRgb, 0.48);
+          ctx.lineWidth = 4;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(fireOriginX, fireOriginY);
+          ctx.lineTo(fireKnobX, fireKnobY);
+          ctx.stroke();
+        }
+
+        // Halo + bouton du stick de tir
+        ctx.fillStyle = rgbaStr(shotRgb, 0.24);
+        ctx.beginPath();
+        ctx.arc(fireKnobX, fireKnobY, 28, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = rgbaStr(shotRgb, 0.86);
+        ctx.beginPath();
+        ctx.arc(fireKnobX, fireKnobY, 22, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(255, 232, 200, 0.92)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(fireKnobX, fireKnobY, 22, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.42)";
+        ctx.beginPath();
+        ctx.arc(fireKnobX - 5, fireKnobY - 5, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      });
+    },
+    onDeactivate() {
+      // Tous les hooks, écouteurs et identifiants tactiles sont nettoyés automatiquement par AssemblageHost
+    },
+  };
+})();
+</script>
+</body>
+</html>

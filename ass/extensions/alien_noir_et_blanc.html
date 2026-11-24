@@ -5,6 +5,38 @@
 <title>Extension : Filtre Alien Noir &amp; Blanc</title>
 </head>
 <body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "toggleLabel",
+      "label": "Libellé interrupteur",
+      "type": "text",
+      "default": "Passer l'alien en noir et blanc",
+      "hint": "Affiché dans le menu Paramètres."
+    },
+    {
+      "key": "toggleDesc",
+      "label": "Description interrupteur",
+      "type": "text",
+      "default": "Extension {filename} — intercepte drawAlien() pour rendre l'alien monochrome.",
+      "hint": "Variables disponibles : {filename}, {name}"
+    },
+    {
+      "key": "toastOn",
+      "label": "Toast activation filtre",
+      "type": "text",
+      "default": "🎞️ Alien en noir et blanc activé"
+    },
+    {
+      "key": "toastOff",
+      "label": "Toast désactivation filtre",
+      "type": "text",
+      "default": "🎨 Couleurs de l'alien restaurées"
+    }
+  ]
+}
+</script>
 <script>
 // Extension Assemblage : alien_noir_et_blanc.html
 // Mode 1 : chargement direct par index.html (interception synchrone de drawAlien)
@@ -95,12 +127,26 @@
     });
   }
 
+  function getCustomText(ext, key, fallback) {
+    const fname = (ext && ext.filename) || FILENAME;
+    const name = (ext && ext.name) || fname;
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    const raw = (custom && Object.prototype.hasOwnProperty.call(custom, key) && custom[key] !== undefined && custom[key] !== null)
+      ? String(custom[key])
+      : fallback;
+    return raw.replaceAll("{filename}", fname).replaceAll("{name}", name);
+  }
+
   window.AssemblageExtensions = window.AssemblageExtensions || {};
   window.AssemblageExtensions[FILENAME] = {
     onActivate(host, ext) {
       const savedState = host.state.get() || {};
       let bwEnabled = Boolean(savedState.bwEnabled);
       const toGray = createGrayscaleMapper(1.08);
+      const toggleLabel = getCustomText(ext, "toggleLabel", "Passer l'alien en noir et blanc");
+      const toggleDesc = getCustomText(ext, "toggleDesc", "Extension {filename} — intercepte drawAlien() pour rendre l'alien monochrome.");
+      const toastOn = getCustomText(ext, "toastOn", "🎞️ Alien en noir et blanc activé");
+      const toastOff = getCustomText(ext, "toastOff", "🎨 Couleurs de l'alien restaurées");
 
       // Interception / déviation de la fonction drawAlien() du HTML de base
       host.hooks.wrap("drawAlien", (originalDrawAlien, timeSec) => {
@@ -110,7 +156,7 @@
         const ctx = host.game.ctx;
         ensureCtxColorHook(ctx);
         const prevMapper = ctx.__assemblageColorMapper;
-        ctx.__assemblageColorMapper = toGray;
+        ctx.__assemblageColorMapper = (value) => toGray(prevMapper ? prevMapper(value) : value);
         try {
           return originalDrawAlien(timeSec);
         } finally {
@@ -121,13 +167,14 @@
       // Ajout du bouton / interrupteur dans le menu Paramètres du HTML de base
       host.ui.addSettingToggle({
         id: "alien_bw",
-        label: "Passer l'alien en noir et blanc",
-        desc: "Extension " + ext.filename + " — intercepte drawAlien() pour rendre l'alien monochrome.",
+        label: toggleLabel,
+        desc: toggleDesc,
         checked: bwEnabled,
         onChange(checked) {
           bwEnabled = Boolean(checked);
           host.state.set({ bwEnabled }, true);
-          host.ui.showToast(bwEnabled ? "🎞️ Alien en noir et blanc activé" : "🎨 Couleurs de l'alien restaurées");
+          const msg = bwEnabled ? toastOn : toastOff;
+          if (msg.trim()) host.ui.showToast(msg);
         },
       });
     },
@@ -139,18 +186,20 @@
   // Mode 2 : fallback iframe + postMessage (si index.html est ouvert en file://)
   if (window.self !== window.top) {
     let bwEnabled = false;
+    let cachedExt = null;
     window.addEventListener("message", (ev) => {
       const msg = ev.data;
       if (!msg || msg.channel !== "assemblage_host") return;
       if (msg.event === "init") {
+        cachedExt = msg.ext || {};
         bwEnabled = Boolean(msg.state && msg.state.bwEnabled);
         window.parent.postMessage({
           channel: "assemblage_ext",
           filename: FILENAME,
           cmd: "add_setting_toggle",
           id: "alien_bw",
-          label: "Passer l'alien en noir et blanc",
-          desc: "Extension " + FILENAME + " — rend l'alien monochrome.",
+          label: getCustomText(cachedExt, "toggleLabel", "Passer l'alien en noir et blanc"),
+          desc: getCustomText(cachedExt, "toggleDesc", "Extension {filename} — rend l'alien monochrome."),
           checked: bwEnabled,
         }, "*");
         window.parent.postMessage({
@@ -173,12 +222,17 @@
           cmd: "set_alien_filter",
           filter: bwEnabled ? "grayscale(100%) contrast(1.08)" : "none",
         }, "*");
-        window.parent.postMessage({
-          channel: "assemblage_ext",
-          filename: FILENAME,
-          cmd: "toast",
-          text: bwEnabled ? "🎞️ Alien en noir et blanc activé" : "🎨 Couleurs de l'alien restaurées",
-        }, "*");
+        const toastMsg = bwEnabled
+          ? getCustomText(cachedExt, "toastOn", "🎞️ Alien en noir et blanc activé")
+          : getCustomText(cachedExt, "toastOff", "🎨 Couleurs de l'alien restaurées");
+        if (toastMsg.trim()) {
+          window.parent.postMessage({
+            channel: "assemblage_ext",
+            filename: FILENAME,
+            cmd: "toast",
+            text: toastMsg,
+          }, "*");
+        }
       }
     });
   }
