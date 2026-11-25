@@ -1,0 +1,1197 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "feu",
+			"name": "Feu",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "🔥",
+			"color": "#ff6b3d",
+			"description": "Énergie thermique vive et rayonnante.",
+			"recipe": []
+		},
+		{
+			"id": "eau",
+			"name": "Eau",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "💧",
+			"color": "#4ea8ff",
+			"description": "Fluide vital et conducteur.",
+			"recipe": []
+		},
+		{
+			"id": "terre",
+			"name": "Terre",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "🪨",
+			"color": "#a68a64",
+			"description": "Matière solide et minérale.",
+			"recipe": []
+		},
+		{
+			"id": "air",
+			"name": "Air",
+			"level": 1,
+			"biome": "desert_ionique",
+			"icon": "💨",
+			"color": "#b8e1ff",
+			"description": "Souffle léger et invisible.",
+			"recipe": []
+		},
+		{
+			"id": "n2_feu_eau",
+			"name": "Alliage Fongique (Feu-Eau)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Feu et Eau (Quatre Éléments).",
+			"recipe": [
+				"feu",
+				"eau"
+			]
+		},
+		{
+			"id": "n2_feu_terre",
+			"name": "Essence Ancien (Feu-Terre)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Feu et Terre (Quatre Éléments).",
+			"recipe": [
+				"feu",
+				"terre"
+			]
+		},
+		{
+			"id": "n2_feu_air",
+			"name": "Éclat Solaire (Feu-Air)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Feu et Air (Quatre Éléments).",
+			"recipe": [
+				"feu",
+				"air"
+			]
+		},
+		{
+			"id": "n2_eau_terre",
+			"name": "Cœur Fulgurant (Eau-Terre)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Eau et Terre (Quatre Éléments).",
+			"recipe": [
+				"eau",
+				"terre"
+			]
+		},
+		{
+			"id": "n2_eau_air",
+			"name": "Poudre Argenté (Eau-Air)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Eau et Air (Quatre Éléments).",
+			"recipe": [
+				"eau",
+				"air"
+			]
+		},
+		{
+			"id": "n2_terre_air",
+			"name": "Sève Glacial (Terre-Air)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Terre et Air (Quatre Éléments).",
+			"recipe": [
+				"terre",
+				"air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_feu_terre",
+			"name": "Noyau Dense (Alliage-(Feu-Terre))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Essence Ancien (Feu-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_feu_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_feu_air",
+			"name": "Relique Sacré (Alliage-(Feu-Air))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Éclat Solaire (Feu-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_feu_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_eau_terre",
+			"name": "Matrice Abyssal (Alliage-(Eau-Terre))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Cœur Fulgurant (Eau-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_eau_air",
+			"name": "Prisme Incandescent (Alliage-(Eau-Air))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Poudre Argenté (Eau-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_eau_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_terre_air",
+			"name": "Orbe Cristallin (Alliage-(Terre-Air))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Sève Glacial (Terre-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_terre_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_n2_feu_air",
+			"name": "Catalyseur Pur (Essence-(Feu-Air))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Éclat Solaire (Feu-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"n2_feu_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_n2_eau_terre",
+			"name": "Talisman Raffiné (Essence-(Eau-Terre))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Cœur Fulgurant (Eau-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_n2_eau_air",
+			"name": "Condensat Stellaire (Essence-(Eau-Air))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Poudre Argenté (Eau-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"n2_eau_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_n2_terre_air",
+			"name": "Lingot Givré (Essence-(Terre-Air))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Sève Glacial (Terre-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"n2_terre_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_n2_eau_terre",
+			"name": "Fiole Ardent (Éclat-(Eau-Terre))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Cœur Fulgurant (Eau-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_n2_eau_air",
+			"name": "Golem Ionique (Éclat-(Eau-Air))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Poudre Argenté (Eau-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"n2_eau_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_n2_terre_air",
+			"name": "Couronne Brut (Éclat-(Terre-Air))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Sève Glacial (Terre-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"n2_terre_air"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_n2_eau_air",
+			"name": "Noyau Lunaire (Cœur-(Eau-Air))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Eau-Terre) et Poudre Argenté (Eau-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_terre",
+				"n2_eau_air"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_n2_terre_air",
+			"name": "Relique Serein (Cœur-(Terre-Air))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Eau-Terre) et Sève Glacial (Terre-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_terre",
+				"n2_terre_air"
+			]
+		},
+		{
+			"id": "n3_n2_eau_air_n2_terre_air",
+			"name": "Matrice Opalescent (Poudre-(Terre-Air))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Eau-Air) et Sève Glacial (Terre-Air) (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_air",
+				"n2_terre_air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_feu",
+			"name": "Prisme Fongique (Alliage-Feu)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Feu (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_eau",
+			"name": "Orbe Ancien (Alliage-Eau)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Eau (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_terre",
+			"name": "Catalyseur Solaire (Alliage-Terre)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Terre (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_air",
+			"name": "Talisman Fulgurant (Alliage-Air)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Eau) et Air (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_eau",
+				"air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_feu",
+			"name": "Condensat Argenté (Essence-Feu)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Feu (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_eau",
+			"name": "Lingot Glacial (Essence-Eau)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Eau (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_terre",
+			"name": "Fiole Vif (Essence-Terre)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Terre (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_air",
+			"name": "Golem Magnétique (Essence-Air)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Terre) et Air (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_terre",
+				"air"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_feu",
+			"name": "Couronne Arcanique (Éclat-Feu)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Feu (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_eau",
+			"name": "Noyau Doré (Éclat-Eau)",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Eau (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_terre",
+			"name": "Relique Volcanique (Éclat-Terre)",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Terre (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_air_air",
+			"name": "Matrice Sombre (Éclat-Air)",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Feu-Air) et Air (Quatre Éléments).",
+			"recipe": [
+				"n2_feu_air",
+				"air"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_feu",
+			"name": "Prisme Harmonieux (Cœur-Feu)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Eau-Terre) et Feu (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_eau",
+			"name": "Orbe Tellurique (Cœur-Eau)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Eau-Terre) et Eau (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_terre",
+			"name": "Catalyseur Obsidien (Cœur-Terre)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Eau-Terre) et Terre (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_air",
+			"name": "Talisman Astral (Cœur-Air)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Eau-Terre) et Air (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_terre",
+				"air"
+			]
+		},
+		{
+			"id": "n3_n2_eau_air_feu",
+			"name": "Condensat Lumineux (Poudre-Feu)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Eau-Air) et Feu (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_air",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_eau_air_eau",
+			"name": "Lingot Instable (Poudre-Eau)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Eau-Air) et Eau (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_air",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_eau_air_terre",
+			"name": "Fiole Céleste (Poudre-Terre)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Eau-Air) et Terre (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_air",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_eau_air_air",
+			"name": "Golem Smaragdin (Poudre-Air)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Eau-Air) et Air (Quatre Éléments).",
+			"recipe": [
+				"n2_eau_air",
+				"air"
+			]
+		},
+		{
+			"id": "n3_n2_terre_air_feu",
+			"name": "Couronne Éthéré (Sève-Feu)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Terre-Air) et Feu (Quatre Éléments).",
+			"recipe": [
+				"n2_terre_air",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_terre_air_eau",
+			"name": "Noyau Dense (Sève-Eau)",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Terre-Air) et Eau (Quatre Éléments).",
+			"recipe": [
+				"n2_terre_air",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_terre_air_terre",
+			"name": "Relique Sacré (Sève-Terre)",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Terre-Air) et Terre (Quatre Éléments).",
+			"recipe": [
+				"n2_terre_air",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_terre_air_air",
+			"name": "Matrice Abyssal (Sève-Air)",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Terre-Air) et Air (Quatre Éléments).",
+			"recipe": [
+				"n2_terre_air",
+				"air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_n2_feu_air",
+			"name": "Singularité Vif (Noyau-(Alliage-(Feu-Air)))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Relique Sacré (Alliage-(Feu-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_n2_feu_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_n2_eau_terre",
+			"name": "Artefact Magnétique (Noyau-(Alliage-(Eau-Terre)))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Matrice Abyssal (Alliage-(Eau-Terre)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_n2_eau_air",
+			"name": "Élixir Arcanique (Noyau-(Alliage-(Eau-Air)))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Prisme Incandescent (Alliage-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_n2_terre_air",
+			"name": "Astrolabe Doré (Noyau-(Alliage-(Terre-Air)))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Orbe Cristallin (Alliage-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_n2_feu_air",
+			"name": "Diadème Volcanique (Noyau-(Essence-(Feu-Air)))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Catalyseur Pur (Essence-(Feu-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_n2_feu_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_n2_eau_terre",
+			"name": "Réacteur Sombre (Noyau-(Essence-(Eau-Terre)))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Talisman Raffiné (Essence-(Eau-Terre)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_n2_eau_air",
+			"name": "Grimoire Harmonieux (Noyau-(Essence-(Eau-Air)))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Condensat Stellaire (Essence-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_n2_terre_air",
+			"name": "Monolithe Tellurique (Noyau-(Essence-(Terre-Air)))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Lingot Givré (Essence-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_n2_eau_terre",
+			"name": "Sceptre Obsidien (Noyau-(Éclat-(Eau-Terre)))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Fiole Ardent (Éclat-(Eau-Terre)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_n2_eau_air",
+			"name": "Sphère Astral (Noyau-(Éclat-(Eau-Air)))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Golem Ionique (Éclat-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_n2_terre_air",
+			"name": "Phénix Lumineux (Noyau-(Éclat-(Terre-Air)))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Couronne Brut (Éclat-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_n2_eau_air",
+			"name": "Étoile Instable (Noyau-(Cœur-(Eau-Air)))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Noyau Lunaire (Cœur-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_n2_terre_air",
+			"name": "Singularité Céleste (Noyau-(Cœur-(Terre-Air)))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Relique Serein (Cœur-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_air_n2_terre_air",
+			"name": "Artefact Smaragdin (Noyau-(Poudre-(Terre-Air)))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Matrice Opalescent (Poudre-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_air_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_feu",
+			"name": "Élixir Éthéré (Noyau-(Alliage-Feu))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Prisme Fongique (Alliage-Feu) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_eau",
+			"name": "Astrolabe Dense (Noyau-(Alliage-Eau))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Orbe Ancien (Alliage-Eau) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_terre",
+			"name": "Diadème Sacré (Noyau-(Alliage-Terre))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Catalyseur Solaire (Alliage-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_air",
+			"name": "Réacteur Abyssal (Noyau-(Alliage-Air))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Talisman Fulgurant (Alliage-Air) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_feu",
+			"name": "Grimoire Incandescent (Noyau-(Essence-Feu))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Condensat Argenté (Essence-Feu) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_eau",
+			"name": "Monolithe Cristallin (Noyau-(Essence-Eau))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Lingot Glacial (Essence-Eau) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_terre",
+			"name": "Sceptre Pur (Noyau-(Essence-Terre))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Fiole Vif (Essence-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_air",
+			"name": "Sphère Raffiné (Noyau-(Essence-Air))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Golem Magnétique (Essence-Air) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_feu",
+			"name": "Phénix Stellaire (Noyau-(Éclat-Feu))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Couronne Arcanique (Éclat-Feu) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_eau",
+			"name": "Étoile Givré (Noyau-(Éclat-Eau))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Noyau Doré (Éclat-Eau) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_terre",
+			"name": "Singularité Ardent (Noyau-(Éclat-Terre))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Relique Volcanique (Éclat-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_air_air",
+			"name": "Artefact Ionique (Noyau-(Éclat-Air))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Matrice Sombre (Éclat-Air) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_air_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_feu",
+			"name": "Élixir Brut (Noyau-(Cœur-Feu))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Prisme Harmonieux (Cœur-Feu) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_eau",
+			"name": "Astrolabe Lunaire (Noyau-(Cœur-Eau))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Orbe Tellurique (Cœur-Eau) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_terre",
+			"name": "Diadème Serein (Noyau-(Cœur-Terre))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Catalyseur Obsidien (Cœur-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_air",
+			"name": "Réacteur Opalescent (Noyau-(Cœur-Air))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Talisman Astral (Cœur-Air) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_air_feu",
+			"name": "Grimoire Fongique (Noyau-(Poudre-Feu))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Condensat Lumineux (Poudre-Feu) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_air_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_air_eau",
+			"name": "Monolithe Ancien (Noyau-(Poudre-Eau))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Lingot Instable (Poudre-Eau) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_air_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_air_terre",
+			"name": "Sceptre Solaire (Noyau-(Poudre-Terre))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Fiole Céleste (Poudre-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_air_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_air_air",
+			"name": "Sphère Fulgurant (Noyau-(Poudre-Air))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Golem Smaragdin (Poudre-Air) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_air_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_terre_air_feu",
+			"name": "Phénix Argenté (Noyau-(Sève-Feu))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Couronne Éthéré (Sève-Feu) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_terre_air_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_terre_air_eau",
+			"name": "Étoile Glacial (Noyau-(Sève-Eau))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Noyau Dense (Sève-Eau) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_terre_air_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_terre_air_terre",
+			"name": "Singularité Vif (Noyau-(Sève-Terre))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Relique Sacré (Sève-Terre) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_terre_air_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_terre_air_air",
+			"name": "Artefact Magnétique (Noyau-(Sève-Air))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Terre)) et Matrice Abyssal (Sève-Air) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_terre_air_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_eau_n2_eau_terre",
+			"name": "Élixir Arcanique (Relique-(Alliage-(Eau-Terre)))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Matrice Abyssal (Alliage-(Eau-Terre)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_eau_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_eau_n2_eau_air",
+			"name": "Astrolabe Doré (Relique-(Alliage-(Eau-Air)))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Prisme Incandescent (Alliage-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_eau_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_eau_n2_terre_air",
+			"name": "Diadème Volcanique (Relique-(Alliage-(Terre-Air)))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Orbe Cristallin (Alliage-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_eau_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_terre_n2_feu_air",
+			"name": "Réacteur Sombre (Relique-(Essence-(Feu-Air)))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Catalyseur Pur (Essence-(Feu-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_terre_n2_feu_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_terre_n2_eau_terre",
+			"name": "Grimoire Harmonieux (Relique-(Essence-(Eau-Terre)))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Talisman Raffiné (Essence-(Eau-Terre)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_terre_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_terre_n2_eau_air",
+			"name": "Monolithe Tellurique (Relique-(Essence-(Eau-Air)))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Condensat Stellaire (Essence-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_terre_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_terre_n2_terre_air",
+			"name": "Sceptre Obsidien (Relique-(Essence-(Terre-Air)))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Lingot Givré (Essence-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_terre_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_air_n2_eau_terre",
+			"name": "Sphère Astral (Relique-(Éclat-(Eau-Terre)))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Fiole Ardent (Éclat-(Eau-Terre)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_air_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_air_n2_eau_air",
+			"name": "Phénix Lumineux (Relique-(Éclat-(Eau-Air)))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Golem Ionique (Éclat-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_air_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_feu_air_n2_terre_air",
+			"name": "Étoile Instable (Relique-(Éclat-(Terre-Air)))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Couronne Brut (Éclat-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_feu_air_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_eau_terre_n2_eau_air",
+			"name": "Singularité Céleste (Relique-(Cœur-(Eau-Air)))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Noyau Lunaire (Cœur-(Eau-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_eau_terre_n2_eau_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_eau_terre_n2_terre_air",
+			"name": "Artefact Smaragdin (Relique-(Cœur-(Terre-Air)))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Relique Serein (Cœur-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_eau_terre_n2_terre_air"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_air_n3_n2_eau_air_n2_terre_air",
+			"name": "Élixir Éthéré (Relique-(Poudre-(Terre-Air)))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Feu-Air)) et Matrice Opalescent (Poudre-(Terre-Air)) (Quatre Éléments).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_air",
+				"n3_n2_eau_air_n2_terre_air"
+			]
+		}
+	]
+}

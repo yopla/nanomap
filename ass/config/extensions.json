@@ -247,7 +247,7 @@
 				"custom": {
 					"finisherColor": "#ff4fd8",
 					"fireRate": 7.0,
-					"projectileSpeed": 690,
+					"projectileSpeed": 690.0,
 					"shotColor": "#ff9a3c"
 				},
 				"titleCardBadge": "",

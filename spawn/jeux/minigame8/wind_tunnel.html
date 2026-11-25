@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Soufflerie &amp; Ailerons (Wind Tunnel)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.mode-blow { background: #0d3b4c; border-color: #22d3ee; color: #cffafe; }
+  button.mode-wing { background: #3b2a10; border-color: #facc15; color: #fef08a; }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "wind_tunnel",
+  "name": "Soufflerie & Ailerons (Wind Tunnel)",
+  "family": "tactical",
+  "icon": "💨",
+  "controls": "Glisser pour orienter le flux d'air (ou tracer un aileron déflecteur) • Espace, Clic droit ou bouton 💨/📐 pour basculer Souffler / Aileron • V pour masquer/afficher les vecteurs • ZQSD déplace le curseur",
+  "description": "Fusion de 7 scripts de champs vectoriels (5A_dirige_mFKi, 5B_vector_jHkD, pMlj, 58dn, 4_wCaq, 3_oTxG, 5A_rgVn) : grille eulérienne vitesse/pression avec affichage des flèches de flux, soufflerie d'entrée et ailerons déflecteurs pour alimenter 3 turbines.",
+  "goal": "Charger les 3 turbines cibles à 100 % en moins de 65 secondes.",
+  "fields": [
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">💨 Soufflerie</span>
+  <span id="stat">Turbines 0/3 • 65s</span>
+  <div class="bar-btns">
+    <button id="toolBtn" class="mode-blow" onclick="toggleTool()" title="Basculer Souffler / Aileron (Espace)">💨 Souffler</button>
+    <button onclick="showVecs = !showVecs" title="Afficher/masquer vecteurs (V)">👁️</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : injecter un courant d'air ou poser un aileron déflecteur • <b>Espace / Clic droit</b> : basculer 💨 / 📐 • Chargez les 3 turbines
+</div>
+
+<script>
+const GAME_ID = "wind_tunnel";
+const SIZE = 512;
+const N = 24;
+const CELL = SIZE / N;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const BLOCKERS = [
+  { x: 180, y: 120, w: 22, h: 110 },
+  { x: 180, y: 280, w: 22, h: 110 },
+  { x: 310, y: 195, w: 22, h: 120 }
+];
+const TURBINE_POS = [
+  { x: 452, y: 96, r: 28 },
+  { x: 452, y: 256, r: 28 },
+  { x: 452, y: 416, r: 28 }
+];
+
+let durationSec = 65;
+let vx = [], vy = [], press = [];
+let particles = [], wings = [], turbines = [];
+let tool = "blow", showVecs = true;
+let ptr = { x: 140, y: 256, px: 140, py: 256, down: false };
+let wingStart = null;
+let keys = {};
+let timeLeft = 65, score = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function toggleTool(force) {
+  tool = force || (tool === "blow" ? "wing" : "blow");
+  wingStart = null;
+  const btn = document.getElementById("toolBtn");
+  if (tool === "blow") {
+    btn.textContent = "💨 Souffler";
+    btn.className = "mode-blow";
+  } else {
+    btn.textContent = "📐 Aileron";
+    btn.className = "mode-wing";
+  }
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  vx = new Float32Array(N * N);
+  vy = new Float32Array(N * N);
+  press = new Float32Array(N * N);
+  particles = [];
+  for (let i = 0; i < 320; i++) {
+    particles.push({
+      x: Math.random() * SIZE,
+      y: Math.random() * SIZE,
+      px: 0, py: 0, vx: 0, vy: 0
+    });
+    particles[i].px = particles[i].x;
+    particles[i].py = particles[i].y;
+  }
+  wings = [{ x1: 120, y1: 230, x2: 155, y2: 205 }];
+  turbines = TURBINE_POS.map(t => ({ ...t, charge: 0, spin: 0 }));
+  tool = "blow";
+  toggleTool("blow");
+  wingStart = null;
+  ptr = { x: 140, y: 256, px: 140, py: 256, down: false };
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  updateHud();
+}
+
+function updateHud() {
+  const done = turbines.filter(t => t.charge >= 100).length;
+  const avg = Math.round((turbines[0].charge + turbines[1].charge + turbines[2].charge) / 3);
+  document.getElementById("stat").textContent =
+    `Turbines ${done}/3 (${avg}%) • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x; ptr.y = ptr.py = p.y;
+  if (e.button === 2) { toggleTool(); return; }
+  ptr.down = true;
+  if (tool === "wing") wingStart = { x: p.x, y: p.y };
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => {
+  if (tool === "wing" && ptr.down && wingStart) {
+    if (Math.hypot(ptr.x - wingStart.x, ptr.y - wingStart.y) > 16) {
+      if (wings.length >= 6) wings.shift();
+      wings.push({ x1: wingStart.x, y1: wingStart.y, x2: ptr.x, y2: ptr.y });
+    }
+    wingStart = null;
+  }
+  ptr.down = false;
+});
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) toggleTool();
+  if (e.code === "KeyV" && !e.repeat) showVecs = !showVecs;
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function stepField(dt) {
+  // Left-side intake blower (mFKi miner fan)
+  for (let j = 2; j < N - 2; j++) {
+    vx[j * N + 0] += 1.9;
+    vx[j * N + 1] += 1.4;
+  }
+
+  // Pointer drag force (FluidLine updateGridDataVelocity)
+  const mvx = ptr.x - ptr.px, mvy = ptr.y - ptr.py;
+  if (ptr.down && tool === "blow") {
+    for (let j = 0; j < N; j++) {
+      for (let i = 0; i < N; i++) {
+        const cx = (i + 0.5) * CELL, cy = (j + 0.5) * CELL;
+        const d = Math.hypot(cx - ptr.x, cy - ptr.y);
+        if (d < 56) {
+          const pw = 56 / Math.max(8, d);
+          vx[j * N + i] += mvx * pw * 0.22;
+          vy[j * N + i] += mvy * pw * 0.22;
+        }
+      }
+    }
+  }
+
+  // Wings exert directional thrust along wing segment
+  for (const w of wings) {
+    const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = (dx / len) * 2.2, uy = (dy / len) * 2.2;
+    const steps = Math.max(2, Math.ceil(len / CELL));
+    for (let s = 0; s <= steps; s++) {
+      const px = w.x1 + (dx * s) / steps;
+      const py = w.y1 + (dy * s) / steps;
+      const gi = Math.max(0, Math.min(N - 1, Math.floor(px / CELL)));
+      const gj = Math.max(0, Math.min(N - 1, Math.floor(py / CELL)));
+      vx[gj * N + gi] = vx[gj * N + gi] * 0.5 + ux;
+      vy[gj * N + gi] = vy[gj * N + gi] * 0.5 + uy;
+    }
+  }
+
+  // Pressure & velocity update (FluidLine updatePressure + apdateVelocity)
+  for (let j = 1; j < N - 1; j++) {
+    for (let i = 1; i < N - 1; i++) {
+      const idx = j * N + i;
+      const px = vx[idx - 1] - vx[idx + 1] + 0.5 * (vx[idx - N - 1] + vx[idx + N - 1] - vx[idx - N + 1] - vx[idx + N + 1]);
+      const py = vy[idx - N] - vy[idx + N] + 0.5 * (vy[idx - N - 1] + vy[idx - N + 1] - vy[idx + N - 1] - vy[idx + N + 1]);
+      press[idx] = (px + py) * 0.22;
+    }
+  }
+  for (let j = 1; j < N - 1; j++) {
+    for (let i = 1; i < N - 1; i++) {
+      const idx = j * N + i;
+      vx[idx] += (press[idx - 1] - press[idx + 1]) * 0.25;
+      vy[idx] += (press[idx - N] - press[idx + N]) * 0.25;
+      vx[idx] *= 0.96;
+      vy[idx] *= 0.96;
+    }
+  }
+
+  // Zero/deflect inside blockers
+  for (const b of BLOCKERS) {
+    const i0 = Math.max(0, Math.floor(b.x / CELL)), i1 = Math.min(N - 1, Math.floor((b.x + b.w) / CELL));
+    const j0 = Math.max(0, Math.floor(b.y / CELL)), j1 = Math.min(N - 1, Math.floor((b.y + b.h) / CELL));
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        vx[j * N + i] *= -0.2;
+        vy[j * N + i] *= -0.2;
+      }
+    }
+  }
+
+  // Advect air spark particles (58dn / 4_wCaq / 3_oTxG)
+  for (const p of particles) {
+    p.px = p.x; p.py = p.y;
+    const gi = Math.max(0, Math.min(N - 1, Math.floor(p.x / CELL)));
+    const gj = Math.max(0, Math.min(N - 1, Math.floor(p.y / CELL)));
+    const idx = gj * N + gi;
+    p.vx = p.vx * 0.65 + vx[idx] * 0.55;
+    p.vy = p.vy * 0.65 + vy[idx] * 0.55;
+    p.x += p.vx;
+    p.y += p.vy;
+
+    for (const b of BLOCKERS) {
+      if (p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h) {
+        p.x = 12 + Math.random() * 24;
+        p.y = 30 + Math.random() * (SIZE - 60);
+        p.px = p.x; p.py = p.y; p.vx = 2; p.vy = 0;
+      }
+    }
+
+    for (const t of turbines) {
+      if (Math.hypot(p.x - t.x, p.y - t.y) < t.r) {
+        if (t.charge < 100) {
+          t.charge = Math.min(100, t.charge + 1.05);
+          score += 12;
+        }
+        t.spin += 0.25;
+        p.x = 10 + Math.random() * 22;
+        p.y = 30 + Math.random() * (SIZE - 60);
+        p.px = p.x; p.py = p.y; p.vx = 2; p.vy = 0;
+      }
+    }
+
+    if (p.x < 0 || p.x >= SIZE || p.y < 0 || p.y >= SIZE || Math.random() < 0.008) {
+      p.x = 8 + Math.random() * 20;
+      p.y = 25 + Math.random() * (SIZE - 50);
+      p.px = p.x; p.py = p.y;
+      p.vx = 1.5; p.vy = 0;
+    }
+  }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      ptr.px = ptr.x; ptr.py = ptr.y;
+      ptr.x = Math.max(12, Math.min(SIZE - 12, ptr.x + kx * 260 * dt));
+      ptr.y = Math.max(12, Math.min(SIZE - 12, ptr.y + ky * 260 * dt));
+    }
+
+    stepField(dt);
+    ptr.px = ptr.x; ptr.py = ptr.y;
+
+    for (const t of turbines) t.spin += dt * (1.2 + t.charge * 0.06);
+
+    if (turbines.every(t => t.charge >= 100)) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 30);
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Vector field arrows (5B_vector_jHkD)
+  if (showVecs) {
+    ctx.strokeStyle = "rgba(248, 113, 113, 0.32)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let j = 0; j < N; j++) {
+      for (let i = 0; i < N; i++) {
+        const idx = j * N + i;
+        const cx = (i + 0.5) * CELL, cy = (j + 0.5) * CELL;
+        const dx = Math.max(-14, Math.min(14, vx[idx] * 2.4));
+        const dy = Math.max(-14, Math.min(14, vy[idx] * 2.4));
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + dx, cy + dy);
+      }
+    }
+    ctx.stroke();
+  }
+
+  // Spark stream lines
+  ctx.strokeStyle = "rgba(186, 230, 253, 0.78)";
+  ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  for (const p of particles) {
+    if (Math.hypot(p.x - p.px, p.y - p.py) < 40) {
+      ctx.moveTo(p.px, p.py);
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+  ctx.stroke();
+
+  // Intake grille on left
+  ctx.fillStyle = "rgba(56,214,255,0.14)";
+  ctx.fillRect(0, 20, 14, SIZE - 40);
+  ctx.strokeStyle = "#38d6ff";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, 20, 14, SIZE - 40);
+
+  // Blockers
+  for (const b of BLOCKERS) {
+    ctx.fillStyle = "#1e293b";
+    ctx.strokeStyle = "#64748b";
+    ctx.lineWidth = 2;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+  }
+
+  // Player wings (rear wings)
+  for (const w of wings) {
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
+    ctx.fillStyle = "#fef08a";
+    ctx.beginPath(); ctx.arc(w.x2, w.y2, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  if (wingStart && ptr.down) {
+    ctx.strokeStyle = "rgba(250,204,21,0.6)";
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(wingStart.x, wingStart.y); ctx.lineTo(ptr.x, ptr.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Turbines
+  for (const t of turbines) {
+    const done = t.charge >= 100;
+    ctx.fillStyle = done ? "rgba(74,222,128,0.22)" : "rgba(15,23,42,0.8)";
+    ctx.strokeStyle = done ? "#4ade80" : "#38d6ff";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    ctx.save();
+    ctx.translate(t.x, t.y);
+    ctx.rotate(t.spin);
+    ctx.strokeStyle = done ? "#86efac" : "#7dd3fc";
+    ctx.lineWidth = 2;
+    for (let k = 0; k < 3; k++) {
+      ctx.rotate((Math.PI * 2) / 3);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(t.r - 6, 0); ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${Math.round(t.charge)}%`, t.x, t.y + t.r + 14);
+  }
+
+  if (!over) {
+    ctx.strokeStyle = tool === "blow" ? "#22d3ee" : "#facc15";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 14, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "TURBINES CHARGÉES !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Turbines ${turbines.filter(t => t.charge >= 100).length}/3 • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

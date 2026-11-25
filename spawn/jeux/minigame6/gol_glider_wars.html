@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Guerre des Planeurs (GOL Glider Wars)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #22d3ee; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.paused { background: #78350f; border-color: #fbbf24; color: #fef3c7; }
+  canvas { background: #060a14; border: 2px solid #22d3ee; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(34,211,238,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "gol_glider_wars",
+  "name": "Guerre des Planeurs (GOL Glider Wars)",
+  "family": "tactical",
+  "icon": "👾",
+  "controls": "Cliquer/glisser pour peindre des cellules Cyan • G ou 🚀 Planeur pour lancer un planeur vers la ruche rouge la plus proche • Espace / ⏸️ pour figer la simulation • R / 📐 pour changer les règles B/S",
+  "description": "Fusion de Motional Life Game (2PClm), Life Ecosystem (AtTV), ParallelLife (565l) et Grey Life (o9Ud) : un automate cellulaire compétitif à deux espèces (Cyan vs Cramoisi) avec transitions animées et trois jeux de règles (B3/S23, HighLife B36/S23, Citadelle B3/S234).",
+  "goal": "Détruire les 3 Ruches Cramoisies à l'aide de vos cellules et planeurs avant la perte de votre Base ou la fin des 65 secondes.",
+  "fields": [
+    { "key": "cores", "label": "Ruches ennemies", "type": "number", "default": 3 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">👾 Glider Wars</span>
+  <span id="stat">🎯 3/3 • ❤️ 100 • ⚡ 100 • 65s</span>
+  <div class="bar-btns">
+    <button onclick="launchGlider()" title="Lancer un planeur ciblé (G)">🚀 Planeur</button>
+    <button id="pauseBtn" onclick="togglePause()" title="Pause / Lecture (Espace)">⏸️</button>
+    <button id="ruleBtn" onclick="cycleRule()" title="Changer les règles B/S (R)">📐 B3/S23</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Cliquer/glisser</b> : poser des cellules Cyan • <b>G / 🚀 Planeur</b> : salve dirigée • <b>Espace</b> : Pause • <b>R</b> : règles B/S
+</div>
+
+<script>
+const GAME_ID = "gol_glider_wars";
+const SIZE = 512;
+const GN = 32;
+const CELL = SIZE / GN;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+// o9Ud.as multiple rule presets
+const RULES = [
+  { name: "B3/S23", born: [3], surv: [2, 3] },
+  { name: "B36/S23", born: [3, 6], surv: [2, 3] },
+  { name: "B3/S234", born: [3], surv: [2, 3, 4] }
+];
+
+let targetCores = 3, durationSec = 65;
+let ruleIdx = 0;
+let grid = new Uint8Array(GN * GN); // 0=empty, 1=cyan player, 2=crimson enemy
+let nextGrid = new Uint8Array(GN * GN);
+let animScale = new Float32Array(GN * GN); // 2PClm.as birth/death scale interpolation
+let playerCore = { gx: 3, gy: 28, hp: 100, maxHp: 100 };
+let enemyCores = [];
+let sparks = [];
+
+let paused = false;
+let energy = 100;
+let tickTimer = 0, hiveTimer = 0;
+let pointer = { down: false };
+let timeLeft = 65, score = 0, won = false, over = false, failReason = "";
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function togglePause(force) {
+  paused = typeof force === "boolean" ? force : !paused;
+  const btn = document.getElementById("pauseBtn");
+  btn.textContent = paused ? "▶️" : "⏸️";
+  btn.classList.toggle("paused", paused);
+}
+
+function cycleRule() {
+  ruleIdx = (ruleIdx + 1) % RULES.length;
+  document.getElementById("ruleBtn").textContent = "📐 " + RULES[ruleIdx].name;
+}
+
+function stampPattern(cx, cy, coords, team) {
+  for (const [dx, dy] of coords) {
+    const gx = cx + dx, gy = cy + dy;
+    if (gx >= 0 && gx < GN && gy >= 0 && gy < GN) {
+      grid[gy * GN + gx] = team;
+      animScale[gy * GN + gx] = 0.25;
+    }
+  }
+}
+
+function launchGlider() {
+  if (over || energy < 18) return;
+  const alive = enemyCores.filter((c) => c.hp > 0);
+  if (!alive.length) return;
+  energy -= 18;
+
+  // Target nearest alive enemy core from player base
+  let target = alive[0];
+  let bestD = 1e9;
+  for (const c of alive) {
+    const d = Math.hypot(c.gx - playerCore.gx, c.gy - playerCore.gy);
+    if (d < bestD) { bestD = d; target = c; }
+  }
+  const sx = target.gx >= playerCore.gx ? 1 : -1;
+  const sy = target.gy >= playerCore.gy ? 1 : -1;
+  // Oriented glider traveling in (sx, sy)
+  const glider = [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]].map(([x, y]) => [x * sx, y * sy]);
+  stampPattern(playerCore.gx + sx * 3, playerCore.gy + sy * 3, glider, 1);
+  sparks.push({ x: (playerCore.gx + 0.5) * CELL, y: (playerCore.gy + 0.5) * CELL, r: 8, life: 0.9, col: "#22d3ee" });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetCores = Math.max(1, Math.min(3, Number(custom.cores || 3)));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  grid.fill(0);
+  animScale.fill(0);
+  ruleIdx = 0;
+  document.getElementById("ruleBtn").textContent = "📐 " + RULES[0].name;
+  togglePause(false);
+
+  playerCore = { gx: 3, gy: 28, hp: 100, maxHp: 100 };
+  const hiveSpots = [{ gx: 27, gy: 4 }, { gx: 27, gy: 26 }, { gx: 5, gy: 4 }];
+  enemyCores = [];
+  for (let i = 0; i < targetCores; i++) {
+    const hs = hiveSpots[i];
+    enemyCores.push({ gx: hs.gx, gy: hs.gy, hp: 60, maxHp: 60 });
+    stampPattern(hs.gx, hs.gy, [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1]], 2);
+  }
+  // Seed initial player blinker/r-pentomino near base
+  stampPattern(6, 26, [[0, 0], [1, 0], [2, 0], [1, -1], [0, 1]], 1);
+
+  sparks = [];
+  energy = 100;
+  tickTimer = 0;
+  hiveTimer = 0;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  failReason = "";
+  updateHud();
+}
+
+function updateHud() {
+  const aliveHives = enemyCores.filter((c) => c.hp > 0).length;
+  document.getElementById("stat").textContent =
+    `🎯 ${aliveHives}/${targetCores} • ❤️ ${Math.ceil(playerCore.hp)} • ⚡ ${Math.floor(energy)} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getTile(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    gx: Math.max(0, Math.min(GN - 1, Math.floor((e.clientX - r.left) * (SIZE / r.width) / CELL))),
+    gy: Math.max(0, Math.min(GN - 1, Math.floor((e.clientY - r.top) * (SIZE / r.height) / CELL)))
+  };
+}
+
+function paintAt(gx, gy) {
+  if (over || energy < 2.2) return;
+  const idx = gy * GN + gx;
+  if (grid[idx] !== 1) {
+    grid[idx] = 1;
+    animScale[idx] = 0.2;
+    energy -= 2.2;
+  }
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  pointer.down = true;
+  const { gx, gy } = getTile(e);
+  paintAt(gx, gy);
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!pointer.down || over) return;
+  const { gx, gy } = getTile(e);
+  paintAt(gx, gy);
+});
+window.addEventListener("pointerup", () => { pointer.down = false; });
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !e.repeat) { e.preventDefault(); togglePause(); }
+  if (e.code === "KeyG" && !e.repeat) launchGlider();
+  if (e.code === "KeyR" && !e.repeat) cycleRule();
+});
+
+function stepGOL() {
+  const rule = RULES[ruleIdx];
+  for (let y = 0; y < GN; y++) {
+    for (let x = 0; x < GN; x++) {
+      let c1 = 0, c2 = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || nx >= GN || ny < 0 || ny >= GN) continue;
+          const v = grid[ny * GN + nx];
+          if (v === 1) c1++;
+          else if (v === 2) c2++;
+        }
+      }
+      const total = c1 + c2;
+      const cur = grid[y * GN + x];
+      let nxt = 0;
+      if (cur === 0) {
+        if (rule.born.includes(total)) {
+          nxt = c1 >= c2 ? 1 : 2;
+        }
+      } else {
+        // Competitive rule (AtTV.as): enemy neighbors subtract stability
+        const friendly = cur === 1 ? c1 : c2;
+        const hostile = cur === 1 ? c2 : c1;
+        if (hostile >= 3 && hostile > friendly) nxt = 0;
+        else if (rule.surv.includes(total)) nxt = cur;
+      }
+      nextGrid[y * GN + x] = nxt;
+    }
+  }
+  const tmp = grid; grid = nextGrid; nextGrid = tmp;
+
+  // Check damage around Cores from adjacent hostile cells
+  for (const ec of enemyCores) {
+    if (ec.hp <= 0) continue;
+    let hits = 0;
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const nx = ec.gx + dx, ny = ec.gy + dy;
+        if (nx >= 0 && nx < GN && ny >= 0 && ny < GN && grid[ny * GN + nx] === 1) {
+          hits++;
+          grid[ny * GN + nx] = 0;
+        }
+      }
+    }
+    if (hits > 0) {
+      ec.hp = Math.max(0, ec.hp - hits * 7);
+      score += hits * 18;
+      sparks.push({ x: (ec.gx + 0.5) * CELL, y: (ec.gy + 0.5) * CELL, r: 8, life: 1, col: "#fde047" });
+      if (ec.hp <= 0) score += 220;
+    }
+  }
+
+  let baseHits = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = playerCore.gx + dx, ny = playerCore.gy + dy;
+      if (nx >= 0 && nx < GN && ny >= 0 && ny < GN && grid[ny * GN + nx] === 2) {
+        baseHits++;
+        grid[ny * GN + nx] = 0;
+      }
+    }
+  }
+  if (baseHits > 0) {
+    playerCore.hp = Math.max(0, playerCore.hp - baseHits * 6);
+    sparks.push({ x: (playerCore.gx + 0.5) * CELL, y: (playerCore.gy + 0.5) * CELL, r: 8, life: 1, col: "#ef4444" });
+  }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    energy = Math.min(100, energy + 15 * dt);
+
+    if (!paused) {
+      tickTimer += dt;
+      if (tickTimer >= 0.14) {
+        tickTimer = 0;
+        stepGOL();
+      }
+      hiveTimer += dt;
+      if (hiveTimer >= 2.2) {
+        hiveTimer = 0;
+        for (const ec of enemyCores) {
+          if (ec.hp <= 0) continue;
+          const sx = playerCore.gx >= ec.gx ? 1 : -1;
+          const sy = playerCore.gy >= ec.gy ? 1 : -1;
+          const g = [[0, 1], [1, 2], [2, 0], [2, 1], [2, 2]].map(([x, y]) => [x * sx, y * sy]);
+          stampPattern(ec.gx + sx * 2, ec.gy + sy * 2, g, 2);
+        }
+      }
+    }
+
+    // Smooth 2PClm birth/death scale animation
+    for (let i = 0; i < GN * GN; i++) {
+      const target = grid[i] > 0 ? 1 : 0;
+      animScale[i] += (target - animScale[i]) * Math.min(1, dt * 16);
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      sparks[i].r += 80 * dt;
+      sparks[i].life -= 2.5 * dt;
+      if (sparks[i].life <= 0) sparks.splice(i, 1);
+    }
+
+    const aliveHives = enemyCores.filter((c) => c.hp > 0).length;
+    if (aliveHives === 0) {
+      won = true;
+      over = true;
+      score += Math.round(timeLeft * 20) + Math.round(playerCore.hp * 3);
+    } else if (playerCore.hp <= 0) {
+      won = false;
+      over = true;
+      failReason = "BASE DÉTRUITE";
+    } else if (timeLeft <= 0) {
+      won = false;
+      over = true;
+      failReason = "CHRONO ÉCOULÉ";
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = paused ? "#121726" : "#060a14";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.08)";
+  ctx.lineWidth = 1;
+  for (let k = 0; k <= SIZE; k += CELL) {
+    ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k, SIZE); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, k); ctx.lineTo(SIZE, k); ctx.stroke();
+  }
+
+  // Animated cells (2PClm.as)
+  for (let y = 0; y < GN; y++) {
+    for (let x = 0; x < GN; x++) {
+      const idx = y * GN + x;
+      const sc = animScale[idx];
+      if (sc < 0.05) continue;
+      const v = grid[idx];
+      const pad = (1 - sc) * (CELL * 0.45);
+      ctx.fillStyle = v === 1 ? "#22d3ee" : (v === 2 ? "#f43f5e" : "#475569");
+      ctx.fillRect(x * CELL + pad + 1, y * CELL + pad + 1, CELL - 2 - pad * 2, CELL - 2 - pad * 2);
+    }
+  }
+
+  // Player Base Core
+  const bx = (playerCore.gx + 0.5) * CELL, by = (playerCore.gy + 0.5) * CELL;
+  ctx.fillStyle = "#083344";
+  ctx.strokeStyle = "#67e8f9";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(bx, by, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = "#4ade80";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(bx, by, 22, -Math.PI / 2, -Math.PI / 2 + (playerCore.hp / playerCore.maxHp) * Math.PI * 2);
+  ctx.stroke();
+
+  // Enemy Hive Cores
+  for (const ec of enemyCores) {
+    if (ec.hp <= 0) continue;
+    const ex = (ec.gx + 0.5) * CELL, ey = (ec.gy + 0.5) * CELL;
+    ctx.fillStyle = "#881337";
+    ctx.strokeStyle = "#fda4af";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(ex, ey, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "#fde047";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(ex, ey, 21, -Math.PI / 2, -Math.PI / 2 + (ec.hp / ec.maxHp) * Math.PI * 2);
+    ctx.stroke();
+  }
+
+  for (const sp of sparks) {
+    ctx.strokeStyle = sp.col;
+    ctx.globalAlpha = Math.max(0, sp.life);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, sp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "RUCHES ÉCRASÉES !" : failReason, 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Base ❤️ ${Math.ceil(playerCore.hp)} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

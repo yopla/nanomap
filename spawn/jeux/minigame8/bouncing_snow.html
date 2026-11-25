@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Neige &amp; Pixels Rebondissants (Bouncing Snow)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.mode-snow { background: #1e3a5f; border-color: #7dd3fc; color: #e0f2fe; }
+  button.mode-wall { background: #3b2a10; border-color: #facc15; color: #fef08a; }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "bouncing_snow",
+  "name": "Neige & Pixels Rebondissants (Bouncing Snow)",
+  "family": "core",
+  "icon": "❄️",
+  "controls": "Glisser pour projeter des pixels de neige avec votre élan • Espace, Clic droit ou bouton ❄️/🧱 pour basculer Neige / Pont de Glace (ZQSD déplace le curseur)",
+  "description": "Adapté de rKOL.as (Implicit Bitmap Particle Physics) : automate cellulaire sur grille 128×128 où chaque pixel de neige possède une vitesse propre, s'empile et ricoche avec élasticité sur les obstacles et les autres pixels.",
+  "goal": "Remplir les 3 silos verts (24 flocons chacun = 72 au total) en moins de 65 secondes par-dessus les fosses de lave.",
+  "fields": [
+    { "key": "perSilo", "label": "Flocons par silo", "type": "number", "default": 24 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">❄️ Pixels Sauteurs</span>
+  <span id="stat">Silos 0+0+0/72 • 65s</span>
+  <div class="bar-btns">
+    <button id="toolBtn" class="mode-snow" onclick="toggleTool()" title="Basculer Neige / Rempart (Espace)">❄️ Neige</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : lancer des pixels rebondissants (ou tracer un pont 🧱) • <b>Espace / Clic droit</b> : changer d'outil • Remplissez les 3 silos verts
+</div>
+
+<script>
+const GAME_ID = "bouncing_snow";
+const SIZE = 512;
+const GRID = 128;
+const PIX = SIZE / GRID; // 4x4
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const FLAG_EMPTY = 0, FLAG_WALL = 1, FLAG_SNOW = 2, FLAG_LAVA = 3, FLAG_GOAL = 4;
+const SILOS = [
+  { id: 0, gx0: 10, gx1: 30, gy0: 112, gy1: 124 },
+  { id: 1, gx0: 54, gx1: 74, gy0: 112, gy1: 124 },
+  { id: 2, gx0: 98, gx1: 118, gy0: 112, gy1: 124 }
+];
+
+let perSilo = 24, durationSec = 65;
+let grid = [];
+let siloCounts = [0, 0, 0];
+let tool = "snow"; // "snow" | "wall"
+let ptr = { x: 256, y: 110, px: 256, py: 110, down: false };
+let keys = {};
+let timeLeft = 65, score = 0, won = false, over = false;
+let stepTick = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function toggleTool(force) {
+  tool = force || (tool === "snow" ? "wall" : "snow");
+  const btn = document.getElementById("toolBtn");
+  if (tool === "snow") {
+    btn.textContent = "❄️ Neige";
+    btn.className = "mode-snow";
+  } else {
+    btn.textContent = "🧱 Pont";
+    btn.className = "mode-wall";
+  }
+}
+
+function setCell(gx, gy, flag, vx = 0, vy = 0, siloId = -1) {
+  if (gx < 0 || gy < 0 || gx >= GRID || gy >= GRID) return;
+  const c = grid[gy * GRID + gx];
+  c.flag = flag;
+  c.vx = vx;
+  c.vy = vy;
+  c.siloId = siloId;
+}
+
+function drawWallRect(gx0, gy0, gx1, gy1, flag = FLAG_WALL) {
+  for (let y = gy0; y <= gy1; y++) {
+    for (let x = gx0; x <= gx1; x++) setCell(x, y, flag);
+  }
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  perSilo = Math.max(8, Number(custom.perSilo || 24));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  grid = Array.from({ length: GRID * GRID }, () => ({ flag: FLAG_EMPTY, vx: 0, vy: 0, siloId: -1, updated: 0 }));
+  // Borders
+  drawWallRect(0, 0, GRID - 1, 1);
+  drawWallRect(0, GRID - 2, GRID - 1, GRID - 1);
+  drawWallRect(0, 0, 1, GRID - 1);
+  drawWallRect(GRID - 2, 0, GRID - 1, GRID - 1);
+
+  // Deflecting ledges + lava pits between silos
+  drawWallRect(18, 42, 44, 44);
+  drawWallRect(84, 42, 110, 44);
+  drawWallRect(48, 72, 80, 74);
+  drawWallRect(32, 120, 52, 125, FLAG_LAVA);
+  drawWallRect(76, 120, 96, 125, FLAG_LAVA);
+
+  // Silos
+  for (const s of SILOS) {
+    for (let y = s.gy0; y <= s.gy1; y++) {
+      for (let x = s.gx0; x <= s.gx1; x++) {
+        setCell(x, y, FLAG_GOAL, 0, 0, s.id);
+      }
+    }
+    drawWallRect(s.gx0 - 1, s.gy0 - 4, s.gx0 - 1, s.gy1);
+    drawWallRect(s.gx1 + 1, s.gy0 - 4, s.gx1 + 1, s.gy1);
+  }
+
+  siloCounts = [0, 0, 0];
+  tool = "snow";
+  toggleTool("snow");
+  ptr = { x: 256, y: 110, px: 256, py: 110, down: false };
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  stepTick = 0;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Silos ${siloCounts[0]}+${siloCounts[1]}+${siloCounts[2]}/${perSilo * 3} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x; ptr.y = ptr.py = p.y;
+  if (e.button === 2) { toggleTool(); return; }
+  ptr.down = true;
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => { ptr.down = false; });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) toggleTool();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function paintLine(x0, y0, x1, y1, vx, vy) {
+  const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / PIX));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const gx = Math.floor((x0 + (x1 - x0) * t) / PIX);
+    const gy = Math.floor((y0 + (y1 - y0) * t) / PIX);
+    if (gx < 2 || gy < 2 || gx >= GRID - 2 || gy >= GRID - 2) continue;
+    const idx = gy * GRID + gx;
+    if (tool === "snow") {
+      if (grid[idx].flag === FLAG_EMPTY) {
+        setCell(gx, gy, FLAG_SNOW, Math.max(-3, Math.min(3, Math.round(vx))), Math.max(-3, Math.min(3, Math.round(vy))));
+      }
+    } else {
+      if (grid[idx].flag === FLAG_EMPTY || grid[idx].flag === FLAG_SNOW) {
+        setCell(gx, gy, FLAG_WALL, 0, 0);
+      }
+    }
+  }
+}
+
+function stepPixels() {
+  stepTick++;
+  // Natural snowfall from top
+  if (stepTick % 2 === 0) {
+    const rx = 6 + Math.floor(Math.random() * (GRID - 12));
+    if (grid[3 * GRID + rx].flag === FLAG_EMPTY) {
+      setCell(rx, 3, FLAG_SNOW, Math.random() < 0.5 ? -1 : 1, 1);
+    }
+  }
+
+  for (let y = GRID - 3; y >= 2; y--) {
+    const leftToRight = (y + stepTick) % 2 === 0;
+    for (let xi = 2; xi < GRID - 2; xi++) {
+      const x = leftToRight ? xi : (GRID - 1 - xi);
+      const idx = y * GRID + x;
+      const c = grid[idx];
+      if (c.flag !== FLAG_SNOW || c.updated === stepTick) continue;
+
+      // Gravity & horizontal air drag (rKOL style)
+      c.vy = Math.min(3, c.vy + 1);
+      if (c.vx === 0 && Math.random() < 0.25) c.vx = Math.random() < 0.5 ? -1 : 1;
+
+      const tx = Math.max(1, Math.min(GRID - 2, x + c.vx));
+      const ty = Math.max(1, Math.min(GRID - 2, y + c.vy));
+      const target = grid[ty * GRID + tx];
+
+      if (target.flag === FLAG_GOAL) {
+        const sid = target.siloId;
+        if (sid >= 0 && siloCounts[sid] < perSilo) {
+          siloCounts[sid]++;
+          score += 50;
+        } else {
+          score += 10;
+        }
+        c.flag = FLAG_EMPTY; c.vx = 0; c.vy = 0;
+        continue;
+      }
+      if (target.flag === FLAG_LAVA) {
+        c.flag = FLAG_EMPTY; c.vx = 0; c.vy = 0;
+        continue;
+      }
+      if (target.flag === FLAG_EMPTY) {
+        target.flag = FLAG_SNOW;
+        target.vx = c.vx;
+        target.vy = c.vy;
+        target.updated = stepTick;
+        c.flag = FLAG_EMPTY; c.vx = 0; c.vy = 0;
+      } else {
+        // Elastic bounce on obstacle / snow pile
+        const below = grid[(y + 1) * GRID + x];
+        const dLeft = grid[(y + 1) * GRID + (x - 1)];
+        const dRight = grid[(y + 1) * GRID + (x + 1)];
+        if (below.flag === FLAG_EMPTY) {
+          below.flag = FLAG_SNOW; below.vx = -Math.round(c.vx * 0.6); below.vy = 1; below.updated = stepTick;
+          c.flag = FLAG_EMPTY; c.vx = 0; c.vy = 0;
+        } else if (dLeft.flag === FLAG_EMPTY && (c.vx <= 0 || dRight.flag !== FLAG_EMPTY)) {
+          dLeft.flag = FLAG_SNOW; dLeft.vx = -1; dLeft.vy = 1; dLeft.updated = stepTick;
+          c.flag = FLAG_EMPTY; c.vx = 0; c.vy = 0;
+        } else if (dRight.flag === FLAG_EMPTY) {
+          dRight.flag = FLAG_SNOW; dRight.vx = 1; dRight.vy = 1; dRight.updated = stepTick;
+          c.flag = FLAG_EMPTY; c.vx = 0; c.vy = 0;
+        } else {
+          c.vx = -c.vx;
+          c.vy = -Math.max(0, Math.floor(c.vy * 0.4));
+          c.updated = stepTick;
+        }
+      }
+    }
+  }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      ptr.px = ptr.x; ptr.py = ptr.y;
+      ptr.x = Math.max(12, Math.min(SIZE - 12, ptr.x + kx * 260 * dt));
+      ptr.y = Math.max(12, Math.min(SIZE - 12, ptr.y + ky * 260 * dt));
+    }
+
+    if (ptr.down) {
+      const ivx = (ptr.x - ptr.px) / PIX;
+      const ivy = (ptr.y - ptr.py) / PIX;
+      paintLine(ptr.px, ptr.py, ptr.x, ptr.y, ivx, ivy);
+    }
+    ptr.px = ptr.x; ptr.py = ptr.y;
+
+    stepPixels();
+
+    if (siloCounts[0] >= perSilo && siloCounts[1] >= perSilo && siloCounts[2] >= perSilo) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 25);
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const f = grid[y * GRID + x].flag;
+      if (f === FLAG_EMPTY) continue;
+      if (f === FLAG_SNOW) ctx.fillStyle = "#e0f2fe";
+      else if (f === FLAG_WALL) ctx.fillStyle = "#334155";
+      else if (f === FLAG_LAVA) ctx.fillStyle = "#ef4444";
+      else if (f === FLAG_GOAL) ctx.fillStyle = "rgba(34,197,94,0.28)";
+      ctx.fillRect(x * PIX, y * PIX, PIX, PIX);
+    }
+  }
+
+  // Silo overlays
+  for (const s of SILOS) {
+    const sx = s.gx0 * PIX, sy = s.gy0 * PIX;
+    const sw = (s.gx1 - s.gx0 + 1) * PIX, sh = (s.gy1 - s.gy0 + 1) * PIX;
+    const ratio = Math.min(1, siloCounts[s.id] / perSilo);
+    ctx.fillStyle = "rgba(74,222,128,0.45)";
+    ctx.fillRect(sx, sy + sh * (1 - ratio), sw, sh * ratio);
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(sx, sy, sw, sh);
+    ctx.fillStyle = "#dcfce7";
+    ctx.font = "bold 12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${siloCounts[s.id]}/${perSilo}`, sx + sw / 2, sy - 6);
+  }
+
+  if (!over) {
+    ctx.strokeStyle = tool === "snow" ? "#7dd3fc" : "#facc15";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 12, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "SILOS REMPLIS !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Flocons ${siloCounts[0]}+${siloCounts[1]}+${siloCounts[2]} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

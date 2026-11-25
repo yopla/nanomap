@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Cercle de Commandement</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); cursor: none; touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "att",
+  "name": "Cercle de Commandement",
+  "family": "topMouseMut",
+  "icon": "🎯",
+  "controls": "Déplacer le cercle de commandement (128px) pour englober vos drones ET une cible afin de lancer l'assaut automatique",
+  "description": "Portage du prototype AS3 att : vos drones suivent votre curseur, mais verrouillent et attaquent automatiquement toute cible présente dans le même rayon de 128px.",
+  "goal": "Détruire 15 cibles hostiles avant qu'elles ne surchargent votre bouclier.",
+  "fields": [
+    { "key": "targetCount", "label": "Cibles à neutraliser", "type": "number", "default": 15 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>🎯 <b>Cercle de Commandement</b></span>
+  <span id="stat">Cibles: 0/15 • ❤️❤️❤️ • 45s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "att";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const AURA_R = 128;
+let mouse = { x: 256, y: 256 };
+let drones = [], targets = [], sparks = [];
+let targetCount = 15, destroyed = 0, hp = 3, spawnTimer = 0;
+let timeLeft = 45, score = 0, won = false, over = false;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+function setM(e) {
+  const r = cv.getBoundingClientRect();
+  mouse.x = Math.max(0, Math.min(512, (e.clientX - r.left) * (512 / r.width)));
+  mouse.y = Math.max(0, Math.min(512, (e.clientY - r.top) * (512 / r.height)));
+}
+cv.addEventListener("pointermove", setM);
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  setM(e);
+});
+
+function spawnTarget() {
+  const x = 52 + Math.random() * 408;
+  const y = 52 + Math.random() * 408;
+  const a = Math.random() * Math.PI * 2;
+  const spd = 22 + Math.random() * 26;
+  targets.push({
+    x, y, vx: Math.cos(a) * spd, vy: Math.sin(a) * spd,
+    hp: 100, maxHp: 100, charge: 0, maxCharge: 9.5, r: 15
+  });
+}
+
+function addSparks(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const s = 50 + Math.random() * 130;
+    sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.35 + Math.random() * 0.2, color });
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  targetCount = Math.max(5, Number(custom.targetCount) || 15);
+  mouse = { x: 256, y: 256 };
+  drones = [
+    { x: 226, y: 256, ax: 256, ay: 256, locked: null },
+    { x: 286, y: 256, ax: 256, ay: 256, locked: null },
+    { x: 256, y: 286, ax: 256, ay: 256, locked: null }
+  ];
+  targets = []; sparks = [];
+  for (let i = 0; i < 3; i++) spawnTarget();
+  destroyed = 0; hp = 3; spawnTimer = 1.6;
+  timeLeft = 45; score = 0; won = false; over = false;
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const f = dt * 60;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) over = true;
+
+    spawnTimer -= dt;
+    if (spawnTimer <= 0 && targets.length < 5 && destroyed + targets.length < targetCount) {
+      spawnTarget();
+      spawnTimer = 1.8;
+    }
+
+    // Move targets & advance danger charge
+    for (let i = targets.length - 1; i >= 0; i--) {
+      const t = targets[i];
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      if (t.x < 34 || t.x > 478) { t.vx *= -1; t.x = Math.max(34, Math.min(478, t.x)); }
+      if (t.y < 34 || t.y > 478) { t.vy *= -1; t.y = Math.max(34, Math.min(478, t.y)); }
+      t.charge += dt;
+      if (t.charge >= t.maxCharge) {
+        hp--;
+        addSparks(t.x, t.y, "#f87171", 18);
+        targets.splice(i, 1);
+        if (hp <= 0) over = true;
+        else if (targets.length === 0) spawnTarget();
+      }
+    }
+
+    // Faithful att.as command-aura logic:
+    // If drone is within AURA_R (128px) of cursor AND a target is within AURA_R of cursor, drone locks onto target!
+    for (let di = 0; di < drones.length; di++) {
+      const dr = drones[di];
+      const dMouse = Math.hypot(mouse.x - dr.x, mouse.y - dr.y);
+      let ax = mouse.x, ay = mouse.y;
+      let lockedTarget = null;
+
+      if (dMouse < AURA_R) {
+        let bestD = AURA_R;
+        for (const t of targets) {
+          const dtM = Math.hypot(mouse.x - t.x, mouse.y - t.y);
+          if (dtM < bestD) {
+            bestD = dtM;
+            lockedTarget = t;
+          }
+        }
+        if (lockedTarget) {
+          ax = lockedTarget.x;
+          ay = lockedTarget.y;
+        }
+      }
+
+      dr.ax = ax; dr.ay = ay; dr.locked = lockedTarget;
+
+      let d = Math.hypot(ax - dr.x, ay - dr.y);
+      if (d < 32) {
+        // Attack if locked onto target!
+        if (lockedTarget) {
+          lockedTarget.hp -= 52 * dt;
+          if (Math.random() < 0.35) addSparks(lockedTarget.x, lockedTarget.y, "#fde047", 1);
+        }
+        d = 0;
+      }
+      const ms = Math.min(8, d) * f;
+      if (ms > 0.01) {
+        const ta = Math.atan2(ay - dr.y, ax - dr.x);
+        dr.x += Math.cos(ta) * ms;
+        dr.y += Math.sin(ta) * ms;
+      }
+
+      // Light separation between drones so they fan out cleanly
+      for (let dj = di + 1; dj < drones.length; dj++) {
+        const o = drones[dj];
+        const sd = Math.hypot(dr.x - o.x, dr.y - o.y) || 1;
+        if (sd < 22) {
+          const push = (22 - sd) * 0.25;
+          const nx = (dr.x - o.x) / sd, ny = (dr.y - o.y) / sd;
+          dr.x += nx * push; dr.y += ny * push;
+          o.x -= nx * push; o.y -= ny * push;
+        }
+      }
+    }
+
+    // Check destroyed targets
+    for (let i = targets.length - 1; i >= 0; i--) {
+      if (targets[i].hp <= 0) {
+        const t = targets[i];
+        destroyed++;
+        score += 40;
+        addSparks(t.x, t.y, "#4ade80", 14);
+        targets.splice(i, 1);
+        if (destroyed >= targetCount) {
+          won = true; over = true;
+          score += Math.round(timeLeft * 6) + hp * 40;
+        } else if (targets.length < 2 && destroyed + targets.length < targetCount) {
+          spawnTarget();
+        }
+      }
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.x += s.vx * dt; s.y += s.vy * dt;
+      s.life -= dt;
+      if (s.life <= 0) sparks.splice(i, 1);
+    }
+  }
+
+  const hearts = "❤️".repeat(Math.max(0, hp)) + "🖤".repeat(Math.max(0, 3 - hp));
+  document.getElementById("stat").textContent = `Cibles: ${destroyed}/${targetCount} • ${hearts} • ${Math.ceil(timeLeft)}s • ${score} pts`;
+
+  // Render
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  const anyLocked = drones.some(dr => dr.locked);
+
+  // Command aura (128px radius around cursor — att.as signature visual)
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, AURA_R, 0, Math.PI * 2);
+  ctx.fillStyle = anyLocked ? "rgba(253,224,71,0.08)" : "rgba(56,214,255,0.06)";
+  ctx.fill();
+  ctx.strokeStyle = anyLocked ? "#fde047" : "#38d6ff";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Targets
+  for (const t of targets) {
+    const chargeRatio = Math.min(1, t.charge / t.maxCharge);
+    // Danger countdown ring
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r + 7, -Math.PI / 2, -Math.PI / 2 + chargeRatio * Math.PI * 2);
+    ctx.strokeStyle = chargeRatio > 0.7 ? "#f43f5e" : "#fb923c";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Target body
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(244,63,94,0.28)";
+    ctx.fill();
+    ctx.strokeStyle = "#f43f5e";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // HP bar
+    const bw = 28;
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(t.x - bw / 2, t.y - t.r - 12, bw, 4);
+    ctx.fillStyle = "#4ade80";
+    ctx.fillRect(t.x - bw / 2, t.y - t.r - 12, bw * Math.max(0, t.hp / t.maxHp), 4);
+  }
+
+  // Drones & attack beams
+  for (const dr of drones) {
+    if (dr.locked && Math.hypot(dr.locked.x - dr.x, dr.locked.y - dr.y) < 38) {
+      ctx.beginPath();
+      ctx.moveTo(dr.x, dr.y);
+      ctx.lineTo(dr.locked.x, dr.locked.y);
+      ctx.strokeStyle = "#fde047";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(dr.x, dr.y, 9, 0, Math.PI * 2);
+    ctx.fillStyle = dr.locked ? "#fde047" : "#38d6ff";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Sparks
+  for (const s of sparks) {
+    ctx.globalAlpha = Math.max(0, s.life * 2.5);
+    ctx.fillStyle = s.color;
+    ctx.fillRect(s.x - 2, s.y - 2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+
+  // Cursor center node
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 6, 0, Math.PI * 2);
+  ctx.strokeStyle = anyLocked ? "#fde047" : "#aef0ff";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)";
+    ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "MENACE NEUTRALISÉE !" : (hp <= 0 ? "BOUCLIER PERCÉ" : "TEMPS ÉCOULÉ"), 256, 238);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

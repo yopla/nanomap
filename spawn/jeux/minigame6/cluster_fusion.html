@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Fusion d'Amas (Cluster Fusion)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #34d399; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.repel { background: #4c1d95; border-color: #c084fc; }
+  canvas { background: #060914; border: 2px solid #34d399; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: grab; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(52,211,153,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "cluster_fusion",
+  "name": "Fusion d'Amas (Cluster Fusion)",
+  "family": "topMouseMut",
+  "icon": "🫧",
+  "controls": "Pointeur / glisser ou ZQSD pour déplacer le puits de gravité • Clic, Espace ou 🧲 Polarité pour inverser Attraction / Répulsion",
+  "description": "Fusion du clustering stochastique Cluster Cluster (m89x, YqDt, ggGZ) et de l'agrégation en glyphes (n0HX) : 210 micro-particules colorées s'auto-assemblent par attraction/répulsion à courte portée. Guidez les 3 amas vers leurs zones cibles sur 3 vagues.",
+  "goal": "Verrouiller 78% des particules dans leurs zones de couleur correspondantes sur 3 manches en moins de 65 secondes.",
+  "fields": [
+    { "key": "targetRounds", "label": "Manches à valider", "type": "number", "default": 3 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🫧 Cluster Fusion</span>
+  <span id="stat">Manche 1/3 • 0% / 78% • 65s</span>
+  <div class="bar-btns">
+    <button id="polBtn" onclick="togglePolarity()" title="Basculer Attraction / Répulsion (Espace)">🧲 Attire</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Pointeur / ZQSD</b> : attirer les nuées (maintenir pour booster) • <b>Clic / Espace</b> : inverser Attraction / Répulsion • Triez chaque couleur dans sa zone
+</div>
+
+<script>
+const GAME_ID = "cluster_fusion";
+const SIZE = 512;
+const COUNT = 210;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const COLORS = ["#38d6ff", "#f472b6", "#facc15"];
+const ZONES_BY_ROUND = [
+  // Round 1: 3 orbital rings
+  [
+    { x: 135, y: 150, r: 66, label: "C1" },
+    { x: 377, y: 150, r: 66, label: "C2" },
+    { x: 256, y: 372, r: 66, label: "C3" }
+  ],
+  // Round 2: Diagonal triad
+  [
+    { x: 112, y: 390, r: 62, label: "A" },
+    { x: 256, y: 120, r: 62, label: "B" },
+    { x: 400, y: 390, r: 62, label: "C" }
+  ],
+  // Round 3: S - P - W glyph zones (n0HX.as)
+  [
+    { x: 112, y: 256, r: 60, label: "S" },
+    { x: 256, y: 256, r: 60, label: "P" },
+    { x: 400, y: 256, r: 60, label: "W" }
+  ]
+];
+
+let targetRounds = 3, durationSec = 65;
+let roundIdx = 0;
+let parts = [];
+let bursts = [];
+let well = { x: 256, y: 256, down: false };
+let repelMode = false;
+let keys = {};
+let lockPct = 0, timeLeft = 65, score = 0, won = false, over = false;
+let clusterRadius = 56;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function togglePolarity(force) {
+  repelMode = typeof force === "boolean" ? force : !repelMode;
+  const btn = document.getElementById("polBtn");
+  btn.textContent = repelMode ? "💥 Répulse" : "🧲 Attire";
+  btn.classList.toggle("repel", repelMode);
+}
+
+function scatterParticles() {
+  parts = [];
+  for (let i = 0; i < COUNT; i++) {
+    const col = i % 3;
+    parts.push({
+      x: 56 + Math.random() * (SIZE - 112),
+      y: 56 + Math.random() * (SIZE - 112),
+      vx: (Math.random() - 0.5) * 40,
+      vy: (Math.random() - 0.5) * 40,
+      col,
+      locked: false
+    });
+  }
+  clusterRadius = 52;
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetRounds = Math.max(1, Number(custom.targetRounds || 3));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  roundIdx = 0;
+  scatterParticles();
+  bursts = [];
+  well = { x: 256, y: 256, down: false };
+  togglePolarity(false);
+  lockPct = 0;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Manche ${Math.min(targetRounds, roundIdx + 1)}/${targetRounds} • ${Math.round(lockPct * 100)}%/78% • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  well.x = p.x;
+  well.y = p.y;
+  well.down = true;
+  if (e.button === 2) togglePolarity();
+  bursts.push({ x: p.x, y: p.y, r: 10, maxR: 120, life: 1, col: repelMode ? "#c084fc" : "#34d399" });
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  well.x = p.x;
+  well.y = p.y;
+});
+window.addEventListener("pointerup", () => { well.down = false; });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) {
+    togglePolarity();
+    bursts.push({ x: well.x, y: well.y, r: 10, maxR: 120, life: 1, col: repelMode ? "#c084fc" : "#34d399" });
+  }
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    clusterRadius = Math.min(96, clusterRadius + dt * 3.5);
+
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      const m = Math.hypot(kx, ky);
+      well.x = Math.max(20, Math.min(SIZE - 20, well.x + (kx / m) * 290 * dt));
+      well.y = Math.max(20, Math.min(SIZE - 20, well.y + (ky / m) * 290 * dt));
+    }
+
+    const zones = ZONES_BY_ROUND[roundIdx % ZONES_BY_ROUND.length];
+    const r2 = clusterRadius * clusterRadius;
+    const rRepel2 = r2 / 16; // m89x.as short-range repulsion kernel
+
+    // Stochastic Cluster-Cluster update (m89x.as / YqDt.as)
+    for (let i = 0; i < COUNT; i++) {
+      const p = parts[i];
+      for (let s = 0; s < 14; s++) {
+        const j = Math.floor(Math.random() * COUNT);
+        if (j === i) continue;
+        const o = parts[j];
+        const dx = o.x - p.x, dy = o.y - p.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 1e-4) continue;
+        const inv = 1 / Math.sqrt(d2);
+        if (o.col === p.col) {
+          if (d2 < r2) {
+            p.vx += dx * inv * 46 * dt;
+            p.vy += dy * inv * 46 * dt;
+          }
+          if (d2 < rRepel2) {
+            p.vx -= dx * inv * 130 * dt;
+            p.vy -= dy * inv * 130 * dt;
+          }
+        } else if (d2 < r2 * 0.55) {
+          // Different colors segregate (YqDt.as inverse)
+          p.vx -= dx * inv * 34 * dt;
+          p.vy -= dy * inv * 34 * dt;
+        }
+      }
+
+      // Mouse gravity well (ggGZ.as)
+      const mdx = well.x - p.x, mdy = well.y - p.y;
+      const md = Math.hypot(mdx, mdy);
+      if (md < 145 && md > 2) {
+        const strength = (well.down ? 440 : 210) * (1 - md / 145) * (repelMode ? -1.15 : 1);
+        p.vx += (mdx / md) * strength * dt;
+        p.vy += (mdy / md) * strength * dt;
+      }
+
+      // Gentle magnetic lock assist when particle enters its matching zone
+      const z = zones[p.col];
+      const zdx = z.x - p.x, zdy = z.y - p.y;
+      const zd = Math.hypot(zdx, zdy);
+      p.locked = zd < z.r;
+      if (p.locked) {
+        p.vx += zdx * 1.4 * dt;
+        p.vy += zdy * 1.4 * dt;
+      }
+
+      p.vx *= Math.pow(0.18, dt);
+      p.vy *= Math.pow(0.18, dt);
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+
+      if (p.x < 12) { p.x = 12; p.vx = Math.abs(p.vx); }
+      if (p.x > SIZE - 12) { p.x = SIZE - 12; p.vx = -Math.abs(p.vx); }
+      if (p.y < 12) { p.y = 12; p.vy = Math.abs(p.vy); }
+      if (p.y > SIZE - 12) { p.y = SIZE - 12; p.vy = -Math.abs(p.vy); }
+    }
+
+    let lockedCount = 0;
+    for (const p of parts) if (p.locked) lockedCount++;
+    lockPct = lockedCount / COUNT;
+
+    if (lockPct >= 0.78) {
+      score += 350 + Math.round(timeLeft * 6);
+      roundIdx++;
+      if (roundIdx >= targetRounds) {
+        won = true;
+        over = true;
+        score += Math.round(timeLeft * 18);
+      } else {
+        scatterParticles();
+        bursts.push({ x: 256, y: 256, r: 20, maxR: 260, life: 1, col: "#4ade80" });
+      }
+    }
+
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      bursts[i].r += 240 * dt;
+      bursts[i].life -= 2.2 * dt;
+      if (bursts[i].life <= 0) bursts.splice(i, 1);
+    }
+
+    if (timeLeft <= 0 && !over) {
+      won = roundIdx >= targetRounds;
+      over = true;
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Target formation zones
+  const zones = ZONES_BY_ROUND[roundIdx % ZONES_BY_ROUND.length];
+  for (let zi = 0; zi < 3; zi++) {
+    const z = zones[zi];
+    const col = COLORS[zi];
+    ctx.fillStyle = col + "18";
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = col;
+    ctx.font = "bold 22px sans-serif";
+    ctx.textAlign = "center";
+    ctx.globalAlpha = 0.32;
+    ctx.fillText(z.label, z.x, z.y + 8);
+    ctx.globalAlpha = 1;
+  }
+
+  // Particles
+  for (const p of parts) {
+    ctx.fillStyle = COLORS[p.col];
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.locked ? 4.4 : 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    if (p.locked) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+    }
+  }
+
+  // Bursts
+  for (const b of bursts) {
+    ctx.strokeStyle = b.col;
+    ctx.globalAlpha = Math.max(0, b.life);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Gravity cursor field
+  if (!over) {
+    ctx.strokeStyle = repelMode ? "rgba(192, 132, 252, 0.55)" : "rgba(52, 211, 153, 0.55)";
+    ctx.lineWidth = well.down ? 2.6 : 1.5;
+    ctx.beginPath(); ctx.arc(well.x, well.y, 145, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(well.x, well.y, 9, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "AMAS VERROUILLÉS !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`${Math.min(targetRounds, roundIdx)}/${targetRounds} manches • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Calligraphie Arabesque &amp; Volutes (Arabesque Curl)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #fb923c; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #070912; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(251,146,60,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "arabesque_curl",
+  "name": "Calligraphie Arabesque & Volutes (Arabesque Curl)",
+  "family": "topMouseMut",
+  "icon": "🌀",
+  "controls": "Balayer avec le curseur (ou ZQSD) pour tisser des arabesques et splines dorées (peID) • Clic/Espace : onde radiale de 30 vrilles (bT00)",
+  "description": "Fusion de WormMatrix (9os2, 4Yt7, 6X0Y, s2BC : rubans Bézier en matrices 2D récursives), bT00.as (onde radiale à 30 vrilles) et peID.as (gerbes de courbes dorées).",
+  "goal": "Tisser et capturer 22 esprits lumineux dans vos arabesques en moins de 60 secondes sans toucher 3 ronces rouges.",
+  "fields": [
+    { "key": "targetSpirits", "label": "Esprits à lier", "type": "number", "default": 22 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 60 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🌀 Arabesques</span>
+  <span id="stat">Esprits 0/22 • PV 3 • 60s</span>
+  <div class="bar-btns">
+    <button onclick="spawnRadialWave(ptr.x, ptr.y)" title="Onde radiale (Espace)">🌀 Onde</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Balayer</b> : rubans WormMatrix &amp; courbes dorées (<b>peID</b>) • <b>Clic / Espace</b> : onde radiale 30 vrilles (<b>bT00</b>)
+</div>
+
+<script>
+const GAME_ID = "arabesque_curl";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const inkCv = document.createElement("canvas");
+inkCv.width = SIZE; inkCv.height = SIZE;
+const inkCtx = inkCv.getContext("2d");
+
+let targetSpirits = 22, durationSec = 60;
+let worms = [];   // WormMatrix objects
+let curves = [];  // peID Spark curves
+let spirits = [];
+let thorns = [];
+let ptr = { x: 256, y: 256, px: 256, py: 256, down: false };
+let keys = {};
+let waveCd = 0, invuln = 0, spiritTimer = 0;
+let caught = 0, hp = 3, timeLeft = 60, score = 0, won = false, over = false;
+let lastTs = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function createWorm(x, y, ang, len, col, maxCount = 38) {
+  if (worms.length >= 110) worms.shift();
+  const dAngle = (Math.PI / 40 + Math.random() * (Math.PI / 7)) * (Math.random() < 0.5 ? 1 : -1);
+  worms.push({
+    x, y, ang, stepLen: Math.min(28, len),
+    dAngle, w: Math.max(2, len * 0.25),
+    count: 0, maxCount, col,
+    px1: x, py1: y, px2: x, py2: y
+  });
+}
+
+function spawnRadialWave(cx, cy) {
+  if (waveCd > 0) return;
+  waveCd = 0.8;
+  const num = 24;
+  for (let i = 0; i < num; i++) {
+    const a = (i / num) * Math.PI * 2;
+    createWorm(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18, a, 14 + Math.random() * 10, "#38d6ff", 28);
+  }
+}
+
+function spawnSpirit() {
+  if (spirits.length >= 6) return;
+  spirits.push({
+    x: 45 + Math.random() * (SIZE - 90),
+    y: 45 + Math.random() * (SIZE - 90),
+    vx: (Math.random() - 0.5) * 48,
+    vy: (Math.random() - 0.5) * 48,
+    r: 13,
+    pulse: Math.random() * 6.28
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetSpirits = Math.max(8, Number(custom.targetSpirits || 22));
+  durationSec = Math.max(20, Number(custom.durationSec || 60));
+
+  inkCtx.fillStyle = "#070912";
+  inkCtx.fillRect(0, 0, SIZE, SIZE);
+  worms = [];
+  curves = [];
+  spirits = [];
+  thorns = Array.from({ length: 5 }, (_, i) => {
+    const a = (i / 5) * Math.PI * 2;
+    return {
+      x: 256 + Math.cos(a) * 140,
+      y: 256 + Math.sin(a) * 140,
+      vx: Math.cos(a + 1.4) * 52,
+      vy: Math.sin(a + 1.4) * 52,
+      r: 14
+    };
+  });
+  for (let i = 0; i < 4; i++) spawnSpirit();
+
+  caught = 0; hp = 3; waveCd = 0; invuln = 0; spiritTimer = 0.5;
+  timeLeft = durationSec;
+  score = 0; won = false; over = false;
+  updateStat();
+}
+
+function updateStat() {
+  document.getElementById("stat").textContent =
+    `Esprits ${caught}/${targetSpirits} • PV ${hp} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, ((e.clientX - r.left) / r.width) * SIZE)),
+    y: Math.max(0, Math.min(SIZE, ((e.clientY - r.top) / r.height) * SIZE))
+  };
+}
+
+function spawnGestureInk(x0, y0, x1, y1) {
+  const vx = x1 - x0, vy = y1 - y0;
+  const dist = Math.hypot(vx, vy);
+  if (dist > 8) {
+    const palette = ["#fb923c", "#f472b6", "#facc15", "#e2e8f0"];
+    createWorm(x1, y1, Math.atan2(vy, vx), Math.min(40, dist), palette[(Math.random() * palette.length) | 0], 36);
+    inkCtx.strokeStyle = "rgba(251, 146, 60, 0.5)";
+    inkCtx.lineWidth = 1.5;
+    inkCtx.beginPath(); inkCtx.moveTo(x0, y0); inkCtx.lineTo(x1, y1); inkCtx.stroke();
+  }
+  if (curves.length < 40) {
+    const a = Math.random() * Math.PI * 2;
+    curves.push({ pts: [{ x: x1 + Math.cos(a) * 6, y: y1 + Math.sin(a) * 6 }], age: 0, max: 18 });
+  }
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.px = ptr.x = p.x; ptr.py = ptr.y = p.y; ptr.down = true;
+  spawnRadialWave(p.x, p.y);
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  spawnGestureInk(ptr.x, ptr.y, p.x, p.y);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+cv.addEventListener("pointerup", () => { ptr.down = false; });
+cv.addEventListener("pointercancel", () => { ptr.down = false; });
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (e.code === "Space") { e.preventDefault(); if (!over) spawnRadialWave(ptr.x, ptr.y); }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function step(dt) {
+  if (over) return;
+
+  const spd = 260;
+  let kx = 0, ky = 0;
+  if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+  if (keys.ArrowRight || keys.KeyD) kx += 1;
+  if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+  if (keys.ArrowDown || keys.KeyS) ky += 1;
+  if (kx || ky) {
+    const nx = Math.max(12, Math.min(SIZE - 12, ptr.x + kx * spd * dt));
+    const ny = Math.max(12, Math.min(SIZE - 12, ptr.y + ky * spd * dt));
+    spawnGestureInk(ptr.x, ptr.y, nx, ny);
+    ptr.x = nx; ptr.y = ny;
+  }
+
+  if (waveCd > 0) waveCd -= dt;
+  if (invuln > 0) invuln -= dt;
+
+  timeLeft = Math.max(0, timeLeft - dt);
+  if (timeLeft <= 0) {
+    over = true; won = caught >= targetSpirits;
+    updateStat(); return;
+  }
+
+  spiritTimer -= dt;
+  if (spiritTimer <= 0) { spawnSpirit(); spiritTimer = 0.85; }
+
+  // Soft fade on offscreen ink canvas
+  inkCtx.fillStyle = "rgba(7, 9, 18, 0.045)";
+  inkCtx.fillRect(0, 0, SIZE, SIZE);
+
+  // Step WormMatrix tendrils
+  for (let i = worms.length - 1; i >= 0; i--) {
+    const w = worms[i];
+    w.ang += w.dAngle * (dt * 45);
+    w.stepLen *= 0.96;
+    w.w *= 0.96;
+    const nx = w.x + Math.cos(w.ang) * w.stepLen * dt * 28;
+    const ny = w.y + Math.sin(w.ang) * w.stepLen * dt * 28;
+    const perp = w.ang + Math.PI / 2;
+    const x1 = nx - Math.cos(perp) * w.w;
+    const y1 = ny - Math.sin(perp) * w.w;
+    const x2 = nx + Math.cos(perp) * w.w;
+    const y2 = ny + Math.sin(perp) * w.w;
+
+    inkCtx.fillStyle = w.col;
+    inkCtx.beginPath();
+    inkCtx.moveTo(w.px1, w.py1);
+    inkCtx.lineTo(x1, y1);
+    inkCtx.lineTo(x2, y2);
+    inkCtx.lineTo(w.px2, w.py2);
+    inkCtx.closePath();
+    inkCtx.fill();
+
+    w.x = nx; w.y = ny;
+    w.px1 = x1; w.py1 = y1; w.px2 = x2; w.py2 = y2;
+    w.count++;
+
+    // Check spirit capture
+    for (let j = spirits.length - 1; j >= 0; j--) {
+      const sp = spirits[j];
+      if (Math.hypot(w.x - sp.x, w.y - sp.y) < sp.r + 14) {
+        caught++;
+        score += 110;
+        spirits.splice(j, 1);
+        if (caught >= targetSpirits) {
+          over = true; won = true;
+          score += Math.round(timeLeft * 20);
+          updateStat(); return;
+        }
+      }
+    }
+
+    if (w.count >= w.maxCount || w.stepLen < 0.8) worms.splice(i, 1);
+  }
+
+  // Step peID golden curves
+  for (let i = curves.length - 1; i >= 0; i--) {
+    const c = curves[i];
+    const last = c.pts[c.pts.length - 1];
+    const a = Math.random() * Math.PI * 2;
+    const nx = last.x + Math.cos(a) * 14;
+    const ny = last.y + Math.sin(a) * 14;
+    c.pts.push({ x: nx, y: ny });
+    inkCtx.strokeStyle = "rgba(250, 204, 21, 0.35)";
+    inkCtx.lineWidth = 1.4;
+    inkCtx.beginPath(); inkCtx.moveTo(last.x, last.y); inkCtx.lineTo(nx, ny); inkCtx.stroke();
+    c.age++;
+    if (c.age >= c.max) curves.splice(i, 1);
+  }
+
+  // Spirits & thorns
+  for (const sp of spirits) {
+    sp.pulse += dt * 4;
+    sp.x += sp.vx * dt; sp.y += sp.vy * dt;
+    if (sp.x < 24 || sp.x > SIZE - 24) sp.vx *= -1;
+    if (sp.y < 24 || sp.y > SIZE - 24) sp.vy *= -1;
+  }
+
+  for (const th of thorns) {
+    th.x += th.vx * dt; th.y += th.vy * dt;
+    if (th.x < 20 || th.x > SIZE - 20) th.vx *= -1;
+    if (th.y < 20 || th.y > SIZE - 20) th.vy *= -1;
+    if (invuln <= 0 && Math.hypot(th.x - ptr.x, th.y - ptr.y) < th.r + 9) {
+      hp--;
+      invuln = 1.2;
+      if (hp <= 0) { over = true; won = false; updateStat(); return; }
+    }
+  }
+
+  updateStat();
+}
+
+function draw() {
+  ctx.drawImage(inkCv, 0, 0);
+
+  for (const sp of spirits) {
+    const r = sp.r + Math.sin(sp.pulse) * 2;
+    ctx.fillStyle = "rgba(253, 224, 71, 0.25)";
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, r + 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#fde047";
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "#fef9c3";
+    ctx.beginPath(); ctx.arc(sp.x, sp.y, 4.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  for (const th of thorns) {
+    ctx.fillStyle = "rgba(239, 68, 68, 0.85)";
+    ctx.strokeStyle = "#fda4af";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      const rad = k % 2 === 0 ? th.r : th.r * 0.5;
+      if (k === 0) ctx.moveTo(th.x + Math.cos(a) * rad, th.y + Math.sin(a) * rad);
+      else ctx.lineTo(th.x + Math.cos(a) * rad, th.y + Math.sin(a) * rad);
+    }
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  }
+
+  if (!over) {
+    ctx.strokeStyle = invuln > 0 ? "#f87171" : "#38d6ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 10, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(5, 8, 18, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "VOLUTES ACCOMPLIES !" : (hp <= 0 ? "BRISÉ PAR LES RONCES" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Esprits ${caught}/${targetSpirits} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+}
+
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

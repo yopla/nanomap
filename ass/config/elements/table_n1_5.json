@@ -1,0 +1,1315 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "lumiere",
+			"name": "Lumière",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "☀️",
+			"color": "#ffe066",
+			"description": "Rayonnement pur dissipant les ténèbres.",
+			"recipe": []
+		},
+		{
+			"id": "ombre",
+			"name": "Ombre",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🌑",
+			"color": "#7b6d8d",
+			"description": "Voile dense d'énergie occulte.",
+			"recipe": []
+		},
+		{
+			"id": "ether",
+			"name": "Éther",
+			"level": 1,
+			"biome": "desert_ionique",
+			"icon": "✨",
+			"color": "#70e4ff",
+			"description": "Substance subtile reliant les mondes.",
+			"recipe": []
+		},
+		{
+			"id": "metal",
+			"name": "Métal",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "⚙️",
+			"color": "#b0bcc9",
+			"description": "Alliage brut forgé dans la croûte.",
+			"recipe": []
+		},
+		{
+			"id": "flore",
+			"name": "Flore",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🌿",
+			"color": "#52e585",
+			"description": "Essence végétale vivante et régénératrice.",
+			"recipe": []
+		},
+		{
+			"id": "n2_lumiere_ombre",
+			"name": "Alliage Fongique (Lumière-Ombre)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Lumière et Ombre (Cinq Essences).",
+			"recipe": [
+				"lumiere",
+				"ombre"
+			]
+		},
+		{
+			"id": "n2_lumiere_ether",
+			"name": "Essence Ancien (Lumière-Éther)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Lumière et Éther (Cinq Essences).",
+			"recipe": [
+				"lumiere",
+				"ether"
+			]
+		},
+		{
+			"id": "n2_lumiere_metal",
+			"name": "Éclat Solaire (Lumière-Métal)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Lumière et Métal (Cinq Essences).",
+			"recipe": [
+				"lumiere",
+				"metal"
+			]
+		},
+		{
+			"id": "n2_lumiere_flore",
+			"name": "Cœur Fulgurant (Lumière-Flore)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Lumière et Flore (Cinq Essences).",
+			"recipe": [
+				"lumiere",
+				"flore"
+			]
+		},
+		{
+			"id": "n2_ombre_ether",
+			"name": "Poudre Argenté (Ombre-Éther)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Ombre et Éther (Cinq Essences).",
+			"recipe": [
+				"ombre",
+				"ether"
+			]
+		},
+		{
+			"id": "n2_ombre_metal",
+			"name": "Sève Glacial (Ombre-Métal)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Ombre et Métal (Cinq Essences).",
+			"recipe": [
+				"ombre",
+				"metal"
+			]
+		},
+		{
+			"id": "n2_ombre_flore",
+			"name": "Vapeur Vif (Ombre-Flore)",
+			"level": 2,
+			"icon": "☁️",
+			"color": "#c7d8eb",
+			"description": "Résultat de niveau 2 obtenu en combinant Ombre et Flore (Cinq Essences).",
+			"recipe": [
+				"ombre",
+				"flore"
+			]
+		},
+		{
+			"id": "n2_ether_metal",
+			"name": "Braise Magnétique (Éther-Métal)",
+			"level": 2,
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Résultat de niveau 2 obtenu en combinant Éther et Métal (Cinq Essences).",
+			"recipe": [
+				"ether",
+				"metal"
+			]
+		},
+		{
+			"id": "n2_ether_flore",
+			"name": "Quartz Arcanique (Éther-Flore)",
+			"level": 2,
+			"icon": "🔮",
+			"color": "#c985ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Éther et Flore (Cinq Essences).",
+			"recipe": [
+				"ether",
+				"flore"
+			]
+		},
+		{
+			"id": "n2_metal_flore",
+			"name": "Nectar Doré (Métal-Flore)",
+			"level": 2,
+			"icon": "🍯",
+			"color": "#f5c25b",
+			"description": "Résultat de niveau 2 obtenu en combinant Métal et Flore (Cinq Essences).",
+			"recipe": [
+				"metal",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_lumiere_ether",
+			"name": "Noyau Dense (Alliage-(Lumière-Éther))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Essence Ancien (Lumière-Éther) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_lumiere_ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_lumiere_metal",
+			"name": "Relique Sacré (Alliage-(Lumière-Métal))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Éclat Solaire (Lumière-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_lumiere_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_lumiere_flore",
+			"name": "Matrice Abyssal (Alliage-(Lumière-Flore))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Cœur Fulgurant (Lumière-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_lumiere_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_ombre_ether",
+			"name": "Prisme Incandescent (Alliage-(Ombre-Éther))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Poudre Argenté (Ombre-Éther) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_ombre_ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_ombre_metal",
+			"name": "Orbe Cristallin (Alliage-(Ombre-Métal))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Sève Glacial (Ombre-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_ombre_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_ombre_flore",
+			"name": "Catalyseur Pur (Alliage-(Ombre-Flore))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Vapeur Vif (Ombre-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_ombre_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_ether_metal",
+			"name": "Talisman Raffiné (Alliage-(Éther-Métal))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_ether_flore",
+			"name": "Condensat Stellaire (Alliage-(Éther-Flore))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_n2_metal_flore",
+			"name": "Lingot Givré (Alliage-(Métal-Flore))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_lumiere_metal",
+			"name": "Fiole Ardent (Essence-(Lumière-Métal))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Éclat Solaire (Lumière-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_lumiere_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_lumiere_flore",
+			"name": "Golem Ionique (Essence-(Lumière-Flore))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Cœur Fulgurant (Lumière-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_lumiere_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_ombre_ether",
+			"name": "Couronne Brut (Essence-(Ombre-Éther))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Poudre Argenté (Ombre-Éther) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_ombre_ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_ombre_metal",
+			"name": "Noyau Lunaire (Essence-(Ombre-Métal))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Sève Glacial (Ombre-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_ombre_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_ombre_flore",
+			"name": "Relique Serein (Essence-(Ombre-Flore))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Vapeur Vif (Ombre-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_ombre_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_ether_metal",
+			"name": "Matrice Opalescent (Essence-(Éther-Métal))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_ether_flore",
+			"name": "Prisme Fongique (Essence-(Éther-Flore))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_n2_metal_flore",
+			"name": "Orbe Ancien (Essence-(Métal-Flore))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_lumiere_flore",
+			"name": "Catalyseur Solaire (Éclat-(Lumière-Flore))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Cœur Fulgurant (Lumière-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_lumiere_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_ombre_ether",
+			"name": "Talisman Fulgurant (Éclat-(Ombre-Éther))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Poudre Argenté (Ombre-Éther) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_ombre_ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_ombre_metal",
+			"name": "Condensat Argenté (Éclat-(Ombre-Métal))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Sève Glacial (Ombre-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_ombre_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_ombre_flore",
+			"name": "Lingot Glacial (Éclat-(Ombre-Flore))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Vapeur Vif (Ombre-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_ombre_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_ether_metal",
+			"name": "Fiole Vif (Éclat-(Éther-Métal))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_ether_flore",
+			"name": "Golem Magnétique (Éclat-(Éther-Flore))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_n2_metal_flore",
+			"name": "Couronne Arcanique (Éclat-(Métal-Flore))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_n2_ombre_ether",
+			"name": "Noyau Doré (Cœur-(Ombre-Éther))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Poudre Argenté (Ombre-Éther) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"n2_ombre_ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_n2_ombre_metal",
+			"name": "Relique Volcanique (Cœur-(Ombre-Métal))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Sève Glacial (Ombre-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"n2_ombre_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_n2_ombre_flore",
+			"name": "Matrice Sombre (Cœur-(Ombre-Flore))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Vapeur Vif (Ombre-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"n2_ombre_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_n2_ether_metal",
+			"name": "Prisme Harmonieux (Cœur-(Éther-Métal))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_n2_ether_flore",
+			"name": "Orbe Tellurique (Cœur-(Éther-Flore))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_n2_metal_flore",
+			"name": "Catalyseur Obsidien (Cœur-(Métal-Flore))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_n2_ombre_metal",
+			"name": "Talisman Astral (Poudre-(Ombre-Métal))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Sève Glacial (Ombre-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"n2_ombre_metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_n2_ombre_flore",
+			"name": "Condensat Lumineux (Poudre-(Ombre-Flore))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Vapeur Vif (Ombre-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"n2_ombre_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_n2_ether_metal",
+			"name": "Lingot Instable (Poudre-(Éther-Métal))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_n2_ether_flore",
+			"name": "Fiole Céleste (Poudre-(Éther-Flore))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_n2_metal_flore",
+			"name": "Golem Smaragdin (Poudre-(Métal-Flore))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_n2_ombre_flore",
+			"name": "Couronne Éthéré (Sève-(Ombre-Flore))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Vapeur Vif (Ombre-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"n2_ombre_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_n2_ether_metal",
+			"name": "Noyau Dense (Sève-(Éther-Métal))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_n2_ether_flore",
+			"name": "Relique Sacré (Sève-(Éther-Flore))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_n2_metal_flore",
+			"name": "Matrice Abyssal (Sève-(Métal-Flore))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_n2_ether_metal",
+			"name": "Prisme Incandescent (Vapeur-(Éther-Métal))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Braise Magnétique (Éther-Métal) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"n2_ether_metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_n2_ether_flore",
+			"name": "Orbe Cristallin (Vapeur-(Éther-Flore))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_n2_metal_flore",
+			"name": "Catalyseur Pur (Vapeur-(Métal-Flore))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_n2_ether_flore",
+			"name": "Talisman Raffiné (Braise-(Éther-Flore))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Quartz Arcanique (Éther-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"n2_ether_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_n2_metal_flore",
+			"name": "Condensat Stellaire (Braise-(Métal-Flore))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_ether_flore_n2_metal_flore",
+			"name": "Lingot Givré (Quartz-(Métal-Flore))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Quartz Arcanique (Éther-Flore) et Nectar Doré (Métal-Flore) (Cinq Essences).",
+			"recipe": [
+				"n2_ether_flore",
+				"n2_metal_flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_lumiere",
+			"name": "Fiole Ardent (Alliage-Lumière)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_ombre",
+			"name": "Golem Ionique (Alliage-Ombre)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_ether",
+			"name": "Couronne Brut (Alliage-Éther)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_metal",
+			"name": "Noyau Lunaire (Alliage-Métal)",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ombre_flore",
+			"name": "Relique Serein (Alliage-Flore)",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Lumière-Ombre) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ombre",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_lumiere",
+			"name": "Matrice Opalescent (Essence-Lumière)",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_ombre",
+			"name": "Prisme Fongique (Essence-Ombre)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_ether",
+			"name": "Orbe Ancien (Essence-Éther)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_metal",
+			"name": "Catalyseur Solaire (Essence-Métal)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_ether_flore",
+			"name": "Talisman Fulgurant (Essence-Flore)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Lumière-Éther) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_ether",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_lumiere",
+			"name": "Condensat Argenté (Éclat-Lumière)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_ombre",
+			"name": "Lingot Glacial (Éclat-Ombre)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_ether",
+			"name": "Fiole Vif (Éclat-Éther)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_metal",
+			"name": "Golem Magnétique (Éclat-Métal)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_metal_flore",
+			"name": "Couronne Arcanique (Éclat-Flore)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Lumière-Métal) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_metal",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_lumiere",
+			"name": "Noyau Doré (Cœur-Lumière)",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_ombre",
+			"name": "Relique Volcanique (Cœur-Ombre)",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_ether",
+			"name": "Matrice Sombre (Cœur-Éther)",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_metal",
+			"name": "Prisme Harmonieux (Cœur-Métal)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_lumiere_flore_flore",
+			"name": "Orbe Tellurique (Cœur-Flore)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Lumière-Flore) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_lumiere_flore",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_lumiere",
+			"name": "Catalyseur Obsidien (Poudre-Lumière)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_ombre",
+			"name": "Talisman Astral (Poudre-Ombre)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_ether",
+			"name": "Condensat Lumineux (Poudre-Éther)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_metal",
+			"name": "Lingot Instable (Poudre-Métal)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_ether_flore",
+			"name": "Fiole Céleste (Poudre-Flore)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Ombre-Éther) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_ether",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_lumiere",
+			"name": "Golem Smaragdin (Sève-Lumière)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_ombre",
+			"name": "Couronne Éthéré (Sève-Ombre)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_ether",
+			"name": "Noyau Dense (Sève-Éther)",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_metal",
+			"name": "Relique Sacré (Sève-Métal)",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_metal_flore",
+			"name": "Matrice Abyssal (Sève-Flore)",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Ombre-Métal) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_metal",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_lumiere",
+			"name": "Prisme Incandescent (Vapeur-Lumière)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_ombre",
+			"name": "Orbe Cristallin (Vapeur-Ombre)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_ether",
+			"name": "Catalyseur Pur (Vapeur-Éther)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_metal",
+			"name": "Talisman Raffiné (Vapeur-Métal)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_ombre_flore_flore",
+			"name": "Condensat Stellaire (Vapeur-Flore)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Ombre-Flore) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_ombre_flore",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_lumiere",
+			"name": "Lingot Givré (Braise-Lumière)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_ombre",
+			"name": "Fiole Ardent (Braise-Ombre)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_ether",
+			"name": "Golem Ionique (Braise-Éther)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_metal",
+			"name": "Couronne Brut (Braise-Métal)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_ether_metal_flore",
+			"name": "Noyau Lunaire (Braise-Flore)",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Éther-Métal) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_ether_metal",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_ether_flore_lumiere",
+			"name": "Relique Serein (Quartz-Lumière)",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Quartz Arcanique (Éther-Flore) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_ether_flore",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_ether_flore_ombre",
+			"name": "Matrice Opalescent (Quartz-Ombre)",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Quartz Arcanique (Éther-Flore) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_ether_flore",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_ether_flore_ether",
+			"name": "Prisme Fongique (Quartz-Éther)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Quartz Arcanique (Éther-Flore) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_ether_flore",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_ether_flore_metal",
+			"name": "Orbe Ancien (Quartz-Métal)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Quartz Arcanique (Éther-Flore) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_ether_flore",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_ether_flore_flore",
+			"name": "Catalyseur Solaire (Quartz-Flore)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Quartz Arcanique (Éther-Flore) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_ether_flore",
+				"flore"
+			]
+		},
+		{
+			"id": "n3_n2_metal_flore_lumiere",
+			"name": "Talisman Fulgurant (Nectar-Lumière)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Nectar Doré (Métal-Flore) et Lumière (Cinq Essences).",
+			"recipe": [
+				"n2_metal_flore",
+				"lumiere"
+			]
+		},
+		{
+			"id": "n3_n2_metal_flore_ombre",
+			"name": "Condensat Argenté (Nectar-Ombre)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Nectar Doré (Métal-Flore) et Ombre (Cinq Essences).",
+			"recipe": [
+				"n2_metal_flore",
+				"ombre"
+			]
+		},
+		{
+			"id": "n3_n2_metal_flore_ether",
+			"name": "Lingot Glacial (Nectar-Éther)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Nectar Doré (Métal-Flore) et Éther (Cinq Essences).",
+			"recipe": [
+				"n2_metal_flore",
+				"ether"
+			]
+		},
+		{
+			"id": "n3_n2_metal_flore_metal",
+			"name": "Fiole Vif (Nectar-Métal)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Nectar Doré (Métal-Flore) et Métal (Cinq Essences).",
+			"recipe": [
+				"n2_metal_flore",
+				"metal"
+			]
+		},
+		{
+			"id": "n3_n2_metal_flore_flore",
+			"name": "Golem Magnétique (Nectar-Flore)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Nectar Doré (Métal-Flore) et Flore (Cinq Essences).",
+			"recipe": [
+				"n2_metal_flore",
+				"flore"
+			]
+		}
+	]
+}

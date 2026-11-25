@@ -1,0 +1,377 @@
+{
+	"minigames": [
+		{
+			"controls": "Maintenir Clic/Toucher (ou Espace) pour projeter une rafale de cœurs néon • Clic rapide pour un grand cœur Bézier chargé • ZQSD/Flèches déplace le curseur",
+			"custom": {
+				"targetGoal": 24,
+				"durationSec": 60
+			},
+			"description": "Fusion de 4CD8.as, spjD.as, qkRJ.as et qX2N.as (NeonHearts) : des cœurs paramétriques de Bézier se tracent progressivement en mode additif avec halo néon et chutent en easeInBack rotatif.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "neon_hearts.html",
+			"goal": "Charger 24 essences dorées dérivantes avec vos cœurs néon en moins de 60 secondes sans laisser 5 ombres rouges franchir le bas.",
+			"icon": "❤️",
+			"id": "neon_hearts",
+			"name": "Pluie de Cœurs Néon (Neon Hearts)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 8,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Cliquer pour planter une graine ramifiée (gpIT/zN1K) • Glisser pour projeter des racines directionnelles (tW0L) • Espace ou bouton 🌱/💨 bascule le mode (ZQSD déplace)",
+			"custom": {
+				"targetNodes": 10,
+				"durationSec": 65
+			},
+			"description": "Fusion de gpIT.as (Rampant Growth auto-évitant par lecture pixel), zN1K.as (ramifications en cascade), tW0L.as (jets de particules à 4 générations) et 5NRa.as (éclosion de bourgeons en fin de jauge hp).",
+			"enabled": true,
+			"family": "tactical",
+			"filename": "root_territory.html",
+			"goal": "Faire éclore 10 nœuds nutritifs dorés avec vos racines en moins de 65 secondes sans déclencher 3 poches toxiques rouges.",
+			"icon": "🌿",
+			"id": "root_territory",
+			"name": "Réseau de Racines Auto-Évitantes (Root Territory)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 6,
+				"scan": 7,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Cliquer sur le sol pour créer une motte, cliquer sur une motte pour faire pousser l'arbre (ou tailler un arbre parasité) • Espace/1-4 change d'espèce • ZQSD déplace le curseur",
+			"custom": {
+				"targetPollen": 25,
+				"durationSec": 65
+			},
+			"description": "Fusion de 9 scripts botaniques (lXk5, ePOA Sakura + rafales de pétales, grammaires CFDG eqky/tTkK/zIfd, arbre d'automne wX3y, graines 4t2u/j4h8 et lianes à bulles x3Bj) : cultivez un verger procédural vivant.",
+			"enabled": true,
+			"family": "zooEcosys",
+			"filename": "sakura_bonsai.html",
+			"goal": "Récolter 25 fleurs de pollen doré en moins de 65 secondes tout en taillant les arbres infectés avant que la corruption n'atteigne 100 %.",
+			"icon": "🌸",
+			"id": "sakura_bonsai",
+			"name": "Verger Sakura & Grammaires Botaniques (Sakura Bonsai)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 5,
+				"lum": 7,
+				"scan": 7,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Déplacer le curseur (ou ZQSD/Flèches) : X ouvre l'angle fractal et courbe la forêt, Y règle la hauteur • Clic/Espace replie brièvement la canopée pour esquiver les éclairs",
+			"custom": {
+				"targetFireflies": 28,
+				"durationSec": 60
+			},
+			"description": "Fusion de yvTY.as (forêt qui se courbe vers le curseur), xJhT.as (arbre fractal interactif 0-90°), 9KQy.as (sapin dans la brise), 3QhW.as (palmes élastiques) et mFSu.as (pluie d'herbe ascendante).",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "wind_canopy.html",
+			"goal": "Capturer 28 lucioles dorées dans vos branches en moins de 60 secondes tout en esquivant les éclairs rouges (3 PV).",
+			"icon": "🌬️",
+			"id": "wind_canopy",
+			"name": "Canopée Fractale & Forêt au Vent (Wind Canopy)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Balayer avec le curseur (ou ZQSD) pour tisser des arabesques et splines dorées (peID) • Clic/Espace : onde radiale de 30 vrilles (bT00)",
+			"custom": {
+				"targetSpirits": 22,
+				"durationSec": 60
+			},
+			"description": "Fusion de WormMatrix (9os2, 4Yt7, 6X0Y, s2BC : rubans Bézier en matrices 2D récursives), bT00.as (onde radiale à 30 vrilles) et peID.as (gerbes de courbes dorées).",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "arabesque_curl.html",
+			"goal": "Tisser et capturer 22 esprits lumineux dans vos arabesques en moins de 60 secondes sans toucher 3 ronces rouges.",
+			"icon": "🌀",
+			"id": "arabesque_curl",
+			"name": "Calligraphie Arabesque & Volutes (Arabesque Curl)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Glisser (ou ZQSD/Flèches) pour faire pivoter l'arbre et les tresses en 3D • Clic double / Espace : propager une nouvelle pousse de branches/tresses",
+			"custom": {
+				"targetRings": 18,
+				"durationSec": 65
+			},
+			"description": "Fusion de ayGb.as / Tree.as (arbre fractal 3D en rotation Matrix3D) et diu3.as (tresses néon sur grille voxel 3D X×Y×Z en mode additif) : alignez vos cimes 3D en croissance avec les anneaux orbitaux.",
+			"enabled": true,
+			"family": "core",
+			"filename": "braid_tree_3d.html",
+			"goal": "Aligner 18 anneaux orbitaux dorés avec les pointes de votre sculpture 3D en moins de 65 secondes sans heurter 3 sphères d'ombre.",
+			"icon": "🌳",
+			"id": "braid_tree_3d",
+			"name": "Sculpture 3D : Arbre & Tresses Voxel (Braid Tree 3D)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Glisser pour tracer une courbe musicale (ou ZQSD + Espace) • Au relâchement, la bille parcourt le tracé en boucle aller-retour • Clic droit / Espace efface pour redessiner",
+			"custom": {
+				"targetChimes": 24,
+				"durationSec": 65
+			},
+			"description": "Fusion de 5Ujz.as (DrawSound avec arpégiateur pentatonique japonais Ajap : X = hauteur, Y = durée) et 5N1L.as (Particle Light : étincelles HSV floutées en mode additif).",
+			"enabled": true,
+			"family": "core",
+			"filename": "drawsound_ribbon.html",
+			"goal": "Activer 24 carillons lumineux en guidant la bille musicale le long de vos tracés en moins de 65 secondes.",
+			"icon": "🎵",
+			"id": "drawsound_ribbon",
+			"name": "Ruban Musical & Arpégiateur (DrawSound Ribbon)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur / ZQSD pour piloter le feu-follet à ressort • Maintenir Clic / Toucher / Espace pour déclencher des salves d'explosions multi-anneaux",
+			"custom": {
+				"targetKills": 22,
+				"durationSec": 60
+			},
+			"description": "Fusion de ParticleSample.as (3_89zG : feu-follet à suivi ressort et flammèches additives) et aGoH.as (Explosions anime à anneaux radiaux Back.easeInOut / Expo.easeOut).",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "feu_follet_blast.html",
+			"goal": "Pulvériser 22 cibles spectrales avec vos salves d'explosions en moins de 60 secondes sans perdre vos 3 cœurs.",
+			"icon": "✨",
+			"id": "feu_follet_blast",
+			"name": "Feu Follet & Salves Plasma (Feu Follet Blast)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 8,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Balayer / glisser vite (ou ZQSD + Espace) pour lancer des gouttes en cloche 3D (axe z) par-dessus les murets",
+			"custom": {
+				"targetCanvases": 5,
+				"durationSec": 65
+			},
+			"description": "Adapté de iqoO.as (dripping, breeding) : votre élan projette des gouttes en perspective 3D (vz -= 0.5) qui franchissent les obstacles et s'écrasent au sol en mode DARKEN puis se diffusent en aquarelle.",
+			"enabled": true,
+			"family": "core",
+			"filename": "dripping_splatter.html",
+			"goal": "Peindre les 5 toiles cibles à 100 % en moins de 65 secondes tout en évitant plus de 15 taches sur les zones interdites rouges.",
+			"icon": "🎨",
+			"id": "dripping_splatter",
+			"name": "Éclaboussures 3D & Aquarelle (Dripping Splatter)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Déplacer le bouclier circulaire (Souris/Toucher ou ZQSD) pour faire éclabousser la pluie sur les glyphes invisibles et repousser la pluie acide rouge",
+			"custom": {
+				"targetGlyphs": 5,
+				"durationSec": 65
+			},
+			"description": "Fusion de yTGI.as / Main.as (Stardust Rain : déflecteur circulaire générant des éclaboussures), 94UE.as (RainyDay : freinage et rebond sur forceMap invisible) et mfSI.as (LightWater : colonnes lumineuses en ADD).",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "rain_shield_reveal.html",
+			"goal": "Révéler et charger 5 glyphes cachés sous l'averse en moins de 65 secondes tout en protégeant la flamme sacrée au sol (3 PV).",
+			"icon": "☔",
+			"id": "rain_shield_reveal",
+			"name": "Parapluie & Pluie Révélatrice (Rain Shield Reveal)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Glisser sur la vitre pour orienter/pousser les gouttes et provoquer des fusions • Clic / Espace dépose une grosse goutte d'amorce (ZQSD déplace)",
+			"custom": {
+				"targetDrops": 18,
+				"durationSec": 65
+			},
+			"description": "Adapté de v5eZ.as (窓を流れる雨風 — gouttes sur vitre) : les petites gouttes adhèrent à la vitre ; lorsqu'elles fusionnent (conservation de l'aire πr²) et dépassent r > 6, elles dévalent en s'étirant et en entraînant les autres.",
+			"enabled": true,
+			"family": "core",
+			"filename": "window_raindrops.html",
+			"goal": "Faire glisser 18 gouttes lourdes (r > 6) dans les 3 rigoles vertes du bas en moins de 65 secondes en évitant plus de 6 pertes sur les plaques de givre rouges.",
+			"icon": "💧",
+			"id": "window_raindrops",
+			"name": "Gouttes sur Vitre & Fusion (Window Raindrops)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Maintenir Clic / Toucher (ou Espace) pour projeter des disques tourbillonnants • Chaque clic bascule Jet droit / Éventail (jfzN) • ZQSD déplace le lanceur",
+			"custom": {
+				"targetHanabi": 16,
+				"durationSec": 65
+			},
+			"description": "Fusion de jfzN.as (fontaine de disques tourbillonnants à deux régimes sous gravité) et ad59.as (HANABI : lanceurs toroïdaux projetant des gerbes lumineuses additives).",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "hanabi_fountain.html",
+			"goal": "Allumer 16 bouquets Hanabi en touchant les lanceurs dérivants avec votre fontaine en moins de 65 secondes.",
+			"icon": "🎆",
+			"id": "hanabi_fountain",
+			"name": "Feux d'Artifice & Fontaine (Hanabi Fountain)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 8,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Glisser / déplacer le souffleur (ou Flèches/ZQSD) pour souffler des courants d'air • Clic / Espace donne une bouffée vers le haut qui retourne les confettis",
+			"custom": {
+				"targetCaught": 24,
+				"durationSec": 60
+			},
+			"description": "Adapté de tVmM.as (なんちゃって紙ふぶき Kamikire) : 240 carrés de papier bifaces (face colorée / dos gris) tournent en 3D autour d'axes unitaires (Ax,Ay,Az) en flottant dans un espace torique.",
+			"enabled": true,
+			"family": "core",
+			"filename": "kamikire_confetti.html",
+			"goal": "Souffler et guider 24 confettis côté FACE COLORÉE dans le panier doré en bas en moins de 60 secondes.",
+			"icon": "🎊",
+			"id": "kamikire_confetti",
+			"name": "Pluie de Confettis 3D (Kamikire Confetti)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Cliquer dans le vide pour poser une bougie (max 5) • Glisser sur une bougie pour la déplacer • Espace pose une bougie au curseur (ZQSD déplace)",
+			"custom": {
+				"durationSec": 65
+			},
+			"description": "Adapté de zX3D.as et m2mk.as (【AS100本ノック】11回目：ろうそく) : des bougies à flamme vacillante dont la cire fond lentement projettent entre elles de véritables cônes d'ombre tangents doux avec pénombre.",
+			"enabled": true,
+			"family": "tactical",
+			"filename": "candle_shadows.html",
+			"goal": "Charger simultanément les 3 cristaux d'or (lumière) et les 2 cristaux d'obsidienne (cône d'ombre d'une bougie) jusqu'à 100 % en moins de 65 secondes.",
+			"icon": "🕯️",
+			"id": "candle_shadows",
+			"name": "Danse des Bougies & Ombres Croisées (Candle Shadows)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 6,
+				"scan": 7,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Déplacer la torche (Souris/Toucher ou ZQSD/Flèches) • Maintenir Clic ou Espace réduit le faisceau pour rester furtif près des sentinelles • Régénérer obstacles avec R",
+			"custom": {
+				"perStage": 5,
+				"durationSec": 65
+			},
+			"description": "Fusion de 1dNB.as (ShadowCast récursif 8-octants sur murs défilants), foPH.as (ombres douces polaires par distance-map) et lbR8.as (Box Shadows géométriques nets).",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "shadowcast_runner.html",
+			"goal": "Révéler et charger 15 reliques dorées (5 par manche sur les 3 moteurs d'ombre) en moins de 65 secondes sans déclencher 3 alertes de sentinelles.",
+			"icon": "🔦",
+			"id": "shadowcast_runner",
+			"name": "Labyrinthe d'Ombres Dynamiques (ShadowCast Runner)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Déplacer la source de rayons volumétriques (Souris/Toucher ou ZQSD) • Clic / Espace bascule les modes de prisme (sQO0 / fDdO / nG0h PAR36 / RAYShine)",
+			"custom": {
+				"targetSensors": 12,
+				"durationSec": 65
+			},
+			"description": "Fusion de shine_sQO0.as (VolumetricPointLight / god rays crépusculaires), fDdO.as (matrice tournante de faisceaux zoomés), nG0h.as (boule disco 3D de Fibonacci PAR36 avec pulse Web Audio) et RAYShine/ray (faisceaux radiaux sur glyphes).",
+			"enabled": true,
+			"family": "tactical",
+			"filename": "god_rays_prism.html",
+			"goal": "Aligner les rayons volumétriques sur 12 capteurs solaires périphériques et les charger à 100 % en moins de 65 secondes.",
+			"icon": "☀️",
+			"id": "god_rays_prism",
+			"name": "Rayons Divins & Boule Disco (God Rays Prism)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 6,
+				"scan": 7,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Déplacer l'orbe à ressort (Souris/Toucher ou ZQSD) • Ralentir dilate l'aura (uu9J) • Clic / Espace bascule la couleur R / V / B de l'orbe",
+			"custom": {
+				"targetPrisms": 8,
+				"durationSec": 65
+			},
+			"description": "Fusion de 9tfv.as (champ lumineux additif 1/r² par pixel), fCRv.as (Dancing Metaballs RGB), ivuo.as (halo à ressort fluide) et uu9J.as (aura rotative dont le rayon varie inversement à la vitesse).",
+			"enabled": true,
+			"family": "core",
+			"filename": "chroma_light_aura.html",
+			"goal": "Accorder et charger 8 prismes chromatiques en moins de 65 secondes en combinant la couleur de votre orbe avec les métaballes RGB dansantes.",
+			"icon": "🌈",
+			"id": "chroma_light_aura",
+			"name": "Métaballes RGB & Auras d'Encre (Chroma Light Aura)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		}
+	]
+}

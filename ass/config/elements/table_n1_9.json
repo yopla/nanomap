@@ -1,0 +1,1187 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "fer",
+			"name": "Fer",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "⛏️",
+			"color": "#9ea7b8",
+			"description": "Métal ferreux magnétique brut.",
+			"recipe": []
+		},
+		{
+			"id": "silice",
+			"name": "Silice",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "🪨",
+			"color": "#c2b9a7",
+			"description": "Grain minéral vitreux.",
+			"recipe": []
+		},
+		{
+			"id": "carbone",
+			"name": "Carbone",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "🖤",
+			"color": "#5c606b",
+			"description": "Base noire de toute structure organique.",
+			"recipe": []
+		},
+		{
+			"id": "azote",
+			"name": "Azote",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "🫧",
+			"color": "#80c4ff",
+			"description": "Gaz froid et inerte.",
+			"recipe": []
+		},
+		{
+			"id": "plasma",
+			"name": "Plasma",
+			"level": 1,
+			"biome": "desert_ionique",
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Gaz ionisé à très haute énergie.",
+			"recipe": []
+		},
+		{
+			"id": "givre",
+			"name": "Givre",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "❄️",
+			"color": "#9be7ff",
+			"description": "Glaçon pur de basse température.",
+			"recipe": []
+		},
+		{
+			"id": "spore",
+			"name": "Spore",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🍄",
+			"color": "#b66dff",
+			"description": "Germe fongique bioluminescent.",
+			"recipe": []
+		},
+		{
+			"id": "quartz",
+			"name": "Quartz",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "🔮",
+			"color": "#e0aaff",
+			"description": "Cristal piézoélectrique vibrant.",
+			"recipe": []
+		},
+		{
+			"id": "mercure",
+			"name": "Mercure",
+			"level": 1,
+			"biome": "desert_ionique",
+			"icon": "💧",
+			"color": "#cfd8dc",
+			"description": "Métal liquide brillant et dense.",
+			"recipe": []
+		},
+		{
+			"id": "n2_fer_silice",
+			"name": "Alliage Fongique (Fer-Silice)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Silice (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"silice"
+			]
+		},
+		{
+			"id": "n2_fer_carbone",
+			"name": "Essence Ancien (Fer-Carbone)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Carbone (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"carbone"
+			]
+		},
+		{
+			"id": "n2_fer_azote",
+			"name": "Éclat Solaire (Fer-Azote)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Azote (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"azote"
+			]
+		},
+		{
+			"id": "n2_fer_plasma",
+			"name": "Cœur Fulgurant (Fer-Plasma)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Plasma (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"plasma"
+			]
+		},
+		{
+			"id": "n2_fer_givre",
+			"name": "Poudre Argenté (Fer-Givre)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Givre (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"givre"
+			]
+		},
+		{
+			"id": "n2_fer_spore",
+			"name": "Sève Glacial (Fer-Spore)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Spore (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"spore"
+			]
+		},
+		{
+			"id": "n2_fer_quartz",
+			"name": "Vapeur Vif (Fer-Quartz)",
+			"level": 2,
+			"icon": "☁️",
+			"color": "#c7d8eb",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Quartz (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_fer_mercure",
+			"name": "Braise Magnétique (Fer-Mercure)",
+			"level": 2,
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Résultat de niveau 2 obtenu en combinant Fer et Mercure (Neuf Origines).",
+			"recipe": [
+				"fer",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_silice_carbone",
+			"name": "Quartz Arcanique (Silice-Carbone)",
+			"level": 2,
+			"icon": "🔮",
+			"color": "#c985ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Carbone (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"carbone"
+			]
+		},
+		{
+			"id": "n2_silice_azote",
+			"name": "Nectar Doré (Silice-Azote)",
+			"level": 2,
+			"icon": "🍯",
+			"color": "#f5c25b",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Azote (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"azote"
+			]
+		},
+		{
+			"id": "n2_silice_plasma",
+			"name": "Alliage Volcanique (Silice-Plasma)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Plasma (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"plasma"
+			]
+		},
+		{
+			"id": "n2_silice_givre",
+			"name": "Essence Sombre (Silice-Givre)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Givre (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"givre"
+			]
+		},
+		{
+			"id": "n2_silice_spore",
+			"name": "Éclat Harmonieux (Silice-Spore)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Spore (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"spore"
+			]
+		},
+		{
+			"id": "n2_silice_quartz",
+			"name": "Cœur Tellurique (Silice-Quartz)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Quartz (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_silice_mercure",
+			"name": "Poudre Obsidien (Silice-Mercure)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Silice et Mercure (Neuf Origines).",
+			"recipe": [
+				"silice",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_carbone_azote",
+			"name": "Sève Astral (Carbone-Azote)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Carbone et Azote (Neuf Origines).",
+			"recipe": [
+				"carbone",
+				"azote"
+			]
+		},
+		{
+			"id": "n2_carbone_plasma",
+			"name": "Vapeur Lumineux (Carbone-Plasma)",
+			"level": 2,
+			"icon": "☁️",
+			"color": "#c7d8eb",
+			"description": "Résultat de niveau 2 obtenu en combinant Carbone et Plasma (Neuf Origines).",
+			"recipe": [
+				"carbone",
+				"plasma"
+			]
+		},
+		{
+			"id": "n2_carbone_givre",
+			"name": "Braise Instable (Carbone-Givre)",
+			"level": 2,
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Résultat de niveau 2 obtenu en combinant Carbone et Givre (Neuf Origines).",
+			"recipe": [
+				"carbone",
+				"givre"
+			]
+		},
+		{
+			"id": "n2_carbone_spore",
+			"name": "Quartz Céleste (Carbone-Spore)",
+			"level": 2,
+			"icon": "🔮",
+			"color": "#c985ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Carbone et Spore (Neuf Origines).",
+			"recipe": [
+				"carbone",
+				"spore"
+			]
+		},
+		{
+			"id": "n2_carbone_quartz",
+			"name": "Nectar Smaragdin (Carbone-Quartz)",
+			"level": 2,
+			"icon": "🍯",
+			"color": "#f5c25b",
+			"description": "Résultat de niveau 2 obtenu en combinant Carbone et Quartz (Neuf Origines).",
+			"recipe": [
+				"carbone",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_carbone_mercure",
+			"name": "Alliage Éthéré (Carbone-Mercure)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Carbone et Mercure (Neuf Origines).",
+			"recipe": [
+				"carbone",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_azote_plasma",
+			"name": "Essence Dense (Azote-Plasma)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Azote et Plasma (Neuf Origines).",
+			"recipe": [
+				"azote",
+				"plasma"
+			]
+		},
+		{
+			"id": "n2_azote_givre",
+			"name": "Éclat Sacré (Azote-Givre)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Azote et Givre (Neuf Origines).",
+			"recipe": [
+				"azote",
+				"givre"
+			]
+		},
+		{
+			"id": "n2_azote_spore",
+			"name": "Cœur Abyssal (Azote-Spore)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Azote et Spore (Neuf Origines).",
+			"recipe": [
+				"azote",
+				"spore"
+			]
+		},
+		{
+			"id": "n2_azote_quartz",
+			"name": "Poudre Incandescent (Azote-Quartz)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Azote et Quartz (Neuf Origines).",
+			"recipe": [
+				"azote",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_azote_mercure",
+			"name": "Sève Cristallin (Azote-Mercure)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Azote et Mercure (Neuf Origines).",
+			"recipe": [
+				"azote",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_plasma_givre",
+			"name": "Vapeur Pur (Plasma-Givre)",
+			"level": 2,
+			"icon": "☁️",
+			"color": "#c7d8eb",
+			"description": "Résultat de niveau 2 obtenu en combinant Plasma et Givre (Neuf Origines).",
+			"recipe": [
+				"plasma",
+				"givre"
+			]
+		},
+		{
+			"id": "n2_plasma_spore",
+			"name": "Braise Raffiné (Plasma-Spore)",
+			"level": 2,
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Résultat de niveau 2 obtenu en combinant Plasma et Spore (Neuf Origines).",
+			"recipe": [
+				"plasma",
+				"spore"
+			]
+		},
+		{
+			"id": "n2_plasma_quartz",
+			"name": "Quartz Stellaire (Plasma-Quartz)",
+			"level": 2,
+			"icon": "🔮",
+			"color": "#c985ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Plasma et Quartz (Neuf Origines).",
+			"recipe": [
+				"plasma",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_plasma_mercure",
+			"name": "Nectar Givré (Plasma-Mercure)",
+			"level": 2,
+			"icon": "🍯",
+			"color": "#f5c25b",
+			"description": "Résultat de niveau 2 obtenu en combinant Plasma et Mercure (Neuf Origines).",
+			"recipe": [
+				"plasma",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_givre_spore",
+			"name": "Alliage Ardent (Givre-Spore)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Givre et Spore (Neuf Origines).",
+			"recipe": [
+				"givre",
+				"spore"
+			]
+		},
+		{
+			"id": "n2_givre_quartz",
+			"name": "Essence Ionique (Givre-Quartz)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Givre et Quartz (Neuf Origines).",
+			"recipe": [
+				"givre",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_givre_mercure",
+			"name": "Éclat Brut (Givre-Mercure)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Givre et Mercure (Neuf Origines).",
+			"recipe": [
+				"givre",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_spore_quartz",
+			"name": "Cœur Lunaire (Spore-Quartz)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Spore et Quartz (Neuf Origines).",
+			"recipe": [
+				"spore",
+				"quartz"
+			]
+		},
+		{
+			"id": "n2_spore_mercure",
+			"name": "Poudre Serein (Spore-Mercure)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Spore et Mercure (Neuf Origines).",
+			"recipe": [
+				"spore",
+				"mercure"
+			]
+		},
+		{
+			"id": "n2_quartz_mercure",
+			"name": "Sève Opalescent (Quartz-Mercure)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Quartz et Mercure (Neuf Origines).",
+			"recipe": [
+				"quartz",
+				"mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_carbone",
+			"name": "Noyau Dense (Alliage-(Fer-Carbone))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Essence Ancien (Fer-Carbone) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_carbone"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_azote",
+			"name": "Relique Sacré (Alliage-(Fer-Azote))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Éclat Solaire (Fer-Azote) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_azote"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_plasma",
+			"name": "Matrice Abyssal (Alliage-(Fer-Plasma))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Cœur Fulgurant (Fer-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_givre",
+			"name": "Prisme Incandescent (Alliage-(Fer-Givre))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Poudre Argenté (Fer-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_spore",
+			"name": "Orbe Cristallin (Alliage-(Fer-Spore))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Sève Glacial (Fer-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_quartz",
+			"name": "Catalyseur Pur (Alliage-(Fer-Quartz))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Vapeur Vif (Fer-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_fer_mercure",
+			"name": "Talisman Raffiné (Alliage-(Fer-Mercure))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Braise Magnétique (Fer-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_fer_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_carbone",
+			"name": "Condensat Stellaire (Alliage-(Silice-Carbone))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Quartz Arcanique (Silice-Carbone) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_carbone"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_azote",
+			"name": "Lingot Givré (Alliage-(Silice-Azote))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Nectar Doré (Silice-Azote) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_azote"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_plasma",
+			"name": "Fiole Ardent (Alliage-(Silice-Plasma))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Alliage Volcanique (Silice-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_givre",
+			"name": "Golem Ionique (Alliage-(Silice-Givre))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Essence Sombre (Silice-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_spore",
+			"name": "Couronne Brut (Alliage-(Silice-Spore))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Éclat Harmonieux (Silice-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_quartz",
+			"name": "Noyau Lunaire (Alliage-(Silice-Quartz))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Cœur Tellurique (Silice-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_silice_mercure",
+			"name": "Relique Serein (Alliage-(Silice-Mercure))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Poudre Obsidien (Silice-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_silice_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_carbone_azote",
+			"name": "Matrice Opalescent (Alliage-(Carbone-Azote))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Sève Astral (Carbone-Azote) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_carbone_azote"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_carbone_plasma",
+			"name": "Prisme Fongique (Alliage-(Carbone-Plasma))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Vapeur Lumineux (Carbone-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_carbone_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_carbone_givre",
+			"name": "Orbe Ancien (Alliage-(Carbone-Givre))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Braise Instable (Carbone-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_carbone_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_carbone_spore",
+			"name": "Catalyseur Solaire (Alliage-(Carbone-Spore))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Quartz Céleste (Carbone-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_carbone_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_carbone_quartz",
+			"name": "Talisman Fulgurant (Alliage-(Carbone-Quartz))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Nectar Smaragdin (Carbone-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_carbone_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_carbone_mercure",
+			"name": "Condensat Argenté (Alliage-(Carbone-Mercure))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Alliage Éthéré (Carbone-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_carbone_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_azote_plasma",
+			"name": "Lingot Glacial (Alliage-(Azote-Plasma))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Essence Dense (Azote-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_azote_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_azote_givre",
+			"name": "Fiole Vif (Alliage-(Azote-Givre))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Éclat Sacré (Azote-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_azote_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_azote_spore",
+			"name": "Golem Magnétique (Alliage-(Azote-Spore))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Cœur Abyssal (Azote-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_azote_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_azote_quartz",
+			"name": "Couronne Arcanique (Alliage-(Azote-Quartz))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Poudre Incandescent (Azote-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_azote_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_azote_mercure",
+			"name": "Noyau Doré (Alliage-(Azote-Mercure))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Sève Cristallin (Azote-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_azote_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_plasma_givre",
+			"name": "Relique Volcanique (Alliage-(Plasma-Givre))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Vapeur Pur (Plasma-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_plasma_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_plasma_spore",
+			"name": "Matrice Sombre (Alliage-(Plasma-Spore))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Braise Raffiné (Plasma-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_plasma_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_plasma_quartz",
+			"name": "Prisme Harmonieux (Alliage-(Plasma-Quartz))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Quartz Stellaire (Plasma-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_plasma_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_plasma_mercure",
+			"name": "Orbe Tellurique (Alliage-(Plasma-Mercure))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Nectar Givré (Plasma-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_plasma_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_givre_spore",
+			"name": "Catalyseur Obsidien (Alliage-(Givre-Spore))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Alliage Ardent (Givre-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_givre_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_givre_quartz",
+			"name": "Talisman Astral (Alliage-(Givre-Quartz))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Essence Ionique (Givre-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_givre_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_givre_mercure",
+			"name": "Condensat Lumineux (Alliage-(Givre-Mercure))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Éclat Brut (Givre-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_givre_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_spore_quartz",
+			"name": "Lingot Instable (Alliage-(Spore-Quartz))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Cœur Lunaire (Spore-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_spore_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_spore_mercure",
+			"name": "Fiole Céleste (Alliage-(Spore-Mercure))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Poudre Serein (Spore-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_spore_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_silice_n2_quartz_mercure",
+			"name": "Golem Smaragdin (Alliage-(Quartz-Mercure))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Fer-Silice) et Sève Opalescent (Quartz-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_silice",
+				"n2_quartz_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_fer_azote",
+			"name": "Couronne Éthéré (Essence-(Fer-Azote))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Éclat Solaire (Fer-Azote) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_fer_azote"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_fer_plasma",
+			"name": "Noyau Dense (Essence-(Fer-Plasma))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Cœur Fulgurant (Fer-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_fer_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_fer_givre",
+			"name": "Relique Sacré (Essence-(Fer-Givre))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Poudre Argenté (Fer-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_fer_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_fer_spore",
+			"name": "Matrice Abyssal (Essence-(Fer-Spore))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Sève Glacial (Fer-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_fer_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_fer_quartz",
+			"name": "Prisme Incandescent (Essence-(Fer-Quartz))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Vapeur Vif (Fer-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_fer_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_fer_mercure",
+			"name": "Orbe Cristallin (Essence-(Fer-Mercure))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Braise Magnétique (Fer-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_fer_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_carbone",
+			"name": "Catalyseur Pur (Essence-(Silice-Carbone))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Quartz Arcanique (Silice-Carbone) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_carbone"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_azote",
+			"name": "Talisman Raffiné (Essence-(Silice-Azote))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Nectar Doré (Silice-Azote) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_azote"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_plasma",
+			"name": "Condensat Stellaire (Essence-(Silice-Plasma))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Alliage Volcanique (Silice-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_givre",
+			"name": "Lingot Givré (Essence-(Silice-Givre))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Essence Sombre (Silice-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_spore",
+			"name": "Fiole Ardent (Essence-(Silice-Spore))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Éclat Harmonieux (Silice-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_quartz",
+			"name": "Golem Ionique (Essence-(Silice-Quartz))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Cœur Tellurique (Silice-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_silice_mercure",
+			"name": "Couronne Brut (Essence-(Silice-Mercure))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Poudre Obsidien (Silice-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_silice_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_carbone_azote",
+			"name": "Noyau Lunaire (Essence-(Carbone-Azote))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Sève Astral (Carbone-Azote) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_carbone_azote"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_carbone_plasma",
+			"name": "Relique Serein (Essence-(Carbone-Plasma))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Vapeur Lumineux (Carbone-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_carbone_plasma"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_carbone_givre",
+			"name": "Matrice Opalescent (Essence-(Carbone-Givre))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Braise Instable (Carbone-Givre) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_carbone_givre"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_carbone_spore",
+			"name": "Prisme Fongique (Essence-(Carbone-Spore))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Quartz Céleste (Carbone-Spore) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_carbone_spore"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_carbone_quartz",
+			"name": "Orbe Ancien (Essence-(Carbone-Quartz))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Nectar Smaragdin (Carbone-Quartz) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_carbone_quartz"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_carbone_mercure",
+			"name": "Catalyseur Solaire (Essence-(Carbone-Mercure))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Alliage Éthéré (Carbone-Mercure) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_carbone_mercure"
+			]
+		},
+		{
+			"id": "n3_n2_fer_carbone_n2_azote_plasma",
+			"name": "Talisman Fulgurant (Essence-(Azote-Plasma))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Fer-Carbone) et Essence Dense (Azote-Plasma) (Neuf Origines).",
+			"recipe": [
+				"n2_fer_carbone",
+				"n2_azote_plasma"
+			]
+		}
+	]
+}

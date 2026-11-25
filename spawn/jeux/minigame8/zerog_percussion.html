@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Percussions Élastiques Zero-G (Zero-G Percussion)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: grab; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "zerog_percussion",
+  "name": "Percussions Élastiques Zero-G (Zero-G Percussion)",
+  "family": "core",
+  "icon": "🥁",
+  "controls": "Attraper et lancer un triangle élastique au glissé • Espace pour donner une impulsion aléatoire (ZQSD oriente l'impulsion)",
+  "description": "Adapté de l8nM.as (Simple Physics Percussion) : une arène en apesanteur entourée de 7 pads percussifs et peuplée de 6 triangles mous reliés par ressorts. Saisissez et projetez les triangles contre les pads illuminés pour jouer des percussions Web Audio.",
+  "goal": "Valider 24 frappes sur les pads illuminés en moins de 65 secondes.",
+  "fields": [
+    { "key": "targetHits", "label": "Frappes à valider", "type": "number", "default": 24 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🥁 Zero-G Drum</span>
+  <span id="stat">Frappes 0/24 • 65s</span>
+  <div class="bar-btns">
+    <button id="muteBtn" onclick="toggleMute()" title="Son Web Audio">🔊</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Attraper &amp; Lancer</b> un triangle élastique • Visez les pads <b>dorés actifs</b> pour déclencher les percussions
+</div>
+
+<script>
+const GAME_ID = "zerog_percussion";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const TRI_COLORS = ["#f87171", "#38bdf8", "#facc15", "#4ade80", "#c084fc", "#fb923c"];
+let targetHits = 24, durationSec = 65;
+let pads = [], triangles = [], ripples = [];
+let activePadIdx = 0;
+let dragNode = null, ptr = { x: 256, y: 256, px: 256, py: 256, down: false };
+let keys = {};
+let hits = 0, timeLeft = 65, score = 0, won = false, over = false;
+let audioCtx = null, muted = false;
+
+function initAudio() {
+  if (!audioCtx) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    } catch (e) {}
+  } else if (audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+}
+function playPerc(padIdx) {
+  if (muted || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    const baseFreqs = [90, 140, 210, 290, 380, 490, 620];
+    osc.type = padIdx < 2 ? "sine" : (padIdx < 5 ? "triangle" : "square");
+    const f = baseFreqs[padIdx % baseFreqs.length];
+    osc.frequency.setValueAtTime(f * 1.4, now);
+    osc.frequency.exponentialRampToValueAtTime(f * 0.5, now + 0.14);
+    g.gain.setValueAtTime(0.22, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(now); osc.stop(now + 0.17);
+  } catch (e) {}
+}
+function toggleMute() {
+  muted = !muted;
+  document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+}
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function createTriangle(cx, cy, rad, col) {
+  const nodes = [];
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    nodes.push({
+      x: cx + Math.cos(a) * rad,
+      y: cy + Math.sin(a) * rad,
+      vx: (Math.random() - 0.5) * 1.5,
+      vy: (Math.random() - 0.5) * 1.5,
+      r: rad * 0.34
+    });
+  }
+  const rest = Math.hypot(nodes[0].x - nodes[1].x, nodes[0].y - nodes[1].y);
+  return { nodes, rest, col };
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetHits = Math.max(6, Number(custom.targetHits || 24));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  pads = [];
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 - Math.PI / 2;
+    pads.push({
+      x: 256 + Math.cos(a) * 168,
+      y: 256 + Math.sin(a) * 168,
+      r: 20,
+      scale: 1,
+      cd: 0
+    });
+  }
+  triangles = [
+    createTriangle(210, 220, 28, TRI_COLORS[0]),
+    createTriangle(300, 210, 24, TRI_COLORS[1]),
+    createTriangle(256, 290, 26, TRI_COLORS[2]),
+    createTriangle(190, 310, 22, TRI_COLORS[3]),
+    createTriangle(320, 300, 24, TRI_COLORS[4]),
+    createTriangle(256, 175, 22, TRI_COLORS[5])
+  ];
+  ripples = [];
+  activePadIdx = Math.floor(Math.random() * 7);
+  dragNode = null;
+  hits = 0;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Frappes ${hits}/${targetHits} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(16, Math.min(SIZE - 16, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(16, Math.min(SIZE - 16, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  initAudio();
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x; ptr.y = ptr.py = p.y;
+  ptr.down = true;
+  let best = null, bestD = 36;
+  for (const t of triangles) {
+    for (const nd of t.nodes) {
+      const d = Math.hypot(nd.x - p.x, nd.y - p.y);
+      if (d < bestD) { bestD = d; best = nd; }
+    }
+  }
+  dragNode = best;
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => {
+  if (dragNode) {
+    dragNode.vx += (ptr.x - ptr.px) * 0.45;
+    dragNode.vy += (ptr.y - ptr.py) * 0.45;
+  }
+  dragNode = null;
+  ptr.down = false;
+});
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat && !over) {
+    initAudio();
+    for (const t of triangles) {
+      const ang = Math.random() * Math.PI * 2;
+      for (const nd of t.nodes) {
+        nd.vx += Math.cos(ang) * 4.5;
+        nd.vy += Math.sin(ang) * 4.5;
+      }
+    }
+  }
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+
+    // Keyboard impulse on first triangle
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      for (const nd of triangles[0].nodes) {
+        nd.vx += kx * 14 * dt;
+        nd.vy += ky * 14 * dt;
+      }
+    }
+
+    if (dragNode) {
+      dragNode.vx = (ptr.x - dragNode.x) * 0.35;
+      dragNode.vy = (ptr.y - dragNode.y) * 0.35;
+    }
+
+    for (const p of pads) {
+      if (p.scale > 1) p.scale = Math.max(1, p.scale - 3.5 * dt);
+      if (p.cd > 0) p.cd = Math.max(0, p.cd - dt);
+    }
+
+    // Spring triangle physics (l8nM)
+    for (const t of triangles) {
+      for (let i = 0; i < 3; i++) {
+        const a = t.nodes[i], b = t.nodes[(i + 1) % 3];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 1;
+        const f = (d - t.rest) * 0.08;
+        const fx = (dx / d) * f, fy = (dy / d) * f;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      }
+      for (const nd of t.nodes) {
+        nd.vx *= 0.992; nd.vy *= 0.992;
+        const sp = Math.hypot(nd.vx, nd.vy);
+        if (sp > 12) { nd.vx *= 12 / sp; nd.vy *= 12 / sp; }
+        nd.x += nd.vx; nd.y += nd.vy;
+
+        if (nd.x < 14 + nd.r) { nd.x = 14 + nd.r; nd.vx = Math.abs(nd.vx) * 0.95; }
+        if (nd.x > SIZE - 14 - nd.r) { nd.x = SIZE - 14 - nd.r; nd.vx = -Math.abs(nd.vx) * 0.95; }
+        if (nd.y < 14 + nd.r) { nd.y = 14 + nd.r; nd.vy = Math.abs(nd.vy) * 0.95; }
+        if (nd.y > SIZE - 14 - nd.r) { nd.y = SIZE - 14 - nd.r; nd.vy = -Math.abs(nd.vy) * 0.95; }
+
+        // Pad collisions
+        for (let pi = 0; pi < pads.length; pi++) {
+          const pad = pads[pi];
+          const dx = nd.x - pad.x, dy = nd.y - pad.y;
+          const dist = Math.hypot(dx, dy);
+          const minD = nd.r + pad.r;
+          if (dist < minD && dist > 0.001) {
+            const nx = dx / dist, ny = dy / dist;
+            nd.x = pad.x + nx * minD;
+            nd.y = pad.y + ny * minD;
+            const vn = nd.vx * nx + nd.vy * ny;
+            if (vn < 0) {
+              nd.vx -= 2.05 * vn * nx;
+              nd.vy -= 2.05 * vn * ny;
+            }
+            if (pad.cd <= 0) {
+              pad.cd = 0.25;
+              pad.scale = 1.9;
+              playPerc(pi);
+              if (pi === activePadIdx) {
+                hits++;
+                score += 140;
+                ripples.push({ x: pad.x, y: pad.y, r: 16, life: 1, col: "#facc15" });
+                activePadIdx = (activePadIdx + 1 + Math.floor(Math.random() * 5)) % 7;
+              } else {
+                score += 20;
+                ripples.push({ x: pad.x, y: pad.y, r: 12, life: 1, col: "#38d6ff" });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ptr.px = ptr.x; ptr.py = ptr.y;
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].r += 75 * dt;
+      ripples[i].life -= 2.6 * dt;
+      if (ripples[i].life <= 0) ripples.splice(i, 1);
+    }
+
+    if (hits >= targetHits) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 25);
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  ctx.strokeStyle = "#1e3a5f";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(256, 256, 168, 0, Math.PI * 2); ctx.stroke();
+
+  // 7 Percussion pads
+  for (let i = 0; i < pads.length; i++) {
+    const p = pads[i];
+    const isActive = i === activePadIdx;
+    const rad = p.r * p.scale;
+    ctx.fillStyle = isActive ? "rgba(250,204,21,0.35)" : "rgba(248,113,113,0.18)";
+    ctx.strokeStyle = isActive ? "#facc15" : "#f87171";
+    ctx.lineWidth = isActive ? 3.2 : 2;
+    ctx.beginPath(); ctx.arc(p.x, p.y, rad, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (isActive) {
+      ctx.strokeStyle = "rgba(250,204,21,0.5)";
+      ctx.beginPath(); ctx.arc(p.x, p.y, rad + 9, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  // Spring triangles (l8nM)
+  for (const t of triangles) {
+    ctx.strokeStyle = "rgba(203, 213, 225, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(t.nodes[0].x, t.nodes[0].y);
+    ctx.lineTo(t.nodes[1].x, t.nodes[1].y);
+    ctx.lineTo(t.nodes[2].x, t.nodes[2].y);
+    ctx.closePath();
+    ctx.stroke();
+
+    for (const nd of t.nodes) {
+      ctx.fillStyle = t.col;
+      ctx.beginPath(); ctx.arc(nd.x, nd.y, nd.r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  if (dragNode) {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(dragNode.x, dragNode.y); ctx.lineTo(ptr.x, ptr.y); ctx.stroke();
+  }
+
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "RYTHME ACCOMPLI !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Frappes ${hits}/${targetHits} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

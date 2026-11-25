@@ -1,0 +1,1199 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "feu",
+			"name": "Feu Primordial",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "🔥",
+			"color": "#ff6b3d",
+			"description": "Flamme originelle pure et ardente.",
+			"recipe": []
+		},
+		{
+			"id": "eau",
+			"name": "Eau Originelle",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "💧",
+			"color": "#4ea8ff",
+			"description": "Source limpide des premiers océans.",
+			"recipe": []
+		},
+		{
+			"id": "terre",
+			"name": "Terre Fertile",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "🪨",
+			"color": "#9b8468",
+			"description": "Matrice minérale dense et nourricière.",
+			"recipe": []
+		},
+		{
+			"id": "n2_feu_eau",
+			"name": "Alliage Fongique (Feu-Originelle)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Feu Primordial et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"feu",
+				"eau"
+			]
+		},
+		{
+			"id": "n2_feu_terre",
+			"name": "Essence Ancien (Feu-Fertile)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Feu Primordial et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"feu",
+				"terre"
+			]
+		},
+		{
+			"id": "n2_eau_terre",
+			"name": "Éclat Solaire (Eau-Fertile)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Eau Originelle et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"eau",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_feu_terre",
+			"name": "Noyau Dense (Alliage-(Feu-Fertile))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Originelle) et Essence Ancien (Feu-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_feu_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_n2_eau_terre",
+			"name": "Relique Sacré (Alliage-(Eau-Fertile))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Originelle) et Éclat Solaire (Eau-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_eau",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_n2_eau_terre",
+			"name": "Matrice Abyssal (Essence-(Eau-Fertile))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Fertile) et Éclat Solaire (Eau-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_terre",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_feu",
+			"name": "Prisme Incandescent (Alliage-Primordial)",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Originelle) et Feu Primordial (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_eau",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_eau",
+			"name": "Orbe Cristallin (Alliage-Originelle)",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Originelle) et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_eau",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_feu_eau_terre",
+			"name": "Catalyseur Pur (Alliage-Fertile)",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Feu-Originelle) et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_eau",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_feu",
+			"name": "Talisman Raffiné (Essence-Primordial)",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Fertile) et Feu Primordial (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_eau",
+			"name": "Condensat Stellaire (Essence-Originelle)",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Fertile) et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_feu_terre_terre",
+			"name": "Lingot Givré (Essence-Fertile)",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Feu-Fertile) et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"n2_feu_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_feu",
+			"name": "Fiole Ardent (Éclat-Primordial)",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Eau-Fertile) et Feu Primordial (Alchimie Primordiale).",
+			"recipe": [
+				"n2_eau_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_eau",
+			"name": "Golem Ionique (Éclat-Originelle)",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Eau-Fertile) et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"n2_eau_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n3_n2_eau_terre_terre",
+			"name": "Couronne Brut (Éclat-Fertile)",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Eau-Fertile) et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"n2_eau_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_n2_eau_terre",
+			"name": "Singularité Vif (Noyau-(Alliage-(Eau-Fertile)))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Relique Sacré (Alliage-(Eau-Fertile)) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_n2_eau_terre",
+			"name": "Artefact Magnétique (Noyau-(Essence-(Eau-Fertile)))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Matrice Abyssal (Essence-(Eau-Fertile)) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_feu",
+			"name": "Élixir Arcanique (Noyau-(Alliage-Primordial))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Prisme Incandescent (Alliage-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_eau",
+			"name": "Astrolabe Doré (Noyau-(Alliage-Originelle))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Orbe Cristallin (Alliage-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_eau_terre",
+			"name": "Diadème Volcanique (Noyau-(Alliage-Fertile))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Catalyseur Pur (Alliage-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_feu",
+			"name": "Réacteur Sombre (Noyau-(Essence-Primordial))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Talisman Raffiné (Essence-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_eau",
+			"name": "Grimoire Harmonieux (Noyau-(Essence-Originelle))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_feu_terre_terre",
+			"name": "Monolithe Tellurique (Noyau-(Essence-Fertile))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_feu",
+			"name": "Sceptre Obsidien (Noyau-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_eau",
+			"name": "Sphère Astral (Noyau-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n3_n2_eau_terre_terre",
+			"name": "Phénix Lumineux (Noyau-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_terre_n2_eau_terre",
+			"name": "Étoile Instable (Relique-(Essence-(Eau-Fertile)))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Matrice Abyssal (Essence-(Eau-Fertile)) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_terre_n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_eau_feu",
+			"name": "Singularité Céleste (Relique-(Alliage-Primordial))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Prisme Incandescent (Alliage-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_eau_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_eau_eau",
+			"name": "Artefact Smaragdin (Relique-(Alliage-Originelle))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Orbe Cristallin (Alliage-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_eau_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_eau_terre",
+			"name": "Élixir Éthéré (Relique-(Alliage-Fertile))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Catalyseur Pur (Alliage-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_terre_feu",
+			"name": "Astrolabe Dense (Relique-(Essence-Primordial))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Talisman Raffiné (Essence-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_terre_eau",
+			"name": "Diadème Sacré (Relique-(Essence-Originelle))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_feu_terre_terre",
+			"name": "Réacteur Abyssal (Relique-(Essence-Fertile))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_eau_terre_feu",
+			"name": "Grimoire Incandescent (Relique-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_eau_terre_eau",
+			"name": "Monolithe Cristallin (Relique-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n3_n2_eau_terre_terre",
+			"name": "Sceptre Pur (Relique-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_feu_eau_feu",
+			"name": "Sphère Raffiné (Matrice-(Alliage-Primordial))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Prisme Incandescent (Alliage-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_feu_eau_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_feu_eau_eau",
+			"name": "Phénix Stellaire (Matrice-(Alliage-Originelle))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Orbe Cristallin (Alliage-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_feu_eau_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_feu_eau_terre",
+			"name": "Étoile Givré (Matrice-(Alliage-Fertile))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Catalyseur Pur (Alliage-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_feu_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_feu_terre_feu",
+			"name": "Singularité Ardent (Matrice-(Essence-Primordial))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Talisman Raffiné (Essence-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_feu_terre_eau",
+			"name": "Artefact Ionique (Matrice-(Essence-Originelle))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_feu_terre_terre",
+			"name": "Élixir Brut (Matrice-(Essence-Fertile))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_eau_terre_feu",
+			"name": "Astrolabe Lunaire (Matrice-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_eau_terre_eau",
+			"name": "Diadème Serein (Matrice-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n3_n2_eau_terre_terre",
+			"name": "Réacteur Opalescent (Matrice-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_feu_eau_eau",
+			"name": "Grimoire Fongique (Prisme-(Alliage-Originelle))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Orbe Cristallin (Alliage-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_feu_eau_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_feu_eau_terre",
+			"name": "Monolithe Ancien (Prisme-(Alliage-Fertile))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Catalyseur Pur (Alliage-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_feu_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_feu_terre_feu",
+			"name": "Sceptre Solaire (Prisme-(Essence-Primordial))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Talisman Raffiné (Essence-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_feu_terre_eau",
+			"name": "Sphère Fulgurant (Prisme-(Essence-Originelle))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_feu_terre_terre",
+			"name": "Phénix Argenté (Prisme-(Essence-Fertile))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_eau_terre_feu",
+			"name": "Étoile Glacial (Prisme-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_eau_terre_eau",
+			"name": "Singularité Vif (Prisme-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_feu_n3_n2_eau_terre_terre",
+			"name": "Artefact Magnétique (Prisme-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Prisme Incandescent (Alliage-Primordial) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_feu",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_feu_eau_terre",
+			"name": "Élixir Arcanique (Orbe-(Alliage-Fertile))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Catalyseur Pur (Alliage-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_feu_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_feu_terre_feu",
+			"name": "Astrolabe Doré (Orbe-(Essence-Primordial))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Talisman Raffiné (Essence-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_feu_terre_eau",
+			"name": "Diadème Volcanique (Orbe-(Essence-Originelle))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_feu_terre_terre",
+			"name": "Réacteur Sombre (Orbe-(Essence-Fertile))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_eau_terre_feu",
+			"name": "Grimoire Harmonieux (Orbe-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_eau_terre_eau",
+			"name": "Monolithe Tellurique (Orbe-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_eau_n3_n2_eau_terre_terre",
+			"name": "Sceptre Obsidien (Orbe-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Orbe Cristallin (Alliage-Originelle) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_eau",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_terre_n3_n2_feu_terre_feu",
+			"name": "Sphère Astral (Catalyseur-(Essence-Primordial))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Catalyseur Pur (Alliage-Fertile) et Talisman Raffiné (Essence-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_terre",
+				"n3_n2_feu_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_terre_n3_n2_feu_terre_eau",
+			"name": "Phénix Lumineux (Catalyseur-(Essence-Originelle))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Catalyseur Pur (Alliage-Fertile) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_terre",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_terre_n3_n2_feu_terre_terre",
+			"name": "Étoile Instable (Catalyseur-(Essence-Fertile))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Catalyseur Pur (Alliage-Fertile) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_terre",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_terre_n3_n2_eau_terre_feu",
+			"name": "Singularité Céleste (Catalyseur-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Catalyseur Pur (Alliage-Fertile) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_terre",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_terre_n3_n2_eau_terre_eau",
+			"name": "Artefact Smaragdin (Catalyseur-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Catalyseur Pur (Alliage-Fertile) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_terre",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_terre_n3_n2_eau_terre_terre",
+			"name": "Élixir Éthéré (Catalyseur-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Catalyseur Pur (Alliage-Fertile) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_terre",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_feu_n3_n2_feu_terre_eau",
+			"name": "Astrolabe Dense (Talisman-(Essence-Originelle))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Talisman Raffiné (Essence-Primordial) et Condensat Stellaire (Essence-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_feu",
+				"n3_n2_feu_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_feu_n3_n2_feu_terre_terre",
+			"name": "Diadème Sacré (Talisman-(Essence-Fertile))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Talisman Raffiné (Essence-Primordial) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_feu",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_feu_n3_n2_eau_terre_feu",
+			"name": "Réacteur Abyssal (Talisman-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Talisman Raffiné (Essence-Primordial) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_feu",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_feu_n3_n2_eau_terre_eau",
+			"name": "Grimoire Incandescent (Talisman-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Talisman Raffiné (Essence-Primordial) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_feu",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_feu_n3_n2_eau_terre_terre",
+			"name": "Monolithe Cristallin (Talisman-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Talisman Raffiné (Essence-Primordial) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_feu",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_eau_n3_n2_feu_terre_terre",
+			"name": "Sceptre Pur (Condensat-(Essence-Fertile))",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Condensat Stellaire (Essence-Originelle) et Lingot Givré (Essence-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_eau",
+				"n3_n2_feu_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_eau_n3_n2_eau_terre_feu",
+			"name": "Sphère Raffiné (Condensat-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Condensat Stellaire (Essence-Originelle) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_eau",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_eau_n3_n2_eau_terre_eau",
+			"name": "Phénix Stellaire (Condensat-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Condensat Stellaire (Essence-Originelle) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_eau",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_eau_n3_n2_eau_terre_terre",
+			"name": "Étoile Givré (Condensat-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Condensat Stellaire (Essence-Originelle) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_eau",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_terre_n3_n2_eau_terre_feu",
+			"name": "Singularité Ardent (Lingot-(Éclat-Primordial))",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Lingot Givré (Essence-Fertile) et Fiole Ardent (Éclat-Primordial) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_terre",
+				"n3_n2_eau_terre_feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_terre_n3_n2_eau_terre_eau",
+			"name": "Artefact Ionique (Lingot-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Lingot Givré (Essence-Fertile) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_terre",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_terre_n3_n2_eau_terre_terre",
+			"name": "Élixir Brut (Lingot-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Lingot Givré (Essence-Fertile) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_terre",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_eau_terre_feu_n3_n2_eau_terre_eau",
+			"name": "Astrolabe Lunaire (Fiole-(Éclat-Originelle))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Fiole Ardent (Éclat-Primordial) et Golem Ionique (Éclat-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_eau_terre_feu",
+				"n3_n2_eau_terre_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_eau_terre_feu_n3_n2_eau_terre_terre",
+			"name": "Diadème Serein (Fiole-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Fiole Ardent (Éclat-Primordial) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_eau_terre_feu",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_eau_terre_eau_n3_n2_eau_terre_terre",
+			"name": "Réacteur Opalescent (Golem-(Éclat-Fertile))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Golem Ionique (Éclat-Originelle) et Couronne Brut (Éclat-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_eau_terre_eau",
+				"n3_n2_eau_terre_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_feu",
+			"name": "Grimoire Fongique (Noyau-Primordial)",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Feu Primordial (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_eau",
+			"name": "Monolithe Ancien (Noyau-Originelle)",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_terre",
+			"name": "Sceptre Solaire (Noyau-Fertile)",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n2_feu_eau",
+			"name": "Sphère Fulgurant (Noyau-(Feu-Originelle))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Alliage Fongique (Feu-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n2_feu_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n2_feu_terre",
+			"name": "Phénix Argenté (Noyau-(Feu-Fertile))",
+			"level": 4,
+			"icon": "🔥",
+			"color": "#ff595e",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Essence Ancien (Feu-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n2_feu_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_feu_terre_n2_eau_terre",
+			"name": "Étoile Glacial (Noyau-(Eau-Fertile))",
+			"level": 4,
+			"icon": "🌟",
+			"color": "#ffe66d",
+			"description": "Résultat de niveau 4 obtenu en combinant Noyau Dense (Alliage-(Feu-Fertile)) et Éclat Solaire (Eau-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_feu_terre",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_feu",
+			"name": "Singularité Vif (Relique-Primordial)",
+			"level": 4,
+			"icon": "🌌",
+			"color": "#b388ff",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Feu Primordial (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_eau",
+			"name": "Artefact Magnétique (Relique-Originelle)",
+			"level": 4,
+			"icon": "🏛️",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_terre",
+			"name": "Élixir Arcanique (Relique-Fertile)",
+			"level": 4,
+			"icon": "⚗️",
+			"color": "#48bfe3",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n2_feu_eau",
+			"name": "Astrolabe Doré (Relique-(Feu-Originelle))",
+			"level": 4,
+			"icon": "🧭",
+			"color": "#f4a261",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Alliage Fongique (Feu-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n2_feu_eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n2_feu_terre",
+			"name": "Diadème Volcanique (Relique-(Feu-Fertile))",
+			"level": 4,
+			"icon": "👑",
+			"color": "#ffafcc",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Essence Ancien (Feu-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n2_feu_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_eau_n2_eau_terre_n2_eau_terre",
+			"name": "Réacteur Sombre (Relique-(Eau-Fertile))",
+			"level": 4,
+			"icon": "⚡",
+			"color": "#00f5d4",
+			"description": "Résultat de niveau 4 obtenu en combinant Relique Sacré (Alliage-(Eau-Fertile)) et Éclat Solaire (Eau-Fertile) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_eau_n2_eau_terre",
+				"n2_eau_terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_feu",
+			"name": "Grimoire Harmonieux (Matrice-Primordial)",
+			"level": 4,
+			"icon": "📖",
+			"color": "#c77dff",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Feu Primordial (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"feu"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_eau",
+			"name": "Monolithe Tellurique (Matrice-Originelle)",
+			"level": 4,
+			"icon": "🪨",
+			"color": "#8d99ae",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Eau Originelle (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"eau"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_terre",
+			"name": "Sceptre Obsidien (Matrice-Fertile)",
+			"level": 4,
+			"icon": "🪄",
+			"color": "#ff9f1c",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Terre Fertile (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"terre"
+			]
+		},
+		{
+			"id": "n4_n3_n2_feu_terre_n2_eau_terre_n2_feu_eau",
+			"name": "Sphère Astral (Matrice-(Feu-Originelle))",
+			"level": 4,
+			"icon": "🌐",
+			"color": "#72efdd",
+			"description": "Résultat de niveau 4 obtenu en combinant Matrice Abyssal (Essence-(Eau-Fertile)) et Alliage Fongique (Feu-Originelle) (Alchimie Primordiale).",
+			"recipe": [
+				"n3_n2_feu_terre_n2_eau_terre",
+				"n2_feu_eau"
+			]
+		}
+	]
+}

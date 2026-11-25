@@ -1,0 +1,26 @@
+{
+	"minigames": [
+		{
+			"controls": "Glisser pour scroller le décor avec inertie • Cliquer une case pour déplacer le vaisseau • Cliquer le vaisseau ou Espace pour recentrer • Flèches/ZQSD pour scroller",
+			"custom": {
+				"relics": 8,
+				"maxEnergy": 100
+			},
+			"description": "Exploration spatiale fidèle à SPAWN : faites défiler la grille en spirale d'Ulam pour découvrir le secteur. Si votre vaisseau touche le bord de l'écran pendant le scroll, il rebondit élastiquement vers l'intérieur et perd de l'énergie !",
+			"enabled": true,
+			"family": "income",
+			"filename": "spawn_scroll.html",
+			"goal": "Découvrir les 8 Reliques Stellaires cachées autour de l'origine avant que votre énergie ne tombe à zéro.",
+			"icon": "🛸",
+			"id": "spawn_scroll",
+			"name": "Dérive & Rebond (SpawnScroll)",
+			"rewards": {
+				"coque": 2,
+				"fuel": 10,
+				"lum": 4,
+				"scan": 6,
+				"t2s": 8
+			}
+		}
+	]
+}

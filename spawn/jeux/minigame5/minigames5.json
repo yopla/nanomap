@@ -1,0 +1,114 @@
+{
+	"minigames": [
+		{
+			"controls": "Pointeur/glisser ou Flèches/ZQSD pour piloter la cellule • Clic ou Espace pour muter entre Cercle et Carré élastique",
+			"custom": {
+				"durationSec": 60,
+				"targetCount": 60
+			},
+			"description": "Fusion de KatamaruOrNot, d'agrégation DLA (fEJs/tte2) et d'enveloppe molle (rbLp) : déplacez votre cellule élastique pour coller des spores dérivantes en branches organiques tout en évitant les mines rouges.",
+			"enabled": true,
+			"family": "zooEcosys",
+			"filename": "katamari_glue.html",
+			"goal": "Agréger 60 spores avant la fin des 60 secondes.",
+			"icon": "🟢",
+			"id": "katamari_glue",
+			"name": "Cellule Collante (Katamari Glue)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 5,
+				"lum": 6,
+				"scan": 4,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Glisser pour brasser les courants (Stable Fluids) • Cliquer/taper ou Espace pour générer une onde radiale",
+			"custom": {
+				"durationSec": 65,
+				"perCollector": 15
+			},
+			"description": "Combine Stable Fluids (j8jS), particules SPH (44nj), ondes de surface (19lm/nWOM/water) et lueurs fluides (sFXf/pTef) : créez des courants et des vagues pour guider les gouttes vers les 3 bassins collecteurs en évitant les 2 siphons.",
+			"enabled": true,
+			"family": "core",
+			"filename": "fluide_bassin.html",
+			"goal": "Remplir les 3 collecteurs (15 gouttes chacun = 45 au total) avant la fin des 65 secondes.",
+			"icon": "🌊",
+			"id": "fluide_bassin",
+			"name": "Bassin de Fluides (Fluide Bassin)",
+			"rewards": {
+				"coque": 2,
+				"fuel": 8,
+				"lum": 6,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Maintenir clic/toucher pour viser le lance-flammes • Clic droit, Espace ou bouton 💥 pour déclencher une explosion radiale",
+			"custom": {
+				"shields": 3,
+				"targetKills": 30
+			},
+			"description": "Fusion du lance-flammes (dUXf), souffle de feu périodique (FlameBreath), explosions (Main04), étincelles rebondissantes (FlashTest), braises (fireTest) et vapeur montante (sCuG/fgJ3) : défendez le réacteur contre 3 vagues de cibles.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "pyro_arcade.html",
+			"goal": "Détruire les 30 cibles (3 vagues) avant de perdre vos 3 boucliers.",
+			"icon": "🔥",
+			"id": "pyro_arcade",
+			"name": "Pyromancien (Pyro Arcade)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 8,
+				"scan": 4,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Cliquer/taper sur une cible pour lancer un éclair en chaîne • Maintenir pour canaliser un rayon plasma + ralenti (bullet-time) et charger les 4 pylônes",
+			"custom": {
+				"maxBreaches": 3,
+				"targetKills": 28
+			},
+			"description": "Combine éclairs ramifiés (nrlM), décharge Perlin + bullet-time au maintien (miZT) et plasma continu (werJ) : protégez la bobine centrale et surchargez les 4 pylônes périphériques.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "tesla_arcs.html",
+			"goal": "Détruire 28 drones avant que 3 drones n'atteignent la bobine centrale.",
+			"icon": "⚡",
+			"id": "tesla_arcs",
+			"name": "Bobine Tesla (Tesla Arcs)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 10,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur ou Flèches/ZQSD pour déplacer la singularité • Clic/taper ou Espace pour libérer une onde de choc magnétique (burst)",
+			"custom": {
+				"durationSec": 60,
+				"targetCores": 25
+			},
+			"description": "Fusion de la grille magnétique déformable (4Ueg), de l'essaim avec onde de choc (6GBb) et de l'aspiration Genie (gf3B) : attirez et avalez les noyaux stellaires tout en repoussant les mines d'antimatière avec votre onde de choc.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "vortex_magnet.html",
+			"goal": "Absorber 25 noyaux stellaires en 60 secondes sans perdre vos 3 points d'intégrité.",
+			"icon": "🌀",
+			"id": "vortex_magnet",
+			"name": "Trou Magnétique (Vortex Magnet)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 7,
+				"scan": 8,
+				"t2s": 8
+			}
+		}
+	]
+}

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Feux d'Artifice &amp; Fontaine (Hanabi Fountain)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #fde047; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.mode-jet { background: #1e3a5f; border-color: #38d6ff; color: #bae6fd; }
+  button.mode-fan { background: #3b2a10; border-color: #facc15; color: #fef08a; }
+  canvas { background: #04050c; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(253,224,71,0.18); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "hanabi_fountain",
+  "name": "Feux d'Artifice & Fontaine (Hanabi Fountain)",
+  "family": "topMouseHnS",
+  "icon": "🎆",
+  "controls": "Maintenir Clic / Toucher (ou Espace) pour projeter des disques tourbillonnants • Chaque clic bascule Jet droit / Éventail (jfzN) • ZQSD déplace le lanceur",
+  "description": "Fusion de jfzN.as (fontaine de disques tourbillonnants à deux régimes sous gravité) et ad59.as (HANABI : lanceurs toroïdaux projetant des gerbes lumineuses additives).",
+  "goal": "Allumer 16 bouquets Hanabi en touchant les lanceurs dérivants avec votre fontaine en moins de 65 secondes.",
+  "fields": [
+    { "key": "targetHanabi", "label": "Bouquets à allumer", "type": "number", "default": 16 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🎆 Hanabi</span>
+  <span id="stat">Bouquets 0/16 • Mode Jet • 65s</span>
+  <div class="bar-btns">
+    <button id="fanBtn" class="mode-jet" onclick="toggleFan()" title="Basculer Jet / Éventail (B)">💧 Jet</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Maintenir / Espace</b> : fontaine tourbillonnante (<b>jfzN</b>) • <b>Clic / B</b> : basculer Jet / Éventail • Allumez les 16 comètes Hanabi (<b>ad59</b>)
+</div>
+
+<script>
+const GAME_ID = "hanabi_fountain";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+let targetHanabi = 16, durationSec = 65;
+let fanMode = false; // jfzN clickFlug toggle
+let fountainDots = [];
+let hanabiSparks = [];
+let launchers = [];
+let ptr = { x: 256, y: 380, down: false };
+let keys = {};
+let lit = 0, timeLeft = 65, score = 0, won = false, over = false;
+let lastTs = 0, emitCd = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function toggleFan() {
+  fanMode = !fanMode;
+  const b = document.getElementById("fanBtn");
+  b.textContent = fanMode ? "🌸 Éventail" : "💧 Jet";
+  b.className = fanMode ? "mode-fan" : "mode-jet";
+  updateStat();
+}
+
+function spawnLauncher() {
+  if (launchers.length >= 6) return;
+  launchers.push({
+    x: Math.random() * SIZE,
+    y: 45 + Math.random() * 240,
+    vx: (Math.random() < 0.5 ? -1 : 1) * (48 + Math.random() * 65),
+    vy: (Math.random() - 0.5) * 55,
+    r: 15,
+    heat: 0,
+    hue: Math.floor(Math.random() * 360)
+  });
+}
+
+function burstHanabi(x, y, hue) {
+  for (let i = 0; i < 42 && hanabiSparks.length < 220; i++) {
+    const a = (i / 42) * Math.PI * 2 + Math.random() * 0.12;
+    const sp = 60 + Math.random() * 140;
+    hanabiSparks.push({
+      x, y,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp - 20,
+      col: `hsl(${(hue + Math.random() * 40) % 360}, 95%, 65%)`,
+      life: 0.9 + Math.random() * 0.5,
+      max: 1.4
+    });
+  }
+}
+
+function emitFountainDot() {
+  if (fountainDots.length >= 130) return;
+  const vx = fanMode ? (Math.random() * 10 - Math.random() * 10) * 28 : (15 + (Math.random() - 0.5) * 40);
+  const vy = (fanMode ? (Math.random() * 6 - 13) : -12) * 32;
+  fountainDots.push({
+    x: ptr.x,
+    y: ptr.y,
+    vx, vy,
+    rot: 0.5,
+    rotSpd: 6,
+    sc: 0.25,
+    sa: 0.05 + Math.random() * 0.04,
+    col: `hsl(${Math.floor(Math.random() * 360)}, 88%, 58%)`,
+    life: 2.2
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetHanabi = Math.max(6, Number(custom.targetHanabi || 16));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+  fanMode = false;
+  document.getElementById("fanBtn").textContent = "💧 Jet";
+  document.getElementById("fanBtn").className = "mode-jet";
+  fountainDots = [];
+  hanabiSparks = [];
+  launchers = [];
+  for (let i = 0; i < 5; i++) spawnLauncher();
+  lit = 0; timeLeft = durationSec; score = 0; won = false; over = false;
+  updateStat();
+}
+
+function updateStat() {
+  document.getElementById("stat").textContent =
+    `Bouquets ${lit}/${targetHanabi} • ${fanMode ? "Éventail" : "Jet"} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, ((e.clientX - r.left) / r.width) * SIZE)),
+    y: Math.max(0, Math.min(SIZE, ((e.clientY - r.top) / r.height) * SIZE))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  cv.setPointerCapture(e.pointerId);
+  const p = getPos(e);
+  ptr.x = p.x; ptr.y = p.y; ptr.down = true;
+  toggleFan();
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.x = p.x; ptr.y = p.y;
+});
+cv.addEventListener("pointerup", () => { ptr.down = false; });
+cv.addEventListener("pointercancel", () => { ptr.down = false; });
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (e.code === "KeyB") toggleFan();
+  if (e.code === "Space") e.preventDefault();
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function step(dt) {
+  if (over) return;
+
+  const spd = 280;
+  if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) ptr.x -= spd * dt;
+  if (keys.ArrowRight || keys.KeyD) ptr.x += spd * dt;
+  if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ptr.y -= spd * dt;
+  if (keys.ArrowDown || keys.KeyS) ptr.y += spd * dt;
+  ptr.x = Math.max(16, Math.min(SIZE - 16, ptr.x));
+  ptr.y = Math.max(16, Math.min(SIZE - 16, ptr.y));
+
+  timeLeft = Math.max(0, timeLeft - dt);
+  if (timeLeft <= 0) {
+    over = true; won = lit >= targetHanabi;
+    updateStat(); return;
+  }
+
+  if (ptr.down || keys.Space) {
+    emitCd -= dt;
+    if (emitCd <= 0) { emitFountainDot(); emitCd = 0.025; }
+  }
+
+  while (launchers.length < 5) spawnLauncher();
+
+  // Toroïdal wrap for ad59 launchers
+  for (const ln of launchers) {
+    ln.x = (ln.x + ln.vx * dt + SIZE) % SIZE;
+    ln.y += ln.vy * dt;
+    if (ln.y < 36 || ln.y > 310) ln.vy *= -1;
+  }
+
+  // Update jfzN discs
+  for (let i = fountainDots.length - 1; i >= 0; i--) {
+    const d = fountainDots[i];
+    d.vx *= 0.99;
+    d.vy = d.vy * 0.99 + 340 * dt;
+    d.x += d.vx * dt;
+    d.y += d.vy * dt;
+    d.sc += d.sa * (dt * 30);
+    d.rot += d.rotSpd * dt;
+    d.life -= dt;
+
+    for (let j = launchers.length - 1; j >= 0; j--) {
+      const ln = launchers[j];
+      if (Math.hypot(d.x - ln.x, d.y - ln.y) < ln.r + 9) {
+        ln.heat += 0.28;
+        fountainDots.splice(i, 1);
+        if (ln.heat >= 1) {
+          lit++;
+          score += 140;
+          burstHanabi(ln.x, ln.y, ln.hue);
+          launchers.splice(j, 1);
+          if (lit >= targetHanabi) {
+            over = true; won = true;
+            score += Math.round(timeLeft * 20);
+            updateStat(); return;
+          }
+        }
+        break;
+      }
+    }
+
+    if (d && (d.life <= 0 || d.y > SIZE + 20 || d.x < -20 || d.x > SIZE + 20)) {
+      fountainDots.splice(i, 1);
+    }
+  }
+
+  // Update ad59 hanabi sparks
+  for (let i = hanabiSparks.length - 1; i >= 0; i--) {
+    const s = hanabiSparks[i];
+    s.vy += 120 * dt;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.life -= dt;
+    if (s.life <= 0) hanabiSparks.splice(i, 1);
+  }
+
+  updateStat();
+}
+
+function draw() {
+  ctx.fillStyle = "rgba(4, 5, 12, 0.25)";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // ad59 launchers
+  for (const ln of launchers) {
+    ctx.strokeStyle = `hsl(${ln.hue}, 90%, 65%)`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(ln.x, ln.y, ln.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.beginPath(); ctx.arc(ln.x, ln.y, ln.r * Math.min(1, ln.heat), 0, Math.PI * 2); ctx.fill();
+  }
+
+  // jfzN tumbling discs
+  for (const d of fountainDots) {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+    ctx.scale(Math.sin(Math.PI * d.sc), Math.cos(Math.PI * d.sc));
+    ctx.fillStyle = d.col;
+    ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ad59 additive sparks
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const s of hanabiSparks) {
+    ctx.globalAlpha = Math.max(0, s.life / s.max);
+    ctx.fillStyle = s.col;
+    ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
+  }
+  ctx.restore();
+
+  if (!over) {
+    ctx.strokeStyle = fanMode ? "#facc15" : "#38d6ff";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 11, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(5, 8, 18, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "CIEL ILLUMINÉ !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Bouquets ${lit}/${targetHanabi} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+}
+
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

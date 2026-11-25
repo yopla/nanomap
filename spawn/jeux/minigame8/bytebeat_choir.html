@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Accordeur Bytebeat &amp; Chœur de Formants (Bytebeat Choir)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "bytebeat_choir",
+  "name": "Accordeur Bytebeat & Chœur de Formants (Bytebeat Choir)",
+  "family": "core",
+  "icon": "📻",
+  "controls": "Cliquer sur l'un des 7 boutons de formule Bytebeat à gauche (ou touches 1-7) • Glisser sur le pad XY à droite (ou ZQSD/Flèches) pour accorder voyelle formant + hauteur",
+  "description": "Fusion de 7rNB.as (Math Music Bytebeat en matrice visuelle) et nHqP.as (synthétiseur vocal à 5 voyelles formants) : identifiez la formule bit-à-bit cible et accordez le synthétiseur de formants dans le pad XY pour verrouiller l'onde harmonique.",
+  "goal": "Verrouiller les 5 signaux harmoniques en moins de 70 secondes.",
+  "fields": [
+    { "key": "targetWaves", "label": "Signaux à verrouiller", "type": "number", "default": 5 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 70 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">📻 Bytebeat</span>
+  <span id="stat">Signal 1/5 • Accord 0% • 70s</span>
+  <div class="bar-btns">
+    <button id="muteBtn" onclick="toggleMute()" title="Son Web Audio">🔊</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>1-7 / Boutons</b> : choisir la formule Bytebeat qui correspond à l'onde cible • <b>Glisser / ZQSD</b> : accorder le curseur dans la zone verte
+</div>
+
+<script>
+const GAME_ID = "bytebeat_choir";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const FORMULAS = [
+  { label: "F1: t*((t>>12|t>>8)&63&t>>4)", fn: (t) => t * ((t >> 12 | t >> 8) & 63 & t >> 4) },
+  { label: "F2: (t*(t>>5|t>>8))>>(t>>16)", fn: (t) => (t * (t >> 5 | t >> 8)) >> (t >> 16) },
+  { label: "F3: t*((t>>9|t>>13)&25&t>>6)", fn: (t) => t * ((t >> 9 | t >> 13) & 25 & t >> 6) },
+  { label: "F4: t*(t>>11&t>>9&123&t>>3)", fn: (t) => t * (t >> 11 & t >> 9 & 123 & t >> 3) },
+  { label: "F5: (t*(t>>8*(t>>15|t>>8)&20))", fn: (t) => t * (t >> 8 * (t >> 15 | t >> 8) & (20 | (t >> 19) * 5 >> t | t >> 3)) },
+  { label: "F6: ((-t&4095)*(255&t*(t&t>>13))>>13)", fn: (t) => ((-t & 4095) * (255 & t * (t & t >> 13)) >> 13) },
+  { label: "F7: t*(t>>((t>>9|t>>8))&63&t>>4)", fn: (t) => t * (t >> ((t >> 9 | t >> 8)) & 63 & t >> 4) }
+];
+const VOWELS = [
+  { name: "A", f1: 800, f2: 1300 },
+  { name: "I", f1: 250, f2: 2100 },
+  { name: "U", f1: 250, f2: 1400 },
+  { name: "E", f1: 450, f2: 1900 },
+  { name: "O", f1: 450, f2: 900 }
+];
+const PAD = { x: 258, y: 192, w: 232, h: 296 };
+const LIST_X = 20, LIST_W = 222, BTN_H = 38, BTN_Y0 = 192;
+
+let targetWaves = 5, durationSec = 70;
+let wave = 1, selFormula = 0, targetFormula = 0;
+let tuner = { x: 374, y: 340 }, targetPt = { x: 374, y: 340 };
+let lockProg = 0, ptrDown = false;
+let keys = {};
+let timeLeft = 70, score = 0, won = false, over = false;
+let byteTick = 0;
+let ripples = [];
+
+// Offscreen 96x96 Bytebeat matrix textures (7rNB Kyle visualization)
+const TEX_SZ = 96;
+const texTarget = document.createElement("canvas"); texTarget.width = TEX_SZ; texTarget.height = TEX_SZ;
+const texPlayer = document.createElement("canvas"); texPlayer.width = TEX_SZ; texPlayer.height = TEX_SZ;
+const ctxT = texTarget.getContext("2d");
+const ctxP = texPlayer.getContext("2d");
+
+// Web Audio Formant + Bytebeat pulse synth (nHqP)
+let audioCtx = null, osc = null, f1Filter = null, f2Filter = null, masterG = null, muted = false;
+function initAudio() {
+  if (!audioCtx) {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      audioCtx = new AC();
+      osc = audioCtx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.value = 160;
+      f1Filter = audioCtx.createBiquadFilter(); f1Filter.type = "bandpass"; f1Filter.Q.value = 5;
+      f2Filter = audioCtx.createBiquadFilter(); f2Filter.type = "bandpass"; f2Filter.Q.value = 5;
+      masterG = audioCtx.createGain(); masterG.gain.value = 0;
+      osc.connect(f1Filter); f1Filter.connect(masterG);
+      osc.connect(f2Filter); f2Filter.connect(masterG);
+      masterG.connect(audioCtx.destination);
+      osc.start();
+    } catch (e) {}
+  } else if (audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+}
+function playLockChime() {
+  if (muted || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "triangle";
+    o.frequency.setValueAtTime(523.25, now);
+    o.frequency.setValueAtTime(783.99, now + 0.08);
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(now); o.stop(now + 0.26);
+  } catch (e) {}
+}
+function toggleMute() {
+  muted = !muted;
+  document.getElementById("muteBtn").textContent = muted ? "🔇" : "🔊";
+  if (masterG && audioCtx) masterG.gain.setTargetAtTime(0, audioCtx.currentTime, 0.03);
+}
+
+function renderByteTexture(c2d, fIdx, shift) {
+  const img = c2d.createImageData(TEX_SZ, TEX_SZ);
+  const d = img.data;
+  const fn = FORMULAS[fIdx].fn;
+  for (let y = 0; y < TEX_SZ; y++) {
+    for (let x = 0; x < TEX_SZ; x++) {
+      const t = (y * TEX_SZ + x) * 2 + shift;
+      const v = fn(t) & 0xff;
+      const i = (y * TEX_SZ + x) * 4;
+      d[i] = v >> 1;
+      d[i + 1] = v;
+      d[i + 2] = Math.min(255, v + 50);
+      d[i + 3] = 255;
+    }
+  }
+  c2d.putImageData(img, 0, 0);
+}
+
+function sendResultAndExit(didWin, finalScore) {
+  if (masterG && audioCtx) try { masterG.gain.value = 0; } catch (e) {}
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function setupWave(w) {
+  wave = w;
+  targetFormula = (w * 2 + Math.floor(Math.random() * 5)) % FORMULAS.length;
+  selFormula = (targetFormula + 2) % FORMULAS.length;
+  targetPt = {
+    x: PAD.x + 36 + Math.random() * (PAD.w - 72),
+    y: PAD.y + 36 + Math.random() * (PAD.h - 72)
+  };
+  lockProg = 0;
+  renderByteTexture(ctxT, targetFormula, 0);
+  renderByteTexture(ctxP, selFormula, 0);
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetWaves = Math.max(2, Number(custom.targetWaves || 5));
+  durationSec = Math.max(25, Number(custom.durationSec || 70));
+  tuner = { x: PAD.x + PAD.w / 2, y: PAD.y + PAD.h / 2 };
+  ripples = [];
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  byteTick = 0;
+  setupWave(1);
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Signal ${wave}/${targetWaves} • Accord ${Math.round(lockProg)}% • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+function handlePointer(p, isClick) {
+  if (isClick && p.x >= LIST_X && p.x <= LIST_X + LIST_W && p.y >= BTN_Y0) {
+    const idx = Math.floor((p.y - BTN_Y0) / (BTN_H + 5));
+    if (idx >= 0 && idx < FORMULAS.length) {
+      selFormula = idx;
+      renderByteTexture(ctxP, selFormula, byteTick);
+    }
+  }
+  if (p.x >= PAD.x && p.x <= PAD.x + PAD.w && p.y >= PAD.y && p.y <= PAD.y + PAD.h) {
+    tuner.x = Math.max(PAD.x + 8, Math.min(PAD.x + PAD.w - 8, p.x));
+    tuner.y = Math.max(PAD.y + 8, Math.min(PAD.y + PAD.h - 8, p.y));
+  }
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  initAudio();
+  ptrDown = true;
+  handlePointer(getPos(e), true);
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!ptrDown || over) return;
+  handlePointer(getPos(e), false);
+});
+window.addEventListener("pointerup", () => { ptrDown = false; });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  const m = /^Digit([1-7])$/.exec(e.code);
+  if (m) {
+    initAudio();
+    selFormula = Number(m[1]) - 1;
+    renderByteTexture(ctxP, selFormula, byteTick);
+  }
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    byteTick += 4;
+    if (byteTick % 12 === 0) {
+      renderByteTexture(ctxT, targetFormula, byteTick);
+      renderByteTexture(ctxP, selFormula, byteTick);
+    }
+
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      tuner.x = Math.max(PAD.x + 8, Math.min(PAD.x + PAD.w - 8, tuner.x + kx * 210 * dt));
+      tuner.y = Math.max(PAD.y + 8, Math.min(PAD.y + PAD.h - 8, tuner.y + ky * 210 * dt));
+    }
+
+    // Check formant + bytebeat match
+    const dist = Math.hypot(tuner.x - targetPt.x, tuner.y - targetPt.y);
+    const formulaOk = selFormula === targetFormula;
+    if (formulaOk && dist < 34) {
+      lockProg = Math.min(100, lockProg + 68 * dt);
+    } else if (formulaOk && dist < 64) {
+      lockProg = Math.min(100, lockProg + 26 * dt);
+    } else {
+      lockProg = Math.max(0, lockProg - 18 * dt);
+    }
+
+    // Update Web Audio formant choir (nHqP)
+    if (audioCtx && masterG && !muted) {
+      const nx = (tuner.x - PAD.x) / PAD.w;
+      const ny = (tuner.y - PAD.y) / PAD.h;
+      const vIdx = Math.min(4, Math.floor(nx * 5));
+      const v = VOWELS[vIdx];
+      const mod = (FORMULAS[selFormula].fn(byteTick * 4) & 0xff) / 255;
+      osc.frequency.setTargetAtTime(110 + (1 - ny) * 180 + mod * 35, audioCtx.currentTime, 0.04);
+      f1Filter.frequency.setTargetAtTime(v.f1, audioCtx.currentTime, 0.04);
+      f2Filter.frequency.setTargetAtTime(v.f2, audioCtx.currentTime, 0.04);
+      masterG.gain.setTargetAtTime(ptrDown || formulaOk ? 0.14 : 0.05, audioCtx.currentTime, 0.05);
+    }
+
+    if (lockProg >= 100) {
+      score += 300;
+      playLockChime();
+      ripples.push({ x: targetPt.x, y: targetPt.y, r: 12, life: 1, col: "#4ade80" });
+      if (wave < targetWaves) setupWave(wave + 1);
+      else {
+        won = true; over = true;
+        score += Math.round(timeLeft * 25);
+      }
+    } else if (timeLeft <= 0) {
+      won = false; over = true;
+    }
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].r += 65 * dt;
+      ripples[i].life -= 2.4 * dt;
+      if (ripples[i].life <= 0) ripples.splice(i, 1);
+    }
+    if (over && masterG && audioCtx) masterG.gain.setTargetAtTime(0, audioCtx.currentTime, 0.04);
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Top Dual Bytebeat matrices (Target vs Player)
+  ctx.fillStyle = "#10192b";
+  ctx.fillRect(20, 18, 222, 158);
+  ctx.fillRect(258, 18, 232, 158);
+  ctx.strokeStyle = "#4ade80";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(20, 18, 222, 158);
+  ctx.strokeStyle = selFormula === targetFormula ? "#4ade80" : "#38d6ff";
+  ctx.strokeRect(258, 18, 232, 158);
+
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(texTarget, 71, 46, 120, 120);
+  ctx.drawImage(texPlayer, 314, 46, 120, 120);
+  ctx.imageSmoothingEnabled = true;
+
+  ctx.fillStyle = "#dcfce7";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("ONDE CIBLE (Bytebeat)", 131, 36);
+  ctx.fillStyle = selFormula === targetFormula ? "#4ade80" : "#bae6fd";
+  ctx.fillText(selFormula === targetFormula ? "VOTRE ONDE (MATCH!)" : "VOTRE ONDE", 374, 36);
+
+  // Left: 7 Bytebeat formula buttons (7rNB)
+  ctx.textAlign = "left";
+  ctx.font = "bold 11px ui-monospace, Menlo, monospace";
+  for (let i = 0; i < FORMULAS.length; i++) {
+    const by = BTN_Y0 + i * (BTN_H + 5);
+    const active = i === selFormula;
+    ctx.fillStyle = active ? "#1e4670" : "#0f172a";
+    ctx.strokeStyle = active ? "#38d6ff" : "#334155";
+    ctx.lineWidth = active ? 2 : 1.2;
+    ctx.fillRect(LIST_X, by, LIST_W, BTN_H);
+    ctx.strokeRect(LIST_X, by, LIST_W, BTN_H);
+    ctx.fillStyle = active ? "#ffffff" : "#94a3b8";
+    ctx.fillText(FORMULAS[i].label, LIST_X + 8, by + 23);
+  }
+
+  // Right: Formant Vowel XY Pad (nHqP)
+  ctx.fillStyle = "#0b1322";
+  ctx.strokeStyle = "#38d6ff";
+  ctx.lineWidth = 2;
+  ctx.fillRect(PAD.x, PAD.y, PAD.w, PAD.h);
+  ctx.strokeRect(PAD.x, PAD.y, PAD.w, PAD.h);
+
+  // Vowel columns
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  for (let i = 0; i < 5; i++) {
+    const vx = PAD.x + (i + 0.5) * (PAD.w / 5);
+    ctx.strokeStyle = "rgba(56,214,255,0.16)";
+    ctx.beginPath(); ctx.moveTo(PAD.x + i * (PAD.w / 5), PAD.y); ctx.lineTo(PAD.x + i * (PAD.w / 5), PAD.y + PAD.h); ctx.stroke();
+    ctx.fillStyle = "rgba(186,230,253,0.5)";
+    ctx.fillText(VOWELS[i].name, vx, PAD.y + 18);
+  }
+
+  // Target lock zone
+  ctx.fillStyle = "rgba(74,222,128,0.16)";
+  ctx.strokeStyle = "#4ade80";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(targetPt.x, targetPt.y, 32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  // Lock progress arc
+  if (lockProg > 0) {
+    ctx.strokeStyle = "#facc15";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(targetPt.x, targetPt.y, 36, -Math.PI / 2, -Math.PI / 2 + (lockProg / 100) * Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Player tuner cursor
+  ctx.fillStyle = "#38d6ff";
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(tuner.x, tuner.y, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "CHŒUR HARMONISÉ !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Signaux ${wave}/${targetWaves} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

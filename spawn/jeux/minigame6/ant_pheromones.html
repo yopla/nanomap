@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Colonie Phéromones (Ant Pheromones)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #fb923c; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.active-tool { background: #7c2d12; border-color: #fb923c; color: #ffedd5; }
+  canvas { background: #090c14; border: 2px solid #fb923c; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(251,146,60,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "ant_pheromones",
+  "name": "Colonie Phéromones (Ant Pheromones)",
+  "family": "zooEcosys",
+  "icon": "🐜",
+  "controls": "Glisser pour tracer une piste de phéromone • Clic droit, Espace ou bouton 🚫 pour basculer le spray Répulsif",
+  "description": "Fusion de la colonne de fourmis (bi6J/agAB), de la grille de phéromones à deux canaux (pQzm) et des micro-agents pixel-art (i6ZQ) : guidez vos 110 fourmis entre la fourmilière et les gisements d'ambre tout en évitant les araignées acides.",
+  "goal": "Rapporter 50 miettes d'ambre à la fourmilière avant la fin des 65 secondes.",
+  "fields": [
+    { "key": "targetFood", "label": "Miettes à rapporter", "type": "number", "default": 50 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🐜 Ant Pheromones</span>
+  <span id="stat">🍯 0/50 • 🐜 110 • 65s</span>
+  <div class="bar-btns">
+    <button id="toolBtn" onclick="toggleSprayMode()" title="Basculer Leurre / Répulsif (Espace)">✨ Leurre</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : tracer une piste lumineuse • <b>Espace / Clic droit</b> : spray Répulsif anti-araignées • Ramenez l'ambre au nid cyan
+</div>
+
+<script>
+const GAME_ID = "ant_pheromones";
+const SIZE = 512;
+const GN = 64;
+const CELL = SIZE / GN;
+const BLOCK_N = 10;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+let targetFood = 50, durationSec = 65;
+let pherHome = new Float32Array(GN * GN);
+let pherFood = new Float32Array(GN * GN);
+let pherLure = new Float32Array(GN * GN);
+let pherRepel = new Float32Array(GN * GN);
+
+const NEST = { x: 84, y: 428, r: 28 };
+let caches = [];
+let hazards = [];
+let ants = [];
+let sparks = [];
+let leaderBlocks = [];
+
+let sprayRepel = false;
+let pointer = { down: false, right: false, x: 256, y: 256 };
+let collected = 0, lostCount = 0, timeLeft = 65, score = 0, won = false, over = false;
+let respawnTimer = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function toggleSprayMode(force) {
+  sprayRepel = typeof force === "boolean" ? force : !sprayRepel;
+  const btn = document.getElementById("toolBtn");
+  btn.textContent = sprayRepel ? "🚫 Répulsif" : "✨ Leurre";
+  btn.classList.toggle("active-tool", sprayRepel);
+}
+
+function spawnAnt(atNest = true) {
+  const ang = Math.random() * Math.PI * 2;
+  const x = atNest ? NEST.x + Math.cos(ang) * 14 : 50 + Math.random() * (SIZE - 100);
+  const y = atNest ? NEST.y + Math.sin(ang) * 14 : 50 + Math.random() * (SIZE - 100);
+  ants.push({
+    x, y,
+    angle: ang,
+    speed: 78 + Math.random() * 28,
+    carrying: false,
+    wander: Math.random() * 6.28,
+    stepPhase: Math.random() * 6.28,
+    bx: 0, by: 0
+  });
+}
+
+function makeCache(idx) {
+  const spots = [
+    { x: 420, y: 92 },
+    { x: 145, y: 95 },
+    { x: 430, y: 375 },
+    { x: 270, y: 210 }
+  ];
+  const base = spots[idx % spots.length];
+  return {
+    x: base.x + (Math.random() - 0.5) * 32,
+    y: base.y + (Math.random() - 0.5) * 32,
+    amount: 22,
+    max: 22,
+    r: 22
+  };
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetFood = Math.max(10, Number(custom.targetFood || 50));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  pherHome.fill(0);
+  pherFood.fill(0);
+  pherLure.fill(0);
+  pherRepel.fill(0);
+
+  caches = [makeCache(0), makeCache(1), makeCache(2)];
+  hazards = [
+    { x: 250, y: 240, vx: 62, vy: 46, r: 19, phase: 0 },
+    { x: 340, y: 170, vx: -54, vy: 58, r: 19, phase: 2.1 }
+  ];
+  ants = [];
+  for (let i = 0; i < 110; i++) spawnAnt(true);
+  sparks = [];
+  collected = 0;
+  lostCount = 0;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  respawnTimer = 0;
+  toggleSprayMode(false);
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `🍯 ${collected}/${targetFood} • 🐜 ${ants.length} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+function paintPheromone(px, py, isRepel) {
+  const gx = Math.floor(px / CELL);
+  const gy = Math.floor(py / CELL);
+  const rad = isRepel ? 3 : 2;
+  const arr = isRepel ? pherRepel : pherLure;
+  for (let dy = -rad; dy <= rad; dy++) {
+    for (let dx = -rad; dx <= rad; dx++) {
+      const nx = gx + dx, ny = gy + dy;
+      if (nx < 0 || nx >= GN || ny < 0 || ny >= GN) continue;
+      const d = Math.hypot(dx, dy);
+      if (d <= rad + 0.3) {
+        const idx = ny * GN + nx;
+        arr[idx] = Math.min(1, arr[idx] + (1 - d / (rad + 1)) * 0.55);
+      }
+    }
+  }
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  pointer.down = true;
+  pointer.right = e.button === 2;
+  pointer.x = p.x;
+  pointer.y = p.y;
+  paintPheromone(p.x, p.y, pointer.right ? !sprayRepel : sprayRepel);
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  pointer.x = p.x;
+  pointer.y = p.y;
+  if (pointer.down && !over) {
+    paintPheromone(p.x, p.y, pointer.right ? !sprayRepel : sprayRepel);
+  }
+});
+window.addEventListener("pointerup", () => { pointer.down = false; pointer.right = false; });
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !e.repeat) {
+    e.preventDefault();
+    toggleSprayMode();
+  }
+});
+
+function sampleField(arr, x, y) {
+  const gx = Math.max(0, Math.min(GN - 1, Math.floor(x / CELL)));
+  const gy = Math.max(0, Math.min(GN - 1, Math.floor(y / CELL)));
+  return arr[gy * GN + gx];
+}
+
+function depositField(arr, x, y, val) {
+  const gx = Math.max(0, Math.min(GN - 1, Math.floor(x / CELL)));
+  const gy = Math.max(0, Math.min(GN - 1, Math.floor(y / CELL)));
+  arr[gy * GN + gx] = Math.min(1, arr[gy * GN + gx] + val);
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+
+    // Decay pheromone channels (pQzm.as)
+    const decayFast = Math.pow(0.55, dt);
+    const decayTrail = Math.pow(0.76, dt);
+    const decayRepel = Math.pow(0.70, dt);
+    for (let i = 0; i < GN * GN; i++) {
+      pherHome[i] *= decayTrail;
+      pherFood[i] *= decayTrail;
+      pherLure[i] *= decayFast;
+      pherRepel[i] *= decayRepel;
+    }
+
+    // Seed strong nest & food beacon gradients into grid
+    depositField(pherHome, NEST.x, NEST.y, 0.9);
+    for (const c of caches) {
+      depositField(pherFood, c.x, c.y, 0.7);
+    }
+
+    // Repopulate ants slowly up to 110 so hazards slow progress rather than soft-locking
+    if (ants.length < 110) {
+      respawnTimer += dt;
+      if (respawnTimer >= 0.35) {
+        respawnTimer = 0;
+        spawnAnt(true);
+      }
+    }
+
+    // Build spatial leader blocks (bi6J.as)
+    leaderBlocks = Array.from({ length: BLOCK_N * BLOCK_N }, () => null);
+    const span = SIZE / BLOCK_N;
+    for (const a of ants) {
+      a.bx = Math.max(0, Math.min(BLOCK_N - 1, Math.floor(a.x / span)));
+      a.by = Math.max(0, Math.min(BLOCK_N - 1, Math.floor(a.y / span)));
+      if (!a.carrying && !leaderBlocks[a.by * BLOCK_N + a.bx]) {
+        leaderBlocks[a.by * BLOCK_N + a.bx] = a;
+      }
+    }
+
+    // Update patrolling acid spiders
+    for (const h of hazards) {
+      h.phase += dt * 7;
+      h.x += h.vx * dt;
+      h.y += h.vy * dt;
+      // Avoid sitting directly on the nest
+      const ndx = h.x - NEST.x, ndy = h.y - NEST.y;
+      const nd = Math.max(1e-4, Math.hypot(ndx, ndy));
+      if (nd < 92) {
+        h.vx += (ndx / nd) * 260 * dt;
+        h.vy += (ndy / nd) * 260 * dt;
+      }
+      // Repellent spray also nudges hazards gently away
+      const rep = sampleField(pherRepel, h.x, h.y);
+      if (rep > 0.15) {
+        const rx = sampleField(pherRepel, h.x + 12, h.y) - sampleField(pherRepel, h.x - 12, h.y);
+        const ry = sampleField(pherRepel, h.x, h.y + 12) - sampleField(pherRepel, h.x, h.y - 12);
+        h.vx -= rx * 140 * dt;
+        h.vy -= ry * 140 * dt;
+      }
+      const sp = Math.hypot(h.vx, h.vy);
+      if (sp > 96) { h.vx = (h.vx / sp) * 96; h.vy = (h.vy / sp) * 96; }
+      if (h.x < 34) { h.x = 34; h.vx = Math.abs(h.vx); }
+      if (h.x > SIZE - 34) { h.x = SIZE - 34; h.vx = -Math.abs(h.vx); }
+      if (h.y < 34) { h.y = 34; h.vy = Math.abs(h.vy); }
+      if (h.y > SIZE - 34) { h.y = SIZE - 34; h.vy = -Math.abs(h.vy); }
+    }
+
+    // Update ants: 3-whisker pheromone steering + block chaining + carrying
+    const sensorDist = 18;
+    const sensorSpread = 0.52;
+    for (let i = ants.length - 1; i >= 0; i--) {
+      const a = ants[i];
+      a.stepPhase += dt * 16;
+
+      // Sample 3 forward whiskers
+      let bestScore = -1e9;
+      let chosenOffset = 0;
+      const offsets = [-sensorSpread, 0, sensorSpread];
+      for (let k = 0; k < 3; k++) {
+        const ang = a.angle + offsets[k];
+        const sx = a.x + Math.cos(ang) * sensorDist;
+        const sy = a.y + Math.sin(ang) * sensorDist;
+        let sc = 0;
+        if (sx < 10 || sx > SIZE - 10 || sy < 10 || sy > SIZE - 10) sc -= 3.0;
+        sc -= sampleField(pherRepel, sx, sy) * 4.5;
+        if (a.carrying) {
+          sc += sampleField(pherHome, sx, sy) * 2.2 + sampleField(pherLure, sx, sy) * 0.6;
+          const dNest = Math.hypot(sx - NEST.x, sy - NEST.y);
+          sc += Math.max(0, 1 - dNest / 520) * 0.45;
+        } else {
+          sc += sampleField(pherFood, sx, sy) * 2.2 + sampleField(pherLure, sx, sy) * 2.6;
+        }
+        sc += (Math.random() - 0.5) * 0.14;
+        if (sc > bestScore) { bestScore = sc; chosenOffset = offsets[k]; }
+      }
+
+      a.angle += chosenOffset * 6.2 * dt + (Math.random() - 0.5) * 2.2 * dt;
+
+      // Subtle leader pull from bi6J spatial block when foraging without strong trail
+      if (!a.carrying) {
+        const nb = leaderBlocks[a.by * BLOCK_N + a.bx];
+        if (nb && nb !== a && sampleField(pherLure, a.x, a.y) < 0.08) {
+          const toL = Math.atan2(nb.y - a.y, nb.x - a.x);
+          let diff = Math.atan2(Math.sin(toL - a.angle), Math.cos(toL - a.angle));
+          a.angle += diff * 1.4 * dt;
+        }
+      }
+
+      a.x += Math.cos(a.angle) * a.speed * dt;
+      a.y += Math.sin(a.angle) * a.speed * dt;
+
+      if (a.x < 8) { a.x = 8; a.angle = Math.PI - a.angle; }
+      if (a.x > SIZE - 8) { a.x = SIZE - 8; a.angle = Math.PI - a.angle; }
+      if (a.y < 8) { a.y = 8; a.angle = -a.angle; }
+      if (a.y > SIZE - 8) { a.y = SIZE - 8; a.angle = -a.angle; }
+
+      // Deposit trail pheromones
+      if (a.carrying) {
+        depositField(pherFood, a.x, a.y, 0.24 * dt * 10);
+        if (Math.hypot(a.x - NEST.x, a.y - NEST.y) < NEST.r) {
+          a.carrying = false;
+          a.angle += Math.PI;
+          collected++;
+          score += 50;
+          sparks.push({ x: NEST.x, y: NEST.y, r: 8, life: 1, col: "#38d6ff" });
+          if (collected >= targetFood) {
+            won = true;
+            over = true;
+            score += Math.round(timeLeft * 18) + ants.length * 2;
+            break;
+          }
+        }
+      } else {
+        depositField(pherHome, a.x, a.y, 0.14 * dt * 10);
+        for (let ci = 0; ci < caches.length; ci++) {
+          const c = caches[ci];
+          if (Math.hypot(a.x - c.x, a.y - c.y) < c.r) {
+            a.carrying = true;
+            a.angle += Math.PI;
+            c.amount--;
+            sparks.push({ x: c.x, y: c.y, r: 5, life: 0.7, col: "#fbbf24" });
+            if (c.amount <= 0) caches[ci] = makeCache(ci + Math.floor(Math.random() * 4));
+            break;
+          }
+        }
+      }
+
+      // Check spider hazards
+      for (const h of hazards) {
+        if (Math.hypot(a.x - h.x, a.y - h.y) < h.r) {
+          sparks.push({ x: a.x, y: a.y, r: 6, life: 0.9, col: "#f43f5e" });
+          ants.splice(i, 1);
+          lostCount++;
+          break;
+        }
+      }
+    }
+
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      sparks[i].r += 42 * dt;
+      sparks[i].life -= 2.2 * dt;
+      if (sparks[i].life <= 0) sparks.splice(i, 1);
+    }
+
+    if (timeLeft <= 0 && !over) {
+      won = collected >= targetFood;
+      over = true;
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#090c14";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Subtle substrate grid
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.05)";
+  ctx.lineWidth = 1;
+  for (let k = 0; k <= SIZE; k += 32) {
+    ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k, SIZE); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, k); ctx.lineTo(SIZE, k); ctx.stroke();
+  }
+
+  // Draw pheromone fields
+  for (let gy = 0; gy < GN; gy++) {
+    for (let gx = 0; gx < GN; gx++) {
+      const idx = gy * GN + gx;
+      const fh = pherHome[idx];
+      const ff = pherFood[idx];
+      const fl = pherLure[idx];
+      const fr = pherRepel[idx];
+      if (fh > 0.06) {
+        ctx.fillStyle = `rgba(56, 214, 255, ${Math.min(0.28, fh * 0.25)})`;
+        ctx.fillRect(gx * CELL, gy * CELL, CELL, CELL);
+      }
+      if (ff > 0.06 || fl > 0.04) {
+        const a = Math.min(0.65, ff * 0.35 + fl * 0.65);
+        ctx.fillStyle = `rgba(251, 191, 36, ${a})`;
+        ctx.fillRect(gx * CELL, gy * CELL, CELL, CELL);
+      }
+      if (fr > 0.05) {
+        ctx.fillStyle = `rgba(244, 63, 94, ${Math.min(0.62, fr * 0.6)})`;
+        ctx.fillRect(gx * CELL, gy * CELL, CELL, CELL);
+      }
+    }
+  }
+
+  // Food caches
+  for (const c of caches) {
+    const ratio = c.amount / c.max;
+    const gr = ctx.createRadialGradient(c.x, c.y, 4, c.x, c.y, c.r + 14);
+    gr.addColorStop(0, "rgba(251, 191, 36, 0.9)");
+    gr.addColorStop(0.6, "rgba(245, 158, 11, 0.35)");
+    gr.addColorStop(1, "rgba(245, 158, 11, 0)");
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(c.x, c.y, c.r + 14, 0, Math.PI * 2); ctx.fill();
+
+    ctx.fillStyle = "#fde047";
+    ctx.strokeStyle = "#fffbeb";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(c.x, c.y, 9 + ratio * 11, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+    ctx.fillStyle = "#090c14";
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(String(c.amount), c.x, c.y + 4);
+  }
+
+  // Nest
+  const ng = ctx.createRadialGradient(NEST.x, NEST.y, 5, NEST.x, NEST.y, NEST.r + 16);
+  ng.addColorStop(0, "#38d6ff");
+  ng.addColorStop(0.6, "rgba(14, 165, 233, 0.4)");
+  ng.addColorStop(1, "rgba(14, 165, 233, 0)");
+  ctx.fillStyle = ng;
+  ctx.beginPath(); ctx.arc(NEST.x, NEST.y, NEST.r + 16, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#0c223b";
+  ctx.strokeStyle = "#38d6ff";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(NEST.x, NEST.y, NEST.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#bae6fd";
+  ctx.font = "bold 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("NID", NEST.x, NEST.y + 4);
+
+  // Segmented pixel-art ants (bi6J + i6ZQ)
+  for (const a of ants) {
+    const ca = Math.cos(a.angle), sa = Math.sin(a.angle);
+    const wiggle = Math.sin(a.stepPhase) * 1.4;
+    const px = -sa * wiggle, py = ca * wiggle;
+    ctx.strokeStyle = a.carrying ? "#fde047" : "#fb923c";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(a.x - ca * 4 + px, a.y - sa * 4 + py);
+    ctx.lineTo(a.x + ca * 4, a.y + sa * 4);
+    ctx.stroke();
+
+    ctx.fillStyle = a.carrying ? "#fef08a" : "#fdba74";
+    ctx.fillRect(a.x - 1.5, a.y - 1.5, 3, 3);
+    if (a.carrying) {
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      ctx.arc(a.x + ca * 5, a.y + sa * 5, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Acid Spider hazards
+  for (const h of hazards) {
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.strokeStyle = "#f43f5e";
+    ctx.lineWidth = 2;
+    for (let leg = 0; leg < 6; leg++) {
+      const side = leg < 3 ? -1 : 1;
+      const idx = leg % 3;
+      const sway = Math.sin(h.phase + idx * 1.6) * 4;
+      ctx.beginPath();
+      ctx.moveTo(0, (idx - 1) * 5);
+      ctx.lineTo(side * 17, (idx - 1) * 8 + sway);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#881337";
+    ctx.strokeStyle = "#fda4af";
+    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fb7185";
+    ctx.beginPath(); ctx.arc(-3, -3, 2, 0, Math.PI * 2); ctx.arc(3, -3, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Sparks
+  for (const s of sparks) {
+    ctx.strokeStyle = s.col;
+    ctx.globalAlpha = Math.max(0, s.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Brush cursor indicator
+  if (!over) {
+    ctx.strokeStyle = sprayRepel ? "rgba(244,63,94,0.7)" : "rgba(251,191,36,0.7)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(pointer.x, pointer.y, sprayRepel ? 22 : 16, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "COLONIE APPROVISIONNÉE !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`${collected}/${targetFood} ambre • Pertes: ${lostCount} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

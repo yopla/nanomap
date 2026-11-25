@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Voile d'Algues (Cloth Cut)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.mode-cut { background: #4c1d24; border-color: #fb7185; color: #fecdd3; }
+  button.mode-pin { background: #1e3a5f; border-color: #facc15; color: #fef08a; }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "cloth_cut",
+  "name": "Voile d'Algues (Cloth Cut)",
+  "family": "core",
+  "icon": "🧶",
+  "controls": "Glisser sur le voile pour l'onduler ou le trancher • Espace, Clic droit ou bouton ✂️/📌 pour basculer Couper / Épingler (ZQSD déplace le curseur)",
+  "description": "Fusion de Tearable Cloth (3NFy), du tissu à épingler (1B_yRgT) et des ressorts d'onde (uj7v) : une résille Verlet souple retient perles dorées et mines rouges au-dessus du collecteur.",
+  "goal": "Collecter 15 perles dorées dans le bassin vert en moins de 65 secondes sans laisser tomber 3 mines rouges.",
+  "fields": [
+    { "key": "targetPearls", "label": "Perles à collecter", "type": "number", "default": 15 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🧶 Cloth Cut</span>
+  <span id="stat">Perles 0/15 • Mines 0/3 • 65s</span>
+  <div class="bar-btns">
+    <button id="modeBtn" class="mode-cut" onclick="toggleTool()" title="Basculer Couper / Épingler (Espace)">✂️ Couper</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : tirer/trancher la toile • <b>Espace / Clic droit</b> : basculer ✂️ Couper / 📌 Épingler • Faites tomber les perles or dans la zone verte
+</div>
+
+<script>
+const GAME_ID = "cloth_cut";
+const SIZE = 512;
+const COLS = 21;
+const ROWS = 13;
+const SPACING = 20;
+const START_X = (SIZE - (COLS - 1) * SPACING) / 2;
+const START_Y = 66;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+let targetPearls = 15, durationSec = 65;
+let points = [], links = [], items = [], ripples = [];
+let tool = "cut"; // "cut" | "pin"
+let ptr = { x: 256, y: 200, px: 256, py: 200, down: false };
+let keys = {};
+let pearls = 0, minesHit = 0, timeLeft = 65, score = 0, won = false, over = false;
+let spawnTimer = 0, waveTime = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function toggleTool(force) {
+  tool = force || (tool === "cut" ? "pin" : "cut");
+  const btn = document.getElementById("modeBtn");
+  if (tool === "cut") {
+    btn.textContent = "✂️ Couper";
+    btn.className = "mode-cut";
+  } else {
+    btn.textContent = "📌 Épingler";
+    btn.className = "mode-pin";
+  }
+}
+
+function buildCloth() {
+  points = [];
+  links = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const x = START_X + c * SPACING;
+      const y = START_Y + r * SPACING;
+      const pinned = (r === 0 && (c % 2 === 0 || c === COLS - 1));
+      points.push({ x, y, ox: x, oy: y, pinned, basePin: pinned, r, c });
+    }
+  }
+  const idx = (r, c) => r * COLS + c;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (c > 0) links.push({ a: idx(r, c), b: idx(r, c - 1), len: SPACING, alive: true });
+      if (r > 0) links.push({ a: idx(r, c), b: idx(r - 1, c), len: SPACING, alive: true });
+    }
+  }
+}
+
+function spawnItem(kind) {
+  const isMine = kind === "mine";
+  items.push({
+    x: START_X + 35 + Math.random() * ((COLS - 1) * SPACING - 70),
+    y: 22,
+    vx: (Math.random() - 0.5) * 28,
+    vy: 25 + Math.random() * 20,
+    r: isMine ? 10 : 8.5,
+    kind: isMine ? "mine" : "pearl",
+    age: 0
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetPearls = Math.max(3, Number(custom.targetPearls || 15));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  buildCloth();
+  items = [];
+  ripples = [];
+  for (let i = 0; i < 4; i++) spawnItem("pearl");
+  spawnItem("mine");
+  tool = "cut";
+  toggleTool("cut");
+  ptr = { x: 256, y: 200, px: 256, py: 200, down: false };
+  pearls = 0;
+  minesHit = 0;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  spawnTimer = 0;
+  waveTime = 0;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Perles ${pearls}/${targetPearls} • Mines ${minesHit}/3 • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+function segDistSq(px, py, ax, ay, bx, by) {
+  const vx = bx - ax, vy = by - ay;
+  const wx = px - ax, wy = py - ay;
+  const c1 = vx * wx + vy * wy;
+  if (c1 <= 0) return wx * wx + wy * wy;
+  const c2 = vx * vx + vy * vy;
+  if (c2 <= c1) return (px - bx) * (px - bx) + (py - by) * (py - by);
+  const t = c1 / c2;
+  const qx = ax + t * vx, qy = ay + t * vy;
+  return (px - qx) * (px - qx) + (py - qy) * (py - qy);
+}
+
+function applyPinAction(px, py) {
+  let best = null, bestD = 26;
+  for (const p of points) {
+    if (p.basePin) continue;
+    const d = Math.hypot(p.x - px, p.y - py);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  if (best) {
+    best.pinned = !best.pinned;
+    best.ox = best.x;
+    best.oy = best.y;
+    ripples.push({ x: best.x, y: best.y, r: 4, life: 1, col: best.pinned ? "#facc15" : "#38d6ff" });
+  }
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x;
+  ptr.y = ptr.py = p.y;
+  ptr.down = true;
+  if (e.button === 2) {
+    toggleTool();
+    return;
+  }
+  if (tool === "pin") {
+    applyPinAction(p.x, p.y);
+  }
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x;
+  ptr.py = ptr.y;
+  ptr.x = p.x;
+  ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => { ptr.down = false; });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) {
+    if (tool === "pin") applyPinAction(ptr.x, ptr.y);
+    else toggleTool();
+  }
+  if ((e.code === "KeyE" || e.code === "KeyC") && !e.repeat) toggleTool();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+const COLLECTOR = { x: 116, y: 454, w: 280, h: 40 };
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    waveTime += dt;
+
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      const m = Math.hypot(kx, ky);
+      ptr.px = ptr.x;
+      ptr.py = ptr.y;
+      ptr.x = Math.max(12, Math.min(SIZE - 12, ptr.x + (kx / m) * 290 * dt));
+      ptr.y = Math.max(12, Math.min(SIZE - 12, ptr.y + (ky / m) * 290 * dt));
+    }
+
+    // Spawn pearls & mines
+    spawnTimer += dt;
+    if (spawnTimer >= 1.35) {
+      spawnTimer = 0;
+      const pearlCount = items.filter(it => it.kind === "pearl").length;
+      const mineCount = items.filter(it => it.kind === "mine").length;
+      if (pearlCount < 8) spawnItem("pearl");
+      if (mineCount < 4 && Math.random() < 0.45) spawnItem("mine");
+    }
+
+    // Verlet integration + wave breeze (uj7v.as + Main.as)
+    const breeze = Math.sin(waveTime * 2.1) * 32;
+    const activeCut = ptr.down && tool === "cut";
+    const dragWave = !activeCut && (Math.hypot(ptr.x - ptr.px, ptr.y - ptr.py) > 0.5 || kx || ky);
+
+    for (const p of points) {
+      if (p.pinned) continue;
+      let vx = (p.x - p.ox) * 0.985;
+      let vy = (p.y - p.oy) * 0.985;
+      p.ox = p.x;
+      p.oy = p.y;
+
+      const dMouse = Math.hypot(p.x - ptr.x, p.y - ptr.y);
+      if (dragWave && dMouse < 44) {
+        vx += (ptr.x - ptr.px) * 0.45;
+        vy += (ptr.y - ptr.py) * 0.45;
+      }
+      const waveY = Math.cos(waveTime * 3.0 + p.c * 0.45) * 14;
+      p.x += vx + breeze * dt * dt * 20;
+      p.y += vy + (460 + waveY * 2) * dt * dt;
+
+      if (p.x < 10) p.x = 10;
+      if (p.x > SIZE - 10) p.x = SIZE - 10;
+      if (p.y > SIZE - 14) p.y = SIZE - 14;
+    }
+
+    // Cut links under blade when dragging in cut mode (Main.as)
+    if (activeCut) {
+      for (const l of links) {
+        if (!l.alive) continue;
+        const a = points[l.a], b = points[l.b];
+        if (segDistSq(ptr.x, ptr.y, a.x, a.y, b.x, b.y) < 169) {
+          l.alive = false;
+          ripples.push({ x: (a.x + b.x) * 0.5, y: (a.y + b.y) * 0.5, r: 3, life: 0.7, col: "#fb7185" });
+        }
+      }
+    }
+
+    // Solve Verlet constraints (4 iterations)
+    for (let it = 0; it < 4; it++) {
+      for (const l of links) {
+        if (!l.alive) continue;
+        const p1 = points[l.a], p2 = points[l.b];
+        const dx = p1.x - p2.x, dy = p1.y - p2.y;
+        const d = Math.hypot(dx, dy) || 0.0001;
+        if (d > SPACING * 3.4) {
+          l.alive = false;
+          continue;
+        }
+        const diff = (l.len - d) / d;
+        if (p1.pinned && p2.pinned) continue;
+        if (p1.pinned) {
+          p2.x -= dx * diff;
+          p2.y -= dy * diff;
+        } else if (p2.pinned) {
+          p1.x += dx * diff;
+          p1.y += dy * diff;
+        } else {
+          p1.x += dx * diff * 0.5;
+          p1.y += dy * diff * 0.5;
+          p2.x -= dx * diff * 0.5;
+          p2.y -= dy * diff * 0.5;
+        }
+      }
+    }
+
+    // Update pearls and mines colliding with intact cloth links
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i];
+      it.age += dt;
+      it.vy += 170 * dt;
+      it.vx *= Math.pow(0.8, dt);
+      it.x += it.vx * dt;
+      it.y += it.vy * dt;
+
+      if (it.x < it.r + 8) { it.x = it.r + 8; it.vx = Math.abs(it.vx) * 0.6; }
+      if (it.x > SIZE - it.r - 8) { it.x = SIZE - it.r - 8; it.vx = -Math.abs(it.vx) * 0.6; }
+
+      // Collide with alive cloth segments
+      for (const l of links) {
+        if (!l.alive) continue;
+        const a = points[l.a], b = points[l.b];
+        const minX = Math.min(a.x, b.x) - it.r, maxX = Math.max(a.x, b.x) + it.r;
+        const minY = Math.min(a.y, b.y) - it.r, maxY = Math.max(a.y, b.y) + it.r;
+        if (it.x < minX || it.x > maxX || it.y < minY || it.y > maxY) continue;
+        const vx = b.x - a.x, vy = b.y - a.y;
+        const len2 = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((it.x - a.x) * vx + (it.y - a.y) * vy) / len2));
+        const qx = a.x + t * vx, qy = a.y + t * vy;
+        const dx = it.x - qx, dy = it.y - qy;
+        const dist = Math.hypot(dx, dy);
+        if (dist < it.r + 2.5 && dist > 0.001) {
+          const nx = dx / dist, ny = dy / dist;
+          const pen = it.r + 2.5 - dist;
+          it.x += nx * pen * 0.75;
+          it.y += ny * pen * 0.75;
+          const vn = it.vx * nx + it.vy * ny;
+          if (vn < 0) {
+            it.vx -= 1.25 * vn * nx;
+            it.vy -= 1.25 * vn * ny;
+          }
+          if (!a.pinned) { a.x -= nx * pen * 0.15; a.y -= ny * pen * 0.15; }
+          if (!b.pinned) { b.x -= nx * pen * 0.15; b.y -= ny * pen * 0.15; }
+        }
+      }
+
+      // Check collector zone
+      if (it.y + it.r >= COLLECTOR.y && it.y - it.r <= COLLECTOR.y + COLLECTOR.h &&
+          it.x >= COLLECTOR.x && it.x <= COLLECTOR.x + COLLECTOR.w) {
+        if (it.kind === "pearl") {
+          pearls++;
+          score += 120;
+          ripples.push({ x: it.x, y: COLLECTOR.y, r: 6, life: 1, col: "#4ade80" });
+          if (pearls >= targetPearls) {
+            won = true;
+            over = true;
+            score += Math.round(timeLeft * 20);
+          }
+        } else {
+          minesHit++;
+          score = Math.max(0, score - 80);
+          ripples.push({ x: it.x, y: COLLECTOR.y, r: 8, life: 1, col: "#f87171" });
+          if (minesHit >= 3) {
+            won = false;
+            over = true;
+          }
+        }
+        items.splice(i, 1);
+        continue;
+      }
+
+      // Out of bounds bottom or very old mine trapped on cloth
+      if (it.y > SIZE + 20 || (it.kind === "mine" && it.age > 16)) {
+        items.splice(i, 1);
+      }
+    }
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].r += 90 * dt;
+      ripples[i].life -= 2.4 * dt;
+      if (ripples[i].life <= 0) ripples.splice(i, 1);
+    }
+
+    if (timeLeft <= 0 && !over) {
+      won = pearls >= targetPearls;
+      over = true;
+    }
+    ptr.px = ptr.x;
+    ptr.py = ptr.y;
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Subtle collector funnel walls
+  ctx.fillStyle = "rgba(34, 197, 94, 0.16)";
+  ctx.strokeStyle = "#4ade80";
+  ctx.lineWidth = 2;
+  ctx.fillRect(COLLECTOR.x, COLLECTOR.y, COLLECTOR.w, COLLECTOR.h);
+  ctx.strokeRect(COLLECTOR.x, COLLECTOR.y, COLLECTOR.w, COLLECTOR.h);
+  ctx.fillStyle = "#86efac";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("BASSIN COLLECTEUR DE PERLES", 256, COLLECTOR.y + 24);
+
+  // Cloth mesh
+  ctx.strokeStyle = "rgba(56, 214, 255, 0.72)";
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  for (const l of links) {
+    if (!l.alive) continue;
+    const a = points[l.a], b = points[l.b];
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+  }
+  ctx.stroke();
+
+  // Pinned nodes
+  for (const p of points) {
+    if (!p.pinned) continue;
+    ctx.fillStyle = p.basePin ? "#38d6ff" : "#facc15";
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Items
+  for (const it of items) {
+    if (it.kind === "pearl") {
+      ctx.fillStyle = "#facc15";
+      ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fef9c3";
+      ctx.beginPath(); ctx.arc(it.x - 2.5, it.y - 2.5, 2.8, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath(); ctx.arc(it.x, it.y, it.r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#fca5a5";
+      ctx.lineWidth = 1.6;
+      for (let k = 0; k < 6; k++) {
+        const ang = (k / 6) * Math.PI * 2 + it.age * 2;
+        ctx.beginPath();
+        ctx.moveTo(it.x + Math.cos(ang) * (it.r - 2), it.y + Math.sin(ang) * (it.r - 2));
+        ctx.lineTo(it.x + Math.cos(ang) * (it.r + 4), it.y + Math.sin(ang) * (it.r + 4));
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Ripples
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Tool cursor
+  if (!over) {
+    ctx.strokeStyle = tool === "cut" ? "#fb7185" : "#facc15";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, tool === "cut" ? 13 : 16, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "RÉCOLTE RÉUSSIE !" : (minesHit >= 3 ? "TROP DE MINES !" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Perles ${pearls}/${targetPearls} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

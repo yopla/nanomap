@@ -1,0 +1,203 @@
+{
+	"minigames": [
+		{
+			"controls": "Pointeur / glisser ou ZQSD pour guider les tentacules IK 3D sur les nœuds lumineux • Clic ou Espace pour faire tourner l'anémone 3D et balayer l'esquisse",
+			"custom": {
+				"targetFigures": 4,
+				"durationSec": 65
+			},
+			"description": "Fusion de l'anémone IK 3D (oqvNz.as SegmentList3D) et du dessin organique vibrant (pBrS.as) : orientez les tentacules 3D vers chaque nœud pour faire éclore 4 silhouettes marines animées en filaments vibrants.",
+			"enabled": true,
+			"family": "core",
+			"filename": "anemone_sketch3d.html",
+			"goal": "Compléter les 4 silhouettes organiques (Étoile, Spirale, Méduse, Corail) en moins de 65 secondes.",
+			"icon": "🪸",
+			"id": "anemone_sketch3d",
+			"name": "Anémone 3D & Esquisse (Anemone 3D)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 8,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Glisser sur le voile pour l'onduler ou le trancher • Espace, Clic droit ou bouton ✂️/📌 pour basculer Couper / Épingler (ZQSD déplace le curseur)",
+			"custom": {
+				"targetPearls": 15,
+				"durationSec": 65
+			},
+			"description": "Fusion de Tearable Cloth (3NFy), du tissu à épingler (1B_yRgT) et des ressorts d'onde (uj7v) : une résille Verlet souple retient perles dorées et mines rouges au-dessus du collecteur.",
+			"enabled": true,
+			"family": "core",
+			"filename": "cloth_cut.html",
+			"goal": "Collecter 15 perles dorées dans le bassin vert en moins de 65 secondes sans laisser tomber 3 mines rouges.",
+			"icon": "🧶",
+			"id": "cloth_cut",
+			"name": "Voile d'Algues (Cloth Cut)",
+			"rewards": {
+				"coque": 2,
+				"fuel": 6,
+				"lum": 6,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur / glisser ou ZQSD pour orienter le flux ou abriter la prairie • Espace, Clic droit ou bouton 🌀/🛡️ pour basculer Courant / Abri",
+			"custom": {
+				"targetSpores": 25,
+				"durationSec": 65
+			},
+			"description": "Fusion des filaments rompus au vent Perlin (t5MT.as), de l'herbe 3D turbulente (kUGu.as) et des prairies en parallaxe (aQmp.as) : orientez les courants pour mener les spores dorées au récif vert tout en protégeant la canopée contre les rafales rouges.",
+			"enabled": true,
+			"family": "zooEcosys",
+			"filename": "kelp_currents.html",
+			"goal": "Guider 25 spores dorées dans le récif sanctuaire en moins de 65 secondes tout en maintenant l'intégrité des algues au-dessus de 40%.",
+			"icon": "🌿",
+			"id": "kelp_currents",
+			"name": "Champ d'Algues & Courants (Kelp Currents)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur / glisser ou ZQSD pour faire rouler et peigner la boule d'algue • Clic ou Espace pour hérisser ses poils (attire les nutriments et repousse les sangsues)",
+			"custom": {
+				"targetNutrients": 30,
+				"durationSec": 60
+			},
+			"description": "Adaptation de marimo (mHSL.as et c8xP.as) : une sphère d'algue tapissée de fibres directionnelles réactives au mouvement et d'une ombre portée dynamique. Faites-la rouler pour absorber les gouttes nutritives vertes.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "marimo_fuzz.html",
+			"goal": "Absorber 30 gouttes nutritives vertes en moins de 60 secondes sans subir 3 morsures de sangsues rouges.",
+			"icon": "🟢",
+			"id": "marimo_fuzz",
+			"name": "Marimo Poilu (Marimo Fuzz)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Cliquer/glisser pour déployer un dôme élastique et l'étirer • Survoler / cliquer ou Espace pour émettre une onde harmonique (ZQSD déplace le curseur)",
+			"custom": {
+				"targetOrbs": 24,
+				"durationSec": 60
+			},
+			"description": "Adapté de melon.as (Dome, Disk et Oscillator harmoniques) : tracez des membranes élastiques en anneaux concentriques qui vibrent et capturent le pollen doré tout en repoussant les épines rouges.",
+			"enabled": true,
+			"family": "topMouseMut",
+			"filename": "melon_domes.html",
+			"goal": "Capturer 24 pollens dorés par résonance en moins de 60 secondes sans laisser 3 épines percer vos dômes.",
+			"icon": "🍈",
+			"id": "melon_domes",
+			"name": "Dômes Élastiques (Melon Domes)",
+			"rewards": {
+				"coque": 3,
+				"fuel": 5,
+				"lum": 8,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur / glisser ou ZQSD / Flèches pour piloter le corps mou • Clic ou Espace pour effectuer un bond élastique",
+			"custom": {
+				"targetDelivered": 18,
+				"durationSec": 65
+			},
+			"description": "Adaptation de pac.as (SoftBody, panier mobile, nourriture aléatoire et fantômes patrouilleurs) : votre cellule gélatineuse se déforme à travers les couloirs pour récolter les spores et les déposer dans le panier vert.",
+			"enabled": true,
+			"family": "topOrthoClav",
+			"filename": "puyo_pac.html",
+			"goal": "Livrer 18 spores dans le panier mobile vert en moins de 65 secondes sans perdre vos 3 vies face aux fantômes rouges.",
+			"icon": "🫧",
+			"id": "puyo_pac",
+			"name": "Puyo-Pac Soft-Body",
+			"rewards": {
+				"coque": 3,
+				"fuel": 7,
+				"lum": 6,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Cliquer / glisser sur un maillon pour le détacher • Cliquer ou Espace sur une bille libre pour la faire rebondir vers les bassins verts (ZQSD déplace le curseur)",
+			"custom": {
+				"targetBeads": 22,
+				"durationSec": 65
+			},
+			"description": "Adapté de cko0.as (rideau noren à joints de distance Box2D, rupture au clic et rebond sur les billes détachées) : libérez les perles suspendues au plafond et faites-les ricocher sur les étagères jusqu'aux bassins verts.",
+			"enabled": true,
+			"family": "core",
+			"filename": "tentacle_curtain.html",
+			"goal": "Faire atterrir 22 perles détachées dans les bassins verts en moins de 65 secondes.",
+			"icon": "🎐",
+			"id": "tentacle_curtain",
+			"name": "Rideau de Tentacules (Tentacle Curtain)",
+			"rewards": {
+				"coque": 2,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 6,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur / glisser ou ZQSD pour guider le bras IK marionnette • Clic ou Espace pour fouetter et repousser les parasites rouges",
+			"custom": {
+				"targetNotes": 28,
+				"durationSec": 65
+			},
+			"description": "Fusion du module 8A_tentacule_danseur (corp.as, tentacle.as, TailLine.as, glob.as, com.as), de rBnH.as et du poulpe sinusoïdal 192P.as : pilotez votre tentacule en cinématique inverse pour cueillir le plancton doré tout en balayant les parasites.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "tentacle_dancer.html",
+			"goal": "Attraper 28 notes de plancton doré en moins de 65 secondes sans perdre vos 3 cœurs face aux parasites rouges.",
+			"icon": "🐙",
+			"id": "tentacle_dancer",
+			"name": "Tentacule Danseur (IK Marionette)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 7,
+				"scan": 5,
+				"t2s": 8
+			}
+		},
+		{
+			"controls": "Pointeur / glisser ou ZQSD pour fouetter avec les fibres • Maintenir Clic, Espace ou bouton 🧲 Aspiration pour aspirer les éclats dorés",
+			"custom": {
+				"targetSmashed": 18,
+				"targetShards": 18,
+				"durationSec": 65
+			},
+			"description": "Fusion de ClackledHair (xEwN.as), des fibres IK (enw6.as), des cordes Catmull-Rom (q8jR.as), des poils (3gRC.as) et des courbes Bézier (pHkc.as) : donnez du fouet avec vos fibres pour briser les spores rouges puis activez l'aspiration.",
+			"enabled": true,
+			"family": "topMouseHnS",
+			"filename": "whip_fibers.html",
+			"goal": "Briser 18 spores rouges au fouet et aspirer 18 éclats dorés en moins de 65 secondes sans perdre vos 3 cœurs.",
+			"icon": "〰️",
+			"id": "whip_fibers",
+			"name": "Fouet & Fibres IK (Whip Fibers)",
+			"rewards": {
+				"coque": 4,
+				"fuel": 6,
+				"lum": 8,
+				"scan": 5,
+				"t2s": 8
+			}
+		}
+	]
+}

@@ -1711,7 +1711,7 @@
 			"name": "Plaines Astrales",
 			"rockDensity": 1.0,
 			"theme": "astral",
-			"worldSeed": 152077
+			"worldSeed": 708424
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -1726,7 +1726,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 810998
+			"worldSeed": 363566
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -1741,7 +1741,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 827005
+			"worldSeed": 838166
 		},
 		{
 			"accentColor": "#b66dff",
@@ -1756,7 +1756,7 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 236886
+			"worldSeed": 589464
 		},
 		{
 			"accentColor": "#ffd24c",
@@ -1772,7 +1772,7 @@
 			"name": "Désert Ionique",
 			"rockDensity": 1.15,
 			"theme": "astral",
-			"worldSeed": 448930
+			"worldSeed": 663992
 		}
 	],
 	"cameraSmoothing": 6.5,
@@ -1786,7 +1786,7 @@
 	"shipSubtitle": "Systèmes nominaux • Base (0, 0)",
 	"shipTitle": "VAISSEAU",
 	"showCompass": true,
-	"worldSeed": 152077
+	"worldSeed": 708424
 }/*GAME_CONFIG_JSON_END*/;
 
   let ELEMENTS_DATA = /*ELEMENTS_DATA_JSON*/{
@@ -3138,7 +3138,7 @@
   if (window.location.protocol === "http:" || window.location.protocol === "https:") {
     const [remoteCfg, remoteElems, remoteExts, remoteAnchors] = await Promise.all([
       fetchJsonNoCache("game_config.json"),
-      fetchJsonNoCache("config/elements_data.json"),
+      fetchJsonNoCache("config/elements/elements_data.json"),
       fetchJsonNoCache("config/extensions.json"),
       fetchJsonNoCache("config/anchors.json"),
     ]);
@@ -8053,7 +8053,7 @@
     try {
       let [remoteCfg, remoteElems, remoteExts, remoteAnchors] = await Promise.all([
         fetchJsonNoCache("game_config.json"),
-        fetchJsonNoCache("config/elements_data.json"),
+        fetchJsonNoCache("config/elements/elements_data.json"),
         fetchJsonNoCache("config/extensions.json"),
         fetchJsonNoCache("config/anchors.json"),
       ]);
@@ -8578,6 +8578,6 @@
   requestAnimationFrame(frame);
 })();
 </script>
-<div id="version-badge" aria-hidden="true">v0.2.3</div>
+<div id="version-badge" aria-hidden="true">v0.2.2</div>
 </body>
 </html>

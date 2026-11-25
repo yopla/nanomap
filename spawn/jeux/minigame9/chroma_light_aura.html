@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Métaballes RGB &amp; Auras d'Encre (Chroma Light Aura)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #a78bfa; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #03040a; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(167,139,250,0.2); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "chroma_light_aura",
+  "name": "Métaballes RGB & Auras d'Encre (Chroma Light Aura)",
+  "family": "core",
+  "icon": "🌈",
+  "controls": "Déplacer l'orbe à ressort (Souris/Toucher ou ZQSD) • Ralentir dilate l'aura (uu9J) • Clic / Espace bascule la couleur R / V / B de l'orbe",
+  "description": "Fusion de 9tfv.as (champ lumineux additif 1/r² par pixel), fCRv.as (Dancing Metaballs RGB), ivuo.as (halo à ressort fluide) et uu9J.as (aura rotative dont le rayon varie inversement à la vitesse).",
+  "goal": "Accorder et charger 8 prismes chromatiques en moins de 65 secondes en combinant la couleur de votre orbe avec les métaballes RGB dansantes.",
+  "fields": [
+    { "key": "targetPrisms", "label": "Prismes à charger", "type": "number", "default": 8 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🌈 Métaballes RGB</span>
+  <span id="stat">Prismes 0/8 • Orbe Rouge • 65s</span>
+  <div class="bar-btns">
+    <button id="colBtn" onclick="cycleColor()" title="Changer de couleur R/V/B (Espace)">🔴 R</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Pointeur / ZQSD</b> : piloter l'orbe (<b>ivuo / uu9J</b>) • <b>Clic / Espace</b> : couleur R/V/B • Placez l'orbe près des prismes avec les métaballes (<b>9tfv / fCRv</b>)
+</div>
+
+<script>
+const GAME_ID = "chroma_light_aura";
+const SIZE = 512;
+const FIELD = 80; // 80x80 offscreen buffer for fast 1/r^2 RGB additive field (9tfv.as + fCRv.as)
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const fieldCv = document.createElement("canvas");
+fieldCv.width = FIELD; fieldCv.height = FIELD;
+const fieldCtx = fieldCv.getContext("2d");
+const fieldImg = fieldCtx.createImageData(FIELD, FIELD);
+
+const CHANNELS = [
+  { name: "Rouge", btn: "🔴 R", r: 1, g: 0.12, b: 0.12, css: "#f87171" },
+  { name: "Vert",  btn: "🟢 V", r: 0.12, g: 1, b: 0.12, css: "#4ade80" },
+  { name: "Bleu",  btn: "🔵 B", r: 0.12, g: 0.25, b: 1, css: "#60a5fa" }
+];
+const TARGET_COMBOS = [
+  { name: "Magenta", r: 1, g: 0, b: 1, css: "#e879f9" },
+  { name: "Cyan",    r: 0, g: 1, b: 1, css: "#22d3ee" },
+  { name: "Jaune",   r: 1, g: 1, b: 0, css: "#facc15" },
+  { name: "Blanc",   r: 1, g: 1, b: 1, css: "#ffffff" }
+];
+
+let targetPrisms = 8, durationSec = 65;
+let chanIdx = 0;
+let ptr = { x: 256, y: 256 };
+let orb = { x: 256, y: 256, vx: 0, vy: 0, rad: 22 };
+let keys = {};
+let lights = []; // 9tfv + fCRv 3 RGB dancing metaballs
+let prisms = [];
+let tClock = 0, solved = 0, timeLeft = 65, score = 0, won = false, over = false;
+let lastTs = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function cycleColor() {
+  chanIdx = (chanIdx + 1) % CHANNELS.length;
+  document.getElementById("colBtn").textContent = CHANNELS[chanIdx].btn;
+  updateStat();
+}
+
+function spawnPrism() {
+  if (prisms.length >= 3) return;
+  const combo = TARGET_COMBOS[(Math.random() * TARGET_COMBOS.length) | 0];
+  prisms.push({
+    x: 75 + Math.random() * (SIZE - 150),
+    y: 75 + Math.random() * (SIZE - 150),
+    r: 20,
+    combo,
+    charge: 0
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetPrisms = Math.max(3, Number(custom.targetPrisms || 8));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+  chanIdx = 0;
+  document.getElementById("colBtn").textContent = CHANNELS[0].btn;
+  orb = { x: 256, y: 256, vx: 0, vy: 0, rad: 22 };
+  lights = [
+    { cx: 256, cy: 256, r: 1, g: 0, b: 0, rad: 220 },
+    { cx: 256, cy: 256, r: 0, g: 1, b: 0, rad: 220 },
+    { cx: 256, cy: 256, r: 0, g: 0, b: 1, rad: 220 }
+  ];
+  prisms = [];
+  for (let i = 0; i < 3; i++) spawnPrism();
+  solved = 0; timeLeft = durationSec; score = 0; won = false; over = false;
+  updateStat();
+}
+
+function updateStat() {
+  document.getElementById("stat").textContent =
+    `Prismes ${solved}/${targetPrisms} • Orbe ${CHANNELS[chanIdx].name} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, ((e.clientX - r.left) / r.width) * SIZE)),
+    y: Math.max(0, Math.min(SIZE, ((e.clientY - r.top) / r.height) * SIZE))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = p.x; ptr.y = p.y;
+  cycleColor();
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.x = p.x; ptr.y = p.y;
+});
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (e.code === "Space") { e.preventDefault(); if (!over) cycleColor(); }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function step(dt) {
+  if (over) return;
+
+  const spd = 270;
+  if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) ptr.x -= spd * dt;
+  if (keys.ArrowRight || keys.KeyD) ptr.x += spd * dt;
+  if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ptr.y -= spd * dt;
+  if (keys.ArrowDown || keys.KeyS) ptr.y += spd * dt;
+  ptr.x = Math.max(12, Math.min(SIZE - 12, ptr.x));
+  ptr.y = Math.max(12, Math.min(SIZE - 12, ptr.y));
+
+  tClock += dt;
+  timeLeft = Math.max(0, timeLeft - dt);
+  if (timeLeft <= 0) {
+    over = true; won = solved >= targetPrisms;
+    updateStat(); return;
+  }
+
+  // uu9J + ivuo spring physics (radius inversely proportional to speed)
+  const spring = 0.14, friction = 0.85;
+  orb.vx = (orb.vx + (ptr.x - orb.x) * spring * 40 * dt) * friction;
+  orb.vy = (orb.vy + (ptr.y - orb.y) * spring * 40 * dt) * friction;
+  orb.x += orb.vx * dt * 28;
+  orb.y += orb.vy * dt * 28;
+  const velMag = Math.hypot(orb.vx, orb.vy);
+  orb.rad = Math.max(10, Math.min(34, 34 - velMag * 1.4));
+
+  // fCRv dancing metaballs positions
+  lights[0].cx = 256 + Math.sin(tClock * 1.1) * 145 + Math.cos(tClock * 1.7) * 45;
+  lights[0].cy = 256 + Math.cos(tClock * 0.9) * 135;
+  lights[1].cx = 256 + Math.cos(tClock * 1.3) * 140;
+  lights[1].cy = 256 + Math.sin(tClock * 1.5) * 135;
+  lights[2].cx = 256 + Math.sin(tClock * 0.8 + 2) * 150;
+  lights[2].cy = 256 + Math.cos(tClock * 1.4 + 1) * 140;
+
+  // Evaluate RGB light intensity at each prism (player orb + dancing metaballs)
+  const ch = CHANNELS[chanIdx];
+  for (let i = prisms.length - 1; i >= 0; i--) {
+    const pr = prisms[i];
+    let rr = 0, gg = 0, bb = 0;
+
+    // Player orb contribution (boosted when slow/wide aura)
+    const od2 = Math.max(120, (orb.x - pr.x) ** 2 + (orb.y - pr.y) ** 2);
+    const ot = Math.min(1, (orb.rad * 125) / od2);
+    rr += ch.r * ot; gg += ch.g * ot; bb += ch.b * ot;
+
+    for (const lt of lights) {
+      const d2 = Math.max(120, (lt.cx - pr.x) ** 2 + (lt.cy - pr.y) ** 2);
+      const t = Math.min(1, 21000 / d2);
+      rr += lt.r * t; gg += lt.g * t; bb += lt.b * t;
+    }
+
+    const matchR = pr.combo.r ? rr >= 0.62 : true;
+    const matchG = pr.combo.g ? gg >= 0.62 : true;
+    const matchB = pr.combo.b ? bb >= 0.62 : true;
+    const nearOrb = Math.hypot(orb.x - pr.x, orb.y - pr.y) < 110;
+
+    if (nearOrb && matchR && matchG && matchB) {
+      pr.charge = Math.min(1, pr.charge + 0.92 * dt);
+      score += 35 * dt;
+      if (pr.charge >= 1) {
+        solved++;
+        score += 175;
+        prisms.splice(i, 1);
+        if (solved >= targetPrisms) {
+          over = true; won = true;
+          score += Math.round(timeLeft * 20);
+          updateStat(); return;
+        }
+        spawnPrism();
+      }
+    }
+  }
+
+  updateStat();
+}
+
+function draw() {
+  // 9tfv + fCRv per-pixel 1/r^2 RGB additive lighting on 80x80 field
+  const data = fieldImg.data;
+  const ch = CHANNELS[chanIdx];
+  const scale = SIZE / FIELD;
+  const ox = orb.x / scale, oy = orb.y / scale;
+  const l0x = lights[0].cx / scale, l0y = lights[0].cy / scale;
+  const l1x = lights[1].cx / scale, l1y = lights[1].cy / scale;
+  const l2x = lights[2].cx / scale, l2y = lights[2].cy / scale;
+  const orbGain = orb.rad * 3.8;
+
+  let idx = 0;
+  for (let y = 0; y < FIELD; y++) {
+    for (let x = 0; x < FIELD; x++) {
+      const d0 = (l0x - x) * (l0x - x) + (l0y - y) * (l0y - y) + 12;
+      const d1 = (l1x - x) * (l1x - x) + (l1y - y) * (l1y - y) + 12;
+      const d2 = (l2x - x) * (l2x - x) + (l2y - y) * (l2y - y) + 12;
+      const do2 = (ox - x) * (ox - x) + (oy - y) * (oy - y) + 8;
+
+      const to = Math.min(1, orbGain / do2);
+      const t0 = Math.min(1, 210 / d0);
+      const t1 = Math.min(1, 210 / d1);
+      const t2 = Math.min(1, 210 / d2);
+
+      const cr = Math.min(1, t0 + ch.r * to);
+      const cg = Math.min(1, t1 + ch.g * to);
+      const cb = Math.min(1, t2 + ch.b * to);
+
+      data[idx++] = (cr * 255) | 0;
+      data[idx++] = (cg * 255) | 0;
+      data[idx++] = (cb * 255) | 0;
+      data[idx++] = 255;
+    }
+  }
+  fieldCtx.putImageData(fieldImg, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(fieldCv, 0, 0, SIZE, SIZE);
+
+  // Prisms
+  for (const pr of prisms) {
+    ctx.fillStyle = "rgba(5, 8, 18, 0.72)";
+    ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = pr.combo.css;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.fillStyle = pr.combo.css;
+    ctx.globalAlpha = 0.55;
+    ctx.beginPath(); ctx.arc(pr.x, pr.y, pr.r * pr.charge, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(pr.combo.name, pr.x, pr.y);
+  }
+
+  // Player uu9J / ivuo aura orb
+  ctx.strokeStyle = ch.css;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(orb.x, orb.y, orb.rad, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath(); ctx.arc(orb.x, orb.y, 5, 0, Math.PI * 2); ctx.fill();
+
+  if (over) {
+    ctx.fillStyle = "rgba(5, 8, 18, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "SPECTRE SYNTHÉTISÉ !" : "CHRONO ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Prismes ${solved}/${targetPrisms} • Score ${Math.round(score)}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+}
+
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

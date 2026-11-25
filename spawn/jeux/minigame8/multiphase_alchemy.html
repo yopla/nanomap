@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Alchimie Multiphase (Multiphase Alchemy)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.phase-0 { background: #0d3b4c; border-color: #22d3ee; color: #cffafe; }
+  button.phase-1 { background: #4a230b; border-color: #fb923c; color: #ffedd5; }
+  button.phase-2 { background: #0f3d26; border-color: #4ade80; color: #dcfce7; }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "multiphase_alchemy",
+  "name": "Alchimie Multiphase (Multiphase Alchemy)",
+  "family": "core",
+  "icon": "🧪",
+  "controls": "Cliquer/glisser pour verser et orienter le jet de liquide (ou brasser) • Clic droit, Espace ou bouton 🧪 pour changer de phase (Cyan / Orange / Vert) • ZQSD déplace la buse",
+  "description": "Fusion des 9 scripts SPH multiphase et métaballes (qszD, 5vVc, iPDl, kx0I, liquidMetabal, fluid, 2pg0, fCyi, lXOR) : 3 liquides immiscibles qui se séparent par adhésion différentielle, rebondissent sur les chicanes et forment des métaballes lumineuses.",
+  "goal": "Remplir les 3 cuves de couleur (15 gouttes chacune = 45) en moins de 65 secondes sans dépasser 10 contaminations.",
+  "fields": [
+    { "key": "perVat", "label": "Gouttes par cuve", "type": "number", "default": 15 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🧪 Alchimie</span>
+  <span id="stat">Cuves 0+0+0/45 • Erreurs 0/10 • 65s</span>
+  <div class="bar-btns">
+    <button id="phaseBtn" class="phase-0" onclick="cyclePhase()" title="Changer de liquide (Espace)">🧪 Cyan</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : verser &amp; brasser les liquides immiscibles • <b>Espace / Clic droit</b> : changer de couleur • Guidez chaque liquide vers sa cuve
+</div>
+
+<script>
+const GAME_ID = "multiphase_alchemy";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const PHASES = [
+  { name: "Cyan", col: "#22d3ee", glow: "rgba(34,211,238,0.45)", vatX: 34, vatW: 120 },
+  { name: "Orange", col: "#fb923c", glow: "rgba(251,146,60,0.45)", vatX: 196, vatW: 120 },
+  { name: "Vert", col: "#4ade80", glow: "rgba(74,222,128,0.45)", vatX: 358, vatW: 120 }
+];
+const VAT_Y = 442, VAT_H = 56;
+const WALLS = [
+  { x: 96, y: 185, w: 112, h: 16, angle: 0.22 },
+  { x: 304, y: 185, w: 112, h: 16, angle: -0.22 },
+  { x: 196, y: 295, w: 120, h: 16, angle: 0 },
+  { x: 158, y: 424, w: 14, h: 82, angle: 0 },
+  { x: 340, y: 424, w: 14, h: 82, angle: 0 }
+];
+
+const RANGE = 18;
+const RANGE2 = RANGE * RANGE;
+const GRID_N = Math.ceil(SIZE / RANGE);
+const MAX_PARTICLES = 240;
+
+let perVat = 15, durationSec = 65;
+let particles = [], ripples = [];
+let vatCounts = [0, 0, 0], badCount = 0;
+let activePhase = 0;
+let ptr = { x: 256, y: 90, px: 256, py: 90, down: false };
+let keys = {};
+let timeLeft = 65, score = 0, won = false, over = false;
+let pourCd = 0, spawnAmbientCd = 0;
+let grids = Array.from({ length: GRID_N * GRID_N }, () => []);
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function cyclePhase(force) {
+  activePhase = typeof force === "number" ? (force % 3) : (activePhase + 1) % 3;
+  const btn = document.getElementById("phaseBtn");
+  btn.textContent = "🧪 " + PHASES[activePhase].name;
+  btn.className = "phase-" + activePhase;
+}
+
+function addDrop(x, y, type, vx = 0, vy = 0) {
+  if (particles.length >= MAX_PARTICLES) particles.shift();
+  particles.push({
+    x: Math.max(12, Math.min(SIZE - 12, x)),
+    y: Math.max(12, Math.min(SIZE - 12, y)),
+    vx, vy, fx: 0, fy: 0, density: 0, densityNear: 0, type
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  perVat = Math.max(5, Number(custom.perVat || 15));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+  particles = [];
+  ripples = [];
+  vatCounts = [0, 0, 0];
+  badCount = 0;
+  activePhase = 0;
+  cyclePhase(0);
+  ptr = { x: 256, y: 95, px: 256, py: 95, down: false };
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  pourCd = 0;
+  spawnAmbientCd = 0;
+
+  // Seed initial mixed pool on upper shelf
+  for (let i = 0; i < 24; i++) {
+    addDrop(150 + (i % 8) * 28 + (Math.random() - 0.5) * 8, 70 + Math.floor(i / 8) * 22, i % 3, (Math.random() - 0.5) * 0.8, 0.5);
+  }
+  updateHud();
+}
+
+function updateHud() {
+  const total = vatCounts[0] + vatCounts[1] + vatCounts[2];
+  document.getElementById("stat").textContent =
+    `Cuves ${vatCounts[0]}+${vatCounts[1]}+${vatCounts[2]}/${perVat * 3} • Erreurs ${badCount}/10 • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x;
+  ptr.y = ptr.py = p.y;
+  if (e.button === 2) { cyclePhase(); return; }
+  ptr.down = true;
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => { ptr.down = false; });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) cyclePhase();
+  if (e.code === "Digit1") cyclePhase(0);
+  if (e.code === "Digit2") cyclePhase(1);
+  if (e.code === "Digit3") cyclePhase(2);
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function collideWall(p, w) {
+  const cx = w.x + w.w * 0.5, cy = w.y + w.h * 0.5;
+  const cos = Math.cos(-w.angle), sin = Math.sin(-w.angle);
+  const dx = p.x - cx, dy = p.y - cy;
+  const lx = dx * cos - dy * sin;
+  const ly = dx * sin + dy * cos;
+  const hw = w.w * 0.5 + 5, hh = w.h * 0.5 + 5;
+  if (Math.abs(lx) < hw && Math.abs(ly) < hh) {
+    const ox = hw - Math.abs(lx);
+    const oy = hh - Math.abs(ly);
+    let nx = 0, ny = 0, pen = 0;
+    if (ox < oy) { nx = lx < 0 ? -1 : 1; pen = ox; }
+    else { ny = ly < 0 ? -1 : 1; pen = oy; }
+    const rcos = Math.cos(w.angle), rsin = Math.sin(w.angle);
+    const wnx = nx * rcos - ny * rsin;
+    const wny = nx * rsin + ny * rcos;
+    p.x += wnx * pen;
+    p.y += wny * pen;
+    const vn = p.vx * wnx + p.vy * wny;
+    if (vn < 0) {
+      p.vx -= 1.55 * vn * wnx;
+      p.vy -= 1.55 * vn * wny;
+    }
+  }
+}
+
+function stepSPH(dt) {
+  const n = particles.length;
+  for (let i = 0; i < grids.length; i++) grids[i].length = 0;
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    p.fx = 0; p.fy = 0; p.density = 0; p.densityNear = 0;
+    const gx = Math.max(0, Math.min(GRID_N - 1, Math.floor(p.x / RANGE)));
+    const gy = Math.max(0, Math.min(GRID_N - 1, Math.floor(p.y / RANGE)));
+    p.gx = gx; p.gy = gy;
+    grids[gy * GRID_N + gx].push(p);
+  }
+
+  // Neighbors & multiphase forces (qszD / Fluid2 differential density + adhesion)
+  for (let i = 0; i < n; i++) {
+    const p1 = particles[i];
+    for (let oy = -1; oy <= 1; oy++) {
+      const gy = p1.gy + oy;
+      if (gy < 0 || gy >= GRID_N) continue;
+      for (let ox = -1; ox <= 1; ox++) {
+        const gx = p1.gx + ox;
+        if (gx < 0 || gx >= GRID_N) continue;
+        const cell = grids[gy * GRID_N + gx];
+        for (let k = 0; k < cell.length; k++) {
+          const p2 = cell[k];
+          if (p2 === p1) continue;
+          const dx = p1.x - p2.x, dy = p1.y - p2.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > 0.001 && d2 < RANGE2) {
+            const dist = Math.sqrt(d2);
+            const w = 1 - dist / RANGE;
+            const w2 = w * w;
+            p1.density += w2;
+            p1.densityNear += w2 * w;
+            const inv = 1 / dist;
+            const nx = dx * inv, ny = dy * inv;
+            const targetD = (p1.type !== p2.type) ? 1.5 : 2.1;
+            const press = (p1.density - targetD) * 0.45 + w * p1.densityNear * 0.55;
+            const adh = (p1.type === p2.type ? -0.18 : 0.22) * w;
+            const fx = nx * (press + adh) + (p2.vx - p1.vx) * w * 0.08;
+            const fy = ny * (press + adh) + (p2.vy - p1.vy) * w * 0.08;
+            p1.fx += fx;
+            p1.fy += fy;
+          }
+        }
+      }
+    }
+  }
+
+  // Stirring force from pointer motion (Fluid2 + kx0I)
+  const mvx = Math.max(-14, Math.min(14, ptr.x - ptr.px));
+  const mvy = Math.max(-14, Math.min(14, ptr.y - ptr.py));
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    p.vy += 0.14; // gravity
+    if (p.density > 0) {
+      p.vx += p.fx / (p.density * 0.85 + 0.25);
+      p.vy += p.fy / (p.density * 0.85 + 0.25);
+    }
+    const dx = p.x - ptr.x, dy = p.y - ptr.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < 3200 && (Math.abs(mvx) + Math.abs(mvy) > 0.5 || ptr.down)) {
+      const f = (1 - Math.sqrt(d2) / 56) * 0.24;
+      p.vx += mvx * f;
+      p.vy += mvy * f;
+    }
+    p.vx *= 0.985;
+    p.vy *= 0.985;
+    const sp = Math.hypot(p.vx, p.vy);
+    if (sp > 9) { p.vx *= 9 / sp; p.vy *= 9 / sp; }
+    p.x += p.vx;
+    p.y += p.vy;
+
+    if (p.x < 8) { p.x = 8; p.vx = Math.abs(p.vx) * 0.6; }
+    if (p.x > SIZE - 8) { p.x = SIZE - 8; p.vx = -Math.abs(p.vx) * 0.6; }
+    if (p.y < 8) { p.y = 8; p.vy = Math.abs(p.vy) * 0.6; }
+
+    for (const w of WALLS) collideWall(p, w);
+  }
+
+  // Check vat collection
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    if (p.y >= VAT_Y) {
+      let hitVat = -1;
+      for (let v = 0; v < 3; v++) {
+        if (p.x >= PHASES[v].vatX && p.x <= PHASES[v].vatX + PHASES[v].vatW) {
+          hitVat = v; break;
+        }
+      }
+      if (hitVat !== -1) {
+        if (hitVat === p.type) {
+          if (vatCounts[hitVat] < perVat) {
+            vatCounts[hitVat]++;
+            score += 100;
+          } else {
+            score += 25;
+          }
+          ripples.push({ x: p.x, y: VAT_Y, r: 5, life: 1, col: PHASES[hitVat].col });
+        } else {
+          badCount++;
+          score = Math.max(0, score - 60);
+          ripples.push({ x: p.x, y: VAT_Y, r: 6, life: 1, col: "#f87171" });
+        }
+        particles.splice(i, 1);
+      } else if (p.y > SIZE - 6) {
+        p.y = SIZE - 6;
+        p.vy = -Math.abs(p.vy) * 0.5;
+      }
+    }
+  }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      ptr.px = ptr.x; ptr.py = ptr.y;
+      ptr.x = Math.max(16, Math.min(SIZE - 16, ptr.x + kx * 260 * dt));
+      ptr.y = Math.max(16, Math.min(SIZE - 16, ptr.y + ky * 260 * dt));
+    }
+
+    pourCd -= dt;
+    if (ptr.down && pourCd <= 0) {
+      pourCd = 0.045;
+      const vx = Math.max(-3.5, Math.min(3.5, (ptr.x - ptr.px) * 0.35));
+      const vy = Math.max(-1, Math.min(4, (ptr.y - ptr.py) * 0.35 + 1.8));
+      addDrop(ptr.x - 8, ptr.y, activePhase, vx - 0.3, vy);
+      addDrop(ptr.x + 8, ptr.y, activePhase, vx + 0.3, vy);
+    }
+
+    spawnAmbientCd -= dt;
+    if (spawnAmbientCd <= 0 && particles.length < 130) {
+      spawnAmbientCd = 0.45;
+      const needs = [0, 1, 2].filter(i => vatCounts[i] < perVat);
+      const t = needs.length ? needs[Math.floor(Math.random() * needs.length)] : Math.floor(Math.random() * 3);
+      addDrop(110 + Math.random() * 292, 24, t, (Math.random() - 0.5) * 1.4, 1.5);
+    }
+
+    stepSPH(dt);
+    ptr.px = ptr.x; ptr.py = ptr.y;
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].r += 48 * dt;
+      ripples[i].life -= 2.4 * dt;
+      if (ripples[i].life <= 0) ripples.splice(i, 1);
+    }
+
+    if (vatCounts[0] >= perVat && vatCounts[1] >= perVat && vatCounts[2] >= perVat) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 25);
+    } else if (badCount >= 10 || timeLeft <= 0) {
+      won = false; over = true;
+    }
+    updateHud();
+  }
+
+  // Draw
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Vats
+  for (let v = 0; v < 3; v++) {
+    const ph = PHASES[v];
+    const ratio = Math.min(1, vatCounts[v] / perVat);
+    ctx.fillStyle = "rgba(15,23,42,0.9)";
+    ctx.fillRect(ph.vatX, VAT_Y, ph.vatW, VAT_H);
+    const fillH = VAT_H * ratio;
+    ctx.fillStyle = ph.glow;
+    ctx.fillRect(ph.vatX, VAT_Y + VAT_H - fillH, ph.vatW, fillH);
+    ctx.strokeStyle = ph.col;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(ph.vatX, VAT_Y, ph.vatW, VAT_H);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${ph.name} ${vatCounts[v]}/${perVat}`, ph.vatX + ph.vatW / 2, VAT_Y + 34);
+  }
+
+  // Walls
+  for (const w of WALLS) {
+    ctx.save();
+    ctx.translate(w.x + w.w * 0.5, w.y + w.h * 0.5);
+    ctx.rotate(w.angle);
+    ctx.fillStyle = "#1e3a5f";
+    ctx.strokeStyle = "#38d6ff";
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(-w.w * 0.5, -w.h * 0.5, w.w, w.h);
+    ctx.strokeRect(-w.w * 0.5, -w.h * 0.5, w.w, w.h);
+    ctx.restore();
+  }
+
+  // Metaball-style two-pass glow + crisp core (iPDl / liquidMetabal)
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const p of particles) {
+    ctx.fillStyle = PHASES[p.type].glow;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  for (const p of particles) {
+    ctx.fillStyle = PHASES[p.type].col;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.arc(p.x - 1.5, p.y - 1.5, 1.7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (!over) {
+    ctx.strokeStyle = PHASES[activePhase].col;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ptr.x, ptr.y, ptr.down ? 16 : 12, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "DISTILLATION RÉUSSIE !" : (badCount >= 10 ? "CUVES CONTAMINÉES !" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Cuves ${vatCounts[0]}+${vatCounts[1]}+${vatCounts[2]} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

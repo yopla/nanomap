@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Gouttes sur Vitre &amp; Fusion (Window Raindrops)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #93c5fd; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #0c1726; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(147,197,253,0.18); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "window_raindrops",
+  "name": "Gouttes sur Vitre & Fusion (Window Raindrops)",
+  "family": "core",
+  "icon": "💧",
+  "controls": "Glisser sur la vitre pour orienter/pousser les gouttes et provoquer des fusions • Clic / Espace dépose une grosse goutte d'amorce (ZQSD déplace)",
+  "description": "Adapté de v5eZ.as (窓を流れる雨風 — gouttes sur vitre) : les petites gouttes adhèrent à la vitre ; lorsqu'elles fusionnent (conservation de l'aire πr²) et dépassent r > 6, elles dévalent en s'étirant et en entraînant les autres.",
+  "goal": "Faire glisser 18 gouttes lourdes (r > 6) dans les 3 rigoles vertes du bas en moins de 65 secondes en évitant plus de 6 pertes sur les plaques de givre rouges.",
+  "fields": [
+    { "key": "targetDrops", "label": "Gouttes à drainer", "type": "number", "default": 18 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">💧 Gouttes Vitre</span>
+  <span id="stat">Drainées 0/18 • Gelées 0/6 • 65s</span>
+  <div class="bar-btns">
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser / ZQSD</b> : pousser les gouttes pour les fusionner (<b>v5eZ</b>) • <b>Clic / Espace</b> : déposer une goutte • Guidez-les vers les 3 rigoles vertes
+</div>
+
+<script>
+const GAME_ID = "window_raindrops";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const trailCv = document.createElement("canvas");
+trailCv.width = SIZE; trailCv.height = SIZE;
+const trailCtx = trailCv.getContext("2d");
+
+let targetDrops = 18, durationSec = 65;
+let drops = [];
+let drains = [
+  { x: 48, w: 96 },
+  { x: 208, w: 96 },
+  { x: 368, w: 96 }
+];
+let frosts = [
+  { x: 148, y: 270, w: 54, h: 16 },
+  { x: 310, y: 270, w: 54, h: 16 },
+  { x: 226, y: 390, w: 60, h: 16 }
+];
+let ptr = { x: 256, y: 120, px: 256, py: 120, down: false };
+let keys = {};
+let collected = 0, frozen = 0, timeLeft = 65, score = 0, won = false, over = false;
+let lastTs = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function addDrop(x, y, r) {
+  if (drops.length >= 160) return;
+  drops.push({
+    x, y,
+    r,
+    area: Math.PI * r * r,
+    vx: 0,
+    vy: 0
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetDrops = Math.max(6, Number(custom.targetDrops || 18));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+  trailCtx.fillStyle = "#0c1726";
+  trailCtx.fillRect(0, 0, SIZE, SIZE);
+  drops = [];
+  for (let i = 0; i < 110; i++) {
+    addDrop(20 + Math.random() * (SIZE - 40), 20 + Math.random() * (SIZE - 120), 2.2 + Math.random() * 3.4);
+  }
+  collected = 0; frozen = 0; timeLeft = durationSec; score = 0; won = false; over = false;
+  updateStat();
+}
+
+function updateStat() {
+  document.getElementById("stat").textContent =
+    `Drainées ${collected}/${targetDrops} • Gelées ${frozen}/6 • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, ((e.clientX - r.left) / r.width) * SIZE)),
+    y: Math.max(0, Math.min(SIZE, ((e.clientY - r.top) / r.height) * SIZE))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  cv.setPointerCapture(e.pointerId);
+  const p = getPos(e);
+  ptr.px = ptr.x = p.x; ptr.py = ptr.y = p.y; ptr.down = true;
+  addDrop(p.x, p.y, 5.2);
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+cv.addEventListener("pointerup", () => { ptr.down = false; });
+cv.addEventListener("pointercancel", () => { ptr.down = false; });
+
+window.addEventListener("keydown", (e) => {
+  keys[e.code] = true;
+  if (e.code === "Space") { e.preventDefault(); if (!over) addDrop(ptr.x, ptr.y, 5.5); }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function step(dt) {
+  if (over) return;
+
+  const spd = 260;
+  if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) ptr.x -= spd * dt;
+  if (keys.ArrowRight || keys.KeyD) ptr.x += spd * dt;
+  if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ptr.y -= spd * dt;
+  if (keys.ArrowDown || keys.KeyS) ptr.y += spd * dt;
+  ptr.x = Math.max(12, Math.min(SIZE - 12, ptr.x));
+  ptr.y = Math.max(12, Math.min(SIZE - 12, ptr.y));
+
+  timeLeft = Math.max(0, timeLeft - dt);
+  if (timeLeft <= 0) {
+    over = true; won = collected >= targetDrops;
+    updateStat(); return;
+  }
+
+  // Replenish mist droplets
+  while (drops.length < 115) {
+    addDrop(20 + Math.random() * (SIZE - 40), 16 + Math.random() * (SIZE - 140), 2.2 + Math.random() * 3.3);
+  }
+
+  // Soft fade on window trail
+  trailCtx.fillStyle = "rgba(12, 23, 38, 0.08)";
+  trailCtx.fillRect(0, 0, SIZE, SIZE);
+
+  const dragX = ptr.down ? (ptr.x - ptr.px) * 14 : 0;
+  const dragY = ptr.down ? (ptr.y - ptr.py) * 14 : 0;
+  ptr.px = ptr.x; ptr.py = ptr.y;
+
+  // Move heavy drops (r > 6) and push droplets near pointer
+  for (let i = 0; i < drops.length; i++) {
+    const p = drops[i];
+    if (ptr.down || keys.ArrowLeft || keys.ArrowRight || keys.KeyA || keys.KeyD) {
+      const dx = p.x - ptr.x, dy = p.y - ptr.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 42) {
+        p.vx += (dragX * 0.4 - dx * 1.8) * dt;
+        p.vy += (dragY * 0.4 + 28) * dt;
+        if (p.r > 4.2) { p.x += p.vx * dt; p.y += p.vy * dt; }
+      }
+    }
+
+    if (p.r > 6) {
+      p.vy += 120 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.98;
+      // Leave wet window trail
+      trailCtx.fillStyle = "rgba(187, 221, 255, 0.25)";
+      trailCtx.beginPath(); trailCtx.arc(p.x, p.y, Math.max(2, p.r * 0.55), 0, Math.PI * 2); trailCtx.fill();
+    } else {
+      p.vx = 0; p.vy = 0;
+    }
+  }
+
+  // Merge colliding drops (v5eZ ParticleManager.margeParticles)
+  for (let i = 0; i < drops.length; i++) {
+    const p1 = drops[i];
+    if (!p1 || p1.dead) continue;
+    if (p1.r <= 6 && !ptr.down) continue;
+    for (let j = 0; j < drops.length; j++) {
+      if (i === j) continue;
+      const p2 = drops[j];
+      if (!p2 || p2.dead) continue;
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const rr = p1.r + p2.r;
+      if (dx * dx + dy * dy < rr * rr) {
+        const totalArea = p1.area + p2.area;
+        const ratio = p1.area >= p2.area ? (p2.area / totalArea) : (p1.area / totalArea);
+        p1.vx += p2.vx * 0.5 + (p2.x - p1.x) * ratio * 1.4;
+        p1.vy += p2.vy * 0.5;
+        p1.x += (p2.x - p1.x) * ratio;
+        p1.y += (p2.y - p1.y) * ratio;
+        p1.area = Math.min(Math.PI * 22 * 22, totalArea);
+        p1.r = Math.sqrt(p1.area / Math.PI);
+        p2.dead = true;
+      }
+    }
+  }
+
+  // Check frost hazards, drains, and bounds
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const p = drops[i];
+    if (p.dead) { drops.splice(i, 1); continue; }
+
+    if (p.r > 6) {
+      let hitFrost = false;
+      for (const f of frosts) {
+        if (p.x + p.r > f.x && p.x - p.r < f.x + f.w && p.y + p.r > f.y && p.y - p.r < f.y + f.h) {
+          frozen++;
+          drops.splice(i, 1);
+          hitFrost = true;
+          if (frozen >= 6) { over = true; won = false; updateStat(); return; }
+          break;
+        }
+      }
+      if (hitFrost) continue;
+    }
+
+    if (p.y >= SIZE - 22) {
+      const inDrain = drains.some(dr => p.x >= dr.x && p.x <= dr.x + dr.w);
+      if (inDrain && p.r > 6) {
+        collected++;
+        score += Math.round(80 + p.r * 6);
+        drops.splice(i, 1);
+        if (collected >= targetDrops) {
+          over = true; won = true;
+          score += Math.round(timeLeft * 20);
+          updateStat(); return;
+        }
+      } else {
+        drops.splice(i, 1);
+      }
+    } else if (p.x < -10 || p.x > SIZE + 10) {
+      drops.splice(i, 1);
+    }
+  }
+
+  updateStat();
+}
+
+function draw() {
+  ctx.drawImage(trailCv, 0, 0);
+
+  // Frost hazards
+  for (const f of frosts) {
+    ctx.fillStyle = "rgba(239, 68, 68, 0.35)";
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 2;
+    ctx.fillRect(f.x, f.y, f.w, f.h);
+    ctx.strokeRect(f.x, f.y, f.w, f.h);
+  }
+
+  // Green drains
+  for (const dr of drains) {
+    ctx.fillStyle = "rgba(34, 197, 94, 0.25)";
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 2.5;
+    ctx.fillRect(dr.x, SIZE - 24, dr.w, 20);
+    ctx.strokeRect(dr.x, SIZE - 24, dr.w, 20);
+  }
+
+  // Raindrops (v5eZ stretched ellipse when moving)
+  for (const p of drops) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    const sx = p.r + Math.min(2, Math.abs(p.vx) * 0.01);
+    const sy = p.r + (p.r > 6 ? Math.min(7, Math.abs(p.vy) * 0.03) : 0);
+    ctx.scale(sx, sy);
+    ctx.fillStyle = p.r > 6 ? "#e0f2fe" : "rgba(187, 221, 255, 0.72)";
+    ctx.beginPath(); ctx.arc(0, 0, 1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  if (!over) {
+    ctx.strokeStyle = "#38d6ff";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 18, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(5, 8, 18, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "VITRE DRAINÉE !" : (frozen >= 6 ? "GOUTTES GELÉES" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Drainées ${collected}/${targetDrops} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+}
+
+function loop(ts) {
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

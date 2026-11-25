@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Dérive & Rebond (SpawnScroll)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body {
+    background: #070b14;
+    color: #e6f4ff;
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    gap: 8px;
+    padding: 8px;
+    overflow: hidden;
+  }
+  .bar {
+    width: min(512px, 96vw);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    background: #10192b;
+    border: 1px solid #2b597a;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #7dd3fc; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button {
+    background: #1a3350;
+    color: #aef0ff;
+    border: 1px solid #38d6ff;
+    border-radius: 7px;
+    padding: 5px 9px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    transition: background 0.12s, transform 0.08s;
+  }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas {
+    background: #080d19;
+    border: 2px solid #38d6ff;
+    border-radius: 12px;
+    width: min(512px, 96vw);
+    height: min(512px, 96vw);
+    touch-action: none;
+    cursor: grab;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 214, 255, 0.14);
+  }
+  canvas:active { cursor: grabbing; }
+  .hint {
+    width: min(512px, 96vw);
+    font-size: 11.5px;
+    color: #8fb4d4;
+    text-align: center;
+    line-height: 1.35;
+  }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "spawn_scroll",
+  "name": "Dérive & Rebond (SpawnScroll)",
+  "family": "income",
+  "icon": "🛸",
+  "controls": "Glisser pour scroller le décor avec inertie • Cliquer une case pour déplacer le vaisseau • Cliquer le vaisseau ou Espace pour recentrer • Flèches/ZQSD pour scroller",
+  "description": "Exploration spatiale fidèle à SPAWN : faites défiler la grille en spirale d'Ulam pour découvrir le secteur. Si votre vaisseau touche le bord de l'écran pendant le scroll, il rebondit élastiquement vers l'intérieur et perd de l'énergie !",
+  "goal": "Découvrir les 8 Reliques Stellaires cachées autour de l'origine avant que votre énergie ne tombe à zéro.",
+  "fields": [
+    { "key": "relics", "label": "Reliques à découvrir", "type": "number", "default": 8 },
+    { "key": "maxEnergy", "label": "Énergie max", "type": "number", "default": 100 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🛸 SpawnScroll</span>
+  <span id="stat">★ 0/8 • ⚡ 100% • 0 cases</span>
+  <div class="bar-btns">
+    <button id="btnMute" onclick="toggleMute()" title="Son">🔊</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : scroller le décor • <b>Cliquer une case</b> : déplacer le vaisseau • <b>Attention aux bords</b> : rebond = −15 ⚡
+</div>
+
+<script>
+const GAME_ID = "spawn_scroll";
+const SIZE = 512;
+const HALF = SIZE * 0.5;
+const CELL = 52;
+const EDGE_PAD = 22;
+const WARN_DIST = 64;
+const FRICTION = 0.915;
+
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+// HiDPI setup for crisp vector graphics
+function setupCanvasDPR() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = SIZE * dpr;
+  cv.height = SIZE * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+setupCanvasDPR();
+window.addEventListener("resize", setupCanvasDPR);
+
+// --- Easing & Interpolation Library ---
+const Ease = {
+  outCubic: t => 1 - Math.pow(1 - t, 3),
+  inOutCubic: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+  outQuint: t => 1 - Math.pow(1 - t, 5),
+  outBack: (t, s = 1.70158) => 1 + (s + 1) * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2),
+  outElastic: t => {
+    if (t <= 0) return 0;
+    if (t >= 1) return 1;
+    const c4 = (2 * Math.PI) / 3.2;
+    return Math.pow(2, -9 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
+  }
+};
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function lerpAngle(a, b, t) {
+  let d = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+  return a + d * t;
+}
+
+// --- Minimal Web Audio Synth ---
+let audioCtx = null;
+let muted = false;
+function ensureAudio() {
+  if (muted) return null;
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  }
+  if (audioCtx && audioCtx.state === "suspended") {
+    try { audioCtx.resume(); } catch (e) {}
+  }
+  return audioCtx;
+}
+function playTone(freq, freqEnd, dur, type = "sine", vol = 0.08) {
+  const ac = ensureAudio();
+  if (!ac) return;
+  try {
+    const now = ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(20, freqEnd), now + dur);
+    gain.gain.setValueAtTime(vol, now);
+    gain.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  } catch (e) {}
+}
+function sfxBounce() {
+  playTone(190, 68, 0.24, "sawtooth", 0.09);
+  playTone(320, 520, 0.18, "triangle", 0.06);
+}
+function sfxMove() {
+  playTone(340, 560, 0.10, "sine", 0.045);
+}
+function sfxDiscover() {
+  playTone(520, 780, 0.12, "triangle", 0.04);
+}
+function sfxRelic() {
+  playTone(523, 659, 0.14, "triangle", 0.08);
+  setTimeout(() => playTone(659, 1046, 0.26, "sine", 0.09), 90);
+}
+function sfxEnergy() {
+  playTone(440, 880, 0.22, "sine", 0.075);
+}
+function sfxBeacon() {
+  playTone(392, 784, 0.16, "triangle", 0.06);
+  setTimeout(() => playTone(587, 1175, 0.20, "sine", 0.06), 75);
+}
+function toggleMute() {
+  muted = !muted;
+  document.getElementById("btnMute").textContent = muted ? "🔇" : "🔊";
+}
+
+// --- Faithful Ulam Spiral Math (from spawn.as / spiral_math.gd) ---
+function getIdxByPos(x, y) {
+  const ax = x > 0 ? x : -x;
+  const ay = y > 0 ? y : -y;
+  const n = ax > ay ? ax : ay;
+  const base = 4 * n * (n + 1) + 1;
+  if (y === n) return base - n + x;
+  if (x === -n) return base - 3 * n + y;
+  if (y === -n) return base - 5 * n - x;
+  return base - 7 * n - y;
+}
+
+function getZoneColor(cid) {
+  if (cid <= 49)  return { r: 56,  g: 224, b: 255, name: "CosmoGate" };
+  if (cid <= 169) return { r: 108, g: 242, b: 158, name: "Middle Dream" };
+  if (cid <= 361) return { r: 255, g: 184, b: 78,  name: "ForgotLands" };
+  return { r: 212, g: 118, b: 255, name: "Out Multivac" };
+}
+
+function cellHash(gx, gy) {
+  let h = (gx * 374761393 + gy * 668265263) ^ 0x5bf03635;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+
+// --- Game State ---
+let camX = 0, camY = 0, camVx = 0, camVy = 0;
+let camTween = null;
+
+let ship = {
+  gx: 0, gy: 0,
+  x: 0, y: 0,
+  angle: -Math.PI / 2,
+  scaleX: 1, scaleY: 1,
+  tween: null,
+  bounceCooldown: 0,
+  trail: []
+};
+
+let maxEnergy = 100;
+let energy = 100;
+let energyDisplay = 100;
+let energyDrain = 100;
+let energyFlash = 0; // >0 heal, <0 damage
+
+let targetRelics = 8;
+let relics = [];       // { gx, gy, found, animT, phase, label }
+let energyCells = [];  // { gx, gy, used, phase }
+let beacons = [];      // { gx, gy, used, phase, color }
+let discovered = new Map(); // "gx,gy" -> { t: 0..1, visited: bool }
+let discoveredCount = 0;
+let bounceCount = 0;
+
+let stars = [];
+let particles = [];
+let shockwaves = [];
+let popups = [];
+let edgeFlashes = { left: 0, right: 0, top: 0, bottom: 0 };
+let shake = { x: 0, y: 0, mag: 0 };
+
+let keys = {};
+let dragging = false;
+let movedDuringDrag = false;
+let downPt = { x: 0, y: 0 };
+let lastPt = { x: 0, y: 0 };
+let dragVelX = 0, dragVelY = 0;
+let hoverCell = null;
+
+let score = 0;
+let won = false;
+let over = false;
+let animTime = 0;
+let lastFrame = performance.now();
+
+// --- SPAWN Parent Bridge ---
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+// --- Parallax Starfield ---
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 110; i++) {
+    const layer = i < 45 ? 0 : i < 85 ? 1 : 2;
+    stars.push({
+      x: Math.random() * SIZE,
+      y: Math.random() * SIZE,
+      r: layer === 0 ? 0.9 : layer === 1 ? 1.4 : 2.1,
+      parallax: layer === 0 ? 0.14 : layer === 1 ? 0.30 : 0.52,
+      alpha: layer === 0 ? 0.35 : layer === 1 ? 0.55 : 0.85,
+      twinkle: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+// --- Discovery & Spawning ---
+function keyOf(gx, gy) { return gx + "," + gy; }
+
+function discoverCell(gx, gy, silent = false) {
+  const k = keyOf(gx, gy);
+  if (discovered.has(k)) return false;
+  discovered.set(k, { t: 0, visited: false });
+  discoveredCount++;
+  score += 2;
+  if (!silent) sfxDiscover();
+  return true;
+}
+
+function revealRadius(cx, cy, radius, silent = false) {
+  let newly = 0;
+  for (let dx = -radius; dx <= radius; dx++) {
+    for (let dy = -radius; dy <= radius; dy++) {
+      if (dx * dx + dy * dy <= radius * radius + 0.5) {
+        if (discoverCell(cx + dx, cy + dy, true)) newly++;
+      }
+    }
+  }
+  if (newly > 0 && !silent) sfxDiscover();
+  return newly;
+}
+
+function addPopup(wx, wy, text, color = "#aef0ff") {
+  popups.push({ x: wx, y: wy, text, color, t: 0, dur: 1.25 });
+  if (popups.length > 18) popups.shift();
+}
+
+function addShockwave(wx, wy, maxR, color, lineWidth = 2.5) {
+  shockwaves.push({ x: wx, y: wy, r: 6, maxR, color, lineWidth, t: 0, dur: 0.55 });
+}
+
+function emitParticles(wx, wy, count, color, speedMin = 40, speedMax = 170, spreadAng = null) {
+  for (let i = 0; i < count; i++) {
+    const ang = spreadAng !== null
+      ? spreadAng + (Math.random() - 0.5) * 1.4
+      : Math.random() * Math.PI * 2;
+    const spd = speedMin + Math.random() * (speedMax - speedMin);
+    particles.push({
+      x: wx, y: wy,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      r: 1.8 + Math.random() * 2.8,
+      color,
+      t: 0,
+      dur: 0.35 + Math.random() * 0.45
+    });
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  targetRelics = clamp(Number(custom.relics) || 8, 4, 14);
+  maxEnergy = clamp(Number(custom.maxEnergy) || 100, 50, 200);
+
+  energy = maxEnergy;
+  energyDisplay = maxEnergy;
+  energyDrain = maxEnergy;
+  energyFlash = 0;
+
+  camX = 0; camY = 0; camVx = 0; camVy = 0; camTween = null;
+  ship = {
+    gx: 0, gy: 0, x: 0, y: 0,
+    angle: -Math.PI / 2,
+    scaleX: 1, scaleY: 1,
+    tween: null,
+    bounceCooldown: 0,
+    trail: []
+  };
+
+  discovered = new Map();
+  discoveredCount = 0;
+  bounceCount = 0;
+  particles = [];
+  shockwaves = [];
+  popups = [];
+  edgeFlashes = { left: 0, right: 0, top: 0, bottom: 0 };
+  shake = { x: 0, y: 0, mag: 0 };
+  score = 0;
+  won = false;
+  over = false;
+
+  initStars();
+  revealRadius(0, 0, 2, true);
+  score = 0;
+
+  // Place relics, energy cells, and scanner beacons around the spiral
+  const occupied = new Set(["0,0"]);
+  const pickFreeCell = (minR, maxR, angleCenter = null, angleSpread = Math.PI * 2) => {
+    for (let tries = 0; tries < 80; tries++) {
+      const ang = angleCenter !== null
+        ? angleCenter + (Math.random() - 0.5) * angleSpread
+        : Math.random() * Math.PI * 2;
+      const dist = minR + Math.random() * (maxR - minR);
+      const gx = Math.round(Math.cos(ang) * dist);
+      const gy = Math.round(Math.sin(ang) * dist);
+      const k = keyOf(gx, gy);
+      if (!occupied.has(k)) {
+        occupied.add(k);
+        return { gx, gy };
+      }
+    }
+    return { gx: Math.round(minR), gy: 0 };
+  };
+
+  relics = [];
+  const relicNames = ["Alpha", "Bêta", "Gamma", "Delta", "Épsilon", "Zêta", "Êta", "Thêta", "Iota", "Kappa", "Lambda", "Mu", "Nu", "Xi"];
+  for (let i = 0; i < targetRelics; i++) {
+    const baseAng = (Math.PI * 2 * i) / targetRelics + (Math.random() - 0.5) * 0.35;
+    const ringMin = 4.2 + (i % 3) * 2.6;
+    const ringMax = ringMin + 3.2;
+    const pos = pickFreeCell(ringMin, ringMax, baseAng, 0.55);
+    relics.push({
+      gx: pos.gx, gy: pos.gy,
+      found: false,
+      animT: 0,
+      phase: Math.random() * Math.PI * 2,
+      label: relicNames[i % relicNames.length]
+    });
+  }
+
+  energyCells = [];
+  for (let i = 0; i < 10; i++) {
+    const ang = (Math.PI * 2 * i) / 10 + (Math.random() - 0.5) * 0.4;
+    const pos = pickFreeCell(3.0, 12.5, ang, 0.6);
+    energyCells.push({ gx: pos.gx, gy: pos.gy, used: false, phase: Math.random() * Math.PI * 2 });
+  }
+
+  beacons = [];
+  const beaconCols = ["#38d6ff", "#a78bfa", "#4ade80", "#f472b6", "#fbbf24"];
+  for (let i = 0; i < 6; i++) {
+    const ang = (Math.PI * 2 * i) / 6 + 0.3;
+    const pos = pickFreeCell(3.5, 10.5, ang, 0.65);
+    beacons.push({
+      gx: pos.gx, gy: pos.gy,
+      used: false,
+      phase: Math.random() * Math.PI * 2,
+      color: beaconCols[i % beaconCols.length]
+    });
+  }
+}
+
+// --- Camera & Ship Interpolations ---
+function tweenCameraTo(tx, ty, dur = 0.48) {
+  camVx = 0; camVy = 0;
+  camTween = {
+    sx: camX, sy: camY,
+    tx, ty,
+    t: 0, dur
+  };
+}
+
+function moveShipToCell(gx, gy) {
+  if (over) return;
+  const tx = gx * CELL;
+  const ty = gy * CELL;
+  const dist = Math.hypot(tx - ship.x, ty - ship.y);
+  if (dist < 2) {
+    tweenCameraTo(ship.x, ship.y, 0.42);
+    return;
+  }
+
+  const targetAngle = Math.atan2(ty - ship.y, tx - ship.x);
+  const dur = clamp(0.18 + dist / 950, 0.22, 0.52);
+
+  ship.gx = gx;
+  ship.gy = gy;
+  ship.tween = {
+    type: "move",
+    sx: ship.x, sy: ship.y,
+    tx, ty,
+    cpx: (ship.x + tx) * 0.5,
+    cpy: (ship.y + ty) * 0.5,
+    startAngle: ship.angle,
+    targetAngle,
+    t: 0, dur
+  };
+  sfxMove();
+
+  // Gentle camera follow if destination is close to viewport margin
+  const screenTx = tx - camX + HALF;
+  const screenTy = ty - camY + HALF;
+  const margin = 95;
+  if (screenTx < margin || screenTx > SIZE - margin || screenTy < margin || screenTy > SIZE - margin) {
+    tweenCameraTo(tx, ty, 0.44);
+  }
+}
+
+function triggerEdgeBounce(hitLeft, hitRight, hitTop, hitBottom) {
+  if (over || ship.bounceCooldown > 0) return;
+
+  // Impact contact position in world coords
+  const impactX = ship.x;
+  const impactY = ship.y;
+
+  // Inward normal direction
+  let nx = 0, ny = 0;
+  if (hitLeft)   { nx += 1; edgeFlashes.left = 1; }
+  if (hitRight)  { nx -= 1; edgeFlashes.right = 1; }
+  if (hitTop)    { ny += 1; edgeFlashes.top = 1; }
+  if (hitBottom) { ny -= 1; edgeFlashes.bottom = 1; }
+  const nLen = Math.hypot(nx, ny) || 1;
+  nx /= nLen; ny /= nLen;
+
+  // Pick a safe landing cell inside the current viewport, bounced inward from the wall
+  const camGx = Math.round(camX / CELL);
+  const camGy = Math.round(camY / CELL);
+  const offsetX = Math.round(nx * (1.2 + Math.random() * 1.1) + (Math.random() - 0.5) * 1.4);
+  const offsetY = Math.round(ny * (1.2 + Math.random() * 1.1) + (Math.random() - 0.5) * 1.4);
+
+  let landGx = camGx + clamp(offsetX, -2, 2);
+  let landGy = camGy + clamp(offsetY, -2, 2);
+
+  // Ensure landing spot is actually comfortably inside the visible frame
+  let landX = landGx * CELL;
+  let landY = landGy * CELL;
+  const safeHalf = HALF - 76;
+  landX = clamp(landX, camX - safeHalf, camX + safeHalf);
+  landY = clamp(landY, camY - safeHalf, camY + safeHalf);
+  landGx = Math.round(landX / CELL);
+  landGy = Math.round(landY / CELL);
+  landX = landGx * CELL;
+  landY = landGy * CELL;
+
+  // Curved arc control point for a juicy elastic rebound trajectory
+  const midX = (impactX + landX) * 0.5 + nx * 38 + (-ny) * (Math.random() - 0.5) * 44;
+  const midY = (impactY + landY) * 0.5 + ny * 38 + (nx) * (Math.random() - 0.5) * 44;
+
+  const reboundAngle = Math.atan2(landY - impactY, landX - impactX);
+
+  ship.gx = landGx;
+  ship.gy = landGy;
+  ship.bounceCooldown = 0.55;
+  ship.tween = {
+    type: "bounce",
+    sx: impactX, sy: impactY,
+    cpx: midX, cpy: midY,
+    tx: landX, ty: landY,
+    startAngle: ship.angle,
+    targetAngle: reboundAngle,
+    t: 0,
+    dur: 0.62
+  };
+
+  // Recoil & damp scroll inertia so the bounce feels physical
+  camVx = camVx * 0.28 - nx * 4.5;
+  camVy = camVy * 0.28 - ny * 4.5;
+  camTween = null;
+
+  // Energy loss
+  const dmg = 15;
+  energy = Math.max(0, energy - dmg);
+  energyFlash = -1;
+  bounceCount++;
+
+  // Visual & audio juice
+  shake.mag = 10.5;
+  sfxBounce();
+  addShockwave(impactX, impactY, 74, "#ff5c7c", 3.5);
+  addShockwave(impactX, impactY, 44, "#fde047", 2.0);
+  emitParticles(impactX, impactY, 20, "#ff6b81", 65, 220, Math.atan2(ny, nx));
+  emitParticles(impactX, impactY, 10, "#fde047", 40, 140, Math.atan2(ny, nx));
+  addPopup(impactX + nx * 24, impactY + ny * 24, `💥 REBOND -${dmg} ⚡`, "#ff7b93");
+
+  if (energy <= 0) {
+    over = true;
+    won = false;
+    emitParticles(landX, landY, 34, "#ff5c7c", 50, 240);
+  }
+}
+
+function checkShipEdgeBounce() {
+  if (over || ship.bounceCooldown > 0) return;
+  // Don't double-bounce while already mid-bounce
+  if (ship.tween && ship.tween.type === "bounce" && ship.tween.t < 0.72) return;
+
+  const sx = ship.x - camX + HALF;
+  const sy = ship.y - camY + HALF;
+  const hitLeft = sx <= EDGE_PAD;
+  const hitRight = sx >= SIZE - EDGE_PAD;
+  const hitTop = sy <= EDGE_PAD;
+  const hitBottom = sy >= SIZE - EDGE_PAD;
+
+  if (hitLeft || hitRight || hitTop || hitBottom) {
+    triggerEdgeBounce(hitLeft, hitRight, hitTop, hitBottom);
+  }
+}
+
+function checkShipInteractions() {
+  if (over) return;
+  const gx = Math.round(ship.x / CELL);
+  const gy = Math.round(ship.y / CELL);
+
+  // Discover immediate surroundings as the ship travels
+  revealRadius(gx, gy, 1, false);
+  const k = keyOf(gx, gy);
+  const cellData = discovered.get(k);
+  if (cellData) cellData.visited = true;
+
+  // Check Relics
+  for (const r of relics) {
+    if (r.found) continue;
+    const dist = Math.hypot(ship.x - r.gx * CELL, ship.y - r.gy * CELL);
+    if (dist < CELL * 0.72) {
+      r.found = true;
+      r.animT = 0.001;
+      score += 120;
+      revealRadius(r.gx, r.gy, 2, true);
+      sfxRelic();
+      addShockwave(r.gx * CELL, r.gy * CELL, 92, "#fde047", 3.2);
+      emitParticles(r.gx * CELL, r.gy * CELL, 26, "#fde047", 50, 210);
+      addPopup(r.gx * CELL, r.gy * CELL - 12, `★ Relique ${r.label} ! +120`, "#fde047");
+
+      if (relics.every(x => x.found)) {
+        won = true;
+        over = true;
+        score += Math.round(energy * 4) + discoveredCount * 2;
+      }
+    }
+  }
+
+  // Check Energy Cells
+  for (const ec of energyCells) {
+    if (ec.used) continue;
+    const dist = Math.hypot(ship.x - ec.gx * CELL, ship.y - ec.gy * CELL);
+    if (dist < CELL * 0.68) {
+      ec.used = true;
+      const gain = 20;
+      energy = Math.min(maxEnergy, energy + gain);
+      energyFlash = 1;
+      score += 35;
+      sfxEnergy();
+      addShockwave(ec.gx * CELL, ec.gy * CELL, 64, "#4ade80", 2.6);
+      emitParticles(ec.gx * CELL, ec.gy * CELL, 16, "#4ade80", 40, 150);
+      addPopup(ec.gx * CELL, ec.gy * CELL - 10, `+${gain} ⚡ Énergie`, "#4ade80");
+    }
+  }
+
+  // Check Scanner Beacons (wide reveal!)
+  for (const b of beacons) {
+    if (b.used) continue;
+    const dist = Math.hypot(ship.x - b.gx * CELL, ship.y - b.gy * CELL);
+    if (dist < CELL * 0.68) {
+      b.used = true;
+      const newly = revealRadius(b.gx, b.gy, 4, true);
+      score += 50 + newly * 3;
+      sfxBeacon();
+      addShockwave(b.gx * CELL, b.gy * CELL, CELL * 4.2, b.color, 2.8);
+      emitParticles(b.gx * CELL, b.gy * CELL, 22, b.color, 55, 190);
+      addPopup(b.gx * CELL, b.gy * CELL - 10, `📡 Balise ! +${newly} cases`, b.color);
+    }
+  }
+}
+
+// --- Input Handling ---
+function pointerPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (SIZE / r.width),
+    y: (e.clientY - r.top) * (SIZE / r.height)
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  ensureAudio();
+  if (over) { sendResultAndExit(won, score); return; }
+  const pt = pointerPos(e);
+  dragging = true;
+  movedDuringDrag = false;
+  downPt = { ...pt };
+  lastPt = { ...pt };
+  dragVelX = 0; dragVelY = 0;
+  camVx = 0; camVy = 0;
+  camTween = null;
+  cv.setPointerCapture(e.pointerId);
+});
+
+cv.addEventListener("pointermove", (e) => {
+  const pt = pointerPos(e);
+  // Update hovered grid cell
+  const wx = pt.x - HALF + camX;
+  const wy = pt.y - HALF + camY;
+  hoverCell = { gx: Math.round(wx / CELL), gy: Math.round(wy / CELL) };
+
+  if (!dragging || over) return;
+  const dx = lastPt.x - pt.x;
+  const dy = lastPt.y - pt.y;
+  if (!movedDuringDrag && Math.hypot(pt.x - downPt.x, pt.y - downPt.y) > 6) {
+    movedDuringDrag = true;
+  }
+  if (movedDuringDrag) {
+    camX += dx;
+    camY += dy;
+    dragVelX = lerp(dragVelX, dx, 0.65);
+    dragVelY = lerp(dragVelY, dy, 0.65);
+    checkShipEdgeBounce();
+  }
+  lastPt = { ...pt };
+});
+
+cv.addEventListener("pointerup", (e) => {
+  if (!dragging) return;
+  dragging = false;
+  const pt = pointerPos(e);
+  if (movedDuringDrag) {
+    camVx = clamp(dragVelX, -38, 38);
+    camVy = clamp(dragVelY, -38, 38);
+  } else if (!over) {
+    // Click/tap: if clicking the ship, recenter camera; otherwise fly ship to clicked cell
+    const shipSx = ship.x - camX + HALF;
+    const shipSy = ship.y - camY + HALF;
+    if (Math.hypot(pt.x - shipSx, pt.y - shipSy) < 24) {
+      tweenCameraTo(ship.x, ship.y, 0.45);
+      addShockwave(ship.x, ship.y, 38, "#38d6ff", 2);
+      sfxMove();
+    } else {
+      const wx = pt.x - HALF + camX;
+      const wy = pt.y - HALF + camY;
+      moveShipToCell(Math.round(wx / CELL), Math.round(wy / CELL));
+    }
+  }
+});
+
+cv.addEventListener("pointerleave", () => { hoverCell = null; });
+
+cv.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  if (over) return;
+  camTween = null;
+  camVx += clamp(e.deltaX * 0.12, -14, 14);
+  camVy += clamp(e.deltaY * 0.12, -14, 14);
+}, { passive: false });
+
+window.addEventListener("keydown", (e) => {
+  ensureAudio();
+  keys[e.code] = true;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (over && (e.code === "Space" || e.code === "Enter")) { sendResultAndExit(won, score); return; }
+  if (!over && (e.code === "Space" || e.code === "KeyR")) {
+    tweenCameraTo(ship.x, ship.y, 0.45);
+    sfxMove();
+  }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+// --- Update Loop ---
+function update(dt) {
+  animTime += dt;
+  if (ship.bounceCooldown > 0) ship.bounceCooldown = Math.max(0, ship.bounceCooldown - dt);
+
+  // Keyboard scrolling
+  if (!over && !dragging) {
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx !== 0 || ky !== 0) {
+      camTween = null;
+      const len = Math.hypot(kx, ky);
+      camVx += (kx / len) * 2.1 * (dt * 60);
+      camVy += (ky / len) * 2.1 * (dt * 60);
+    }
+  }
+
+  // Camera tween OR inertial glide
+  if (camTween) {
+    camTween.t = Math.min(1, camTween.t + dt / camTween.dur);
+    const e = Ease.outQuint(camTween.t);
+    camX = lerp(camTween.sx, camTween.tx, e);
+    camY = lerp(camTween.sy, camTween.ty, e);
+    if (camTween.t >= 1) camTween = null;
+  } else if (!dragging) {
+    const step = dt * 60;
+    if (Math.hypot(camVx, camVy) > 0.08) {
+      camX += camVx * step;
+      camY += camVy * step;
+      const damp = Math.pow(FRICTION, step);
+      camVx *= damp;
+      camVy *= damp;
+      checkShipEdgeBounce();
+    } else {
+      camVx = 0; camVy = 0;
+    }
+  }
+
+  // Ship movement / elastic bounce tween
+  if (ship.tween) {
+    const tw = ship.tween;
+    tw.t = Math.min(1, tw.t + dt / tw.dur);
+    const prevX = ship.x, prevY = ship.y;
+
+    if (tw.type === "bounce") {
+      // Elastic overshoot along a quadratic Bezier rebound arc
+      const p = clamp(Ease.outElastic(tw.t), -0.15, 1.18);
+      const u = clamp(tw.t, 0, 1);
+      const q = Ease.outCubic(u);
+      // Blend curved Bezier path with elastic arrival pop
+      const bx = (1 - q) * (1 - q) * tw.sx + 2 * (1 - q) * q * tw.cpx + q * q * tw.tx;
+      const by = (1 - q) * (1 - q) * tw.sy + 2 * (1 - q) * q * tw.cpy + q * q * tw.ty;
+      const overshoot = (p - q) * 0.42;
+      ship.x = bx + (tw.tx - tw.sx) * overshoot;
+      ship.y = by + (tw.ty - tw.sy) * overshoot;
+
+      // Squash & stretch during elastic rebound
+      const wobble = Math.sin(tw.t * Math.PI * 3.5) * (1 - tw.t) * 0.36;
+      ship.scaleX = 1 + wobble;
+      ship.scaleY = 1 - wobble * 0.85;
+      ship.angle = lerpAngle(tw.startAngle, tw.targetAngle, Ease.outCubic(tw.t)) + wobble * 0.6;
+    } else {
+      // Smooth glide with gentle back-out settle
+      const e = Ease.outBack(tw.t, 1.15);
+      ship.x = lerp(tw.sx, tw.tx, e);
+      ship.y = lerp(tw.sy, tw.ty, e);
+      const speedFactor = Math.sin(tw.t * Math.PI) * 0.24;
+      ship.scaleX = 1 + speedFactor;
+      ship.scaleY = 1 - speedFactor * 0.55;
+      ship.angle = lerpAngle(tw.startAngle, tw.targetAngle, Ease.outCubic(Math.min(1, tw.t * 1.6)));
+    }
+
+    // Leave luminous afterimage trail
+    if (Math.hypot(ship.x - prevX, ship.y - prevY) > 1.2) {
+      ship.trail.push({
+        x: ship.x, y: ship.y,
+        angle: ship.angle,
+        color: tw.type === "bounce" ? "#ff6b81" : "#38d6ff",
+        alpha: tw.type === "bounce" ? 0.65 : 0.45
+      });
+      if (ship.trail.length > 18) ship.trail.shift();
+    }
+
+    if (tw.t >= 1) {
+      ship.x = tw.tx;
+      ship.y = tw.ty;
+      ship.scaleX = 1;
+      ship.scaleY = 1;
+      ship.tween = null;
+    }
+  } else {
+    // Subtle idle breathing
+    ship.scaleX = lerp(ship.scaleX, 1, Math.min(1, dt * 12));
+    ship.scaleY = lerp(ship.scaleY, 1, Math.min(1, dt * 12));
+  }
+
+  // Fade ship afterimages
+  for (let i = ship.trail.length - 1; i >= 0; i--) {
+    ship.trail[i].alpha -= dt * 1.9;
+    if (ship.trail[i].alpha <= 0) ship.trail.splice(i, 1);
+  }
+
+  // Check pickups & cell discovery
+  checkShipInteractions();
+
+  // Animate newly discovered tiles
+  for (const val of discovered.values()) {
+    if (val.t < 1) val.t = Math.min(1, val.t + dt * 2.8);
+  }
+
+  // Animate found relics
+  for (const r of relics) {
+    if (r.found && r.animT < 1) r.animT = Math.min(1, r.animT + dt * 2.2);
+  }
+
+  // Smooth HUD energy interpolations
+  energyDisplay = lerp(energyDisplay, energy, Math.min(1, dt * 14));
+  energyDrain = lerp(energyDrain, energy, Math.min(1, dt * 3.8));
+  if (Math.abs(energyFlash) > 0.01) energyFlash *= Math.pow(0.08, dt);
+  else energyFlash = 0;
+
+  // Edge hit glow decay
+  for (const side of ["left", "right", "top", "bottom"]) {
+    if (edgeFlashes[side] > 0) edgeFlashes[side] = Math.max(0, edgeFlashes[side] - dt * 2.4);
+  }
+
+  // Smooth damped camera shake
+  if (shake.mag > 0.15) {
+    shake.x = (Math.random() - 0.5) * 2 * shake.mag;
+    shake.y = (Math.random() - 0.5) * 2 * shake.mag;
+    shake.mag *= Math.pow(0.015, dt);
+  } else {
+    shake.x = 0; shake.y = 0; shake.mag = 0;
+  }
+
+  // Update particles, shockwaves, popups
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.t += dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= Math.pow(0.08, dt);
+    p.vy *= Math.pow(0.08, dt);
+    if (p.t >= p.dur) particles.splice(i, 1);
+  }
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const s = shockwaves[i];
+    s.t += dt;
+    if (s.t >= s.dur) shockwaves.splice(i, 1);
+  }
+  for (let i = popups.length - 1; i >= 0; i--) {
+    const pop = popups[i];
+    pop.t += dt;
+    if (pop.t >= pop.dur) popups.splice(i, 1);
+  }
+}
+
+// --- Render Loop ---
+function draw() {
+  // Deep space background
+  const bg = ctx.createRadialGradient(HALF, HALF, 20, HALF, HALF, 380);
+  bg.addColorStop(0, "#0e172a");
+  bg.addColorStop(1, "#060a14");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Parallax starfield
+  for (const st of stars) {
+    const sx = ((st.x - camX * st.parallax) % SIZE + SIZE) % SIZE;
+    const sy = ((st.y - camY * st.parallax) % SIZE + SIZE) % SIZE;
+    const tw = 0.65 + 0.35 * Math.sin(animTime * 2.4 + st.twinkle);
+    ctx.fillStyle = `rgba(210, 238, 255, ${(st.alpha * tw).toFixed(3)})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, st.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const viewCamX = camX + shake.x;
+  const viewCamY = camY + shake.y;
+
+  const minGx = Math.floor((viewCamX - HALF) / CELL) - 1;
+  const maxGx = Math.ceil((viewCamX + HALF) / CELL) + 1;
+  const minGy = Math.floor((viewCamY - HALF) / CELL) - 1;
+  const maxGy = Math.ceil((viewCamY + HALF) / CELL) + 1;
+
+  // Draw Ulam Spiral Grid
+  for (let gx = minGx; gx <= maxGx; gx++) {
+    for (let gy = minGy; gy <= maxGy; gy++) {
+      const sx = gx * CELL - viewCamX + HALF;
+      const sy = gy * CELL - viewCamY + HALF;
+      const cid = getIdxByPos(gx, gy);
+      const z = getZoneColor(cid);
+      const h = cellHash(gx, gy);
+      const k = keyOf(gx, gy);
+      const disc = discovered.get(k);
+      const reveal = disc ? Ease.outBack(disc.t, 1.35) : 0;
+      const isOrigin = (gx === 0 && gy === 0);
+      const isHover = hoverCell && hoverCell.gx === gx && hoverCell.gy === gy && !dragging;
+
+      const baseSize = CELL - 6;
+      const tileSz = disc ? baseSize * (0.86 + 0.14 * Math.min(1.06, reveal)) : baseSize * 0.92;
+      const tx = sx - tileSz * 0.5;
+      const ty = sy - tileSz * 0.5;
+
+      if (disc) {
+        const alphaFill = isOrigin ? 0.26 : (disc.visited ? 0.16 : 0.10) + h * 0.04;
+        ctx.fillStyle = `rgba(${z.r}, ${z.g}, ${z.b}, ${alphaFill.toFixed(3)})`;
+        ctx.strokeStyle = isOrigin
+          ? "rgba(255,255,255,0.72)"
+          : `rgba(${z.r}, ${z.g}, ${z.b}, ${(disc.visited ? 0.48 : 0.30).toFixed(3)})`;
+        ctx.lineWidth = isOrigin ? 2 : 1.2;
+      } else {
+        // Fogged / undiscovered tile: mysterious faint grid
+        ctx.fillStyle = `rgba(${z.r}, ${z.g}, ${z.b}, ${(0.025 + h * 0.02).toFixed(3)})`;
+        ctx.strokeStyle = `rgba(${z.r}, ${z.g}, ${z.b}, 0.10)`;
+        ctx.lineWidth = 1;
+      }
+
+      ctx.beginPath();
+      ctx.roundRect(tx, ty, tileSz, tileSz, 7);
+      ctx.fill();
+      ctx.stroke();
+
+      if (isHover && !over) {
+        ctx.strokeStyle = "rgba(125, 211, 252, 0.72)";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.roundRect(sx - baseSize * 0.5, sy - baseSize * 0.5, baseSize, baseSize, 7);
+        ctx.stroke();
+      }
+
+      if (isOrigin) {
+        const pulse = 0.5 + 0.5 * Math.sin(animTime * 3.2);
+        ctx.strokeStyle = `rgba(125, 211, 252, ${(0.35 + 0.35 * pulse).toFixed(2)})`;
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 15 + pulse * 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "#e6f4ff";
+        ctx.font = "bold 10px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("0,0", sx, sy + 3.5);
+      } else if (disc) {
+        ctx.fillStyle = `rgba(${z.r}, ${z.g}, ${z.b}, 0.42)`;
+        ctx.font = "9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("#" + cid, sx, sy + 18);
+      }
+    }
+  }
+
+  // Draw Scanner Beacons
+  for (const b of beacons) {
+    if (b.used) continue;
+    const sx = b.gx * CELL - viewCamX + HALF;
+    const sy = b.gy * CELL - viewCamY + HALF;
+    if (sx < -40 || sx > SIZE + 40 || sy < -40 || sy > SIZE + 40) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(animTime * 4 + b.phase);
+    const isDisc = discovered.has(keyOf(b.gx, b.gy));
+    ctx.save();
+    ctx.globalAlpha = isDisc ? 0.95 : 0.42;
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 10 + pulse * 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - 8);
+    ctx.lineTo(sx + 7, sy);
+    ctx.lineTo(sx, sy + 8);
+    ctx.lineTo(sx - 7, sy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Draw Energy Cells
+  for (const ec of energyCells) {
+    if (ec.used) continue;
+    const sx = ec.gx * CELL - viewCamX + HALF;
+    const sy = ec.gy * CELL - viewCamY + HALF;
+    if (sx < -40 || sx > SIZE + 40 || sy < -40 || sy > SIZE + 40) continue;
+    const pulse = 0.5 + 0.5 * Math.sin(animTime * 5 + ec.phase);
+    const isDisc = discovered.has(keyOf(ec.gx, ec.gy));
+    ctx.save();
+    ctx.globalAlpha = isDisc ? 0.95 : 0.45;
+    ctx.fillStyle = `rgba(74, 222, 128, ${(0.22 + pulse * 0.22).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 13 + pulse * 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#4ade80";
+    ctx.font = "bold 15px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⚡", sx, sy + 1);
+    ctx.restore();
+  }
+
+  // Draw Stellar Relics
+  for (const r of relics) {
+    const sx = r.gx * CELL - viewCamX + HALF;
+    const sy = r.gy * CELL - viewCamY + HALF;
+    const onScreen = sx >= -36 && sx <= SIZE + 36 && sy >= -36 && sy <= SIZE + 36;
+    if (onScreen && (!r.found || r.animT < 1)) {
+      const pulse = 0.5 + 0.5 * Math.sin(animTime * 4.5 + r.phase);
+      const scale = r.found ? (1 + Ease.outCubic(r.animT) * 1.4) : (0.92 + pulse * 0.16);
+      const alpha = r.found ? (1 - r.animT) : 1;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.scale(scale, scale);
+      ctx.globalAlpha = alpha;
+
+      const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 22);
+      glow.addColorStop(0, "rgba(253, 224, 71, 0.78)");
+      glow.addColorStop(1, "rgba(253, 224, 71, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4-point star
+      ctx.fillStyle = "#fef08a";
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const rad = i % 2 === 0 ? 12 : 5;
+        const a = (i * Math.PI) / 4 + animTime * 0.9;
+        const px = Math.cos(a) * rad;
+        const py = Math.sin(a) * rad;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // Draw Shockwaves
+  for (const s of shockwaves) {
+    const p = Ease.outCubic(s.t / s.dur);
+    const sx = s.x - viewCamX + HALF;
+    const sy = s.y - viewCamY + HALF;
+    ctx.save();
+    ctx.strokeStyle = s.color;
+    ctx.globalAlpha = (1 - p) * 0.85;
+    ctx.lineWidth = s.lineWidth * (1 - p * 0.6);
+    ctx.beginPath();
+    ctx.arc(sx, sy, lerp(s.r, s.maxR, p), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Draw Particles
+  for (const p of particles) {
+    const u = p.t / p.dur;
+    const sx = p.x - viewCamX + HALF;
+    const sy = p.y - viewCamY + HALF;
+    ctx.save();
+    ctx.globalAlpha = 1 - u;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.r * (1 - u * 0.5), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Draw Ship Afterimage Trail
+  for (const tr of ship.trail) {
+    const sx = tr.x - viewCamX + HALF;
+    const sy = tr.y - viewCamY + HALF;
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(tr.angle);
+    ctx.globalAlpha = Math.max(0, tr.alpha * 0.55);
+    ctx.fillStyle = tr.color;
+    ctx.beginPath();
+    ctx.moveTo(13, 0);
+    ctx.lineTo(-9, -7);
+    ctx.lineTo(-5, 0);
+    ctx.lineTo(-9, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Draw Ship
+  const shipSx = ship.x - viewCamX + HALF;
+  const shipSy = ship.y - viewCamY + HALF;
+
+  // Proximity to edges (for warning aura)
+  const distEdge = Math.min(shipSx, SIZE - shipSx, shipSy, SIZE - shipSy);
+  const danger = clamp(1 - (distEdge - EDGE_PAD) / (WARN_DIST - EDGE_PAD), 0, 1);
+
+  ctx.save();
+  ctx.translate(shipSx, shipSy);
+  ctx.rotate(ship.angle);
+  ctx.scale(ship.scaleX, ship.scaleY);
+
+  // Outer shield aura (shifts cyan -> red when near edge)
+  const auraR = 22 + Math.sin(animTime * 6) * 2;
+  const auraGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, auraR);
+  if (danger > 0.25) {
+    auraGrad.addColorStop(0, `rgba(255, 92, 124, ${(0.35 + danger * 0.4).toFixed(2)})`);
+    auraGrad.addColorStop(1, "rgba(255, 92, 124, 0)");
+  } else {
+    auraGrad.addColorStop(0, "rgba(56, 214, 255, 0.36)");
+    auraGrad.addColorStop(1, "rgba(56, 214, 255, 0)");
+  }
+  ctx.fillStyle = auraGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, auraR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Thruster flame
+  const flameLen = (ship.tween ? 14 : 7) + Math.sin(animTime * 28) * 3;
+  ctx.fillStyle = ship.tween && ship.tween.type === "bounce" ? "#ff6b81" : "#38d6ff";
+  ctx.beginPath();
+  ctx.moveTo(-7, -4);
+  ctx.lineTo(-7 - flameLen, 0);
+  ctx.lineTo(-7, 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Hull
+  ctx.fillStyle = "#e6f6ff";
+  ctx.strokeStyle = danger > 0.45 ? "#ff5c7c" : "#38d6ff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(15, 0);
+  ctx.lineTo(-9, -9.5);
+  ctx.lineTo(-5, 0);
+  ctx.lineTo(-9, 9.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Cockpit
+  ctx.fillStyle = "#0ea5e9";
+  ctx.beginPath();
+  ctx.ellipse(2, 0, 4.5, 2.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Subtle edge proximity warning & impact flashes on viewport borders
+  const drawEdgeGlow = (side, intensity, colorRGB) => {
+    if (intensity <= 0.01) return;
+    ctx.save();
+    let grad;
+    const thick = 28 + intensity * 26;
+    if (side === "left") {
+      grad = ctx.createLinearGradient(0, 0, thick, 0);
+      grad.addColorStop(0, `rgba(${colorRGB}, ${(intensity * 0.72).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${colorRGB}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, thick, SIZE);
+    } else if (side === "right") {
+      grad = ctx.createLinearGradient(SIZE, 0, SIZE - thick, 0);
+      grad.addColorStop(0, `rgba(${colorRGB}, ${(intensity * 0.72).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${colorRGB}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(SIZE - thick, 0, thick, SIZE);
+    } else if (side === "top") {
+      grad = ctx.createLinearGradient(0, 0, 0, thick);
+      grad.addColorStop(0, `rgba(${colorRGB}, ${(intensity * 0.72).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${colorRGB}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, SIZE, thick);
+    } else {
+      grad = ctx.createLinearGradient(0, SIZE, 0, SIZE - thick);
+      grad.addColorStop(0, `rgba(${colorRGB}, ${(intensity * 0.72).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${colorRGB}, 0)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, SIZE - thick, SIZE, thick);
+    }
+    ctx.restore();
+  };
+
+  if (danger > 0.05) {
+    if (shipSx < WARN_DIST) drawEdgeGlow("left", clamp(1 - (shipSx - EDGE_PAD) / (WARN_DIST - EDGE_PAD), 0, 1) * 0.6, "251, 191, 36");
+    if (SIZE - shipSx < WARN_DIST) drawEdgeGlow("right", clamp(1 - (SIZE - shipSx - EDGE_PAD) / (WARN_DIST - EDGE_PAD), 0, 1) * 0.6, "251, 191, 36");
+    if (shipSy < WARN_DIST) drawEdgeGlow("top", clamp(1 - (shipSy - EDGE_PAD) / (WARN_DIST - EDGE_PAD), 0, 1) * 0.6, "251, 191, 36");
+    if (SIZE - shipSy < WARN_DIST) drawEdgeGlow("bottom", clamp(1 - (SIZE - shipSy - EDGE_PAD) / (WARN_DIST - EDGE_PAD), 0, 1) * 0.6, "251, 191, 36");
+  }
+  drawEdgeGlow("left", edgeFlashes.left, "255, 76, 110");
+  drawEdgeGlow("right", edgeFlashes.right, "255, 76, 110");
+  drawEdgeGlow("top", edgeFlashes.top, "255, 76, 110");
+  drawEdgeGlow("bottom", edgeFlashes.bottom, "255, 76, 110");
+
+  // Off-screen Relic Radar Chevrons (nearest 3 unfound relics)
+  const unfound = relics
+    .filter(r => !r.found)
+    .map(r => {
+      const rx = r.gx * CELL - viewCamX + HALF;
+      const ry = r.gy * CELL - viewCamY + HALF;
+      return { r, rx, ry, dist: Math.hypot(rx - HALF, ry - HALF) };
+    })
+    .filter(o => o.rx < 14 || o.rx > SIZE - 14 || o.ry < 14 || o.ry > SIZE - 14)
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 3);
+
+  for (const o of unfound) {
+    const ang = Math.atan2(o.ry - HALF, o.rx - HALF);
+    const pad = 20;
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+    const tx = dx !== 0 ? ((dx > 0 ? SIZE - pad : pad) - HALF) / dx : Infinity;
+    const ty = dy !== 0 ? ((dy > 0 ? SIZE - pad : pad) - HALF) / dy : Infinity;
+    const t = Math.min(Math.abs(tx), Math.abs(ty));
+    const px = HALF + dx * t;
+    const py = HALF + dy * t;
+    const pulse = 0.65 + 0.35 * Math.sin(animTime * 4 + o.r.phase);
+
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(ang);
+    ctx.globalAlpha = pulse * 0.9;
+    ctx.fillStyle = "#fde047";
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(-5, -5.5);
+    ctx.lineTo(-2.5, 0);
+    ctx.lineTo(-5, 5.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Floating Popups
+  for (const pop of popups) {
+    const u = pop.t / pop.dur;
+    const rise = Ease.outCubic(u) * 34;
+    const sx = pop.x - viewCamX + HALF;
+    const sy = pop.y - viewCamY + HALF - rise;
+    ctx.save();
+    ctx.globalAlpha = u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3;
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(6, 10, 20, 0.75)";
+    ctx.fillText(pop.text, sx + 1, sy + 1);
+    ctx.fillStyle = pop.color;
+    ctx.fillText(pop.text, sx, sy);
+    ctx.restore();
+  }
+
+  // In-canvas HUD: Smooth Interpolated Energy Bar (top-left) & Coords (bottom-left)
+  const barX = 12, barY = 12, barW = 164, barH = 14;
+  ctx.fillStyle = "rgba(8, 14, 28, 0.80)";
+  ctx.strokeStyle = energyFlash < -0.1 ? "#ff5c7c" : energyFlash > 0.1 ? "#4ade80" : "rgba(56, 214, 255, 0.55)";
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.roundRect(barX, barY, barW, barH, 7);
+  ctx.fill();
+  ctx.stroke();
+
+  const drainFrac = clamp(energyDrain / maxEnergy, 0, 1);
+  const curFrac = clamp(energyDisplay / maxEnergy, 0, 1);
+  if (drainFrac > curFrac) {
+    ctx.fillStyle = "rgba(255, 110, 135, 0.75)";
+    ctx.beginPath();
+    ctx.roundRect(barX + 2, barY + 2, (barW - 4) * drainFrac, barH - 4, 5);
+    ctx.fill();
+  }
+  const eCol = curFrac > 0.5 ? "#38d6ff" : curFrac > 0.25 ? "#fbbf24" : "#ff5c7c";
+  ctx.fillStyle = eCol;
+  if (curFrac > 0.005) {
+    ctx.beginPath();
+    ctx.roundRect(barX + 2, barY + 2, (barW - 4) * curFrac, barH - 4, 5);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#f0f9ff";
+  ctx.font = "bold 10.5px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`⚡ ${Math.round(energyDisplay)}/${maxEnergy}`, barX + 8, barY + barH * 0.5 + 0.5);
+
+  // Coords & Zone pill
+  const shipCid = getIdxByPos(ship.gx, ship.gy);
+  const shipZone = getZoneColor(shipCid);
+  ctx.fillStyle = "rgba(8, 14, 28, 0.76)";
+  ctx.beginPath();
+  ctx.roundRect(10, SIZE - 32, 232, 22, 6);
+  ctx.fill();
+  ctx.fillStyle = "#bae6fd";
+  ctx.font = "11px monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`(${ship.gx},${ship.gy}) #${shipCid} • ${shipZone.name}`, 18, SIZE - 21);
+
+  // Top HTML bar stat
+  const foundN = relics.filter(r => r.found).length;
+  document.getElementById("stat").textContent =
+    `★ ${foundN}/${targetRelics} • ⚡ ${Math.round(energy)}% • ${discoveredCount} cases`;
+
+  // End overlay
+  if (over) {
+    ctx.fillStyle = "rgba(5, 9, 18, 0.84)";
+    ctx.fillRect(0, 168, SIZE, 176);
+    ctx.strokeStyle = won ? "#4ade80" : "#ff5c7c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(40, 168); ctx.lineTo(SIZE - 40, 168);
+    ctx.moveTo(40, 344); ctx.lineTo(SIZE - 40, 344);
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = won ? "#4ade80" : "#ff6b81";
+    ctx.font = "bold 26px system-ui, sans-serif";
+    ctx.fillText(won ? "SECTEUR DÉCOUVERT !" : "ÉNERGIE ÉPUISÉE !", HALF, 222);
+
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "14px system-ui, sans-serif";
+    ctx.fillText(`Reliques ${foundN}/${targetRelics} • ${discoveredCount} cases • ${bounceCount} rebonds`, HALF, 258);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "bold 16px system-ui, sans-serif";
+    ctx.fillText(`Score : ${score}`, HALF, 288);
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "13px system-ui, sans-serif";
+    ctx.fillText("Cliquez pour retourner ou 🔄 pour rejouer", HALF, 322);
+  }
+}
+
+function loop(now) {
+  const dt = Math.min(0.05, Math.max(0.001, (now - lastFrame) / 1000));
+  lastFrame = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Bassin de Fluides (Fluide Bassin)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #050b16; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "fluide_bassin",
+  "name": "Bassin de Fluides (Fluide Bassin)",
+  "family": "core",
+  "icon": "🌊",
+  "controls": "Glisser pour brasser les courants (Stable Fluids) • Cliquer/taper ou Espace pour générer une onde radiale",
+  "description": "Combine Stable Fluids (j8jS), particules SPH (44nj), ondes de surface (19lm/nWOM/water) et lueurs fluides (sFXf/pTef) : créez des courants et des vagues pour guider les gouttes vers les 3 bassins collecteurs en évitant les 2 siphons.",
+  "goal": "Remplir les 3 collecteurs (15 gouttes chacun = 45 au total) avant la fin des 65 secondes.",
+  "fields": [
+    { "key": "perCollector", "label": "Gouttes par collecteur", "type": "number", "default": 15 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🌊 Fluide Bassin</span>
+  <span id="stat">💧 0/45 • Collecteurs 0/3 • 65s</span>
+  <div class="bar-btns">
+    <button onclick="spawnPulseWave(256,256)" title="Onde centrale (Espace)">〰️ Onde</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser</b> : créer des courants • <b>Cliquer / Espace</b> : onde répulsive • Remplissez les 3 anneaux cyan (évitez les siphons rouges)
+</div>
+
+<script>
+const GAME_ID = "fluide_bassin";
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+// Stable Fluids grid (j8jS.as adapted to 32x32 for smooth 60fps with SPH + wave heightfield)
+const GN = 32;
+const GN2 = GN + 2;
+const CELL_PX = SIZE / GN;
+let u = new Float32Array(GN2 * GN2);
+let v = new Float32Array(GN2 * GN2);
+let uPrev = new Float32Array(GN2 * GN2);
+let vPrev = new Float32Array(GN2 * GN2);
+let dye = new Float32Array(GN2 * GN2);
+let dyePrev = new Float32Array(GN2 * GN2);
+
+// 2D Wave heightfield (19lm.as / nWOM.as / water.as)
+const WN = 64;
+const WAVE_PX = SIZE / WN;
+let waveA = new Float32Array(WN * WN);
+let waveB = new Float32Array(WN * WN);
+
+// Offscreen fluid background canvas
+const bgCv = document.createElement("canvas");
+bgCv.width = WN;
+bgCv.height = WN;
+const bgCtx = bgCv.getContext("2d");
+const bgImg = bgCtx.createImageData(WN, WN);
+
+let perCollector = 15, durationSec = 65;
+let particles = [];
+let collectors = [];
+let drains = [];
+let ripples = [];
+let pointer = { down: false, x: 256, y: 256, px: 256, py: 256 };
+let timeLeft = 65, score = 0, won = false, over = false, spawnTimer = 0;
+
+function IX(x, y) { return y * GN2 + x; }
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function spawnDroplet() {
+  const x = 156 + Math.random() * 200;
+  const y = 156 + Math.random() * 200;
+  const a = Math.random() * Math.PI * 2;
+  particles.push({
+    x, y,
+    vx: Math.cos(a) * 35,
+    vy: Math.sin(a) * 35,
+    r: 5.5,
+    hue: 185 + Math.random() * 35
+  });
+}
+
+function spawnPulseWave(wx, wy) {
+  if (over) return;
+  const gx = Math.floor(wx / WAVE_PX);
+  const gy = Math.floor(wy / WAVE_PX);
+  for (let dy = -3; dy <= 3; dy++) {
+    for (let dx = -3; dx <= 3; dx++) {
+      const ix = gx + dx, iy = gy + dy;
+      if (ix > 1 && ix < WN - 1 && iy > 1 && iy < WN - 1) {
+        const d = Math.hypot(dx, dy);
+        if (d <= 3) waveA[iy * WN + ix] += (3.5 - d) * 26;
+      }
+    }
+  }
+  ripples.push({ x: wx, y: wy, r: 8, maxR: 115, life: 1 });
+  // Radial push on nearby SPH droplets
+  for (const p of particles) {
+    const dx = p.x - wx, dy = p.y - wy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1 && dist < 130) {
+      const push = (1 - dist / 130) * 260;
+      p.vx += (dx / dist) * push;
+      p.vy += (dy / dist) * push;
+    }
+  }
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  perCollector = Math.max(5, Number(custom.perCollector || 15));
+  durationSec = Math.max(25, Number(custom.durationSec || 65));
+  u.fill(0); v.fill(0); uPrev.fill(0); vPrev.fill(0);
+  dye.fill(0); dyePrev.fill(0);
+  waveA.fill(0); waveB.fill(0);
+
+  collectors = [
+    { x: 96, y: 102, r: 42, count: 0, target: perCollector, pulse: 0 },
+    { x: 416, y: 102, r: 42, count: 0, target: perCollector, pulse: 0 },
+    { x: 256, y: 420, r: 44, count: 0, target: perCollector, pulse: 0 }
+  ];
+  drains = [
+    { x: 118, y: 312, r: 24, angle: 0 },
+    { x: 394, y: 312, r: 24, angle: 1.5 }
+  ];
+  particles = [];
+  ripples = [];
+  for (let i = 0; i < 42; i++) spawnDroplet();
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  spawnTimer = 0;
+  updateHud();
+}
+
+function updateHud() {
+  const totalGot = collectors.reduce((s, c) => s + Math.min(c.count, c.target), 0);
+  const totalNeed = collectors.reduce((s, c) => s + c.target, 0);
+  const doneZones = collectors.filter(c => c.count >= c.target).length;
+  document.getElementById("stat").textContent =
+    `💧 ${totalGot}/${totalNeed} • Bassins ${doneZones}/3 • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (SIZE / r.width), y: (e.clientY - r.top) * (SIZE / r.height) };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  pointer.down = true;
+  pointer.x = pointer.px = p.x;
+  pointer.y = pointer.py = p.y;
+  spawnPulseWave(p.x, p.y);
+  cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  pointer.px = pointer.x;
+  pointer.py = pointer.y;
+  pointer.x = p.x;
+  pointer.y = p.y;
+  if (pointer.down && !over) {
+    const gx = Math.max(1, Math.min(GN, Math.floor(p.x / CELL_PX) + 1));
+    const gy = Math.max(1, Math.min(GN, Math.floor(p.y / CELL_PX) + 1));
+    const dvx = (pointer.x - pointer.px) * 1.45;
+    const dvy = (pointer.y - pointer.py) * 1.45;
+    for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -1; ox <= 1; ox++) {
+        const cx = Math.max(1, Math.min(GN, gx + ox));
+        const cy = Math.max(1, Math.min(GN, gy + oy));
+        const w = (ox === 0 && oy === 0) ? 1 : 0.45;
+        const idx = IX(cx, cy);
+        u[idx] += dvx * w;
+        v[idx] += dvy * w;
+        dye[idx] = Math.min(1, dye[idx] + 0.55 * w);
+      }
+    }
+    const wx = Math.max(1, Math.min(WN - 2, Math.floor(p.x / WAVE_PX)));
+    const wy = Math.max(1, Math.min(WN - 2, Math.floor(p.y / WAVE_PX)));
+    waveA[wy * WN + wx] += 18;
+  }
+});
+cv.addEventListener("pointerup", () => { pointer.down = false; });
+cv.addEventListener("pointercancel", () => { pointer.down = false; });
+
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    e.preventDefault();
+    spawnPulseWave(pointer.x || 256, pointer.y || 256);
+  }
+});
+
+// Stable Fluids projection & advection (j8jS.as)
+function stepStableFluids(dt) {
+  // Boundary reflection
+  for (let i = 1; i <= GN; i++) {
+    u[IX(0, i)] = -u[IX(1, i)]; u[IX(GN + 1, i)] = -u[IX(GN, i)];
+    v[IX(i, 0)] = -v[IX(i, 1)]; v[IX(i, GN + 1)] = -v[IX(i, GN)];
+  }
+  // Divergence
+  for (let j = 1; j <= GN; j++) {
+    for (let i = 1; i <= GN; i++) {
+      const idx = IX(i, j);
+      uPrev[idx] = -0.5 * (u[IX(i + 1, j)] - u[IX(i - 1, j)] + v[IX(i, j + 1)] - v[IX(i, j - 1)]);
+      vPrev[idx] = 0;
+    }
+  }
+  // Pressure relaxation
+  for (let k = 0; k < 6; k++) {
+    for (let j = 1; j <= GN; j++) {
+      for (let i = 1; i <= GN; i++) {
+        const idx = IX(i, j);
+        vPrev[idx] = (uPrev[idx] + vPrev[IX(i - 1, j)] + vPrev[IX(i + 1, j)] + vPrev[IX(i, j - 1)] + vPrev[IX(i, j + 1)]) * 0.25;
+      }
+    }
+  }
+  for (let j = 1; j <= GN; j++) {
+    for (let i = 1; i <= GN; i++) {
+      const idx = IX(i, j);
+      u[idx] -= 0.5 * (vPrev[IX(i + 1, j)] - vPrev[IX(i - 1, j)]);
+      v[idx] -= 0.5 * (vPrev[IX(i, j + 1)] - vPrev[IX(i, j - 1)]);
+    }
+  }
+  // Advect velocity & luminous dye
+  uPrev.set(u);
+  vPrev.set(v);
+  dyePrev.set(dye);
+  const advScale = dt * 1.4;
+  const decay = Math.pow(0.42, dt);
+  for (let j = 1; j <= GN; j++) {
+    for (let i = 1; i <= GN; i++) {
+      const idx = IX(i, j);
+      let x = i - uPrev[idx] * advScale;
+      let y = j - vPrev[idx] * advScale;
+      if (x < 0.5) x = 0.5; if (x > GN + 0.5) x = GN + 0.5;
+      if (y < 0.5) y = 0.5; if (y > GN + 0.5) y = GN + 0.5;
+      const i0 = Math.floor(x), j0 = Math.floor(y);
+      const sx = x - i0, sy = y - j0;
+      const a00 = IX(i0, j0), a10 = IX(i0 + 1, j0), a01 = IX(i0, j0 + 1), a11 = IX(i0 + 1, j0 + 1);
+      u[idx] = ((uPrev[a00] * (1 - sx) + uPrev[a10] * sx) * (1 - sy) + (uPrev[a01] * (1 - sx) + uPrev[a11] * sx) * sy) * 0.992;
+      v[idx] = ((vPrev[a00] * (1 - sx) + vPrev[a10] * sx) * (1 - sy) + (vPrev[a01] * (1 - sx) + vPrev[a11] * sx) * sy) * 0.992;
+      dye[idx] = ((dyePrev[a00] * (1 - sx) + dyePrev[a10] * sx) * (1 - sy) + (dyePrev[a01] * (1 - sx) + dyePrev[a11] * sx) * sy) * decay;
+    }
+  }
+}
+
+function stepWaveField() {
+  for (let y = 1; y < WN - 1; y++) {
+    const row = y * WN;
+    for (let x = 1; x < WN - 1; x++) {
+      const i = row + x;
+      const val = ((waveA[i - 1] + waveA[i + 1] + waveA[i - WN] + waveA[i + WN]) * 0.5) - waveB[i];
+      waveB[i] = val * 0.955;
+    }
+  }
+  const tmp = waveA; waveA = waveB; waveB = tmp;
+}
+
+// SPH-like local repulsion + viscosity (44nj.as) coupled to Stable Fluids velocity
+function stepParticles(dt) {
+  const n = particles.length;
+  const h = 24;
+  for (let i = 0; i < n; i++) {
+    const p = particles[i];
+    // Sample grid fluid velocity
+    const gx = Math.max(1, Math.min(GN, Math.floor(p.x / CELL_PX) + 1));
+    const gy = Math.max(1, Math.min(GN, Math.floor(p.y / CELL_PX) + 1));
+    const fidx = IX(gx, gy);
+    p.vx += u[fidx] * 14 * dt;
+    p.vy += v[fidx] * 14 * dt;
+    dye[fidx] = Math.min(1, dye[fidx] + dt * 0.65);
+
+    // Pairwise SPH short-range pressure & viscosity
+    for (let j = i + 1; j < n; j++) {
+      const q = particles[j];
+      const dx = q.x - p.x, dy = q.y - p.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > 0.01 && d2 < h * h) {
+        const d = Math.sqrt(d2);
+        const w = 1 - d / h;
+        const nx = dx / d, ny = dy / d;
+        const press = w * 190 * dt;
+        p.vx -= nx * press; p.vy -= ny * press;
+        q.vx += nx * press; q.vy += ny * press;
+        const dvx = (q.vx - p.vx) * w * 0.08;
+        const dvy = (q.vy - p.vy) * w * 0.08;
+        p.vx += dvx; p.vy += dvy;
+        q.vx -= dvx; q.vy -= dvy;
+      }
+    }
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.vx *= Math.pow(0.55, dt);
+    p.vy *= Math.pow(0.55, dt);
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+
+    if (p.x < 12) { p.x = 12; p.vx = Math.abs(p.vx) * 0.75; }
+    if (p.x > SIZE - 12) { p.x = SIZE - 12; p.vx = -Math.abs(p.vx) * 0.75; }
+    if (p.y < 12) { p.y = 12; p.vy = Math.abs(p.vy) * 0.75; }
+    if (p.y > SIZE - 12) { p.y = SIZE - 12; p.vy = -Math.abs(p.vy) * 0.75; }
+
+    // Check drains
+    let removed = false;
+    for (const dr of drains) {
+      const dx = dr.x - p.x, dy = dr.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 72 && dist > 1) {
+        const pull = (1 - dist / 72) * 140 * dt;
+        p.vx += (dx / dist) * pull;
+        p.vy += (dy / dist) * pull;
+      }
+      if (dist < dr.r - 2) {
+        particles.splice(i, 1);
+        score = Math.max(0, score - 15);
+        removed = true;
+        break;
+      }
+    }
+    if (removed) continue;
+
+    // Check collectors
+    for (const col of collectors) {
+      if (col.count >= col.target) continue;
+      if (Math.hypot(col.x - p.x, col.y - p.y) < col.r - 4) {
+        col.count++;
+        col.pulse = 1;
+        score += 35;
+        particles.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    stepStableFluids(dt);
+    stepWaveField();
+    stepParticles(dt);
+
+    spawnTimer += dt;
+    if (spawnTimer > 0.25 && particles.length < 44) {
+      spawnTimer = 0;
+      spawnDroplet();
+    }
+
+    for (const dr of drains) dr.angle += dt * 3.2;
+    for (const col of collectors) if (col.pulse > 0) col.pulse = Math.max(0, col.pulse - dt * 3);
+
+    if (collectors.every(c => c.count >= c.target)) {
+      won = true;
+      over = true;
+      score += Math.round(timeLeft * 20);
+    } else if (timeLeft <= 0) {
+      won = false;
+      over = true;
+    }
+    updateHud();
+  }
+
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const rp = ripples[i];
+    rp.life -= dt * 2.1;
+    rp.r += (rp.maxR - rp.r) * Math.min(1, dt * 7);
+    if (rp.life <= 0) ripples.splice(i, 1);
+  }
+
+  // Render wave Phong/specular + Stable Fluid dye into offscreen WN x WN buffer (19lm.as + sFXf.as)
+  const data = bgImg.data;
+  for (let y = 0; y < WN; y++) {
+    const gy = Math.min(GN, Math.floor((y / WN) * GN) + 1);
+    for (let x = 0; x < WN; x++) {
+      const gx = Math.min(GN, Math.floor((x / WN) * GN) + 1);
+      const wi = y * WN + x;
+      const dxW = x > 0 && x < WN - 1 ? waveA[wi + 1] - waveA[wi - 1] : 0;
+      const dyW = y > 0 && y < WN - 1 ? waveA[wi + WN] - waveA[wi - WN] : 0;
+      const spec = Math.max(0, Math.min(180, (dxW - dyW) * 2.2));
+      const glow = dye[IX(gx, gy)];
+      const pIdx = wi * 4;
+      data[pIdx] = Math.min(255, Math.round(8 + glow * 42 + spec * 0.65));
+      data[pIdx + 1] = Math.min(255, Math.round(18 + glow * 135 + spec * 0.92));
+      data[pIdx + 2] = Math.min(255, Math.round(38 + glow * 210 + spec));
+      data[pIdx + 3] = 255;
+    }
+  }
+  bgCtx.putImageData(bgImg, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(bgCv, 0, 0, SIZE, SIZE);
+
+  // Collectors
+  for (const col of collectors) {
+    const ratio = Math.min(1, col.count / col.target);
+    const done = col.count >= col.target;
+    ctx.save();
+    ctx.translate(col.x, col.y);
+    ctx.fillStyle = done ? "rgba(74, 222, 128, 0.2)" : "rgba(56, 214, 255, 0.12)";
+    ctx.beginPath();
+    ctx.arc(0, 0, col.r + col.pulse * 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = done ? "#4ade80" : "rgba(56, 214, 255, 0.45)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Progress arc
+    ctx.strokeStyle = done ? "#4ade80" : "#67e8f9";
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, col.r - 4, -Math.PI / 2, -Math.PI / 2 + ratio * Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "bold 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${col.count}/${col.target}`, 0, 0);
+    ctx.restore();
+  }
+
+  // Hazard drains
+  for (const dr of drains) {
+    ctx.save();
+    ctx.translate(dr.x, dr.y);
+    ctx.rotate(dr.angle);
+    ctx.fillStyle = "rgba(239, 68, 68, 0.18)";
+    ctx.beginPath();
+    ctx.arc(0, 0, dr.r * 1.45, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 2.5;
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, dr.r * 0.85, a, a + 1.15);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#04070e";
+    ctx.beginPath();
+    ctx.arc(0, 0, dr.r * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // SPH particles
+  for (const p of particles) {
+    ctx.fillStyle = `hsla(${p.hue}, 95%, 68%, 0.92)`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,0.65)";
+    ctx.beginPath();
+    ctx.arc(p.x - 1.5, p.y - 1.5, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Ripples
+  for (const rp of ripples) {
+    ctx.strokeStyle = `rgba(186, 230, 253, ${Math.max(0, rp.life * 0.7)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "BASSINS REMPLIS !" : "TEMPS ÉCOULÉ", 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    const totalGot = collectors.reduce((s, c) => s + Math.min(c.count, c.target), 0);
+    const totalNeed = collectors.reduce((s, c) => s + c.target, 0);
+    ctx.fillText(`${totalGot}/${totalNeed} gouttes • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

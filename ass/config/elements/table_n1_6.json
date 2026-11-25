@@ -1,0 +1,1193 @@
+{
+	"version": 1,
+	"elements": [
+		{
+			"id": "glace",
+			"name": "Glace",
+			"level": 1,
+			"biome": "toundra_glaciaire",
+			"icon": "❄️",
+			"color": "#7be3ff",
+			"description": "Cristal de givre éternel.",
+			"recipe": []
+		},
+		{
+			"id": "foudre",
+			"name": "Foudre",
+			"level": 1,
+			"biome": "desert_ionique",
+			"icon": "⚡",
+			"color": "#ffd24c",
+			"description": "Décharge électrique à haute tension.",
+			"recipe": []
+		},
+		{
+			"id": "magma",
+			"name": "Magma",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "🌋",
+			"color": "#ff5e36",
+			"description": "Roche en fusion brûlante.",
+			"recipe": []
+		},
+		{
+			"id": "bois",
+			"name": "Bois",
+			"level": 1,
+			"biome": "jungle_fongique",
+			"icon": "🪵",
+			"color": "#b88454",
+			"description": "Fibre organique robuste des forêts.",
+			"recipe": []
+		},
+		{
+			"id": "cristal",
+			"name": "Cristal",
+			"level": 1,
+			"biome": "plaine_astrale",
+			"icon": "💎",
+			"color": "#38e8d8",
+			"description": "Prisme minéral résonnant.",
+			"recipe": []
+		},
+		{
+			"id": "vapeur",
+			"name": "Vapeur",
+			"level": 1,
+			"biome": "caldeira_magma",
+			"icon": "☁️",
+			"color": "#d0e2f2",
+			"description": "Brume chaude sous pression.",
+			"recipe": []
+		},
+		{
+			"id": "n2_glace_foudre",
+			"name": "Alliage Fongique (Glace-Foudre)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Glace et Foudre (Six Royaumes).",
+			"recipe": [
+				"glace",
+				"foudre"
+			]
+		},
+		{
+			"id": "n2_glace_magma",
+			"name": "Essence Ancien (Glace-Magma)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Glace et Magma (Six Royaumes).",
+			"recipe": [
+				"glace",
+				"magma"
+			]
+		},
+		{
+			"id": "n2_glace_bois",
+			"name": "Éclat Solaire (Glace-Bois)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Glace et Bois (Six Royaumes).",
+			"recipe": [
+				"glace",
+				"bois"
+			]
+		},
+		{
+			"id": "n2_glace_cristal",
+			"name": "Cœur Fulgurant (Glace-Cristal)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Glace et Cristal (Six Royaumes).",
+			"recipe": [
+				"glace",
+				"cristal"
+			]
+		},
+		{
+			"id": "n2_glace_vapeur",
+			"name": "Poudre Argenté (Glace-Vapeur)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Glace et Vapeur (Six Royaumes).",
+			"recipe": [
+				"glace",
+				"vapeur"
+			]
+		},
+		{
+			"id": "n2_foudre_magma",
+			"name": "Sève Glacial (Foudre-Magma)",
+			"level": 2,
+			"icon": "💧",
+			"color": "#52d67c",
+			"description": "Résultat de niveau 2 obtenu en combinant Foudre et Magma (Six Royaumes).",
+			"recipe": [
+				"foudre",
+				"magma"
+			]
+		},
+		{
+			"id": "n2_foudre_bois",
+			"name": "Vapeur Vif (Foudre-Bois)",
+			"level": 2,
+			"icon": "☁️",
+			"color": "#c7d8eb",
+			"description": "Résultat de niveau 2 obtenu en combinant Foudre et Bois (Six Royaumes).",
+			"recipe": [
+				"foudre",
+				"bois"
+			]
+		},
+		{
+			"id": "n2_foudre_cristal",
+			"name": "Braise Magnétique (Foudre-Cristal)",
+			"level": 2,
+			"icon": "🔥",
+			"color": "#ff7a45",
+			"description": "Résultat de niveau 2 obtenu en combinant Foudre et Cristal (Six Royaumes).",
+			"recipe": [
+				"foudre",
+				"cristal"
+			]
+		},
+		{
+			"id": "n2_foudre_vapeur",
+			"name": "Quartz Arcanique (Foudre-Vapeur)",
+			"level": 2,
+			"icon": "🔮",
+			"color": "#c985ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Foudre et Vapeur (Six Royaumes).",
+			"recipe": [
+				"foudre",
+				"vapeur"
+			]
+		},
+		{
+			"id": "n2_magma_bois",
+			"name": "Nectar Doré (Magma-Bois)",
+			"level": 2,
+			"icon": "🍯",
+			"color": "#f5c25b",
+			"description": "Résultat de niveau 2 obtenu en combinant Magma et Bois (Six Royaumes).",
+			"recipe": [
+				"magma",
+				"bois"
+			]
+		},
+		{
+			"id": "n2_magma_cristal",
+			"name": "Alliage Volcanique (Magma-Cristal)",
+			"level": 2,
+			"icon": "⚙️",
+			"color": "#b8c4d9",
+			"description": "Résultat de niveau 2 obtenu en combinant Magma et Cristal (Six Royaumes).",
+			"recipe": [
+				"magma",
+				"cristal"
+			]
+		},
+		{
+			"id": "n2_magma_vapeur",
+			"name": "Essence Sombre (Magma-Vapeur)",
+			"level": 2,
+			"icon": "🧪",
+			"color": "#6be8c8",
+			"description": "Résultat de niveau 2 obtenu en combinant Magma et Vapeur (Six Royaumes).",
+			"recipe": [
+				"magma",
+				"vapeur"
+			]
+		},
+		{
+			"id": "n2_bois_cristal",
+			"name": "Éclat Harmonieux (Bois-Cristal)",
+			"level": 2,
+			"icon": "💎",
+			"color": "#7fd4ff",
+			"description": "Résultat de niveau 2 obtenu en combinant Bois et Cristal (Six Royaumes).",
+			"recipe": [
+				"bois",
+				"cristal"
+			]
+		},
+		{
+			"id": "n2_bois_vapeur",
+			"name": "Cœur Tellurique (Bois-Vapeur)",
+			"level": 2,
+			"icon": "💠",
+			"color": "#ff9e66",
+			"description": "Résultat de niveau 2 obtenu en combinant Bois et Vapeur (Six Royaumes).",
+			"recipe": [
+				"bois",
+				"vapeur"
+			]
+		},
+		{
+			"id": "n2_cristal_vapeur",
+			"name": "Poudre Obsidien (Cristal-Vapeur)",
+			"level": 2,
+			"icon": "✨",
+			"color": "#ffe27a",
+			"description": "Résultat de niveau 2 obtenu en combinant Cristal et Vapeur (Six Royaumes).",
+			"recipe": [
+				"cristal",
+				"vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_glace_magma",
+			"name": "Noyau Dense (Alliage-(Glace-Magma))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Essence Ancien (Glace-Magma) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_glace_magma"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_glace_bois",
+			"name": "Relique Sacré (Alliage-(Glace-Bois))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Éclat Solaire (Glace-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_glace_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_glace_cristal",
+			"name": "Matrice Abyssal (Alliage-(Glace-Cristal))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Cœur Fulgurant (Glace-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_glace_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_glace_vapeur",
+			"name": "Prisme Incandescent (Alliage-(Glace-Vapeur))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Poudre Argenté (Glace-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_glace_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_foudre_magma",
+			"name": "Orbe Cristallin (Alliage-(Foudre-Magma))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Sève Glacial (Foudre-Magma) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_foudre_magma"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_foudre_bois",
+			"name": "Catalyseur Pur (Alliage-(Foudre-Bois))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Vapeur Vif (Foudre-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_foudre_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_foudre_cristal",
+			"name": "Talisman Raffiné (Alliage-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_foudre_vapeur",
+			"name": "Condensat Stellaire (Alliage-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_magma_bois",
+			"name": "Lingot Givré (Alliage-(Magma-Bois))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_magma_cristal",
+			"name": "Fiole Ardent (Alliage-(Magma-Cristal))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_magma_vapeur",
+			"name": "Golem Ionique (Alliage-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_bois_cristal",
+			"name": "Couronne Brut (Alliage-(Bois-Cristal))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_bois_vapeur",
+			"name": "Noyau Lunaire (Alliage-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_foudre_n2_cristal_vapeur",
+			"name": "Relique Serein (Alliage-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Alliage Fongique (Glace-Foudre) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_foudre",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_glace_bois",
+			"name": "Matrice Opalescent (Essence-(Glace-Bois))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Éclat Solaire (Glace-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_glace_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_glace_cristal",
+			"name": "Prisme Fongique (Essence-(Glace-Cristal))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Cœur Fulgurant (Glace-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_glace_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_glace_vapeur",
+			"name": "Orbe Ancien (Essence-(Glace-Vapeur))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Poudre Argenté (Glace-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_glace_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_foudre_magma",
+			"name": "Catalyseur Solaire (Essence-(Foudre-Magma))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Sève Glacial (Foudre-Magma) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_foudre_magma"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_foudre_bois",
+			"name": "Talisman Fulgurant (Essence-(Foudre-Bois))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Vapeur Vif (Foudre-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_foudre_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_foudre_cristal",
+			"name": "Condensat Argenté (Essence-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_foudre_vapeur",
+			"name": "Lingot Glacial (Essence-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_magma_bois",
+			"name": "Fiole Vif (Essence-(Magma-Bois))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_magma_cristal",
+			"name": "Golem Magnétique (Essence-(Magma-Cristal))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_magma_vapeur",
+			"name": "Couronne Arcanique (Essence-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_bois_cristal",
+			"name": "Noyau Doré (Essence-(Bois-Cristal))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_bois_vapeur",
+			"name": "Relique Volcanique (Essence-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_magma_n2_cristal_vapeur",
+			"name": "Matrice Sombre (Essence-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Essence Ancien (Glace-Magma) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_magma",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_glace_cristal",
+			"name": "Prisme Harmonieux (Éclat-(Glace-Cristal))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Cœur Fulgurant (Glace-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_glace_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_glace_vapeur",
+			"name": "Orbe Tellurique (Éclat-(Glace-Vapeur))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Poudre Argenté (Glace-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_glace_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_foudre_magma",
+			"name": "Catalyseur Obsidien (Éclat-(Foudre-Magma))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Sève Glacial (Foudre-Magma) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_foudre_magma"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_foudre_bois",
+			"name": "Talisman Astral (Éclat-(Foudre-Bois))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Vapeur Vif (Foudre-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_foudre_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_foudre_cristal",
+			"name": "Condensat Lumineux (Éclat-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_foudre_vapeur",
+			"name": "Lingot Instable (Éclat-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_magma_bois",
+			"name": "Fiole Céleste (Éclat-(Magma-Bois))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_magma_cristal",
+			"name": "Golem Smaragdin (Éclat-(Magma-Cristal))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_magma_vapeur",
+			"name": "Couronne Éthéré (Éclat-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_bois_cristal",
+			"name": "Noyau Dense (Éclat-(Bois-Cristal))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_bois_vapeur",
+			"name": "Relique Sacré (Éclat-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_bois_n2_cristal_vapeur",
+			"name": "Matrice Abyssal (Éclat-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Éclat Solaire (Glace-Bois) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_bois",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_glace_vapeur",
+			"name": "Prisme Incandescent (Cœur-(Glace-Vapeur))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Poudre Argenté (Glace-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_glace_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_foudre_magma",
+			"name": "Orbe Cristallin (Cœur-(Foudre-Magma))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Sève Glacial (Foudre-Magma) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_foudre_magma"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_foudre_bois",
+			"name": "Catalyseur Pur (Cœur-(Foudre-Bois))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Vapeur Vif (Foudre-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_foudre_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_foudre_cristal",
+			"name": "Talisman Raffiné (Cœur-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_foudre_vapeur",
+			"name": "Condensat Stellaire (Cœur-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_magma_bois",
+			"name": "Lingot Givré (Cœur-(Magma-Bois))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_magma_cristal",
+			"name": "Fiole Ardent (Cœur-(Magma-Cristal))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_magma_vapeur",
+			"name": "Golem Ionique (Cœur-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_bois_cristal",
+			"name": "Couronne Brut (Cœur-(Bois-Cristal))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_bois_vapeur",
+			"name": "Noyau Lunaire (Cœur-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_cristal_n2_cristal_vapeur",
+			"name": "Relique Serein (Cœur-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Cœur Fulgurant (Glace-Cristal) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_cristal",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_foudre_magma",
+			"name": "Matrice Opalescent (Poudre-(Foudre-Magma))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Sève Glacial (Foudre-Magma) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_foudre_magma"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_foudre_bois",
+			"name": "Prisme Fongique (Poudre-(Foudre-Bois))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Vapeur Vif (Foudre-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_foudre_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_foudre_cristal",
+			"name": "Orbe Ancien (Poudre-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_foudre_vapeur",
+			"name": "Catalyseur Solaire (Poudre-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_magma_bois",
+			"name": "Talisman Fulgurant (Poudre-(Magma-Bois))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_magma_cristal",
+			"name": "Condensat Argenté (Poudre-(Magma-Cristal))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_magma_vapeur",
+			"name": "Lingot Glacial (Poudre-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_bois_cristal",
+			"name": "Fiole Vif (Poudre-(Bois-Cristal))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_bois_vapeur",
+			"name": "Golem Magnétique (Poudre-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_glace_vapeur_n2_cristal_vapeur",
+			"name": "Couronne Arcanique (Poudre-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Poudre Argenté (Glace-Vapeur) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_glace_vapeur",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_foudre_bois",
+			"name": "Noyau Doré (Sève-(Foudre-Bois))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Vapeur Vif (Foudre-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_foudre_bois"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_foudre_cristal",
+			"name": "Relique Volcanique (Sève-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_foudre_vapeur",
+			"name": "Matrice Sombre (Sève-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_magma_bois",
+			"name": "Prisme Harmonieux (Sève-(Magma-Bois))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_magma_cristal",
+			"name": "Orbe Tellurique (Sève-(Magma-Cristal))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_magma_vapeur",
+			"name": "Catalyseur Obsidien (Sève-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_bois_cristal",
+			"name": "Talisman Astral (Sève-(Bois-Cristal))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_bois_vapeur",
+			"name": "Condensat Lumineux (Sève-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "🌀",
+			"color": "#56cfe1",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_magma_n2_cristal_vapeur",
+			"name": "Lingot Instable (Sève-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "🪙",
+			"color": "#e9c46a",
+			"description": "Résultat de niveau 3 obtenu en combinant Sève Glacial (Foudre-Magma) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_magma",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_foudre_cristal",
+			"name": "Fiole Céleste (Vapeur-(Foudre-Cristal))",
+			"level": 3,
+			"icon": "🧴",
+			"color": "#80ed99",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Braise Magnétique (Foudre-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_foudre_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_foudre_vapeur",
+			"name": "Golem Smaragdin (Vapeur-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "🗿",
+			"color": "#a8a29e",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_magma_bois",
+			"name": "Couronne Éthéré (Vapeur-(Magma-Bois))",
+			"level": 3,
+			"icon": "👑",
+			"color": "#ffbe0b",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_magma_bois"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_magma_cristal",
+			"name": "Noyau Dense (Vapeur-(Magma-Cristal))",
+			"level": 3,
+			"icon": "⚛️",
+			"color": "#73b8ff",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Alliage Volcanique (Magma-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_magma_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_magma_vapeur",
+			"name": "Relique Sacré (Vapeur-(Magma-Vapeur))",
+			"level": 3,
+			"icon": "🏺",
+			"color": "#e0a96d",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Essence Sombre (Magma-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_magma_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_bois_cristal",
+			"name": "Matrice Abyssal (Vapeur-(Bois-Cristal))",
+			"level": 3,
+			"icon": "🧬",
+			"color": "#6df2b0",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Éclat Harmonieux (Bois-Cristal) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_bois_cristal"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_bois_vapeur",
+			"name": "Prisme Incandescent (Vapeur-(Bois-Vapeur))",
+			"level": 3,
+			"icon": "🔺",
+			"color": "#ff85d0",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Cœur Tellurique (Bois-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_bois_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_bois_n2_cristal_vapeur",
+			"name": "Orbe Cristallin (Vapeur-(Cristal-Vapeur))",
+			"level": 3,
+			"icon": "🔮",
+			"color": "#9d7cff",
+			"description": "Résultat de niveau 3 obtenu en combinant Vapeur Vif (Foudre-Bois) et Poudre Obsidien (Cristal-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_bois",
+				"n2_cristal_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_cristal_n2_foudre_vapeur",
+			"name": "Catalyseur Pur (Braise-(Foudre-Vapeur))",
+			"level": 3,
+			"icon": "⚗️",
+			"color": "#4ce3d4",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Foudre-Cristal) et Quartz Arcanique (Foudre-Vapeur) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_cristal",
+				"n2_foudre_vapeur"
+			]
+		},
+		{
+			"id": "n3_n2_foudre_cristal_n2_magma_bois",
+			"name": "Talisman Raffiné (Braise-(Magma-Bois))",
+			"level": 3,
+			"icon": "🧿",
+			"color": "#ffd166",
+			"description": "Résultat de niveau 3 obtenu en combinant Braise Magnétique (Foudre-Cristal) et Nectar Doré (Magma-Bois) (Six Royaumes).",
+			"recipe": [
+				"n2_foudre_cristal",
+				"n2_magma_bois"
+			]
+		}
+	]
+}

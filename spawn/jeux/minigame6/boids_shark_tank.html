@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Bancs & Requin (Boids Tank)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.active-tool { background: #155e75; border-color: #67e8f9; }
+  canvas { background: #04101f; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: none; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "boids_shark_tank",
+  "name": "Bancs & Requin (Boids Tank)",
+  "family": "topMouseMut",
+  "icon": "🦈",
+  "controls": "Pointeur ou Flèches/ZQSD pour piloter le requin (Arrive) • Clic, Espace ou ⚡ Dash pour foncer (Pursue) • V / 👁️ Vecteurs pour afficher les champs Boids",
+  "description": "Fusion des 10 scripts Boids & SteeredVehicle (fish, cn9V, veAl, Vmjn, kbi6, sbc5, 6QC9, r2i0, jUBh, jHN2) : hachage spatial, répulsion inter-couleurs, obstacles récifaux, comportements Arrive/Pursue/Wander et évitement. Dévorez les sardines cyan/or en esquivant les bancs violets et les mines toxiques rouges.",
+  "goal": "Dévorer 35 sardines avant la fin des 60 secondes sans perdre vos 3 vies.",
+  "fields": [
+    { "key": "targetFish", "label": "Sardines à manger", "type": "number", "default": 35 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 60 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🦈 Boids Tank</span>
+  <span id="stat">🐟 0/35 • ❤️ 3 • 60s</span>
+  <div class="bar-btns">
+    <button id="vecBtn" onclick="toggleVectors()" title="Afficher vecteurs & perception (V)">👁️ Vec</button>
+    <button onclick="triggerDash()" title="Accélération Pursue (Clic / Espace)">⚡ Dash</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Pointeur / ZQSD</b> : piloter le requin • <b>Clic / Espace</b> : Dash Pursue • Mangez les sardines cyan/or (évitez mines rouges & banc violet)
+</div>
+
+<script>
+const GAME_ID = "boids_shark_tank";
+const SIZE = 512;
+const CELL_R = 52;
+const GRID_N = Math.ceil(SIZE / CELL_R);
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+let targetFish = 35, durationSec = 60;
+let walls = [];
+let sardines = [];
+let rivals = [];
+let mines = [];
+let bites = [];
+let shark = { x: 256, y: 256, vx: 0, vy: 0, tx: 256, ty: 256, angle: 0 };
+let keys = {};
+let showVectors = false;
+let eaten = 0, hp = 3, timeLeft = 60, score = 0, won = false, over = false;
+let dashTimer = 0, dashCd = 0, hitCd = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function toggleVectors() {
+  showVectors = !showVectors;
+  document.getElementById("vecBtn").classList.toggle("active-tool", showVectors);
+}
+
+function triggerDash() {
+  if (over || dashCd > 0) return;
+  dashTimer = 0.42;
+  dashCd = 1.1;
+}
+
+function makeSardine(gold = false) {
+  let x, y;
+  do {
+    x = 30 + Math.random() * (SIZE - 60);
+    y = 30 + Math.random() * (SIZE - 60);
+  } while (Math.hypot(x - shark.x, y - shark.y) < 100);
+  const a = Math.random() * Math.PI * 2;
+  return {
+    x, y,
+    vx: Math.cos(a) * 90,
+    vy: Math.sin(a) * 90,
+    gold,
+    species: 0
+  };
+}
+
+function makeRival() {
+  const a = Math.random() * Math.PI * 2;
+  return {
+    x: 40 + Math.random() * (SIZE - 80),
+    y: 40 + Math.random() * (SIZE - 80),
+    vx: Math.cos(a) * 80,
+    vy: Math.sin(a) * 80,
+    species: 1
+  };
+}
+
+function makeMine(idx) {
+  const spots = [{ x: 110, y: 110 }, { x: 402, y: 110 }, { x: 110, y: 402 }, { x: 402, y: 402 }];
+  const s = spots[idx % spots.length];
+  return { x: s.x, y: s.y, vx: 0, vy: 0, wanderA: Math.random() * 6.28, r: 13 };
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetFish = Math.max(10, Number(custom.targetFish || 35));
+  durationSec = Math.max(20, Number(custom.durationSec || 60));
+
+  // lesMurs reef obstacles (fish.as)
+  walls = [
+    { x: 148, y: 165, r: 24 },
+    { x: 364, y: 185, r: 22 },
+    { x: 256, y: 365, r: 26 }
+  ];
+  shark = { x: 256, y: 256, vx: 0, vy: 0, tx: 256, ty: 256, angle: 0 };
+  sardines = [];
+  for (let i = 0; i < 55; i++) sardines.push(makeSardine(i % 7 === 0));
+  rivals = [];
+  for (let i = 0; i < 28; i++) rivals.push(makeRival());
+  mines = [makeMine(0), makeMine(1), makeMine(2), makeMine(3)];
+  bites = [];
+  eaten = 0;
+  hp = 3;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  dashTimer = 0;
+  dashCd = 0;
+  hitCd = 0;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `🐟 ${eaten}/${targetFish} • ❤️ ${hp} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  shark.tx = p.x;
+  shark.ty = p.y;
+  triggerDash();
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  shark.tx = p.x;
+  shark.ty = p.y;
+});
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) triggerDash();
+  if (e.code === "KeyV" && !e.repeat) toggleVectors();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function steerBoids(list, allBoids, dt, maxSpd) {
+  const buckets = Array.from({ length: GRID_N * GRID_N }, () => []);
+  for (const b of allBoids) {
+    const gx = Math.max(0, Math.min(GRID_N - 1, Math.floor(b.x / CELL_R)));
+    const gy = Math.max(0, Math.min(GRID_N - 1, Math.floor(b.y / CELL_R)));
+    buckets[gy * GRID_N + gx].push(b);
+  }
+
+  for (const b of list) {
+    const gx = Math.max(0, Math.min(GRID_N - 1, Math.floor(b.x / CELL_R)));
+    const gy = Math.max(0, Math.min(GRID_N - 1, Math.floor(b.y / CELL_R)));
+    let cohX = 0, cohY = 0, aliX = 0, aliY = 0, sepX = 0, sepY = 0, sameCnt = 0;
+
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = gx + dx, ny = gy + dy;
+        if (nx < 0 || nx >= GRID_N || ny < 0 || ny >= GRID_N) continue;
+        for (const o of buckets[ny * GRID_N + nx]) {
+          if (o === b) continue;
+          const ddx = o.x - b.x, ddy = o.y - b.y;
+          const d = Math.hypot(ddx, ddy);
+          if (d < 1e-4 || d > CELL_R) continue;
+          if (o.species === b.species) {
+            cohX += o.x; cohY += o.y;
+            aliX += o.vx; aliY += o.vy;
+            sameCnt++;
+            if (d < 20) {
+              sepX -= (ddx / d) * (20 - d) * 6;
+              sepY -= (ddy / d) * (20 - d) * 6;
+            }
+          } else {
+            // Inter-species repulsion (cn9V.as)
+            sepX -= (ddx / d) * (CELL_R - d) * 4.5;
+            sepY -= (ddy / d) * (CELL_R - d) * 4.5;
+          }
+        }
+      }
+    }
+
+    if (sameCnt > 0) {
+      cohX = (cohX / sameCnt - b.x) * 2.1;
+      cohY = (cohY / sameCnt - b.y) * 2.1;
+      aliX = (aliX / sameCnt - b.vx) * 1.4;
+      aliY = (aliY / sameCnt - b.vy) * 1.4;
+    }
+
+    let fx = cohX + aliX + sepX;
+    let fy = cohY + aliY + sepY;
+
+    // Flee or challenge shark (jHN2.as avoidance)
+    const sdx = b.x - shark.x, sdy = b.y - shark.y;
+    const sd = Math.max(1e-4, Math.hypot(sdx, sdy));
+    if (b.species === 0 && sd < 95) {
+      fx += (sdx / sd) * (95 - sd) * 6.5;
+      fy += (sdy / sd) * (95 - sd) * 6.5;
+    } else if (b.species === 1 && sd < 110) {
+      // Rivals crowd & bump the shark
+      fx -= (sdx / sd) * 115;
+      fy -= (sdy / sd) * 115;
+    }
+
+    // Reef walls avoidance (fish.as lesMurs)
+    for (const w of walls) {
+      const wdx = b.x - w.x, wdy = b.y - w.y;
+      const wd = Math.max(1e-4, Math.hypot(wdx, wdy));
+      if (wd < w.r + 30) {
+        fx += (wdx / wd) * (w.r + 30 - wd) * 14;
+        fy += (wdy / wd) * (w.r + 30 - wd) * 14;
+      }
+    }
+
+    // Soft arena border steering
+    if (b.x < 36) fx += (36 - b.x) * 14;
+    if (b.x > SIZE - 36) fx -= (b.x - (SIZE - 36)) * 14;
+    if (b.y < 36) fy += (36 - b.y) * 14;
+    if (b.y > SIZE - 36) fy -= (b.y - (SIZE - 36)) * 14;
+
+    b.vx += fx * dt;
+    b.vy += fy * dt;
+    const sp = Math.hypot(b.vx, b.vy);
+    if (sp > maxSpd) { b.vx = (b.vx / sp) * maxSpd; b.vy = (b.vy / sp) * maxSpd; }
+    else if (sp < 42 && sp > 1e-4) { b.vx = (b.vx / sp) * 42; b.vy = (b.vy / sp) * 42; }
+
+    b.x = Math.max(10, Math.min(SIZE - 10, b.x + b.vx * dt));
+    b.y = Math.max(10, Math.min(SIZE - 10, b.y + b.vy * dt));
+  }
+}
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (dashTimer > 0) dashTimer = Math.max(0, dashTimer - dt);
+    if (dashCd > 0) dashCd = Math.max(0, dashCd - dt);
+    if (hitCd > 0) hitCd = Math.max(0, hitCd - dt);
+
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      const m = Math.hypot(kx, ky);
+      shark.tx = Math.max(20, Math.min(SIZE - 20, shark.tx + (kx / m) * 280 * dt));
+      shark.ty = Math.max(20, Math.min(SIZE - 20, shark.ty + (ky / m) * 280 * dt));
+    }
+
+    // Arrive + Pursue behavior (kbi6.as + sbc5.as)
+    const toX = shark.tx - shark.x, toY = shark.ty - shark.y;
+    const dist = Math.hypot(toX, toY);
+    const maxSharkSpd = dashTimer > 0 ? 375 : 225;
+    const arriveDist = 64;
+    let desiredSpd = maxSharkSpd * (dist < arriveDist ? dist / arriveDist : 1);
+    if (dist > 2) {
+      const dvx = (toX / dist) * desiredSpd;
+      const dvy = (toY / dist) * desiredSpd;
+      shark.vx += (dvx - shark.vx) * Math.min(1, dt * (dashTimer > 0 ? 15 : 8));
+      shark.vy += (dvy - shark.vy) * Math.min(1, dt * (dashTimer > 0 ? 15 : 8));
+    } else {
+      shark.vx *= Math.pow(0.05, dt);
+      shark.vy *= Math.pow(0.05, dt);
+    }
+    shark.x = Math.max(16, Math.min(SIZE - 16, shark.x + shark.vx * dt));
+    shark.y = Math.max(16, Math.min(SIZE - 16, shark.y + shark.vy * dt));
+    if (Math.hypot(shark.vx, shark.vy) > 12) {
+      shark.angle = Math.atan2(shark.vy, shark.vx);
+    }
+
+    // Push shark gently off reef walls
+    for (const w of walls) {
+      const dx = shark.x - w.x, dy = shark.y - w.y;
+      const d = Math.max(1e-4, Math.hypot(dx, dy));
+      if (d < w.r + 14) {
+        shark.x = w.x + (dx / d) * (w.r + 14);
+        shark.y = w.y + (dy / d) * (w.r + 14);
+      }
+    }
+
+    const all = sardines.concat(rivals);
+    steerBoids(sardines, all, dt, 155);
+    steerBoids(rivals, all, dt, 140);
+
+    // Rival fish nudge/slow shark on close bump
+    for (const r of rivals) {
+      const dx = shark.x - r.x, dy = shark.y - r.y;
+      const d = Math.max(1e-4, Math.hypot(dx, dy));
+      if (d < 20) {
+        shark.vx += (dx / d) * 130 * dt * 10;
+        shark.vy += (dy / d) * 130 * dt * 10;
+      }
+    }
+
+    // Eat sardines
+    for (let i = sardines.length - 1; i >= 0; i--) {
+      const s = sardines[i];
+      if (Math.hypot(s.x - shark.x, s.y - shark.y) < (dashTimer > 0 ? 24 : 18)) {
+        bites.push({ x: s.x, y: s.y, r: 5, life: 1, col: s.gold ? "#fde047" : "#38d6ff" });
+        sardines.splice(i, 1);
+        sardines.push(makeSardine(Math.random() < 0.16));
+        eaten++;
+        score += s.gold ? 80 : 40;
+        if (eaten >= targetFish) {
+          won = true;
+          over = true;
+          score += Math.round(timeLeft * 18) + hp * 90;
+          break;
+        }
+      }
+    }
+
+    // Wander toxic red mines (jUBh / 6QC9 / r2i0)
+    for (const m of mines) {
+      m.wanderA += (Math.random() - 0.5) * 4.5 * dt;
+      const cx = m.x + Math.cos(Math.atan2(m.vy, m.vx)) * 24;
+      const cy = m.y + Math.sin(Math.atan2(m.vy, m.vx)) * 24;
+      m.vx += Math.cos(m.wanderA) * 90 * dt;
+      m.vy += Math.sin(m.wanderA) * 90 * dt;
+      if (m.x < 42) m.vx += 160 * dt;
+      if (m.x > SIZE - 42) m.vx -= 160 * dt;
+      if (m.y < 42) m.vy += 160 * dt;
+      if (m.y > SIZE - 42) m.vy -= 160 * dt;
+      const sp = Math.hypot(m.vx, m.vy);
+      if (sp > 76) { m.vx = (m.vx / sp) * 76; m.vy = (m.vy / sp) * 76; }
+      m.x = Math.max(20, Math.min(SIZE - 20, m.x + m.vx * dt));
+      m.y = Math.max(20, Math.min(SIZE - 20, m.y + m.vy * dt));
+
+      if (hitCd <= 0 && Math.hypot(m.x - shark.x, m.y - shark.y) < m.r + 13) {
+        hitCd = 1.0;
+        hp--;
+        bites.push({ x: shark.x, y: shark.y, r: 10, life: 1, col: "#ef4444" });
+        const dx = shark.x - m.x, dy = shark.y - m.y;
+        const d = Math.max(1e-4, Math.hypot(dx, dy));
+        shark.vx = (dx / d) * 260;
+        shark.vy = (dy / d) * 260;
+        if (hp <= 0) { won = false; over = true; break; }
+      }
+    }
+
+    for (let i = bites.length - 1; i >= 0; i--) {
+      bites[i].r += 65 * dt;
+      bites[i].life -= 2.4 * dt;
+      if (bites[i].life <= 0) bites.splice(i, 1);
+    }
+
+    if (timeLeft <= 0 && !over) {
+      won = eaten >= targetFish;
+      over = true;
+    }
+    updateHud();
+  }
+
+  // Render underwater tank
+  const bg = ctx.createLinearGradient(0, 0, 0, SIZE);
+  bg.addColorStop(0, "#051428");
+  bg.addColorStop(1, "#030916");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Reef walls
+  for (const w of walls) {
+    ctx.fillStyle = "#17253d";
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(56, 214, 255, 0.14)";
+    ctx.beginPath(); ctx.arc(w.x, w.y, w.r + 12, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // Vector / Perception debug overlay (cn9V.as)
+  if (showVectors) {
+    ctx.strokeStyle = "rgba(56, 214, 255, 0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(shark.x, shark.y, 95, 0, Math.PI * 2); ctx.stroke();
+    for (const s of sardines) {
+      ctx.strokeStyle = "rgba(56, 214, 255, 0.35)";
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(s.x + s.vx * 0.14, s.y + s.vy * 0.14);
+      ctx.stroke();
+    }
+  }
+
+  // Sardines (veAl / Vmjn arrow boids)
+  for (const s of sardines) {
+    const a = Math.atan2(s.vy, s.vx);
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(a);
+    ctx.fillStyle = s.gold ? "#fde047" : "#38d6ff";
+    ctx.beginPath();
+    ctx.moveTo(7, 0);
+    ctx.lineTo(-5, -3.5);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-5, 3.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Rival violet fish
+  for (const r of rivals) {
+    const a = Math.atan2(r.vy, r.vx);
+    ctx.save();
+    ctx.translate(r.x, r.y);
+    ctx.rotate(a);
+    ctx.fillStyle = "#a855f7";
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(-6, -4.5);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(-6, 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Toxic red mines
+  for (const m of mines) {
+    ctx.fillStyle = "#dc2626";
+    ctx.strokeStyle = "#fecaca";
+    ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = "rgba(248, 113, 113, 0.35)";
+    ctx.beginPath(); ctx.arc(m.x, m.y, m.r + 7, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // Bites / Hit waves
+  for (const b of bites) {
+    ctx.strokeStyle = b.col;
+    ctx.globalAlpha = Math.max(0, b.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Player Cyber-Shark
+  ctx.save();
+  ctx.translate(shark.x, shark.y);
+  ctx.rotate(shark.angle);
+  ctx.fillStyle = hitCd > 0 ? "#ef4444" : (dashTimer > 0 ? "#67e8f9" : "#0ea5e9");
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(19, 0);
+  ctx.lineTo(2, -9);
+  ctx.lineTo(-14, -5);
+  ctx.lineTo(-10, 0);
+  ctx.lineTo(-14, 5);
+  ctx.lineTo(2, 9);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // Target cursor ring
+  if (!over) {
+    ctx.strokeStyle = "rgba(103, 232, 249, 0.55)";
+    ctx.lineWidth = 1.3;
+    ctx.beginPath(); ctx.arc(shark.tx, shark.ty, 8, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "PRÉDATEUR ALPHA !" : (hp <= 0 ? "REQUIN ÉLIMINÉ" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`${eaten}/${targetFish} sardines • ❤️ ${hp} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

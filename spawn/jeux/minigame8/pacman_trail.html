@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Fuis le Pacman ! (Pacman Trail)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  canvas { background: #060914; border: 2px solid #38d6ff; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: none; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(56,214,255,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "pacman_trail",
+  "name": "Fuis le Pacman ! (Pacman Trail)",
+  "family": "topMouseMut",
+  "icon": "🟡",
+  "controls": "Pointeur / glisser ou Flèches / ZQSD pour piloter votre sonde • Clic ou Espace pour un dash court",
+  "description": "Adapté de bbJH.as (Run away from Pacman) : votre trajectoire laisse un chemin en pointillés blancs que Pacman rejoue et dévore avec un retard fixe. Ne recoupez jamais votre propre trace !",
+  "goal": "Collecter 24 pastilles dorées en moins de 60 secondes sans perdre vos 3 cœurs face au Pacman.",
+  "fields": [
+    { "key": "targetDots", "label": "Pastilles à collecter", "type": "number", "default": 24 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 60 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🟡 Fuis Pacman</span>
+  <span id="stat">Pastilles 0/24 • ❤️ 3 • 60s</span>
+  <div class="bar-btns">
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Déplacez la sonde</b> pour tracer la piste • Pacman suit votre trace avec retard • <b>Clic / Espace</b> : Dash ⚡
+</div>
+
+<script>
+const GAME_ID = "pacman_trail";
+const SIZE = 512;
+const TRAIL_DELAY = 42;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+let targetDots = 24, durationSec = 60;
+let player = { x: 256, y: 256, tx: 256, ty: 256, invuln: 0, dashCd: 0 };
+let pac = { x: -40, y: -40, ang: 0, mouth: 0, active: false };
+let trail = [];
+let dots = [], ripples = [];
+let keys = {};
+let collected = 0, lives = 3, timeLeft = 60, score = 0, won = false, over = false;
+let recordTick = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+function spawnDot() {
+  for (let t = 0; t < 20; t++) {
+    const x = 40 + Math.random() * (SIZE - 80);
+    const y = 40 + Math.random() * (SIZE - 80);
+    if (Math.hypot(x - player.x, y - player.y) > 75) {
+      dots.push({ x, y, pulse: Math.random() * 6.28 });
+      return;
+    }
+  }
+  dots.push({ x: 48 + Math.random() * (SIZE - 96), y: 48 + Math.random() * (SIZE - 96), pulse: 0 });
+}
+
+function triggerDash() {
+  if (over || player.dashCd > 0) return;
+  const dx = player.tx - player.x, dy = player.ty - player.y;
+  const d = Math.hypot(dx, dy) || 1;
+  player.x = Math.max(20, Math.min(SIZE - 20, player.x + (dx / d) * 65));
+  player.y = Math.max(20, Math.min(SIZE - 20, player.y + (dy / d) * 65));
+  player.tx = player.x; player.ty = player.y;
+  player.dashCd = 1.6;
+  ripples.push({ x: player.x, y: player.y, r: 6, life: 1, col: "#38d6ff" });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetDots = Math.max(5, Number(custom.targetDots || 24));
+  durationSec = Math.max(20, Number(custom.durationSec || 60));
+
+  player = { x: 256, y: 256, tx: 256, ty: 256, invuln: 1.2, dashCd: 0 };
+  pac = { x: 80, y: 80, ang: 0, mouth: 0, active: false };
+  trail = [];
+  dots = [];
+  ripples = [];
+  for (let i = 0; i < 6; i++) spawnDot();
+  collected = 0;
+  lives = 3;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  recordTick = 0;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Pastilles ${collected}/${targetDots} • ❤️ ${lives} • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(16, Math.min(SIZE - 16, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(16, Math.min(SIZE - 16, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  player.tx = p.x; player.ty = p.y;
+  triggerDash();
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  player.tx = p.x; player.ty = p.y;
+});
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) triggerDash();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
+    if (player.dashCd > 0) player.dashCd = Math.max(0, player.dashCd - dt);
+
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      const m = Math.hypot(kx, ky);
+      player.tx = Math.max(16, Math.min(SIZE - 16, player.x + (kx / m) * 280 * dt));
+      player.ty = Math.max(16, Math.min(SIZE - 16, player.y + (ky / m) * 280 * dt));
+    }
+
+    // Smoothly follow pointer/target with capped speed so trail is playable
+    const dx = player.tx - player.x, dy = player.ty - player.y;
+    const dist = Math.hypot(dx, dy);
+    const maxStep = 285 * dt;
+    if (dist > maxStep) {
+      player.x += (dx / dist) * maxStep;
+      player.y += (dy / dist) * maxStep;
+    } else {
+      player.x = player.tx;
+      player.y = player.ty;
+    }
+
+    recordTick++;
+    trail.push({ x: player.x, y: player.y, dash: recordTick % 2 === 0 });
+    if (trail.length > TRAIL_DELAY) {
+      const prevX = pac.x, prevY = pac.y;
+      const head = trail.shift();
+      pac.x = head.x;
+      pac.y = head.y;
+      pac.active = true;
+      if (Math.hypot(pac.x - prevX, pac.y - prevY) > 0.4) {
+        pac.ang = Math.atan2(pac.y - prevY, pac.x - prevX);
+      }
+      pac.mouth += dt * 14;
+    }
+
+    // Collect dots
+    for (let i = dots.length - 1; i >= 0; i--) {
+      dots[i].pulse += dt * 4;
+      if (Math.hypot(dots[i].x - player.x, dots[i].y - player.y) < 19) {
+        ripples.push({ x: dots[i].x, y: dots[i].y, r: 6, life: 1, col: "#facc15" });
+        dots.splice(i, 1);
+        collected++;
+        score += 120;
+        spawnDot();
+      }
+    }
+
+    // Check Pacman catching player (e.g., if player crosses back over their own path!)
+    if (pac.active && player.invuln <= 0 && Math.hypot(pac.x - player.x, pac.y - player.y) < 26) {
+      lives--;
+      player.invuln = 1.6;
+      ripples.push({ x: player.x, y: player.y, r: 10, life: 1, col: "#f87171" });
+    }
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].r += 65 * dt;
+      ripples[i].life -= 2.5 * dt;
+      if (ripples[i].life <= 0) ripples.splice(i, 1);
+    }
+
+    if (collected >= targetDots) {
+      won = true; over = true;
+      score += Math.round(timeLeft * 25);
+    } else if (lives <= 0 || timeLeft <= 0) {
+      won = false; over = true;
+    }
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Dashed trail left behind player (bbJH style)
+  for (let i = 1; i < trail.length; i++) {
+    if (!trail[i].dash) continue;
+    ctx.strokeStyle = `rgba(226, 241, 255, ${0.25 + 0.7 * (i / trail.length)})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+    ctx.lineTo(trail[i].x, trail[i].y);
+    ctx.stroke();
+  }
+
+  // Dots
+  for (const d of dots) {
+    const r = 7 + Math.sin(d.pulse) * 1.4;
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath(); ctx.arc(d.x, d.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fef9c3";
+    ctx.beginPath(); ctx.arc(d.x - 2, d.y - 2, 2.2, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Player cursor/probe
+  if (!over) {
+    ctx.save();
+    ctx.globalAlpha = player.invuln > 0 && Math.floor(player.invuln * 12) % 2 ? 0.35 : 1;
+    ctx.fillStyle = "#38d6ff";
+    ctx.beginPath(); ctx.arc(player.x, player.y, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = player.dashCd <= 0 ? "#aef0ff" : "#334155";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(player.x, player.y, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Pacman (bbJH animated mouth)
+  if (pac.active) {
+    const open = 0.15 + Math.abs(Math.sin(pac.mouth)) * 0.55;
+    ctx.save();
+    ctx.translate(pac.x, pac.y);
+    ctx.rotate(pac.ang);
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 22, open, Math.PI * 2 - open);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#060914";
+    ctx.beginPath();
+    ctx.arc(4, -10, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "PACMAN SEMÉ !" : (lives <= 0 ? "DÉVORÉ PAR PACMAN !" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Pastilles ${collected}/${targetDots} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

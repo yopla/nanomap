@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Glisse Triangulaire</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body { background: #0a0e18; color: #e6f4ff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; background: #121a2b; border: 1px solid #2d5b7b; padding: 8px 12px; border-radius: 10px; font-size: 13px; }
+  canvas { background: #0d1422; border: 2px solid #38d6ff; border-radius: 10px; width: min(512px, 96vw); height: min(512px, 96vw); cursor: none; touch-action: none; }
+  button { background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "tiran",
+  "name": "Glisse Triangulaire",
+  "family": "topMouseMut",
+  "icon": "📐",
+  "controls": "Déplacer la souris / doigt pour accélérer la sphère et glisser sur les rampes à 45°",
+  "description": "Grille 16×16 à blocs carrés et coins triangulaires biseautés avec glissement fluide.",
+  "goal": "Collecter tous les cristaux d'énergie avant la fin du chrono.",
+  "fields": [
+    { "key": "gemCount", "label": "Cristaux à collecter", "type": "number", "default": 10 }
+  ]
+}
+</script>
+<div class="bar">
+  <span>📐 <b>Glisse Triangulaire</b></span>
+  <span id="stat">Cristaux: 0/10 • 35s</span>
+  <div>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+<canvas id="cv" width="512" height="512"></canvas>
+<script>
+const GAME_ID = "tiran";
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+const MW = 16, MH = 16, CW = 32, CH = 32;
+
+let grid = new Int8Array(MW * MH);
+let mouse = { x: 256, y: 256 };
+let ball = { cx: 256, cy: 256, vx: 0, vy: 0, rad: 13 };
+let trail = [];
+let gems = [];
+let timeLeft = 35, score = 0, won = false, over = false, gemTotal = 10;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: "spawn_minigame_result", id: GAME_ID, won: !!didWin, score: Math.round(finalScore || 0), resource_deltas: {} }, "*");
+  }
+}
+window.addEventListener("message", (e) => { if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data); });
+
+function setM(e) {
+  const r = cv.getBoundingClientRect();
+  mouse.x = (e.clientX - r.left) * (512 / r.width);
+  mouse.y = (e.clientY - r.top) * (512 / r.height);
+}
+cv.addEventListener("pointermove", setM);
+cv.addEventListener("pointerdown", (e) => { if (over) { sendResultAndExit(won, score); return; } setM(e); });
+
+function setTile(ax, ay, t) { if (ax >= 0 && ax < MW && ay >= 0 && ay < MH) grid[ay * MW + ax] = t; }
+function getTile(ax, ay) { if (ax < 0 || ax >= MW || ay < 0 || ay >= MH) return 1; return grid[ay * MW + ax]; }
+
+function getCloseLine(px, py, x0, y0, x1, y1) {
+  const ax = px - x0, ay = py - y0;
+  const bx = x1 - x0, by = y1 - y0;
+  let t = (ax * bx + ay * by) / (bx * bx + by * by || 1);
+  if (t < 0) t = 0;
+  if (t > 1) t = 1;
+  return { x: x0 + bx * t, y: y0 + by * t };
+}
+
+// Faithful port of tiran.as gridTest
+function gridTest(a) {
+  const ax = Math.floor(a.cx / CW);
+  const ay = Math.floor(a.cy / CH);
+  for (let i = -1; i <= 1; i++) {
+    for (let k = -1; k <= 1; k++) {
+      let t = getTile(ax + k, ay + i);
+      if (t <= 0) continue;
+      const bx = (ax + k) * CW;
+      const by = (ay + i) * CH;
+
+      if (t === 2) { if (a.cx < bx || a.cy < by) t = 1; }
+      else if (t === 3) { if (a.cx > bx + CW || a.cy < by) t = 1; }
+      else if (t === 4) { if (a.cx < bx || a.cy > by + CH) t = 1; }
+      else if (t === 5) { if (a.cx > bx + CW || a.cy > by + CH) t = 1; }
+
+      let ix, iy;
+      if (t > 1 && t <= 5) {
+        const pt = (t === 2 || t === 5)
+          ? getCloseLine(a.cx, a.cy, bx + CW, by, bx, by + CH)
+          : getCloseLine(a.cx, a.cy, bx, by, bx + CW, by + CH);
+        ix = pt.x; iy = pt.y;
+      } else {
+        ix = Math.max(bx, Math.min(bx + CW, a.cx));
+        iy = Math.max(by, Math.min(by + CH, a.cy));
+      }
+
+      const d = Math.hypot(a.cx - ix, a.cy - iy);
+      if (d > a.rad) continue;
+
+      const ta = Math.atan2(iy - a.cy, ix - a.cx);
+      a.cx += Math.cos(ta) * (d - a.rad) * 0.55;
+      a.cy += Math.sin(ta) * (d - a.rad) * 0.55;
+      const nx = Math.cos(ta), ny = Math.sin(ta);
+      const dot = a.vy * ny + a.vx * nx;
+      if (dot > 0) {
+        a.vx -= nx * dot;
+        a.vy -= ny * dot;
+      }
+    }
+  }
+}
+
+function resetGame(initCtx) {
+  const custom = (initCtx && initCtx.custom) || (window.__SPAWN_INIT_CTX && window.__SPAWN_INIT_CTX.custom) || {};
+  gemTotal = Math.max(4, Math.min(18, Number(custom.gemCount) || 10));
+  timeLeft = 35; score = 0; won = false; over = false;
+  grid = new Int8Array(MW * MH);
+  trail = [];
+
+  // Scatter random square + 45-deg triangular slope tiles (types 1..5)
+  for (let i = 0; i < 48; i++) {
+    const tx = 1 + Math.floor(Math.random() * (MW - 2));
+    const ty = 1 + Math.floor(Math.random() * (MH - 2));
+    setTile(tx, ty, 1 + Math.floor(Math.random() * 5));
+  }
+  // Outer walls
+  for (let i = 0; i < MW; i++) {
+    setTile(i, 0, 1); setTile(0, i, 1);
+    setTile(i, MH - 1, 1); setTile(MW - 1, i, 1);
+  }
+  // Clear center spawn area (2x2)
+  for (let x = 7; x <= 8; x++) for (let y = 7; y <= 8; y++) setTile(x, y, 0);
+
+  ball = { cx: 256, cy: 256, vx: 0, vy: 0, rad: 13 };
+  mouse = { x: 256, y: 256 };
+
+  // Flood-fill reachable open cells from (7,7) so every gem is guaranteed reachable
+  const vis = new Uint8Array(MW * MH);
+  const q = [[7, 7]];
+  vis[7 * MW + 7] = 1;
+  const open = [];
+  while (q.length) {
+    const [cx, cy] = q.shift();
+    if (Math.hypot(cx - 7.5, cy - 7.5) > 2.2) open.push({ x: cx * CW + 16, y: cy * CH + 16 });
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx > 0 && nx < MW - 1 && ny > 0 && ny < MH - 1 && !vis[ny * MW + nx] && getTile(nx, ny) === 0) {
+        vis[ny * MW + nx] = 1;
+        q.push([nx, ny]);
+      }
+    }
+  }
+  for (let i = open.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [open[i], open[j]] = [open[j], open[i]];
+  }
+  gems = open.slice(0, gemTotal).map(p => ({ x: p.x, y: p.y, taken: false }));
+  gemTotal = gems.length;
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  const sc = dt * 60;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    if (timeLeft <= 0) over = true;
+
+    const ta = Math.atan2(mouse.y - ball.cy, mouse.x - ball.cx);
+    const dist = Math.hypot(mouse.x - ball.cx, mouse.y - ball.cy);
+    if (dist > 8) {
+      ball.vx += Math.cos(ta) * 0.28 * sc;
+      ball.vy += Math.sin(ta) * 0.28 * sc;
+    } else {
+      ball.vx *= Math.pow(0.88, sc);
+      ball.vy *= Math.pow(0.88, sc);
+    }
+    const maxS = 7.5;
+    ball.vx = Math.max(-maxS, Math.min(maxS, ball.vx));
+    ball.vy = Math.max(-maxS, Math.min(maxS, ball.vy));
+
+    gridTest(ball);
+    gridTest(ball);
+    ball.cx += ball.vx * sc;
+    ball.cy += ball.vy * sc;
+    gridTest(ball);
+
+    trail.push({ x: ball.cx, y: ball.cy });
+    if (trail.length > 16) trail.shift();
+
+    for (const g of gems) {
+      if (!g.taken && Math.hypot(ball.cx - g.x, ball.cy - g.y) < ball.rad + 11) {
+        g.taken = true;
+        score += 30;
+      }
+    }
+    if (gems.every(g => g.taken)) {
+      won = true;
+      over = true;
+      score += Math.round(timeLeft * 6);
+    }
+  }
+
+  const doneN = gems.filter(g => g.taken).length;
+  document.getElementById("stat").textContent = `Cristaux: ${doneN}/${gemTotal} • ${Math.ceil(timeLeft)}s • Score ${score}`;
+
+  // Draw
+  ctx.fillStyle = "#0d1422";
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Draw tiles
+  for (let i = 0; i < MH; i++) {
+    for (let k = 0; k < MW; k++) {
+      const t = grid[i * MW + k];
+      if (t <= 0) continue;
+      const ax = k * CW, ay = i * CH;
+      ctx.fillStyle = t === 1 ? "#1e293b" : "#1c3552";
+      ctx.strokeStyle = t === 1 ? "#475569" : "#38d6ff";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (t === 2) {
+        ctx.moveTo(ax, ay); ctx.lineTo(ax + CW, ay); ctx.lineTo(ax, ay + CH); ctx.closePath();
+      } else if (t === 3) {
+        ctx.moveTo(ax, ay); ctx.lineTo(ax + CW, ay); ctx.lineTo(ax + CW, ay + CH); ctx.closePath();
+      } else if (t === 4) {
+        ctx.moveTo(ax, ay + CH); ctx.lineTo(ax + CW, ay + CH); ctx.lineTo(ax, ay); ctx.closePath();
+      } else if (t === 5) {
+        ctx.moveTo(ax + CW, ay + CH); ctx.lineTo(ax, ay + CH); ctx.lineTo(ax + CW, ay); ctx.closePath();
+      } else {
+        ctx.rect(ax, ay, CW, CH);
+      }
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // Gems
+  const pulse = 1 + Math.sin(now * 0.007) * 0.15;
+  for (const g of gems) {
+    if (g.taken) continue;
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    ctx.rotate(now * 0.002);
+    ctx.scale(pulse, pulse);
+    ctx.fillStyle = "#fde047";
+    ctx.strokeStyle = "#fef08a";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, -8); ctx.lineTo(7, 0); ctx.lineTo(0, 8); ctx.lineTo(-7, 0); ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Slipstream trail
+  for (let i = 0; i < trail.length; i++) {
+    const a = (i + 1) / trail.length;
+    ctx.beginPath();
+    ctx.arc(trail[i].x, trail[i].y, ball.rad * a * 0.7, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(56,214,255,${a * 0.25})`;
+    ctx.fill();
+  }
+
+  // Player ball
+  ctx.beginPath();
+  ctx.arc(ball.cx, ball.cy, ball.rad, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(56,214,255,0.3)";
+  ctx.fill();
+  ctx.strokeStyle = "#38d6ff";
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Cursor reticle
+  ctx.beginPath();
+  ctx.arc(mouse.x, mouse.y, 4, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(174,240,255,0.75)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  if (over) {
+    ctx.fillStyle = "rgba(6,10,20,0.85)";
+    ctx.fillRect(0, 180, 512, 150);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "CRISTAUX RÉCOLTÉS !" : "TEMPS ÉCOULÉ", 256, 238);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score} — Cliquez pour revenir au vaisseau`, 256, 282);
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+</script>
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

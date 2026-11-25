@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Champ d'Algues & Courants (Kelp Currents)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #070b14; color: #e6f4ff; font-family: system-ui, -apple-system, Segoe UI, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 8px; padding: 8px; overflow: hidden; }
+  .bar { width: min(512px, 96vw); display: flex; justify-content: space-between; align-items: center; gap: 6px; background: #10192b; border: 1px solid #2b597a; padding: 7px 10px; border-radius: 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #4ade80; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; }
+  .bar-btns { display: flex; gap: 5px; }
+  button { background: #1a3350; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 7px; padding: 5px 9px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.12s, transform 0.08s; }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button.shield { background: #14532d; border-color: #4ade80; color: #dcfce7; }
+  canvas { background: #060914; border: 2px solid #4ade80; border-radius: 12px; width: min(512px, 96vw); height: min(512px, 96vw); touch-action: none; cursor: crosshair; box-shadow: 0 10px 34px rgba(0,0,0,0.65), 0 0 24px rgba(74,222,128,0.16); }
+  .hint { width: min(512px, 96vw); font-size: 11.5px; color: #8fb4d4; text-align: center; line-height: 1.35; }
+  .hint b { color: #bae6fd; }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "kelp_currents",
+  "name": "Champ d'Algues & Courants (Kelp Currents)",
+  "family": "zooEcosys",
+  "icon": "🌿",
+  "controls": "Pointeur / glisser ou ZQSD pour orienter le flux ou abriter la prairie • Espace, Clic droit ou bouton 🌀/🛡️ pour basculer Courant / Abri",
+  "description": "Fusion des filaments rompus au vent Perlin (t5MT.as), de l'herbe 3D turbulente (kUGu.as) et des prairies en parallaxe (aQmp.as) : orientez les courants pour mener les spores dorées au récif vert tout en protégeant la canopée contre les rafales rouges.",
+  "goal": "Guider 25 spores dorées dans le récif sanctuaire en moins de 65 secondes tout en maintenant l'intégrité des algues au-dessus de 40%.",
+  "fields": [
+    { "key": "targetSpores", "label": "Spores à guider", "type": "number", "default": 25 },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65 }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🌿 Kelp Currents</span>
+  <span id="stat">Spores 0/25 • Algues 100% • 65s</span>
+  <div class="bar-btns">
+    <button id="toolBtn" onclick="toggleMode()" title="Basculer Courant / Abri (Espace)">🌀 Courant</button>
+    <button onclick="toggleSpawnHelp()" title="Explication du mini-jeu">?</button>
+    <button onclick="resetGame()" title="Recommencer">🔄</button>
+    <button onclick="sendResultAndExit(won, score)">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Glisser / ZQSD</b> : pousser les <b>spores or</b> vers le récif vert • <b>Espace / Clic droit</b> : 🛡️ Abri pour dissiper les <b>rafales rouges</b>
+</div>
+
+<script>
+const GAME_ID = "kelp_currents";
+const SIZE = 512;
+const REEF = { x: 426, y: 180, w: 68, h: 152 };
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+let targetSpores = 25, durationSec = 65;
+let blades = [], filaments = [], spores = [], gusts = [], ripples = [];
+let mode = "current"; // "current" | "shield"
+let ptr = { x: 220, y: 256, px: 220, py: 256, down: false };
+let keys = {};
+let guided = 0, integrity = 100, timeLeft = 65, score = 0, won = false, over = false;
+let flowT = 0, spawnSporeT = 0, spawnGustT = 0;
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+window.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "spawn_minigame_init") resetGame(e.data);
+});
+
+// Pseudo-Perlin smooth 2D wind/current field (t5MT.as / kUGu.as)
+function windAt(x, y, t) {
+  const nx = x * 0.012 + t * 0.65;
+  const ny = y * 0.014 - t * 0.35;
+  const a = Math.sin(nx * 1.3 + Math.cos(ny * 1.1)) + Math.cos(ny * 1.7 - t * 0.8);
+  const b = Math.cos(nx * 1.9 - Math.sin(ny * 1.4)) + Math.sin((nx + ny) * 0.9 + t * 0.5);
+  return { x: 24 + a * 26, y: b * 24 };
+}
+
+function toggleMode(force) {
+  mode = force || (mode === "current" ? "shield" : "current");
+  const btn = document.getElementById("toolBtn");
+  if (mode === "shield") {
+    btn.textContent = "🛡️ Abri";
+    btn.classList.add("shield");
+  } else {
+    btn.textContent = "🌀 Courant";
+    btn.classList.remove("shield");
+  }
+}
+
+function initKelp() {
+  blades = [];
+  // 3 parallax depth layers (aQmp.as + kUGu.as)
+  for (let layer = 0; layer < 3; layer++) {
+    const count = 18 + layer * 6;
+    for (let i = 0; i < count; i++) {
+      blades.push({
+        x: 18 + (i / (count - 1)) * (SIZE - 36) + (Math.random() - 0.5) * 14,
+        y: SIZE - 12 - layer * 14,
+        h: 72 + layer * 22 + Math.random() * 44,
+        layer,
+        phase: Math.random() * 6,
+        bend: 0,
+        vbend: 0
+      });
+    }
+  }
+  // Floating filament chains (t5MT.as)
+  filaments = [];
+  for (let f = 0; f < 10; f++) {
+    const bx = 55 + (f / 9) * 330;
+    const nodes = [];
+    for (let n = 0; n < 7; n++) {
+      nodes.push({ x: bx, y: 120 + n * 18, vx: 0, vy: 0 });
+    }
+    filaments.push({ nodes, intact: true, health: 1 });
+  }
+}
+
+function spawnSpore() {
+  spores.push({
+    x: 24 + Math.random() * 55,
+    y: 65 + Math.random() * (SIZE - 170),
+    vx: 25,
+    vy: (Math.random() - 0.5) * 20,
+    r: 8,
+    pulse: Math.random() * 6
+  });
+}
+
+function spawnGust() {
+  gusts.push({
+    x: 90 + Math.random() * 310,
+    y: 28,
+    vx: (Math.random() - 0.5) * 45,
+    vy: 56 + Math.random() * 30,
+    r: 22,
+    spin: 0
+  });
+}
+
+function resetGame(cfg) {
+  const custom = (cfg && cfg.custom) || cfg || {};
+  targetSpores = Math.max(5, Number(custom.targetSpores || 25));
+  durationSec = Math.max(20, Number(custom.durationSec || 65));
+
+  initKelp();
+  spores = [];
+  gusts = [];
+  ripples = [];
+  for (let i = 0; i < 6; i++) spawnSpore();
+  spawnGust();
+  mode = "current";
+  toggleMode("current");
+  ptr = { x: 220, y: 256, px: 220, py: 256, down: false };
+  guided = 0;
+  integrity = 100;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  flowT = 0;
+  spawnSporeT = 0;
+  spawnGustT = 0;
+  updateHud();
+}
+
+function updateHud() {
+  document.getElementById("stat").textContent =
+    `Spores ${guided}/${targetSpores} • Algues ${Math.round(integrity)}% • ${Math.ceil(timeLeft)}s`;
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+cv.addEventListener("pointerdown", (e) => {
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x;
+  ptr.y = ptr.py = p.y;
+  ptr.down = true;
+  if (e.button === 2) toggleMode();
+});
+cv.addEventListener("pointermove", (e) => {
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => { ptr.down = false; });
+window.addEventListener("keydown", (e) => {
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) toggleMode();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (!over) {
+    timeLeft = Math.max(0, timeLeft - dt);
+    flowT += dt;
+
+    let kx = 0, ky = 0;
+    if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+    if (keys.ArrowRight || keys.KeyD) kx += 1;
+    if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+    if (keys.ArrowDown || keys.KeyS) ky += 1;
+    if (kx || ky) {
+      const m = Math.hypot(kx, ky);
+      ptr.px = ptr.x; ptr.py = ptr.y;
+      ptr.x = Math.max(18, Math.min(SIZE - 18, ptr.x + (kx / m) * 290 * dt));
+      ptr.y = Math.max(18, Math.min(SIZE - 18, ptr.y + (ky / m) * 290 * dt));
+    }
+
+    spawnSporeT += dt;
+    if (spawnSporeT >= 1.15 && spores.length < 9) { spawnSporeT = 0; spawnSpore(); }
+    spawnGustT += dt;
+    if (spawnGustT >= 2.1 && gusts.length < 4) { spawnGustT = 0; spawnGust(); }
+
+    const mdx = ptr.x - ptr.px, mdy = ptr.y - ptr.py;
+
+    // Perspective kelp blades sway with Perlin field + pointer
+    for (const b of blades) {
+      const w = windAt(b.x, b.y - b.h * 0.5, flowT);
+      let targetBend = w.x * 0.85 + Math.sin(flowT * 2.2 + b.phase) * 14;
+      const d = Math.hypot(b.x - ptr.x, (b.y - b.h * 0.5) - ptr.y);
+      if (d < 95) {
+        targetBend += (mode === "current" ? mdx * 2.2 : (b.x - ptr.x) * 0.3);
+      }
+      b.vbend += ((targetBend - b.bend) * 28 - b.vbend * 5) * dt;
+      b.bend += b.vbend * dt;
+    }
+
+    // Drifting filament chains (t5MT.as)
+    for (const f of filaments) {
+      const n0 = f.nodes[0];
+      const w0 = windAt(n0.x, n0.y, flowT);
+      n0.vx = w0.x * 0.35 + Math.cos(flowT + n0.x * 0.02) * 12;
+      n0.vy = Math.sin(flowT * 1.4 + n0.x * 0.03) * 18;
+      n0.x = Math.max(36, Math.min(395, n0.x + n0.vx * dt));
+      n0.y = Math.max(60, Math.min(320, n0.y + n0.vy * dt));
+      for (let i = 1; i < f.nodes.length; i++) {
+        const prev = f.nodes[i - 1], cur = f.nodes[i];
+        const w = windAt(cur.x, cur.y, flowT);
+        cur.vx += (w.x * 1.2 - cur.vx * 3) * dt;
+        cur.vy += (w.y * 1.2 + 25 - cur.vy * 3) * dt;
+        cur.x += cur.vx * dt;
+        cur.y += cur.vy * dt;
+        const dx = cur.x - prev.x, dy = cur.y - prev.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const segLen = f.intact ? 18 : 26;
+        cur.x = prev.x + (dx / dist) * segLen;
+        cur.y = prev.y + (dy / dist) * segLen;
+      }
+      if (!f.intact && mode === "shield" && Math.hypot(n0.x - ptr.x, n0.y - ptr.y) < 75) {
+        f.health = Math.min(1, f.health + 0.9 * dt);
+        if (f.health >= 0.99) {
+          f.intact = true;
+          integrity = Math.min(100, integrity + 4);
+        }
+      }
+    }
+
+    // Update spores steered by Perlin wind + player current
+    for (let i = spores.length - 1; i >= 0; i--) {
+      const s = spores[i];
+      s.pulse += dt * 4;
+      const w = windAt(s.x, s.y, flowT);
+      s.vx += w.x * 0.8 * dt;
+      s.vy += w.y * 0.8 * dt;
+
+      // Guide toward sanctuary when near pointer in current mode
+      const dx = ptr.x - s.x, dy = ptr.y - s.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 120) {
+        if (mode === "current") {
+          const boost = ptr.down ? 340 : 210;
+          s.vx += (mdx * 12 + (REEF.x - s.x) * 0.45 + dx * 0.35) * (boost / 200) * dt;
+          s.vy += (mdy * 12 + (REEF.y + REEF.h * 0.5 - s.y) * 0.45 + dy * 0.35) * (boost / 200) * dt;
+        } else {
+          // Shield gently lifts spores away from red gusts
+          s.vx += (REEF.x - s.x) * 0.35 * dt;
+        }
+      }
+
+      s.vx *= Math.pow(0.45, dt);
+      s.vy *= Math.pow(0.45, dt);
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+
+      if (s.x < 12) { s.x = 12; s.vx = Math.abs(s.vx); }
+      if (s.x > SIZE - 12) { s.x = SIZE - 12; s.vx = -Math.abs(s.vx); }
+      if (s.y < 14) { s.y = 14; s.vy = Math.abs(s.vy); }
+      if (s.y > SIZE - 20) { s.y = SIZE - 20; s.vy = -Math.abs(s.vy); }
+
+      if (s.x >= REEF.x && s.x <= REEF.x + REEF.w && s.y >= REEF.y && s.y <= REEF.y + REEF.h) {
+        guided++;
+        score += 90;
+        ripples.push({ x: s.x, y: s.y, r: 6, life: 1, col: "#4ade80" });
+        spores.splice(i, 1);
+        spawnSpore();
+        if (guided >= targetSpores) {
+          won = true;
+          over = true;
+          score += Math.round(timeLeft * 20 + integrity * 3);
+        }
+      }
+    }
+
+    // Update red turbulent gusts
+    for (let i = gusts.length - 1; i >= 0; i--) {
+      const g = gusts[i];
+      g.spin += dt * 6;
+      const w = windAt(g.x, g.y, flowT);
+      g.x += (g.vx + w.x * 0.35) * dt;
+      g.y += g.vy * dt;
+
+      // Shield mode dissipates gusts; current mode pushes them aside
+      const dPtr = Math.hypot(g.x - ptr.x, g.y - ptr.y);
+      if (dPtr < 76) {
+        if (mode === "shield") {
+          score += 35;
+          ripples.push({ x: g.x, y: g.y, r: 10, life: 1, col: "#38d6ff" });
+          gusts.splice(i, 1);
+          continue;
+        } else if (dPtr > 1) {
+          g.vx += ((g.x - ptr.x) / dPtr) * 180 * dt;
+        }
+      }
+
+      // Check damage to filaments & kelp floor
+      let broke = false;
+      for (const f of filaments) {
+        if (!f.intact) continue;
+        for (const n of f.nodes) {
+          if (Math.hypot(n.x - g.x, n.y - g.y) < g.r) {
+            f.intact = false;
+            f.health = 0.25;
+            integrity = Math.max(0, integrity - 7.5);
+            ripples.push({ x: g.x, y: g.y, r: 8, life: 1, col: "#ef4444" });
+            broke = true;
+            break;
+          }
+        }
+        if (broke) break;
+      }
+
+      if (g.y > SIZE - 36) {
+        integrity = Math.max(0, integrity - 8);
+        ripples.push({ x: g.x, y: SIZE - 36, r: 8, life: 1, col: "#ef4444" });
+        gusts.splice(i, 1);
+      } else if (g.x < -30 || g.x > SIZE + 30) {
+        gusts.splice(i, 1);
+      }
+    }
+
+    if (integrity <= 40 && !over) {
+      won = false;
+      over = true;
+    }
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      ripples[i].r += 110 * dt;
+      ripples[i].life -= 2.3 * dt;
+      if (ripples[i].life <= 0) ripples.splice(i, 1);
+    }
+
+    if (timeLeft <= 0 && !over) {
+      won = guided >= targetSpores && integrity > 40;
+      over = true;
+    }
+    ptr.px = ptr.x; ptr.py = ptr.y;
+    updateHud();
+  }
+
+  // Render
+  ctx.fillStyle = "#060914";
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Subtle flow field vectors
+  ctx.strokeStyle = "rgba(56, 214, 255, 0.14)";
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  for (let gx = 40; gx < SIZE; gx += 52) {
+    for (let gy = 40; gy < SIZE - 60; gy += 52) {
+      const w = windAt(gx, gy, flowT);
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(gx + w.x * 0.35, gy + w.y * 0.35);
+    }
+  }
+  ctx.stroke();
+
+  // Sanctuary reef
+  ctx.fillStyle = "rgba(74, 222, 128, 0.16)";
+  ctx.strokeStyle = "#4ade80";
+  ctx.lineWidth = 2.2;
+  ctx.fillRect(REEF.x, REEF.y, REEF.w, REEF.h);
+  ctx.strokeRect(REEF.x, REEF.y, REEF.w, REEF.h);
+  ctx.fillStyle = "#86efac";
+  ctx.font = "bold 11px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("RÉCIF", REEF.x + REEF.w * 0.5, REEF.y + REEF.h * 0.5 - 4);
+  ctx.fillText("VERT", REEF.x + REEF.w * 0.5, REEF.y + REEF.h * 0.5 + 12);
+
+  // Perspective kelp blades (back to front)
+  const layerColors = ["#064e3b", "#059669", "#34d399"];
+  for (const b of blades) {
+    ctx.strokeStyle = layerColors[b.layer];
+    ctx.lineWidth = 3 - b.layer * 0.5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.quadraticCurveTo(b.x + b.bend * 0.45, b.y - b.h * 0.55, b.x + b.bend, b.y - b.h);
+    ctx.stroke();
+  }
+
+  // Drifting filaments (t5MT.as)
+  for (const f of filaments) {
+    ctx.strokeStyle = f.intact ? "rgba(56, 214, 255, 0.7)" : "rgba(248, 113, 113, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let i = 0; i < f.nodes.length; i++) {
+      const n = f.nodes[i];
+      if (!f.intact && i === 3) ctx.moveTo(n.x, n.y);
+      else if (i === 0) ctx.moveTo(n.x, n.y);
+      else ctx.lineTo(n.x, n.y);
+    }
+    ctx.stroke();
+  }
+
+  // Golden spores
+  for (const s of spores) {
+    const r = s.r + Math.sin(s.pulse) * 1.2;
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath(); ctx.arc(s.x, s.y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fef9c3";
+    ctx.beginPath(); ctx.arc(s.x - 2, s.y - 2, 2.3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Turbulent gusts
+  for (const g of gusts) {
+    ctx.save();
+    ctx.translate(g.x, g.y);
+    ctx.rotate(g.spin);
+    ctx.strokeStyle = "#ef4444";
+    ctx.fillStyle = "rgba(239, 68, 68, 0.22)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, g.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(0, 0, g.r * 0.55, 0, Math.PI * 1.35);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Ripples
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Cursor field
+  if (!over) {
+    ctx.strokeStyle = mode === "shield" ? "rgba(74, 222, 128, 0.7)" : "rgba(56, 214, 255, 0.7)";
+    ctx.lineWidth = ptr.down ? 2.6 : 1.6;
+    ctx.setLineDash(mode === "shield" ? [] : [5, 4]);
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, mode === "shield" ? 72 : 90, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? "PRAIRIE PRÉSERVÉE !" : (integrity <= 40 ? "ALGUES DÉVASTÉES !" : "CHRONO ÉCOULÉ"), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Spores ${guided}/${targetSpores} • Algues ${Math.round(integrity)}% • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText("Cliquez sur le canvas pour revenir au vaisseau", 256, 300);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+resetGame();
+requestAnimationFrame(loop);
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+  };
+  window.addEventListener("keydown", function(e){
+    if (e.key === "Escape") window.toggleSpawnHelp(false);
+  });
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>
