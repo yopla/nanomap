@@ -2538,6 +2538,406 @@ const MONO_PALETTE_G = {
   accent: '#ffffff'
 };
 
+/* ==========================================================================
+   BOT LOCAL EU (LOGO EMBARQUÉ EN BASE64 + PATTES GÉNÉRATIVES + DÉFORMATION)
+   ========================================================================== */
+const EU_LOGO_DATA_URI = "data:image/avif;base64,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";
+const euLogoImage = new Image();
+let euLogoLoaded = false;
+euLogoImage.onload = function() {
+  euLogoLoaded = true;
+};
+euLogoImage.src = EU_LOGO_DATA_URI;
+
+function drawEuFlagEmblem(ctx, radius, rimColor, glowColor) {
+  // Aura bioluminescente liée au skin génératif
+  ctx.save();
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = 14;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = '#003399';
+  ctx.fill();
+  ctx.restore();
+
+  // Clip circulaire exact (sans bord blanc) sur le logo EU embarqué en base64
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.clip();
+
+  if (euLogoLoaded && euLogoImage.naturalWidth > 0) {
+    // Le disque bleu du 626x626 occupe x=[91..534], y=[91..534]; crop 93..533 pour éviter tout liseré blanc
+    ctx.drawImage(euLogoImage, 93, 93, 440, 440, -radius, -radius, radius * 2, radius * 2);
+  } else {
+    // Fallback vectoriel instantané pendant le décodage initial
+    ctx.fillStyle = '#003399';
+    ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+    ctx.fillStyle = '#ffcc00';
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * radius * 0.72, Math.sin(a) * radius * 0.72, radius * 0.095, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold ' + Math.round(radius * 0.72) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('EU', 0, 1);
+  }
+  ctx.restore();
+
+  // Liseré lumineux assorti au skin génératif
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.strokeStyle = rimColor;
+  ctx.lineWidth = 2.0;
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawLocalEuBot(ctx, creature, showLabel) {
+  const g = creature.genome;
+  const mono = !!creature._mono;
+  const now = performance.now();
+  let rimColor = 'rgba(250, 204, 21, 0.85)';
+  let glowColor = 'rgba(56, 189, 248, 0.45)';
+  let bodyRadius = 24;
+
+  // 1. Dessiner les pattes / rames / appendices du skin génératif (C, F, G ou H)
+  if (creature.type === 'C') {
+    const joints = creature.joints;
+    rimColor = `hsla(${g.hue}, ${mono ? 0 : 95}%, 76%, 0.88)`;
+    glowColor = `hsla(${g.accentHue}, ${mono ? 0 : 90}%, 62%, 0.45)`;
+    bodyRadius = Math.max(32, Math.min(38, (g.segments && g.segments[0] ? g.segments[0].radius : 22) * 1.52));
+
+    if (joints && joints.length > 0) {
+      ctx.save();
+      if (g.tailFork) {
+        const tailJ = joints[joints.length - 1];
+        const tailR = g.segments[joints.length - 1].radius;
+        ctx.save();
+        ctx.translate(tailJ.x, tailJ.y);
+        ctx.rotate(tailJ.angle);
+        ctx.strokeStyle = `hsla(${g.accentHue}, ${mono ? 0 : 85}%, 65%, 0.85)`;
+        ctx.lineWidth = 2.8;
+        ctx.lineCap = 'round';
+        const forkSpread = 0.35 + Math.sin(creature.swimPhase) * 0.08;
+        ctx.beginPath();
+        ctx.moveTo(-tailR * 0.6, -3);
+        ctx.lineTo(-tailR * 2.0, -tailR * forkSpread * 2.4);
+        ctx.moveTo(-tailR * 0.6, 3);
+        ctx.lineTo(-tailR * 2.0, tailR * forkSpread * 2.4);
+        ctx.stroke();
+        ctx.restore();
+      }
+      const legSwingBoost = 1 + (creature.swingEnv || 0) * Math.min(1.6, creature.swingLegAmp || 0) * 0.72;
+      for (let i = joints.length - 1; i >= 0; i--) {
+        const j = joints[i];
+        const seg = g.segments[i];
+        ctx.save();
+        ctx.translate(j.x, j.y);
+        ctx.rotate(j.angle);
+        for (let p = 0; p < seg.legPairs; p++) {
+          drawSideLegsC(ctx, seg, i, p, creature.swimPhase, g.hue, g.accentHue, mono, legSwingBoost);
+        }
+        if (i === 0 && g.hasAntennae) {
+          const antWave = Math.sin(creature.swimPhase * 0.8) * 0.18;
+          ctx.strokeStyle = `hsla(${g.accentHue}, ${mono ? 0 : 90}%, 72%, 0.85)`;
+          ctx.lineWidth = 2.4;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(bodyRadius * 0.78, -bodyRadius * 0.34);
+          ctx.quadraticCurveTo(bodyRadius * 1.45, -bodyRadius * (0.92 + antWave), bodyRadius * 1.85, -bodyRadius * (0.55 + antWave));
+          ctx.moveTo(bodyRadius * 0.78, bodyRadius * 0.34);
+          ctx.quadraticCurveTo(bodyRadius * 1.45, bodyRadius * (0.92 - antWave), bodyRadius * 1.85, bodyRadius * (0.55 - antWave));
+          ctx.stroke();
+        }
+        if (i > 0) {
+          const t = joints.length === 1 ? 0 : i / (joints.length - 1);
+          const lightness = Math.round(52 - t * 14);
+          ctx.fillStyle = `hsla(${(g.hue + i * 6) % 360}, ${mono ? 0 : 75}%, ${lightness}%, 0.85)`;
+          ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 80%, 0.75)`;
+          ctx.lineWidth = 1.6;
+          drawMinimalPlateC(ctx, seg.primType, seg.radius * 0.72);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  } else if (creature.type === 'F') {
+    rimColor = `hsla(${g.hue}, ${mono ? 0 : 95}%, 76%, 0.88)`;
+    glowColor = `hsla(${g.accentHue}, ${mono ? 0 : 90}%, 62%, 0.45)`;
+    bodyRadius = Math.max(32, Math.min(38, (g.plates && g.plates[0] ? g.plates[0].r : 23) * 1.48));
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const leg of creature.legs) {
+      const pts = leg.joints;
+      if (!pts || pts.length < 2) continue;
+      ctx.fillStyle = leg.isStepping ? 'rgba(0, 0, 0, 0.28)' : 'rgba(0, 0, 0, 0.5)';
+      ctx.beginPath();
+      ctx.arc(leg.footX, leg.footY + 2, leg.isStepping ? 2.5 : 3.6, 0, Math.PI * 2);
+      ctx.fill();
+      for (let s = 0; s < pts.length - 1; s++) {
+        const p1 = pts[s];
+        const p2 = pts[s + 1];
+        const segThickness = Math.max(2.2, 4.6 - s * 0.85);
+        const segLight = 52 + s * 6;
+        ctx.strokeStyle = `hsl(${(g.accentHue + s * 10) % 360}, ${mono ? 0 : 82}%, ${segLight}%)`;
+        ctx.lineWidth = segThickness;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+      for (let s = 1; s < pts.length - 1; s++) {
+        ctx.fillStyle = `hsl(${g.hue}, ${mono ? 0 : 90}%, 76%)`;
+        ctx.beginPath();
+        ctx.arc(pts[s].x, pts[s].y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const tip = pts[pts.length - 1];
+      ctx.fillStyle = leg.isStepping ? (mono ? '#ffffff' : '#fef08a') : `hsl(${g.hue}, ${mono ? 0 : 95}%, 82%)`;
+      ctx.strokeStyle = '#041019';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(tip.x, tip.y, leg.isStepping ? 3.2 : 3.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (creature.type === 'G') {
+    const pal = mono ? MONO_PALETTE_G : FLAT_PALETTES_G[g.paletteIdx % FLAT_PALETTES_G.length];
+    const scale = g.bodyScale || 1.0;
+    rimColor = pal.accent || '#fde047';
+    glowColor = pal.legs || 'rgba(56, 189, 248, 0.45)';
+    bodyRadius = Math.max(32, Math.min(38, 26 * scale));
+
+    ctx.save();
+    ctx.translate(creature.x, creature.y);
+    ctx.rotate(creature.angle);
+    const stretchX = 1 + (creature.bodyCompress || 0);
+    const stretchY = 1 - (creature.bodyCompress || 0) * 0.5;
+    ctx.scale(stretchX, stretchY);
+
+    const pairs = g.legPairs || 2;
+    const legLen = (g.legLength || 1.0) * scale;
+    const startX = pairs === 1 ? 0 : bodyRadius * 0.36;
+    const endX = pairs === 1 ? 0 : -bodyRadius * 0.40;
+    const spanX = startX - endX;
+
+    for (let i = 0; i < pairs; i++) {
+      const frac = pairs === 1 ? 0.5 : i / (pairs - 1);
+      const attachX = startX - frac * spanX;
+      // Ancrage garanti sous le bord du disque EU (aucun espace vide)
+      const attachY = bodyRadius * (0.72 - Math.abs(frac - 0.5) * 0.14);
+      for (const side of [-1, 1]) {
+        const kin = computeLimbKinematicsG(creature, i, side);
+        const swing = kin.swingAngle;
+        const ext = kin.extension;
+        ctx.save();
+        ctx.translate(attachX, side * attachY);
+        if (g.legStyle === 0) {
+          const femurL = 11.5 * legLen;
+          const tibiaL = 12.5 * legLen * ext;
+          const femurAngle = side * (Math.PI * 0.5 - swing);
+          const kneeBend = side * (0.35 + (1 - ext) * 1.45);
+          const kneeX = Math.cos(femurAngle) * femurL;
+          const kneeY = Math.sin(femurAngle) * femurL;
+          const footAngle = femurAngle + kneeBend;
+          const footX = kneeX + Math.cos(footAngle) * tibiaL;
+          const footY = kneeY + Math.sin(footAngle) * tibiaL;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = '#030812';
+          ctx.lineWidth = 5.2 * scale;
+          ctx.beginPath();
+          ctx.moveTo(0, 0); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
+          ctx.stroke();
+          ctx.strokeStyle = pal.legs;
+          ctx.lineWidth = 3.0 * scale;
+          ctx.beginPath();
+          ctx.moveTo(0, 0); ctx.lineTo(kneeX, kneeY); ctx.lineTo(footX, footY);
+          ctx.stroke();
+          drawHingePinG(ctx, kneeX, kneeY, 1.8 * scale, pal.accent);
+        } else if (g.legStyle === 1) {
+          const legAngle = side * (Math.PI * 0.5 - swing);
+          const paddleL = 17.5 * legLen * ext;
+          const paddleW = 4.2 * scale;
+          ctx.save();
+          ctx.rotate(legAngle);
+          ctx.fillStyle = pal.legs;
+          ctx.strokeStyle = '#030812';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(0, -paddleW * 0.5, paddleL, paddleW, 2 * scale);
+          ctx.fill(); ctx.stroke();
+          ctx.fillStyle = pal.accent;
+          ctx.beginPath();
+          ctx.roundRect(paddleL * 0.65, -paddleW * 0.85, paddleL * 0.35, paddleW * 1.7, 2 * scale);
+          ctx.fill(); ctx.stroke();
+          ctx.restore();
+          drawHingePinG(ctx, 0, 0, 2.0 * scale, pal.accent);
+        } else if (g.legStyle === 2) {
+          const legAngle = side * (Math.PI * 0.48 - swing);
+          const reach = 18.5 * legLen * ext;
+          ctx.save();
+          ctx.rotate(legAngle);
+          drawPolygonG(ctx, [
+            [0, -2.5 * scale],
+            [reach * 0.7, side * -3.8 * scale],
+            [reach, side * 3.2 * scale],
+            [reach * 0.4, 2.2 * scale]
+          ], pal.legs, '#030812', 1.4);
+          ctx.restore();
+        } else {
+          const legAngle = side * (Math.PI * 0.44 - swing);
+          const clawL = 19.5 * legLen * ext;
+          ctx.save();
+          ctx.rotate(legAngle);
+          drawPolygonG(ctx, [
+            [0, -2.8 * scale],
+            [clawL * 0.65, side * -5.2 * scale],
+            [clawL, side * 2.5 * scale],
+            [clawL * 0.55, side * 1.2 * scale],
+            [0, 2.2 * scale]
+          ], pal.legs, '#030812', 1.5);
+          ctx.restore();
+          drawHingePinG(ctx, 0, 0, 2.0 * scale, pal.accent);
+        }
+        ctx.restore();
+      }
+    }
+    if (g.tailStyle !== 3 || g.gaitMode === 5) {
+      ctx.save();
+      ctx.translate(-bodyRadius * 0.74, 0);
+      ctx.rotate(creature.rearJointAngle || 0);
+      if (g.tailStyle === 0 || g.gaitMode === 5) {
+        ctx.fillStyle = pal.rear;
+        ctx.strokeStyle = '#030812';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(-14 * scale, -7.5 * scale, 15 * scale, 15 * scale, 4 * scale);
+        ctx.fill(); ctx.stroke();
+      } else if (g.tailStyle === 1) {
+        drawPolygonG(ctx, [[1 * scale, 7.5 * scale], [-17 * scale, 0], [1 * scale, -7.5 * scale]], pal.rear, '#030812', 1.6);
+      } else {
+        drawPolygonG(ctx, [[1 * scale, 5.5 * scale], [-14 * scale, 8.5 * scale], [-8 * scale, 0], [-14 * scale, -8.5 * scale], [1 * scale, -5.5 * scale]], pal.rear, '#030812', 1.6);
+      }
+      drawHingePinG(ctx, 0, 0, 2.4 * scale, pal.accent);
+      ctx.restore();
+    }
+    ctx.restore();
+  } else {
+    // Type H : HydroStroke rames palmées
+    rimColor = `hsla(${g.hue}, ${mono ? 0 : 95}%, 76%, 0.88)`;
+    glowColor = `hsla(${g.accentHue}, ${mono ? 0 : 90}%, 62%, 0.45)`;
+    bodyRadius = Math.max(32, Math.min(38, (g.plates && g.plates[0] ? g.plates[0].r : 23) * 1.48));
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const leg of creature.legs) {
+      const pts = leg.joints;
+      if (!pts || pts.length < 2) continue;
+      if (leg.isPullingWater && leg.webExpansion > 0.12) {
+        ctx.fillStyle = `hsla(${g.accentHue}, ${mono ? 0 : 95}%, 68%, ${0.18 + leg.webExpansion * 0.34})`;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s].x, pts[s].y);
+        const last = pts[pts.length - 1];
+        const mid = pts[Math.floor(pts.length / 2)];
+        const trailAngle = (last.angle || 0) + leg.side * (Math.PI * 0.5);
+        const bulge = (8 + leg.webExpansion * 10) * g.legSpanScale;
+        ctx.quadraticCurveTo(
+          mid.x + Math.cos(trailAngle) * bulge,
+          mid.y + Math.sin(trailAngle) * bulge,
+          pts[0].x, pts[0].y
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
+      for (let s = 0; s < pts.length - 1; s++) {
+        const p1 = pts[s];
+        const p2 = pts[s + 1];
+        const thickness = Math.max(2.0, 4.8 - s * 0.72);
+        const lightness = leg.isPullingWater ? (60 + s * 5) : (44 + s * 4);
+        ctx.strokeStyle = `hsl(${(g.accentHue + s * 8) % 360}, ${mono ? 0 : 85}%, ${lightness}%)`;
+        ctx.lineWidth = thickness;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+      }
+      for (let s = 1; s < pts.length - 1; s++) {
+        ctx.fillStyle = `hsl(${g.hue}, ${mono ? 0 : 92}%, 78%)`;
+        ctx.beginPath();
+        ctx.arc(pts[s].x, pts[s].y, 2.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const tip = pts[pts.length - 1];
+      const prev = pts[pts.length - 2];
+      const tipAngle = tip.angle !== undefined ? tip.angle : Math.atan2(tip.y - prev.y, tip.x - prev.x);
+      const finLength = (8.5 + leg.webExpansion * 3.5) * g.legSpanScale;
+      const finSpread = (1.5 + leg.webExpansion * 6.2) * g.legSpanScale;
+      ctx.save();
+      ctx.translate(tip.x, tip.y);
+      ctx.rotate(tipAngle);
+      ctx.fillStyle = leg.isPullingWater
+        ? `hsla(${g.hue}, ${mono ? 0 : 95}%, 76%, 0.92)`
+        : `hsla(${g.accentHue}, ${mono ? 0 : 70}%, 55%, 0.65)`;
+      ctx.strokeStyle = `hsla(${g.hue}, ${mono ? 0 : 95}%, 88%, 0.9)`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(finLength * 0.75, -finSpread);
+      ctx.lineTo(finLength, 0);
+      ctx.lineTo(finLength * 0.75, finSpread);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // 2. Corps EU avec déformation organique (squash & stretch + ondulation de mouvement & danse swing)
+  const speed = Math.hypot(creature.vx || 0, creature.vy || 0);
+  const speedRatio = Math.min(1, speed / Math.max(1, creature.maxSpeed || 180));
+  const swingEnv = creature.swingEnv || 0;
+  const phase = now * 0.007 + (creature.swimPhase || 0) * 0.65 + (creature.gaitPhase || 0) * 0.35;
+
+  const breath = Math.sin(now * 0.0032 + (creature.pulsePhase || 0)) * 0.035;
+  const moveWave = Math.sin(phase * 1.45) * (0.045 + 0.11 * speedRatio + 0.16 * swingEnv);
+  const stretchAxis = 1 + breath + moveWave + (creature.bodyCompress || 0) * 0.45;
+  const squashAxis = 1 / Math.sqrt(Math.max(0.72, stretchAxis));
+  const skew = Math.cos(phase * 1.1) * (0.025 + 0.09 * speedRatio + 0.15 * swingEnv);
+
+  // Rotation ludique : le logo reste lisible pendant la marche (léger balancement), et tourne sur lui-même pendant le swing
+  let logoRot = Math.sin(phase * 0.9) * (0.06 + 0.12 * speedRatio);
+  if (creature.swing) {
+    const s = creature.swing;
+    const t = Math.min(1, s.elapsed / Math.max(0.001, s.duration));
+    const smoothT = t * t * (3 - 2 * t);
+    logoRot += s.totalAngle * smoothT + Math.sin(t * Math.PI * 6) * s.wiggleAmp * swingEnv;
+  }
+
+  ctx.save();
+  ctx.translate(creature.x, creature.y);
+  // Déformation orientée dans l'axe du déplacement
+  ctx.rotate(creature.angle);
+  ctx.transform(stretchAxis, skew * 0.3, skew, squashAxis, 0, 0);
+  ctx.rotate(-creature.angle + logoRot);
+
+  drawEuFlagEmblem(ctx, bodyRadius, rimColor, glowColor);
+  ctx.restore();
+}
+
 function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
   const isFaded = !isMe && creature.online === false && (!state.budget || state.budget.fadeInactive !== false);
   const isMonochrome = creature.monochrome === true || (isMe && IS_HOST_BUILD && state.hostAuth && state.hostAuth.signedIn && state.hostAuth.monochrome === true);
@@ -2607,7 +3007,8 @@ function drawCreatureAny(ctx, creature, isMe, showLabel = true) {
       ctx.stroke();
       ctx.restore();
     }
-    if (creature.type === 'C') drawCreatureC(ctx, creature, isMe, showLabel);
+    if (creature.isLocalEuBot) drawLocalEuBot(ctx, creature, showLabel);
+    else if (creature.type === 'C') drawCreatureC(ctx, creature, isMe, showLabel);
     else if (creature.type === 'F') drawCreatureF(ctx, creature, isMe, showLabel);
     else if (creature.type === 'G') drawCreatureG(ctx, creature, isMe, showLabel);
     else drawCreatureH(ctx, creature, isMe, showLabel);
@@ -3598,6 +3999,158 @@ const EMOJI_VOCABULARY_RESERVE = [
   '🔥', '⚡', '👁️', '🪐', '🐬', '🦞', '🐋', '🍄', '🌸', '⚓',
   '☄️', '🪄', '🛸', '🐢', '🦐', '🧬', '🪸', '🪼', '🪨', '🌈'
 ];
+
+// Dictionnaire emoji complet pour les réponses du bot local EU
+const FULL_EMOJI_DICTIONARY = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
+  '🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬',
+  '😮‍💨','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳',
+  '🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭',
+  '😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺',
+  '👻','👽','👾','🤖','😺','😸','😹','😻','😼','😽','🙀','😿','😾','👋','🤚','🖐️','✋','🖖','👌','🤌',
+  '🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐',
+  '🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🧠','🫀','🫁','🦷','🦴','👀','👁️','👅','👄','💋','👶','🧒',
+  '👦','👧','🧑','👱','👨','👩','🧓','👴','👵','👮','🕵️',' guards','🥷','👷','🤴','👸','👳','👲','🧕','🤵',
+  '👰','🤰','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','💆','💇','🚶','🏃','💃',
+  '🕺','🕴️','👯','🧖','🧗','🤺','🏇','⛷️','🏂','🏌️','🏄','🚣','🏊','⛹️','🏋️','🚴','🚵','🤸','🤼','🤽',
+  '🤾','🤹','🧘','🛀','🛌','🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸',
+  '🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝',
+  '🪱','🐛','🦋','🐌','🐞','🐜','🪰','🪲','🪳','🦟','🦗','🕷️','🕸️','🦂','🐢','🐍','🦎','🦖','🦕','🐙',
+  '🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛',
+  '🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈',
+  '🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔','🐾',
+  '🐉','🐲','🌵','🎄','🌲','🌳','🌴','🪵','🌱','🌿','☘️','🍀','🎍','🪴','🎋','🍃','🍂','🍁','🍄','🐚',
+  '🪨','🌾','💐','🌷','🌹','🥀','🌺','🌸','🌼','🌻','🌞','🌝','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑',
+  '🌒','🌓','🌔','🌙','🌎','🌍','🌏','🪐','💫','⭐','🌟','✨','⚡','☄️','💥','🔥','🌪️','🌈','☀️','🌤️',
+  '⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','🌬️','💨','💧','💦','🫧','☔','☂️','🌊','🌫️',
+  '🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑',
+  '🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🫒','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳',
+  '🧈','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗',
+  '🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡',
+  '🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🥛','🍼','🫖',
+  '☕','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊','🥄','🍴','🍽️','🥣',
+  '⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳',
+  '🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','🎯','🎱','🎮','🕹️','🎰','🎲','🧩',
+  '🧸','🪅','🪩','🪆','♠️','♥️','♦️','♣️','♟️','🃏','🀄','🎴','🎭','🖼️','🎨','🧵','🪡','🧶','🪢','👓',
+  '🕶️','🥽','🥼','🦺','👔','👕','👖','🧣','🧤','🧥','🧦','👗','👘','🥻','🩱','🩲','🩳','👙','👚','👛',
+  '👜','👝','🛍️','🎒','🩴','👞','👟','🥾','🥿','👠','👡','🩰','👢','👑','👒','🎩','🎓','🧢','🪖','⛑️',
+  '💄','💍','💎','🔇','🔈','🔉','🔊','📢','📣','📯','🔔','🔕','🎼','🎵','🎶','🎙️','🎚️','🎛️','🎤','🎧',
+  '📻','🎷','🪗','🎸','🎹','🎺','🎻','🪕','🥁','🪘','📱','📲','☎️','📞','📟','📠','🔋','🔌','💻','🖥️',
+  '🖨️','⌨️','🖱️','🖲️','💽','💾','💿','📀','🧮','🎥','🎞️','📽️','🎬','📺','📷','📸','📹','📼','🔍','🔎',
+  '🕯️','💡','🔦','🏮','🪔','📔','📕','📖','📗','📘','📙','📚','📓','📒','📃','📜','📄','📰','🗞️','📑',
+  '🔖','🏷️','💰','🪙','💴','💵','💶','💷','💸','💳','🧾','✉️','📧','📨','📩','📤','📥','📦','📫','📪',
+  '📬','📭','📮','🗳️','✏️','✒️','🖋️','🖊️','🖌️','🖍️','📝','💼','📁','📂','🗂️','📅','📆','🗒️','🗓️','📇',
+  '📈','📉','📊','📋','📌','📍','📎','🖇️','📏','📐','✂️','🗃️','🗄️','🗑️','🔒','🔓','🔏','🔐','🔑','🗝️',
+  '🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🔫','🪃','🛡️','🪚','🔧','🪛','🔩','⚙️','🗜️','⚖️','🦯','🔗','⛓️',
+  '🪝','🧰','🧲','🪜','⚗️','🧪','🧫','🧬','🔬','🔭','📡','💉','🩸','💊','🩹','🩺','🚪','🛗','🪞','🪟',
+  '🛏️','🛋️','🪑','🚽','🪠','🚿','🛁','🪤','🪒','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🪥','🧽','🧯','🛒',
+  '🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🦯','🦽','🦼','🛴','🚲','🛵',
+  '🏍️','🛺','🚨','🚔','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇',
+  '🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛰️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','⚓','⛽',
+  '🚧','🚦','🚥','🚏','🗺️','🗿','🗽','🗼','🏰','🏯','🏟️','🎡','🎢','🎠','⛲','⛱️','🏖️','🏝️','🏜️','🌋',
+  '⛰️','🏔️','🗻','🏕️','⛺','🏠','🏡','🏘️','🏚️','🏗️','🏭','🏢','🏬','🏣','🏤','🏥','🏦','🏨','🏪','🏫',
+  '🏩','💒','🏛️','⛪','🕌','🕍','🛕','🕋','⛩️','🛤️','🛣️','🗾','🎑','🏞️','🌅','🌄','🌠','🎇','🎆','🌇',
+  '🌆','🏙️','🌃','🌌','🌉','🌁','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓',
+  '💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊',
+  '♋','♌','♍','♎','Sequence','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸',
+  '🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','禁','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕',
+  '🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️',
+  '🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❇️','✳️','❎','🌐','💠','Ⓜ️','🌀','💤',
+  '🏧','🚾','♿','🅿️','🛗','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁',
+  '🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣',
+  '🔟','🔢','#️⃣','*️⃣','⏏️','▶️','⏸️','⏯️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️',
+  '⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↪️','↩️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶',
+  '➕','➖','➗','✖️','♾️','💲','💱','™️','©️','®️','👁️‍🗨️','🔚','🔙','🔛','🔝','🔜','〰️','➰','➿','✔️',
+  '☑️','🔘','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔸','🔹','🔶','🔷','🔳','🔲','▪️',
+  '▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫','🔈','🔇','🔉','🔊','🔔','🔕',
+  '📣','📢','💬','💭','🗯️','♠️','♣️','♥️','♦️','🃏','🎴','🀄','🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗',
+  '🕘','🕙','🕚','🕛','🏳️','🏴','🏴‍☠️','🏁','🚩','🏳️‍🌈','🏳️‍⚧️','🇪🇺','🇫🇷','🇩🇪','🇮🇹','🇪🇸','🇧🇪','🇳🇱','🇵🇹','🇬🇷',
+  '🇮🇪','🇦🇹','🇵🇱','🇸🇪','🇫🇮','🇩🇰','🇨🇿','🇭🇺','🇷🇴','🇧🇬','🇭🇷','🇸🇰','🇸🇮','🇱🇹','🇱🇻','🇪🇪','🇨🇾','🇲🇹','🇱🇺','🪸','🪼','🪄'
+].filter(e => e && !/[A-Za-z]/.test(e));
+
+function getLocalEuBot() {
+  for (let i = 0; i < state.bots.length; i++) {
+    if (state.bots[i] && state.bots[i].isLocalEuBot) return state.bots[i];
+  }
+  return null;
+}
+
+function generateEuBotEmojiReply(userEmojis) {
+  const count = Math.max(1, Math.min(7, userEmojis.length));
+  const pool = FULL_EMOJI_DICTIONARY;
+  const seenMap = new Map();
+  const used = new Set();
+  const reply = [];
+
+  for (let i = 0; i < count; i++) {
+    const uEmoji = userEmojis[i];
+    // Parfois il répète le même emoji si le user a utilisé plusieurs fois le même emoji
+    if (seenMap.has(uEmoji) && Math.random() < 0.70) {
+      reply.push(seenMap.get(uEmoji));
+      continue;
+    }
+    let picked = pool[Math.floor(Math.random() * pool.length)];
+    for (let tries = 0; tries < 8 && used.has(picked); tries++) {
+      picked = pool[Math.floor(Math.random() * pool.length)];
+    }
+    if (!seenMap.has(uEmoji)) {
+      seenMap.set(uEmoji, picked);
+    }
+    used.add(picked);
+    reply.push(picked);
+  }
+  return reply;
+}
+
+function scheduleEuBotEmojiReply(userEmojisSnapshot) {
+  const euBot = getLocalEuBot();
+  if (!euBot || !userEmojisSnapshot || !userEmojisSnapshot.length) return;
+
+  const isTargetingBot = (targetedCreatureForExpression === euBot) || (state.targetFollowCreature === euBot);
+  const distToUser = state.user ? Math.hypot(state.user.x - euBot.x, state.user.y - euBot.y) : Infinity;
+  if (!isTargetingBot && distToUser > 240) return;
+
+  if (euBot.pendingEmojiReplyTimer) {
+    clearTimeout(euBot.pendingEmojiReplyTimer);
+    euBot.pendingEmojiReplyTimer = null;
+  }
+
+  const delayMs = userEmojisSnapshot.length >= 5 ? 320 : 720;
+  euBot.pendingEmojiReplyTimer = setTimeout(function() {
+    euBot.pendingEmojiReplyTimer = null;
+    if (state.isSleeping || state.isPaused) return;
+    const replyEmojis = generateEuBotEmojiReply(userEmojisSnapshot);
+    const now = performance.now();
+    euBot.speechBubble = {
+      text: replyEmojis.join(''),
+      count: replyEmojis.length,
+      mode: 'emoji',
+      createdAt: now,
+      expiresAt: now + 4000
+    };
+  }, delayMs);
+}
+
+function triggerEuBotSwingResponseIfClose() {
+  const euBot = getLocalEuBot();
+  if (!euBot || !state.user) return;
+  const dist = Math.hypot(state.user.x - euBot.x, state.user.y - euBot.y);
+  if (dist > 185) return;
+
+  if (euBot.pendingSwingReplyTimer) {
+    clearTimeout(euBot.pendingSwingReplyTimer);
+    euBot.pendingSwingReplyTimer = null;
+  }
+  const reactionDelay = 200 + Math.random() * 140;
+  euBot.pendingSwingReplyTimer = setTimeout(function() {
+    euBot.pendingSwingReplyTimer = null;
+    if (state.isSleeping || state.isPaused) return;
+    startCreatureSwing(euBot);
+    playLocalSwingSound();
+    euBot.nextSwingAt = performance.now() + 11000 + Math.random() * 11000;
+  }, reactionDelay);
+}
+
 let currentVocabulary = ['✨', '🫧', '🌊', '🐟', '💫'];
 let selectedEmojis = [];
 let targetedCreatureForExpression = null;
@@ -3748,7 +4301,7 @@ function getSwingNoiseBuffer(ctx) {
   return buf;
 }
 
-function playLocalSwingSound(scaleOverride = null) {
+function playLocalSwingSound(scaleOverride = null, options = null) {
   const scaleKey = scaleOverride || state.swingScale || 'pelog_selisir';
   const notes = SWING_AUDIO_SCALES[scaleKey];
   if (!notes || !notes.length) return;
@@ -3756,6 +4309,7 @@ function playLocalSwingSound(scaleOverride = null) {
 
   const ctx = ensureSwingAudioContext();
   if (!ctx || !swingAudioMaster) return;
+  if (options && options.requireRunningAudio && ctx.state !== 'running') return;
 
   const now = ctx.currentTime + 0.005;
   const baseFreq = notes[Math.floor(Math.random() * notes.length)];
@@ -3901,6 +4455,7 @@ function triggerOwnSwing() {
 
   const seed = startCreatureSwing(state.user);
   playLocalSwingSound();
+  triggerEuBotSwingResponseIfClose();
   state.user.actionCount = (state.user.actionCount || 0) + 1;
   pendingSwingPayload = { seed };
   flushSwingSync();
@@ -4060,6 +4615,9 @@ function triggerImmediateEmojiExpression(emoji) {
   pendingSpeechPayload = { text: text, count: count, mode: 'emoji' };
   flushSpeechSync();
 
+  // Réponse locale du bot EU si l'utilisateur lui parle
+  scheduleEuBotEmojiReply(selectedEmojis.slice());
+
   if (count >= 5) {
     closeExpressionMenu();
   }
@@ -4136,14 +4694,14 @@ function drawSpeechBubble(ctx, creature, now) {
   }
 
   const isChatText = bubble.mode === 'chat';
-  if (isChatText && !state.chatMode) {
+  if (isChatText && !state.chatMode && !bubble.allowAlways) {
     creature.speechBubble = null;
     return;
   }
 
   const alpha = Math.min(1.0, remaining / 500);
   const bx = creature.x;
-  const by = creature.y - 54 + Math.sin(now * 0.005) * 3;
+  const by = creature.y - (creature.isLocalEuBot ? 66 : 54) + Math.sin(now * 0.005) * 3;
 
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -4346,7 +4904,8 @@ function initWorld() {
     });
   }
 
-  // Pas de bots locaux créés par défaut (gérés exclusivement par l'application Godot via Firebase)
+  // Bot local EU coté utilisateur (skin génératif à chaque chargement, jamais envoyé à Firebase)
+  spawnLocalEuBot();
   updateHudUI();
   updateBudgetUi();
   initFirebase();
@@ -4379,8 +4938,176 @@ function syncBotPopulation(regenerateAll = false) {
   updateHudUI();
 }
 
+function scaleEuBotGenome(g) {
+  if (!g) return g;
+  if (g.type === 'C') {
+    g.legScale = (g.legScale || 0.8) * 1.75;
+    if (Array.isArray(g.segments)) {
+      for (let i = 0; i < g.segments.length; i++) {
+        const seg = g.segments[i];
+        // Garde les racines bien serrées sous le disque EU, tout en allongeant fortement les pattes
+        seg.radius = Math.max(14, Math.min(24, Math.round(seg.radius * 1.05)));
+        seg.spacing = Math.max(10, Math.round(seg.radius * 0.65));
+        seg.legLength = Math.max(32, seg.legLength * 2.05);
+      }
+    }
+  } else if (g.type === 'F') {
+    g.legSpanScale = (g.legSpanScale || 1.0) * 1.65;
+    g.totalLegLength = (g.totalLegLength || 45) * 1.75;
+    if (Array.isArray(g.segLengths)) {
+      g.segLengths = g.segLengths.map(l => l * 1.75);
+    }
+    if (Array.isArray(g.plates)) {
+      // Resserre les plaques d'ancrage à l'intérieur du rayon du logo EU pour que les pattes restent collées
+      for (const pl of g.plates) {
+        pl.r = Math.max(16, Math.min(23, Math.round(pl.r * 1.05)));
+        pl.localX = Math.max(-11, Math.min(11, pl.localX * 0.42));
+      }
+    }
+  } else if (g.type === 'G') {
+    g.bodyScale = Number(((g.bodyScale || 1.0) * 1.32).toFixed(2));
+    g.legLength = Number(((g.legLength || 1.0) * 1.95).toFixed(2));
+  } else if (g.type === 'H') {
+    g.legSpanScale = (g.legSpanScale || 1.0) * 1.60;
+    g.totalLegLength = (g.totalLegLength || 48) * 1.72;
+    if (Array.isArray(g.segLengths)) {
+      g.segLengths = g.segLengths.map(l => l * 1.72);
+    }
+    if (Array.isArray(g.plates)) {
+      for (const pl of g.plates) {
+        pl.r = Math.max(16, Math.min(23, Math.round(pl.r * 1.05)));
+        pl.localX = Math.max(-11, Math.min(11, pl.localX * 0.42));
+      }
+    }
+  }
+  return g;
+}
+
+function rerollLocalEuBotSkin(bot) {
+  if (!bot || !bot.isLocalEuBot) return;
+  const freshSeed = Math.floor(Math.random() * 0xFFFFFF);
+  const rng = mulberry32(freshSeed);
+  const newGenome = scaleEuBotGenome(createRandomGenomeByType(null, rng));
+  bot.seed = freshSeed;
+  bot.genome = newGenome;
+  bot.type = newGenome.type;
+  initCreatureStructure(bot);
+  spawnAppearEffect(bot);
+  if (state && state.ripples) {
+    state.ripples.push({ x: bot.x, y: bot.y, radius: 14, alpha: 0.7 });
+  }
+  updateHudUI();
+}
+
+function spawnLocalEuBot() {
+  // Retire tout éventuel ancien bot EU local
+  state.bots = state.bots.filter(b => !b || !b.isLocalEuBot);
+
+  const cx = WORLD_WIDTH / 2;
+  const cy = WORLD_HEIGHT / 2;
+  const minR = 75;
+  const maxR = CENTRAL_CIRCLE_RADIUS - 55;
+  const minDistFromUser = Math.max(MIN_CREATURE_SEPARATION * 1.9, 170);
+
+  let spawnX = cx + 150;
+  let spawnY = cy;
+  let found = false;
+
+  for (let attempt = 0; attempt < 28; attempt++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = minR + Math.random() * (maxR - minR);
+    const tx = Math.round(cx + Math.cos(a) * r);
+    const ty = Math.round(cy + Math.sin(a) * r);
+    const dUser = state.user ? Math.hypot(tx - state.user.x, ty - state.user.y) : Infinity;
+    if (dUser >= minDistFromUser) {
+      spawnX = tx;
+      spawnY = ty;
+      found = true;
+      break;
+    }
+  }
+  if (!found && state.user) {
+    // Repli : côté opposé au user par rapport au centre
+    const awayAngle = Math.atan2(cy - state.user.y, cx - state.user.x) + (Math.random() - 0.5) * 0.7;
+    const r = 135 + Math.random() * 120;
+    spawnX = Math.round(cx + Math.cos(awayAngle) * r);
+    spawnY = Math.round(cy + Math.sin(awayAngle) * r);
+  }
+
+  // Skin génératif aléatoire à chaque chargement / rechargement (comme le bouton dé)
+  const freshSeed = Math.floor(Math.random() * 0xFFFFFF);
+  const rng = mulberry32(freshSeed);
+  const scaledGenome = scaleEuBotGenome(createRandomGenomeByType(null, rng));
+  const bot = createCreature(spawnX, spawnY, scaledGenome.type, false, 'European_Flag', freshSeed, scaledGenome);
+  const now = performance.now();
+  bot.id = 'local_eu_bot';
+  bot.isBot = true;
+  bot.isLocalEuBot = true;
+  bot.nextWanderAt = now + 2200 + Math.random() * 3200;
+  bot.nextSwingAt = now + 9000 + Math.random() * 10000;
+  bot.nextFlagPhraseAt = now + 25000 + Math.random() * 10000;
+  bot.nextSkinChangeAt = now + 45000 + Math.random() * 10000;
+  bot.pendingEmojiReplyTimer = null;
+  bot.pendingSwingReplyTimer = null;
+
+  state.bots.push(bot);
+  spawnAppearEffect(bot);
+  return bot;
+}
+
 function updateBotsAI(now) {
+  const cx = WORLD_WIDTH / 2;
+  const cy = WORLD_HEIGHT / 2;
   for (const bot of state.bots) {
+    if (bot.isLocalEuBot) {
+      // Déplacements périodiques en restant proche de la zone centrale
+      if (!bot.swing && now > bot.nextWanderAt) {
+        const distFromCenter = Math.hypot(bot.x - cx, bot.y - cy);
+        let angle;
+        if (distFromCenter > CENTRAL_CIRCLE_RADIUS + 80) {
+          angle = Math.atan2(cy - bot.y, cx - bot.x) + (Math.random() - 0.5) * 1.1;
+        } else {
+          angle = bot.angle + (Math.random() - 0.5) * 2.4;
+        }
+        const dist = 95 + Math.random() * 190;
+        bot.targetX = Math.max(100, Math.min(WORLD_WIDTH - 100, bot.x + Math.cos(angle) * dist));
+        bot.targetY = Math.max(100, Math.min(WORLD_HEIGHT - 100, bot.y + Math.sin(angle) * dist));
+        bot.nextWanderAt = now + 3200 + Math.random() * 4400;
+      }
+
+      // Danse swing autonome de temps en temps (avec audio)
+      if (!bot.swing && now >= bot.nextSwingAt) {
+        startCreatureSwing(bot);
+        playLocalSwingSound(null, { requireRunningAudio: true });
+        bot.nextSwingAt = now + 11000 + Math.random() * 11000;
+      }
+
+      // Changement de skin génératif toutes les 45 à 55 secondes
+      if (!bot.swing && now >= (bot.nextSkinChangeAt || Infinity)) {
+        rerollLocalEuBotSkin(bot);
+        bot.nextSkinChangeAt = now + 45000 + Math.random() * 10000;
+      }
+
+      // Toutes les 25 à 35 secondes : "i’m the European Flag" le temps d'un message écrit classique (6.5s)
+      if (now >= bot.nextFlagPhraseAt) {
+        const hasActiveEmojiReply = bot.speechBubble && bot.speechBubble.mode === 'emoji' && now < bot.speechBubble.expiresAt;
+        if (hasActiveEmojiReply) {
+          bot.nextFlagPhraseAt = now + 1800;
+        } else {
+          bot.speechBubble = {
+            text: 'i’m the European Flag',
+            count: 1,
+            mode: 'chat',
+            allowAlways: true,
+            createdAt: now,
+            expiresAt: now + 6500
+          };
+          bot.nextFlagPhraseAt = now + 25000 + Math.random() * 10000;
+        }
+      }
+      continue;
+    }
+
     if (now > bot.nextWanderAt) {
       const angle = bot.angle + (Math.random() - 0.5) * 2.4;
       const dist = 140 + Math.random() * 340;
@@ -8020,6 +8747,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v0.11</div>
+<div class="version-badge">v1.1</div>
 </body>
 </html>
