@@ -633,7 +633,7 @@
         resetBtn.textContent = act.resetBtn;
         resetBtn.addEventListener('click', function () {
           toggle(els.modalJournal, false);
-          engine.startNewGame(false);
+          engine.startNewGame(false, null, '__random__');
         });
         sys.appendChild(resetBtn);
         els.journalBody.appendChild(sys);
@@ -922,6 +922,13 @@
     els.btnChapReseed.addEventListener('click', function () {
       toggle(els.overlayChapter, false);
       engine.startNewGame(true);
+    });
+
+    global.addEventListener('pageshow', function (e) {
+      if (e.persisted && els.overlayIntro && els.overlayIntro.style.display !== 'none') {
+        engine.rerollIntroMood();
+        hydrateStaticTexts();
+      }
     });
 
     return {

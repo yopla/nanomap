@@ -10,6 +10,7 @@
   var CELL = 64;
   var VIEW_SIZE = 576;
   var SAVE_KEY = 'spawnref1_save_v1';
+  var LAST_MOOD_KEY = 'spawnref1_last_mood';
 
   function defaultUnlocks() {
     return {
@@ -120,8 +121,15 @@
 
   function createGameEngine(callbacks) {
     var state = null;
-    var introMood = Lore.pickRandomMood();
-    if (introMood) Lore.setActiveMood(introMood.id);
+    var lastMoodId = null;
+    try {
+      lastMoodId = global.localStorage.getItem(LAST_MOOD_KEY);
+    } catch (e) {}
+    var introMood = Lore.pickRandomMood(lastMoodId);
+    if (introMood) {
+      Lore.setActiveMood(introMood.id);
+      try { global.localStorage.setItem(LAST_MOOD_KEY, introMood.id); } catch (e) {}
+    }
     var dragging = false;
     var didDragMove = false;
     var dragLast = { x: 0, y: 0 };
@@ -134,7 +142,10 @@
 
     function rerollIntroMood() {
       introMood = Lore.pickRandomMood(introMood ? introMood.id : null);
-      if (introMood) Lore.setActiveMood(introMood.id);
+      if (introMood) {
+        Lore.setActiveMood(introMood.id);
+        try { global.localStorage.setItem(LAST_MOOD_KEY, introMood.id); } catch (e) {}
+      }
       return introMood;
     }
 
@@ -225,7 +236,10 @@
     function startNewGame(keepMeta, seedOverride, moodOverride) {
       var prevReseedCount = keepMeta && state ? state.stats.reseedCount + 1 : 0;
       var chosenMoodId;
-      if (moodOverride) {
+      if (moodOverride === '__random__') {
+        var rndMood = Lore.pickRandomMood(state ? state.moodId : null);
+        chosenMoodId = rndMood ? rndMood.id : (state ? state.moodId : 'loufoque');
+      } else if (moodOverride) {
         chosenMoodId = moodOverride;
       } else if (keepMeta && state) {
         var nextMood = Lore.pickRandomMood(state.moodId);
@@ -233,6 +247,7 @@
       } else {
         chosenMoodId = introMood ? introMood.id : 'loufoque';
       }
+      try { global.localStorage.setItem(LAST_MOOD_KEY, chosenMoodId); } catch (e) {}
       state = createInitialState(seedOverride, chosenMoodId);
       if (keepMeta) {
         state.stats.reseedCount = prevReseedCount;
