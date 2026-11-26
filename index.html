@@ -6903,7 +6903,11 @@ function drawWorldSubstrate(ctx, now, cullMinX, cullMaxX, cullMinY, cullMaxY) {
   const textCenterY = (circleBottomY + WORLD_HEIGHT) / 2;
   const titleStartY = textCenterY - 196;
   const supportStartY = textCenterY + 164;
-  if (cullMaxY >= titleStartY - 120 && cullMinY <= supportStartY + 180) {
+  const euFlagH = 112;
+  const euFlagW = euFlagH * 1.5;
+  const euGap = 28;
+  const euCenterY = supportStartY + 210;
+  if (cullMaxY >= titleStartY - 120 && cullMinY <= euCenterY + euFlagH * 0.5 + 40) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -6928,6 +6932,48 @@ function drawWorldSubstrate(ctx, now, cullMinX, cullMaxX, cullMinY, cullMaxY) {
       ctx.fillStyle = i === 0 ? 'rgba(186, 230, 253, 0.30)' : 'rgba(186, 230, 253, 0.25)';
       ctx.fillText(supportLines[i], cx, supportStartY + i * supportLineHeight);
     }
+
+    // Logo très léger "Co-funded by the European Union" sous le texte
+    ctx.font = '600 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    const euLine1 = 'Co-funded by';
+    const euLine2 = 'the European Union';
+    const euTextW = Math.max(ctx.measureText(euLine1).width, ctx.measureText(euLine2).width);
+    const euTotalW = euFlagW + euGap + euTextW;
+    const flagX = cx - euTotalW * 0.5;
+    const flagY = euCenterY - euFlagH * 0.5;
+
+    ctx.strokeStyle = 'rgba(186, 230, 253, 0.24)';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(flagX, flagY, euFlagW, euFlagH);
+
+    const flagCx = flagX + euFlagW * 0.5;
+    const flagCy = euCenterY;
+    const starCircleR = euFlagH / 3;
+    const starOuterR = euFlagH / 17;
+    const starInnerR = starOuterR * 0.382;
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.26)';
+    ctx.beginPath();
+    for (let s = 0; s < 12; s++) {
+      const posAngle = -Math.PI / 2 + (s * Math.PI * 2) / 12;
+      const sx = flagCx + Math.cos(posAngle) * starCircleR;
+      const sy = flagCy + Math.sin(posAngle) * starCircleR;
+      for (let k = 0; k < 10; k++) {
+        const r = (k % 2 === 0) ? starOuterR : starInnerR;
+        const a = -Math.PI / 2 + (k * Math.PI) / 5;
+        const px = sx + Math.cos(a) * r;
+        const py = sy + Math.sin(a) * r;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+    ctx.fill();
+
+    const euTextX = flagX + euFlagW + euGap;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(euLine1, euTextX, euCenterY - euFlagH * 0.19);
+    ctx.fillText(euLine2, euTextX, euCenterY + euFlagH * 0.19);
   }
 
   // Bordures du bassin
@@ -8906,6 +8952,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v1.11</div>
+<div class="version-badge">v1.1</div>
 </body>
 </html>
