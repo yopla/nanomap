@@ -56,13 +56,15 @@
     };
   }
 
-  function createInitialState(seedValue) {
+  function createInitialState(seedValue, moodId) {
+    var mood = Lore.setActiveMood(moodId || (Lore.getActiveMood() && Lore.getActiveMood().id) || 'loufoque');
     var seed = seedValue || Math.floor(10000 + Math.random() * 899999);
     var world = World.createWorld(seed);
     var sx = world.spawn.x;
     var sy = world.spawn.y;
 
     return {
+      moodId: mood ? mood.id : 'loufoque',
       world: world,
       res: {
         fuel: World.INITIAL_RESOURCES.fuel,
@@ -85,6 +87,9 @@
       },
       visited: {},
       finished: {},
+      seenEvents: {},
+      movesSinceEvent: 0,
+      activeEvent: null,
       discoveredStars: [],
       storyLog: ['intro'],
       checkpoints: defaultCheckpoints(),
@@ -115,11 +120,23 @@
 
   function createGameEngine(callbacks) {
     var state = null;
+    var introMood = Lore.pickRandomMood();
+    if (introMood) Lore.setActiveMood(introMood.id);
     var dragging = false;
     var didDragMove = false;
     var dragLast = { x: 0, y: 0 };
     var dragVel = { x: 0, y: 0 };
     var inertiaActive = false;
+
+    function getIntroMood() {
+      return introMood;
+    }
+
+    function rerollIntroMood() {
+      introMood = Lore.pickRandomMood(introMood ? introMood.id : null);
+      if (introMood) Lore.setActiveMood(introMood.id);
+      return introMood;
+    }
 
     function notifyUI(opts) {
       if (callbacks && callbacks.onUpdate) callbacks.onUpdate(state, opts || {});
@@ -134,12 +151,14 @@
           if (st.pushed) pushed[st.num] = st.id;
         }
         var payload = {
+          moodId: state.moodId,
           seed: state.world.seed,
           pushed: pushed,
           res: state.res,
           ship: { x: state.ship.x, y: state.ship.y, angle: state.ship.angle },
           visited: state.visited,
           finished: state.finished,
+          seenEvents: state.seenEvents,
           discoveredStars: state.discoveredStars,
           storyLog: state.storyLog,
           checkpoints: state.checkpoints,
@@ -169,8 +188,10 @@
         var raw = global.localStorage.getItem(SAVE_KEY);
         if (!raw) return false;
         var data = JSON.parse(raw);
+        var savedMood = data.moodId || 'loufoque';
+        Lore.setActiveMood(savedMood);
         var world = World.createWorld(data.seed, data.pushed);
-        state = createInitialState(data.seed);
+        state = createInitialState(data.seed, savedMood);
         state.world = world;
         state.res = data.res || state.res;
         state.ship.x = data.ship.x;
@@ -182,6 +203,7 @@
         state.cam.y = state.ship.y * CELL + CELL * 0.5 - VIEW_SIZE * 0.5;
         state.visited = data.visited || {};
         state.finished = data.finished || {};
+        state.seenEvents = data.seenEvents || {};
         state.discoveredStars = data.discoveredStars || [];
         state.storyLog = data.storyLog || ['intro'];
         state.checkpoints = Object.assign(defaultCheckpoints(), data.checkpoints || {});
@@ -193,26 +215,34 @@
         state.stats = data.stats || state.stats;
         state.selectedCell = { x: state.ship.x, y: state.ship.y };
         refreshCompassTarget();
-        notifyUI({ full: true });
+        notifyUI({ full: true, moodChanged: true });
         return true;
       } catch (e) {
         return false;
       }
     }
 
-    function startNewGame(keepMeta, seedOverride) {
+    function startNewGame(keepMeta, seedOverride, moodOverride) {
       var prevReseedCount = keepMeta && state ? state.stats.reseedCount + 1 : 0;
-      state = createInitialState(seedOverride);
+      var chosenMoodId;
+      if (moodOverride) {
+        chosenMoodId = moodOverride;
+      } else if (keepMeta && state) {
+        var nextMood = Lore.pickRandomMood(state.moodId);
+        chosenMoodId = nextMood ? nextMood.id : state.moodId;
+      } else {
+        chosenMoodId = introMood ? introMood.id : 'loufoque';
+      }
+      state = createInitialState(seedOverride, chosenMoodId);
       if (keepMeta) {
         state.stats.reseedCount = prevReseedCount;
-        // En RESEED, on garde le Journal/outil débloqué ? Non, on redémarre une spirale propre avec un léger bonus d'éclaireur
         state.res.lum = 2;
         state.unlocks.lum = true;
         state.unlocks.journal = true;
         state.unlocks.reseed = true;
       }
       save();
-      notifyUI({ full: true });
+      notifyUI({ full: true, moodChanged: true });
     }
 
     function isTweening() {
@@ -414,10 +444,28 @@
       }
     }
 
+    function maybeTriggerComplementaryEvent(cell) {
+      if (!state.checkpoints.star1 || state.activeEvent) return;
+      if (!cell || cell.kind !== 'empty') return;
+      if (state.movesSinceEvent < 6) return;
+      if (state.movesSinceEvent < 10 && Math.random() > 0.4) return;
+
+      var pool = Lore.EVENTS || [];
+      for (var i = 0; i < pool.length; i++) {
+        if (!state.seenEvents[pool[i].id]) {
+          state.activeEvent = pool[i];
+          state.movesSinceEvent = 0;
+          Audio.playScan();
+          break;
+        }
+      }
+    }
+
     function visitCell(x, y, byShip) {
       var cell = World.getCellContent(state.world, x, y);
       state.selectedCell = { x: x, y: y };
       state.lastOutcomeText = '';
+      if (byShip) state.activeEvent = null;
 
       var alreadyVisited = !!state.visited[cell.id];
 
@@ -436,6 +484,7 @@
           spawnParticles(x, y, '52, 211, 153', 10, 45);
         }
         checkStoryProgression();
+        maybeTriggerComplementaryEvent(cell);
       } else {
         // Inspection / scan à distance
         if (cell.kind === 'star') {
@@ -497,6 +546,7 @@
       state.ship.y = toY;
       state.ship.angle = Math.atan2(dy, dx);
       state.stats.steps++;
+      state.movesSinceEvent++;
 
       changeRes('fuel', -1, 'Fuel');
       changeRes('t2s', 1, null);
@@ -533,6 +583,7 @@
       if (state.res.coque > 0) {
         changeRes('coque', -1, 'Coque');
         state.stats.bounces++;
+        state.movesSinceEvent++;
         state.unlocks.coque = true;
         Audio.playBoundBounce();
         state.borderFlash = { rgb: '56, 189, 248', alpha: 0.9 };
@@ -618,6 +669,7 @@
       state.aimAngle = null;
       changeRes('hyper', -1, 'Hyper');
       state.stats.jumps++;
+      state.movesSinceEvent++;
       Audio.playHyper();
 
       var distCells = 14 + Math.floor(Math.random() * 6); // 14..19 cases
@@ -687,6 +739,7 @@
 
       changeRes('hyper', -1, 'Hyper');
       state.stats.jumps++;
+      state.movesSinceEvent++;
       Audio.playHyper();
 
       var fromX = state.ship.x;
@@ -936,9 +989,10 @@
 
     function convertT2s(convId) {
       var conv = null;
-      for (var i = 0; i < World.T2S_CONVERSIONS.length; i++) {
-        if (World.T2S_CONVERSIONS[i].id === convId) {
-          conv = World.T2S_CONVERSIONS[i];
+      var convs = World.getConversions();
+      for (var i = 0; i < convs.length; i++) {
+        if (convs[i].id === convId) {
+          conv = convs[i];
           break;
         }
       }
@@ -951,6 +1005,39 @@
       Object.keys(conv.reward).forEach(function (k) {
         changeRes(k, conv.reward[k], k);
       });
+      Audio.playGood();
+      save();
+      notifyUI({ pulse: true });
+    }
+
+    function resolveEventChoice(choiceIdx) {
+      if (!state || !state.activeEvent) return;
+      var ev = state.activeEvent;
+      var ch = ev.choices && ev.choices[choiceIdx];
+      if (!ch) return;
+      if (ch.cost && !canAffordCost(ch.cost)) {
+        state.lastOutcomeText = msg('noAffordBet');
+        Audio.playBad();
+        notifyUI();
+        return;
+      }
+      if (ch.cost) {
+        Object.keys(ch.cost).forEach(function (k) {
+          changeRes(k, -ch.cost[k], k);
+        });
+      }
+      if (ch.effect) {
+        Object.keys(ch.effect).forEach(function (k) {
+          if (k === 'shield') {
+            state.shieldActive = true;
+          } else {
+            changeRes(k, ch.effect[k], k);
+          }
+        });
+      }
+      state.seenEvents[ev.id] = true;
+      state.activeEvent = null;
+      state.lastOutcomeText = ch.resultText || '';
       Audio.playGood();
       save();
       notifyUI({ pulse: true });
@@ -1153,6 +1240,8 @@
 
     return {
       getState: function () { return state; },
+      getIntroMood: getIntroMood,
+      rerollIntroMood: rerollIntroMood,
       hasSavedGame: hasSavedGame,
       loadSavedGame: loadSavedGame,
       startNewGame: startNewGame,
@@ -1160,6 +1249,7 @@
       visitCell: visitCell,
       exploitSelectedPlanet: exploitSelectedPlanet,
       attemptSelectedAnomaly: attemptSelectedAnomaly,
+      resolveEventChoice: resolveEventChoice,
       buyArtefactAtSelected: buyArtefactAtSelected,
       sellArtefact: sellArtefact,
       pushSelectedStar: pushSelectedStar,

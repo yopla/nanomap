@@ -23,17 +23,16 @@
     lum: 0
   };
 
-  var LOOT_LABELS = (Lore.TEXTES && Lore.TEXTES.planets && Lore.TEXTES.planets.lootLabels) || [];
   var LOOT_DECK_BASE = [
-    { fuel: 8, coque: 0, hyper: 1, label: LOOT_LABELS[0] || '' },
-    { fuel: 8, coque: 0, hyper: 1, label: LOOT_LABELS[1] || '' },
-    { fuel: 2, coque: 3, hyper: 1, label: LOOT_LABELS[2] || '' },
-    { fuel: 2, coque: 3, hyper: 1, label: LOOT_LABELS[3] || '' },
-    { fuel: 12, coque: 2, hyper: 0, label: LOOT_LABELS[4] || '' },
-    { fuel: 12, coque: 2, hyper: 0, label: LOOT_LABELS[5] || '' },
-    { fuel: 0, coque: -2, hyper: -1, isBad: true, label: LOOT_LABELS[6] || '' },
-    { fuel: -6, coque: -2, hyper: 0, isBad: true, label: LOOT_LABELS[7] || '' },
-    { fuel: -10, coque: 0, hyper: -1, isBad: true, label: LOOT_LABELS[8] || '' }
+    { idx: 0, fuel: 8, coque: 0, hyper: 1 },
+    { idx: 1, fuel: 8, coque: 0, hyper: 1 },
+    { idx: 2, fuel: 2, coque: 3, hyper: 1 },
+    { idx: 3, fuel: 2, coque: 3, hyper: 1 },
+    { idx: 4, fuel: 12, coque: 2, hyper: 0 },
+    { idx: 5, fuel: 12, coque: 2, hyper: 0 },
+    { idx: 6, fuel: 0, coque: -2, hyper: -1, isBad: true },
+    { idx: 7, fuel: -6, coque: -2, hyper: 0, isBad: true },
+    { idx: 8, fuel: -10, coque: 0, hyper: -1, isBad: true }
   ];
 
   var BET_TABLES = {
@@ -63,13 +62,16 @@
     ]
   };
 
-  var CONV_TEXTS = (Lore.TEXTES && Lore.TEXTES.conversions) || {};
-  var T2S_CONVERSIONS = [
-    { id: 't2s_fuel', cost: 4, reward: { fuel: 4 }, label: CONV_TEXTS.t2s_fuel.label, tag: CONV_TEXTS.t2s_fuel.tag },
-    { id: 't2s_coque', cost: 10, reward: { coque: 3 }, label: CONV_TEXTS.t2s_coque.label, tag: CONV_TEXTS.t2s_coque.tag },
-    { id: 't2s_scan', cost: 12, reward: { scan: 6 }, label: CONV_TEXTS.t2s_scan.label, tag: CONV_TEXTS.t2s_scan.tag },
-    { id: 't2s_hyper', cost: 18, reward: { hyper: 1 }, label: CONV_TEXTS.t2s_hyper.label, tag: CONV_TEXTS.t2s_hyper.tag }
-  ];
+  function getConversions() {
+    var ct = (Lore.TEXTES && Lore.TEXTES.conversions) || {};
+    return [
+      { id: 't2s_fuel', cost: 4, reward: { fuel: 4 }, label: ct.t2s_fuel.label, tag: ct.t2s_fuel.tag },
+      { id: 't2s_coque', cost: 10, reward: { coque: 3 }, label: ct.t2s_coque.label, tag: ct.t2s_coque.tag },
+      { id: 't2s_scan', cost: 12, reward: { scan: 6 }, label: ct.t2s_scan.label, tag: ct.t2s_scan.tag },
+      { id: 't2s_hyper', cost: 18, reward: { hyper: 1 }, label: ct.t2s_hyper.label, tag: ct.t2s_hyper.tag }
+    ];
+  }
+  var T2S_CONVERSIONS = getConversions();
 
   function pickFreePosInRingRange(minRing, maxRing, angleRange, rng, occupiedIds) {
     var attempts = 0;
@@ -317,7 +319,9 @@
         var arch = Lore.PLANET_ARCHETYPES[pi];
         var cycleIdx = Math.floor(id / world.planetCycle);
         var textIdx = (cycleIdx + pi * 2 + world.seed) % arch.texts.length;
-        var loot = world.lootDeck[(cycleIdx * 3 + pi) % world.lootDeck.length];
+        var rawLoot = world.lootDeck[(cycleIdx * 3 + pi) % world.lootDeck.length];
+        var lootLabels = (Lore.TEXTES && Lore.TEXTES.planets && Lore.TEXTES.planets.lootLabels) || [];
+        var loot = Object.assign({ label: lootLabels[rawLoot.idx] || '' }, rawLoot);
         return {
           kind: 'planet',
           subtype: arch.key,
@@ -381,6 +385,7 @@
     CAPS: CAPS,
     INITIAL_RESOURCES: INITIAL_RESOURCES,
     T2S_CONVERSIONS: T2S_CONVERSIONS,
+    getConversions: getConversions,
     createWorld: createWorld,
     pushStarInWorld: pushStarInWorld,
     getCellContent: getCellContent,

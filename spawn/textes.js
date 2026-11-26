@@ -44,6 +44,10 @@ window.SPAWN_TEXTES = {
     tabSystem: 'Système',
     btnChapContinue: 'Continuer',
     btnChapReseed: 'RESEED — Engendrer un nouvel univers',
+    moodBadgePrefix: 'Ambiance :',
+    btnRerollMood: '🎲 Autre ambiance',
+    eventKicker: 'Événement de traversée',
+    moodInfoLabel: 'Scénario actif : {name} ({genre})',
 
     resources: {
       fuel: { label: 'Fuel', title: 'Carburant : 1 par pas local' },
@@ -629,5 +633,131 @@ window.SPAWN_TEXTES = {
     journalConvertDesc: 'Chaque pas manuel génère du T2s. Convertissez-le à tout moment pour éviter toute panne sèche.',
     journalSystemTitle: 'Graine de l’univers : {seed}',
     journalSystemStats: 'Pas effectués : {steps} · Rebonds de coque : {bounces} · Sauts Hyper : {jumps} · Reseeds : {reseeds}'
+  },
+
+  // --------------------------------------------------------------------------
+  // 12. FICHES D'INFO CLIQUABLES (AIDE CONTEXTUELLE)
+  // --------------------------------------------------------------------------
+  infos: {
+    closeLabel: 'Fermer',
+    quickActions: {
+      openConvert: 'Ouvrir le Recycleur T2s',
+      openJournal: 'Ouvrir le Journal',
+      activateHyper: 'Activer la visée HyperJump'
+    },
+    resources: {
+      fuel: {
+        kicker: 'Ressource · Déplacement local',
+        title: 'Fuel ({val}/{cap})',
+        body: 'Le carburant de précision du Poule-IV. Chaque pas d’une case (flèches, ZQSD, croix directionnelle ou clic adjacent) consomme 1 Fuel et génère +1 T2s. Avancer au Fuel près d’un bord recentre doucement la caméra sans abîmer la coque.',
+        tip: 'Pour en gagner : exploitez les planètes (Boltz, Crewz, Golem), tentez des accords sur les anomalies ou convertissez du T2s.'
+      },
+      coque: {
+        kicker: 'Ressource · Rebond bord-de-cadre',
+        title: 'Coque ({val}/{cap})',
+        body: 'Le blindage élastique du vaisseau. Faites glisser l’espace avec la souris ou le doigt : dès que le Poule-IV touche le bord du cadre, il rebondit de plusieurs cases dans la nouvelle zone pour seulement 1 Coque (et scanne automatiquement l’arrivée).',
+        tip: 'Si la Coque tombe à 0, toucher un bord déclenche un glitch qui ramène la caméra sur le vaisseau sans rien casser.'
+      },
+      scan: {
+        kicker: 'Ressource · Capteurs & Analyse',
+        title: 'Scan ({val}/{cap})',
+        body: 'L’énergie de vos capteurs. Sonder un point à distance coûte 1 Scan — mais si vous posez le Poule-IV directement sur une planète ou anomalie inconnue, l’analyse sur place vous rapporte +2 Scan (et +1 Scan lors de l’exploitation).',
+        tip: 'B.O.R.D. recommande de voyager jusqu’aux gisements plutôt que de tout scanner depuis votre fauteuil.'
+      },
+      hyper: {
+        kicker: 'Ressource · Saut longue portée',
+        title: 'HyperJump ({val}/{cap})',
+        body: 'Propulsion subspatiale franchissant 14 à 19 cases d’un coup dans la direction choisie, sans consommer ni Fuel ni Coque. Également utilisé par les balises de téléportation longue distance (1 Hyper par saut balisé).',
+        tip: 'Activez le mode visée avec le bouton HyperJump ou la touche H, puis cliquez dans la direction voulue.'
+      },
+      t2s: {
+        kicker: 'Ressource · Crédit cinétique',
+        title: 'T2s ({val}/{cap})',
+        body: 'Chaque pas manuel au Fuel recharge +1 T2s dans vos condensateurs. C’est votre filet de sécurité permanent : le Recycleur T2s permet de transformer ce mouvement accumulé en Fuel, Coque, Scan ou même HyperJump.',
+        tip: 'Conversions disponibles : -4 T2s → +4 Fuel · -10 T2s → +3 Coque · -12 T2s → +6 Scan · -18 T2s → +1 Hyper.'
+      },
+      lum: {
+        kicker: 'Ressource · Lumière d’étoile',
+        title: 'Lum ({val})',
+        body: 'Chaque nouvelle étoile identifiée libère 1 éclat de Lum. Cette lumière pure sert à alimenter le Bouclier Lum (2 Lum) pour neutraliser le prochain mauvais tirage, ou à acheter certains artefacts rares.',
+        tip: 'Votre stock actuel : {val} Lum (plafond {cap}).'
+      }
+    },
+    zones: {
+      cosm: {
+        kicker: 'Secteur · Anneaux 0 à 14',
+        title: 'Centre SpaceGate · Bureaucratie ONU',
+        body: 'Le cœur symétrique de la spirale, géré par les Bureaucrathes de Myth17B. Ils ont placé les quatre cinquièmes extérieurs en quarantaine « le temps de vérifier un tampon ».',
+        tip: 'Au point (0, 0) vous attendent le plein complet des réserves, les Boussoles et la première Balise.'
+      },
+      dream: {
+        kicker: 'Secteur · Anneaux 15 à 42',
+        title: 'Middle Dream · Jardins Crewz',
+        body: 'Brumes lavande et serres magnétiques des céphalopodes Crewz. C’est ici que le commerce d’artefacts prend vie et où les balises stellaires deviennent plus faciles à repérer.',
+        tip: 'Abritent l’étoile médiane #256 (l’Onubis) et la mystérieuse Ambassade #3030 (anneau 28).'
+      },
+      forgot: {
+        kicker: 'Secteur · Anneaux 43 à 72',
+        title: 'ForgotLands · Tempêtes PostSolar',
+        body: 'Votre zone de départ : un désert d’ambre balayé par les vents solaires, peuplé d’automates en bois de Turing (Boltz), des Monopodes de #400 et des fugitifs de #500.',
+        tip: 'Les étoiles y portent des numéros élevés : suivez les numéros décroissants pour plonger vers le Centre.'
+      },
+      out: {
+        kicker: 'Secteur · Au-delà de l’anneau 72',
+        title: 'Out Multivac · Mycélium ChampIA',
+        body: 'La lisière hors-quarantaine où le champ d’IA fongique de Multivac calcule des phases expérimentales en silence.',
+        tip: 'Territoire libre pour les explorateurs avertis : revenez vers l’intérieur grâce aux boussoles ou aux sauts.'
+      }
+    },
+    shield: {
+      kicker: 'Protection · Bouclier Lum',
+      title: 'Bouclier anti-malus actif',
+      body: 'Votre prochain incident (mauvais tirage sur une planète ou pari perdu sur une anomalie) sera entièrement absorbé sans aucune perte de ressources.',
+      tip: 'Le bouclier se consomme automatiquement dès qu’il vous protège d’un revers.'
+    },
+    coords: {
+      kicker: 'Télémétrie · Coordonnées spirale',
+      title: 'Position ({x}, {y}) · Anneau {ring}',
+      body: 'La grille est enroulée en spirale carrée depuis l’origine (0, 0) au centre. L’anneau correspond à votre distance maximale en X ou en Y par rapport au Centre.',
+      tip: 'Repères des zones : 0–14 SpaceGate · 15–42 Middle Dream · 43–72 ForgotLands · >72 Out Multivac.'
+    },
+    cellId: {
+      kicker: 'Cartographie · Indice de spirale',
+      title: 'Case #{id}',
+      body: 'Chaque case possède un numéro unique sur la spirale d’Ulam, en partant de #1 au Centre (0, 0). Cet indice détermine aussi quel artefact modulo (%5, %6, %7, %11, %13, %17) peut être acquis ici.',
+      tip: 'Plus l’indice est petit, plus vous êtes proche du Centre (0, 0).'
+    },
+    compassGroup: {
+      kicker: 'Navigation · Boussole orbitale',
+      title: 'Aiguille dorée de guidage',
+      body: 'Oriente la flèche dorée autour du Poule-IV vers une cible précise (0, #400, #500, #256 ou l’Ambassade #3030). L’affichage de la boussole est totalement gratuit.',
+      tip: 'Cliquez sur une cible pour l’activer, ou sur ✕ pour masquer l’aiguille.'
+    },
+    goGroup: {
+      kicker: 'Navigation · Sauts Balisés',
+      title: 'Téléportation vers les balises',
+      body: 'Projette instantanément le Poule-IV vers une balise majeure déjà débloquée (ou un point aléatoire avec Go·RND) pour 1 HyperJump.',
+      tip: 'Équilibrage anti-abus : si vous vous téléportez avec des artefacts en soute, leur multiplicateur de distance est plafonné à ×1,2.'
+    },
+    whisper: {
+      kicker: 'Journal de bord · Objectif actuel',
+      title: 'Transmission de B.O.R.D.',
+      body: '{whisper}',
+      tip: 'Consultez l’onglet Récit du Journal dès qu’il est débloqué pour relire tous les chapitres découverts.'
+    },
+    brand: {
+      kicker: 'Manuel du Poule-IV · B.O.R.D.',
+      title: 'Systèmes embarqués connus',
+      intro: 'Cliquez sur n’importe quelle jauge, coordonnée ou étiquette du jeu pour obtenir des détails contextuels.',
+      tips: {
+        fuel: '• Déplacement local : flèches, ZQSD, croix ou clic sur une case voisine (-1 Fuel).',
+        scroll: '• Rebond de Coque : faites glisser la carte jusqu’à ce que le vaisseau touche le bord (-1 Coque).',
+        scan: '• Analyse : cliquez sur une case visible pour sonder (-1 Scan) ou posez-vous dessus (+2 Scan).',
+        hyper: '• HyperJump : touche H ou bouton dédié pour sauter de 14 à 19 cases (-1 Hyper).',
+        t2s: '• Recycleur T2s : transformez vos pas accumulés en Fuel, Coque, Scan ou Hyper.',
+        trade: '• Commerce : achetez des artefacts dès Middle Dream et revendez-les loin (jusqu’à ×3,5) sans vous téléporter.',
+        pushStar: '• Poussée d’étoile : inspectez une étoile et utilisez « Pousser l’étoile » (-1 Scan) pour débloquer la suite.'
+      }
+    }
   }
 };

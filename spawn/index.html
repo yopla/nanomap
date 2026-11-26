@@ -11,55 +11,69 @@
     <!-- Barre supérieure de ressources (révélation strictement progressive) -->
     <header class="hud-top">
       <div class="hud-brand">
-        <span class="brand-title" id="brand-title">SPAWN</span>
-        <span id="zone-badge" class="zone-badge zone-forgot">ForgotLands</span>
+        <button type="button" class="brand-title info-trigger info-trigger-plain" id="brand-title" data-info="brand">SPAWN</button>
+        <button type="button" id="zone-badge" class="zone-badge zone-forgot info-trigger" data-info="zone">ForgotLands</button>
       </div>
 
       <div id="resource-bar" class="resource-bar">
-        <div id="res-fuel" class="res-pill res-fuel" style="display:none;">
+        <button type="button" id="res-fuel" class="res-pill res-fuel info-trigger" data-info="res:fuel" style="display:none;">
           <span class="res-icon">◆</span>
           <span class="res-label" id="lbl-fuel">Fuel</span>
           <span class="res-value" id="val-fuel">40/96</span>
-        </div>
-        <div id="res-coque" class="res-pill res-coque" style="display:none;">
+        </button>
+        <button type="button" id="res-coque" class="res-pill res-coque info-trigger" data-info="res:coque" style="display:none;">
           <span class="res-icon">⬡</span>
           <span class="res-label" id="lbl-coque">Coque</span>
           <span class="res-value" id="val-coque">24/48</span>
-        </div>
-        <div id="res-scan" class="res-pill res-scan" style="display:none;">
+        </button>
+        <button type="button" id="res-scan" class="res-pill res-scan info-trigger" data-info="res:scan" style="display:none;">
           <span class="res-icon">◎</span>
           <span class="res-label" id="lbl-scan">Scan</span>
           <span class="res-value" id="val-scan">16/48</span>
-        </div>
-        <div id="res-hyper" class="res-pill res-hyper" style="display:none;">
+        </button>
+        <button type="button" id="res-hyper" class="res-pill res-hyper info-trigger" data-info="res:hyper" style="display:none;">
           <span class="res-icon">⟐</span>
           <span class="res-label" id="lbl-hyper">Hyper</span>
           <span class="res-value" id="val-hyper">3/12</span>
-        </div>
-        <div id="res-t2s" class="res-pill res-t2s" style="display:none;">
+        </button>
+        <button type="button" id="res-t2s" class="res-pill res-t2s info-trigger" data-info="res:t2s" style="display:none;">
           <span class="res-icon">◷</span>
           <span class="res-label" id="lbl-t2s">T2s</span>
           <span class="res-value" id="val-t2s">6/96</span>
-        </div>
-        <div id="res-lum" class="res-pill res-lum" style="display:none;">
+        </button>
+        <button type="button" id="res-lum" class="res-pill res-lum info-trigger" data-info="res:lum" style="display:none;">
           <span class="res-icon">✦</span>
           <span class="res-label" id="lbl-lum">Lum</span>
           <span class="res-value" id="val-lum">0</span>
-        </div>
+        </button>
       </div>
 
       <div class="hud-meta">
-        <span id="shield-badge" class="shield-badge" style="display:none;">✦ Bouclier Lum actif</span>
-        <button id="btn-audio" class="icon-btn" title="Son activé / coupé" aria-label="Son">🔊</button>
-        <button id="btn-journal" class="icon-btn" style="display:none;" title="Ouvrir le Journal (J)">Journal</button>
+        <button type="button" id="shield-badge" class="shield-badge info-trigger" data-info="shield" style="display:none;">✦ Bouclier Lum actif</button>
+        <button type="button" id="btn-audio" class="icon-btn" title="Son activé / coupé" aria-label="Son">🔊</button>
+        <button type="button" id="btn-journal" class="icon-btn" style="display:none;" title="Ouvrir le Journal (J)">Journal</button>
       </div>
     </header>
 
     <!-- Ligne d'objectif contextuel ("murmure") -->
     <div id="whisper-bar" class="whisper-bar">
-      <span id="whisper-text"></span>
-      <span id="coords-readout" class="coords-readout" style="display:none;"></span>
+      <button type="button" id="whisper-text" class="whisper-btn info-trigger info-trigger-plain" data-info="whisper"></button>
+      <button type="button" id="coords-readout" class="coords-readout info-trigger info-trigger-plain" data-info="coords" style="display:none;"></button>
     </div>
+
+    <!-- Fiche d'info contextuelle cliquable -->
+    <section id="info-popover" class="info-popover" style="display:none;" role="dialog" aria-live="polite">
+      <div class="info-pop-head">
+        <div>
+          <div class="info-pop-kicker" id="info-kicker"></div>
+          <h3 class="info-pop-title" id="info-title"></h3>
+        </div>
+        <button type="button" id="btn-close-info" class="icon-btn">Fermer</button>
+      </div>
+      <p class="info-pop-body" id="info-body"></p>
+      <div class="info-pop-tip" id="info-tip" style="display:none;"></div>
+      <div class="info-pop-actions" id="info-actions" style="display:none;"></div>
+    </section>
 
     <!-- Bannière narrative non bloquante -->
     <div id="story-toast" class="story-toast" style="display:none;">
@@ -96,7 +110,7 @@
             <div class="panel-kicker" id="ctx-kicker"></div>
             <h2 class="panel-title" id="ctx-title"></h2>
           </div>
-          <span class="panel-id" id="ctx-id"></span>
+          <button type="button" class="panel-id info-trigger" id="ctx-id" data-info="cellId"></button>
         </div>
 
         <p class="panel-text" id="ctx-text"></p>
@@ -120,7 +134,7 @@
       </button>
 
       <div id="tool-compass-group" class="tool-group" style="display:none;">
-        <span class="group-label" id="lbl-compass-group">Boussole :</span>
+        <button type="button" class="group-label info-trigger info-trigger-plain" id="lbl-compass-group" data-info="compassGroup">Boussole :</button>
         <button class="tool-chip" data-compass="0" id="cmp-0" style="display:none;">B·0</button>
         <button class="tool-chip" data-compass="500" id="cmp-500" style="display:none;">B·500</button>
         <button class="tool-chip" data-compass="400" id="cmp-400" style="display:none;">B·400</button>
@@ -130,7 +144,7 @@
       </div>
 
       <div id="tool-go-group" class="tool-group" style="display:none;">
-        <span class="group-label" id="lbl-go-group">Balises :</span>
+        <button type="button" class="group-label info-trigger info-trigger-plain" id="lbl-go-group" data-info="goGroup">Balises :</button>
         <button class="tool-chip accent-cyan" data-go="0" id="go-0" style="display:none;">Go·0 <small>1H</small></button>
         <button class="tool-chip accent-cyan" data-go="500" id="go-500" style="display:none;">Go·500 <small>1H</small></button>
         <button class="tool-chip accent-cyan" data-go="400" id="go-400" style="display:none;">Go·400 <small>1H</small></button>
@@ -184,6 +198,10 @@
   <!-- Overlay Intro -->
   <div id="overlay-intro" class="overlay-screen">
     <div class="overlay-card">
+      <div class="intro-mood-row">
+        <span id="intro-mood-badge" class="mood-badge"></span>
+        <button type="button" id="btn-reroll-mood" class="secondary-btn mood-reroll-btn"></button>
+      </div>
       <div class="overlay-kicker" id="intro-kicker"></div>
       <h1 class="overlay-title" id="intro-title">SPAWN</h1>
       <p class="overlay-lead" id="intro-lead"></p>
@@ -210,6 +228,7 @@
   </div>
 
   <script src="textes.js"></script>
+  <script src="scenarios.js"></script>
   <script src="js/spiral.js"></script>
   <script src="js/lore.js"></script>
   <script src="js/world.js"></script>

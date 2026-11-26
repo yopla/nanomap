@@ -16,8 +16,8 @@
   }
 
   function createUI(engine) {
-    var T = Lore.TEXTES || {};
-    var M = T.messages || {};
+    function getT() { return Lore.TEXTES || {}; }
+    function getM() { return getT().messages || {}; }
 
     var els = {
       brandTitle: document.getElementById('brand-title'),
@@ -109,6 +109,8 @@
       tabBtnCargo: document.getElementById('tab-btn-cargo'),
       tabBtnConvert: document.getElementById('tab-btn-convert'),
       overlayIntro: document.getElementById('overlay-intro'),
+      introMoodBadge: document.getElementById('intro-mood-badge'),
+      btnRerollMood: document.getElementById('btn-reroll-mood'),
       introKicker: document.getElementById('intro-kicker'),
       introTitle: document.getElementById('intro-title'),
       introLead: document.getElementById('intro-lead'),
@@ -121,17 +123,27 @@
       chapText: document.getElementById('chap-text'),
       chapUnlock: document.getElementById('chap-unlock'),
       btnChapContinue: document.getElementById('btn-chap-continue'),
-      btnChapReseed: document.getElementById('btn-chap-reseed')
+      btnChapReseed: document.getElementById('btn-chap-reseed'),
+      infoPopover: document.getElementById('info-popover'),
+      infoKicker: document.getElementById('info-kicker'),
+      infoTitle: document.getElementById('info-title'),
+      infoBody: document.getElementById('info-body'),
+      infoTip: document.getElementById('info-tip'),
+      infoActions: document.getElementById('info-actions'),
+      btnCloseInfo: document.getElementById('btn-close-info')
     };
 
     var activeTab = 'story';
     var toastTimer = null;
+    var openInfoKey = null;
 
     function hydrateStaticTexts() {
+      var T = getT();
       var uiT = T.ui || {};
       var resT = uiT.resources || {};
       var tbT = uiT.toolbar || {};
       var introT = T.intro || {};
+      var mood = Lore.getActiveMood();
 
       els.brandTitle.textContent = uiT.brandTitle || 'SPAWN';
       els.shieldBadge.textContent = uiT.shieldBadge || '';
@@ -149,7 +161,14 @@
 
       els.btnChapContinue.textContent = uiT.btnChapContinue || 'Continuer';
       els.btnChapReseed.textContent = uiT.btnChapReseed || 'RESEED';
+      els.btnCloseInfo.textContent = (T.infos && T.infos.closeLabel) || 'Fermer';
 
+      if (els.introMoodBadge && mood) {
+        els.introMoodBadge.textContent = (uiT.moodBadgePrefix || 'Ambiance :') + ' ' + mood.name + ' · ' + mood.genre;
+      }
+      if (els.btnRerollMood) {
+        els.btnRerollMood.textContent = uiT.btnRerollMood || '🎲 Autre ambiance';
+      }
       els.introKicker.textContent = introT.kicker || '';
       els.introTitle.textContent = introT.title || 'SPAWN';
       els.introLead.textContent = introT.lead || '';
@@ -251,7 +270,7 @@
       els.whisperText.textContent = state.whisper || '';
       if (u.scan) {
         toggle(els.coordsReadout, true, 'inline');
-        els.coordsReadout.textContent = Lore.format(M.coordsReadout, { x: state.ship.x, y: state.ship.y, ring: ring });
+        els.coordsReadout.textContent = Lore.format(getM().coordsReadout, { x: state.ship.x, y: state.ship.y, ring: ring });
       } else {
         toggle(els.coordsReadout, false);
       }
@@ -331,13 +350,46 @@
     }
 
     function renderContextPanel(state) {
+      var T = getT();
+      var M = getM();
+      var act = (T.ui && T.ui.actions) || {};
       var sel = state.selectedCell;
+
+      if (state.activeEvent) {
+        var ev = state.activeEvent;
+        toggle(els.ctxPanel, true, 'flex');
+        els.ctxActions.innerHTML = '';
+        toggle(els.ctxMeta, false);
+        els.ctxKicker.className = 'panel-kicker event-kicker';
+        els.ctxKicker.textContent = (T.ui && T.ui.eventKicker) || 'Événement';
+        els.ctxTitle.textContent = ev.title;
+        els.ctxText.textContent = ev.text;
+        toggle(els.ctxId, false);
+        ev.choices.forEach(function (ch, idx) {
+          var afford = !ch.cost || Object.keys(ch.cost).every(function (k) { return state.res[k] >= ch.cost[k]; });
+          var tagParts = [];
+          if (ch.cost) tagParts.push(formatCostReward(ch.cost, '-'));
+          if (ch.effect) {
+            var effCopy = Object.assign({}, ch.effect);
+            var hasShield = !!effCopy.shield;
+            delete effCopy.shield;
+            var effTxt = Object.keys(effCopy).length ? formatCostReward(effCopy, '+') : '';
+            if (hasShield) effTxt = (effTxt ? effTxt + ' · ' : '') + 'Bouclier';
+            if (effTxt) tagParts.push(effTxt);
+          }
+          addActionButton(ch.label, tagParts.join(' → '), idx === 0 ? 'primary' : 'emerald', !afford, function () {
+            engine.resolveEventChoice(idx);
+          });
+        });
+        return;
+      }
+
+      els.ctxKicker.className = 'panel-kicker';
       if (!sel) {
         toggle(els.ctxPanel, false);
         return;
       }
 
-      var act = (T.ui && T.ui.actions) || {};
       var cell = World.getCellContent(state.world, sel.x, sel.y);
       var isVisited = !!state.visited[cell.id];
       var isFinished = !!state.finished[cell.id];
@@ -358,6 +410,7 @@
 
       var z = Lore.getZoneInfo(cell.ring);
       els.ctxId.textContent = state.unlocks.scan ? ('#' + cell.id) : '';
+      toggle(els.ctxId, state.unlocks.scan, 'inline-block');
 
       if (cell.kind === 'center') {
         els.ctxKicker.textContent = T.specials.center.kicker;
@@ -484,7 +537,10 @@
     }
 
     function renderJournal(state) {
+      var T = getT();
+      var M = getM();
       var act = (T.ui && T.ui.actions) || {};
+      var mood = Lore.getActiveMood();
       els.tabStarsCount.textContent = String(state.discoveredStars.length);
       els.tabCargoCount.textContent = String(state.cargo.length);
       toggle(els.tabBtnCargo, state.unlocks.trade, 'inline-block');
@@ -547,7 +603,7 @@
           '<p>' + M.journalConvertDesc + '</p>';
         els.journalBody.appendChild(info);
 
-        World.T2S_CONVERSIONS.forEach(function (conv) {
+        World.getConversions().forEach(function (conv) {
           var btn = document.createElement('button');
           btn.className = 'action-btn';
           btn.disabled = state.res.t2s < conv.cost;
@@ -561,7 +617,10 @@
       } else if (activeTab === 'system') {
         var sys = document.createElement('div');
         sys.className = 'journal-entry';
+        var moodLine = mood ? ('<p style="margin-bottom:6px;color:var(--mood-accent,#38bdf8);font-weight:600;">' +
+          Lore.format((T.ui && T.ui.moodInfoLabel) || '', { name: mood.name, genre: mood.genre }) + '</p>') : '';
         sys.innerHTML = '<h4>' + Lore.format(M.journalSystemTitle, { seed: state.world.seed }) + '</h4>' +
+          moodLine +
           '<p>' + Lore.format(M.journalSystemStats, {
             steps: state.stats.steps,
             bounces: state.stats.bounces,
@@ -582,6 +641,183 @@
     }
 
     hydrateStaticTexts();
+
+    function closeInfoPopover() {
+      openInfoKey = null;
+      toggle(els.infoPopover, false);
+      var triggers = document.querySelectorAll('.info-trigger');
+      for (var i = 0; i < triggers.length; i++) {
+        triggers[i].classList.remove('info-open');
+      }
+    }
+
+    function addInfoAction(label, onClick) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'secondary-btn';
+      btn.style.padding = '7px 12px';
+      btn.style.fontSize = '0.8rem';
+      btn.textContent = label;
+      btn.addEventListener('click', onClick);
+      els.infoActions.appendChild(btn);
+    }
+
+    function renderInfoPopover(key, state) {
+      var T = getT();
+      var INF = T.infos || {};
+      var QA = INF.quickActions || {};
+      var ring = Spiral.ringOf(state.ship.x, state.ship.y);
+      var data = null;
+
+      els.infoActions.innerHTML = '';
+
+      if (key.indexOf('res:') === 0) {
+        var rKey = key.split(':')[1];
+        var rInfo = INF.resources && INF.resources[rKey];
+        if (rInfo) {
+          var vars = { val: state.res[rKey], cap: World.CAPS[rKey] };
+          data = {
+            kicker: rInfo.kicker,
+            title: Lore.format(rInfo.title, vars),
+            body: Lore.format(rInfo.body, vars),
+            tip: Lore.format(rInfo.tip, vars)
+          };
+          if (rKey === 't2s' && state.unlocks.t2sConvert) {
+            addInfoAction(QA.openConvert, function () {
+              closeInfoPopover();
+              activeTab = 'convert';
+              for (var j = 0; j < tabBtns.length; j++) {
+                tabBtns[j].classList.toggle('active', tabBtns[j].getAttribute('data-tab') === 'convert');
+              }
+              renderJournal(engine.getState());
+              toggle(els.modalJournal, true, 'flex');
+            });
+          } else if (rKey === 'hyper' && state.unlocks.hyper && state.res.hyper > 0) {
+            addInfoAction(QA.activateHyper, function () {
+              closeInfoPopover();
+              engine.toggleAimMode(true);
+            });
+          }
+        }
+      } else if (key === 'zone') {
+        var zKey = Lore.getZoneKey(ring);
+        data = INF.zones && INF.zones[zKey];
+      } else if (key === 'shield') {
+        data = INF.shield;
+      } else if (key === 'coords') {
+        if (INF.coords) {
+          var cVars = { x: state.ship.x, y: state.ship.y, ring: ring };
+          data = {
+            kicker: INF.coords.kicker,
+            title: Lore.format(INF.coords.title, cVars),
+            body: Lore.format(INF.coords.body, cVars),
+            tip: Lore.format(INF.coords.tip, cVars)
+          };
+        }
+      } else if (key === 'cellId') {
+        var sel = state.selectedCell || { x: state.ship.x, y: state.ship.y };
+        var id = Spiral.posToId(sel.x, sel.y);
+        if (INF.cellId) {
+          data = {
+            kicker: INF.cellId.kicker,
+            title: Lore.format(INF.cellId.title, { id: id }),
+            body: Lore.format(INF.cellId.body, { id: id }),
+            tip: Lore.format(INF.cellId.tip, { id: id })
+          };
+        }
+      } else if (key === 'compassGroup') {
+        data = INF.compassGroup;
+      } else if (key === 'goGroup') {
+        data = INF.goGroup;
+      } else if (key === 'whisper') {
+        if (INF.whisper) {
+          data = {
+            kicker: INF.whisper.kicker,
+            title: INF.whisper.title,
+            body: Lore.format(INF.whisper.body, { whisper: state.whisper || '' }),
+            tip: INF.whisper.tip
+          };
+          if (state.unlocks.journal) {
+            addInfoAction(QA.openJournal, function () {
+              closeInfoPopover();
+              activeTab = 'story';
+              for (var j = 0; j < tabBtns.length; j++) {
+                tabBtns[j].classList.toggle('active', tabBtns[j].getAttribute('data-tab') === 'story');
+              }
+              renderJournal(engine.getState());
+              toggle(els.modalJournal, true, 'flex');
+            });
+          }
+        }
+      } else if (key === 'brand') {
+        var br = INF.brand;
+        var activeMood = Lore.getActiveMood();
+        if (br && br.tips) {
+          var lines = [];
+          if (activeMood) {
+            lines.push(Lore.format((T.ui && T.ui.moodInfoLabel) || '', { name: activeMood.name, genre: activeMood.genre }) + ' — ' + activeMood.shipName);
+          }
+          lines.push(br.intro);
+          if (state.unlocks.fuel) lines.push(br.tips.fuel);
+          if (state.unlocks.scrollHint) lines.push(br.tips.scroll);
+          if (state.unlocks.scan) lines.push(br.tips.scan);
+          if (state.unlocks.hyper) lines.push(br.tips.hyper);
+          if (state.unlocks.t2sConvert) lines.push(br.tips.t2s);
+          if (state.unlocks.trade) lines.push(br.tips.trade);
+          if (state.unlocks.pushStar) lines.push(br.tips.pushStar);
+          data = {
+            kicker: br.kicker,
+            title: br.title,
+            body: lines.join('\n'),
+            tip: ''
+          };
+        }
+      }
+
+      if (!data) return;
+      openInfoKey = key;
+      els.infoKicker.textContent = data.kicker || '';
+      els.infoTitle.textContent = data.title || '';
+      els.infoBody.textContent = data.body || '';
+      if (data.tip) {
+        els.infoTip.textContent = data.tip;
+        toggle(els.infoTip, true, 'block');
+      } else {
+        toggle(els.infoTip, false);
+      }
+      toggle(els.infoActions, els.infoActions.children.length > 0, 'flex');
+      toggle(els.infoPopover, true, 'flex');
+
+      var triggers = document.querySelectorAll('.info-trigger');
+      for (var i = 0; i < triggers.length; i++) {
+        triggers[i].classList.toggle('info-open', triggers[i].getAttribute('data-info') === key);
+      }
+    }
+
+    var infoTriggers = document.querySelectorAll('.info-trigger');
+    for (var ii = 0; ii < infoTriggers.length; ii++) {
+      infoTriggers[ii].addEventListener('click', function (e) {
+        e.stopPropagation();
+        var key = this.getAttribute('data-info');
+        var st = engine.getState();
+        if (!st || !key) return;
+        if (openInfoKey === key) {
+          closeInfoPopover();
+        } else {
+          renderInfoPopover(key, st);
+        }
+      });
+    }
+
+    els.btnCloseInfo.addEventListener('click', function () {
+      closeInfoPopover();
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!openInfoKey) return;
+      if (els.infoPopover.contains(e.target)) return;
+      closeInfoPopover();
+    });
 
     els.btnAudio.addEventListener('click', function () {
       Audio.setMuted(!Audio.isMuted());
@@ -662,6 +898,13 @@
       });
     }
 
+    if (els.btnRerollMood) {
+      els.btnRerollMood.addEventListener('click', function () {
+        engine.rerollIntroMood();
+        hydrateStaticTexts();
+      });
+    }
+
     els.btnStartNew.addEventListener('click', function () {
       toggle(els.overlayIntro, false);
       engine.startNewGame(false);
@@ -685,11 +928,13 @@
       initIntro: function () {
         toggle(els.btnResumeSave, engine.hasSavedGame(), 'inline-block');
       },
-      update: function (state) {
+      update: function (state, opts) {
         if (!state) return;
+        if (opts && opts.moodChanged) hydrateStaticTexts();
         renderHUD(state);
         renderToolbar(state);
         renderContextPanel(state);
+        if (openInfoKey) renderInfoPopover(openInfoKey, state);
       },
       onStoryEvent: function (chap, isModal) {
         if (isModal) showChapterOverlay(chap);
@@ -698,10 +943,12 @@
       openJournal: function () {
         var st = engine.getState();
         if (!st || !st.unlocks.journal) return;
+        closeInfoPopover();
         renderJournal(st);
         toggle(els.modalJournal, true, 'flex');
       },
       closeModals: function () {
+        closeInfoPopover();
         toggle(els.modalJournal, false);
         toggle(els.overlayChapter, false);
         engine.toggleAimMode(false);
