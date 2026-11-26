@@ -130,12 +130,60 @@
       infoBody: document.getElementById('info-body'),
       infoTip: document.getElementById('info-tip'),
       infoActions: document.getElementById('info-actions'),
-      btnCloseInfo: document.getElementById('btn-close-info')
+      btnCloseInfo: document.getElementById('btn-close-info'),
+      modalConfirm: document.getElementById('modal-confirm'),
+      confirmTitle: document.getElementById('confirm-title'),
+      confirmText: document.getElementById('confirm-text'),
+      btnConfirmOk: document.getElementById('btn-confirm-ok'),
+      btnConfirmCancel: document.getElementById('btn-confirm-cancel')
     };
 
     var activeTab = 'story';
     var toastTimer = null;
     var openInfoKey = null;
+    var pendingConfirmCb = null;
+
+    function updateResumeButton() {
+      var info = engine.getSavedGameInfo();
+      if (!info) {
+        toggle(els.btnResumeSave, false);
+        return;
+      }
+      var T = getT();
+      var uiT = T.ui || {};
+      var savedMood = Lore.getMoodById(info.moodId) || Lore.getActiveMood();
+      var baseBtn = (savedMood && savedMood.intro && savedMood.intro.btnResumeSave) ||
+        (global.SPAWN_TEXTES && global.SPAWN_TEXTES.intro && global.SPAWN_TEXTES.intro.btnResumeSave) ||
+        'Reprendre';
+      var sCode = (savedMood && savedMood.code) || 'LOU';
+      var sName = (savedMood && savedMood.name) || '';
+      els.btnResumeSave.textContent = Lore.format(uiT.resumeSaveFormat || '{btn} ({code} · {name})', {
+        btn: baseBtn,
+        code: sCode,
+        name: sName
+      });
+      if (savedMood && savedMood.accent) {
+        els.btnResumeSave.style.setProperty('--saved-accent', savedMood.accent);
+      }
+      els.btnResumeSave.classList.add('resume-thematic');
+      toggle(els.btnResumeSave, true, 'inline-block');
+    }
+
+    function openConfirm(message, onConfirm) {
+      var uiT = getT().ui || {};
+      var cf = uiT.confirm || {};
+      els.confirmTitle.textContent = cf.title || 'Confirmer';
+      els.confirmText.textContent = message;
+      els.btnConfirmOk.textContent = cf.btnConfirm || 'Confirmer';
+      els.btnConfirmCancel.textContent = cf.btnCancel || 'Annuler';
+      pendingConfirmCb = onConfirm;
+      toggle(els.modalConfirm, true, 'flex');
+    }
+
+    function closeConfirm() {
+      pendingConfirmCb = null;
+      toggle(els.modalConfirm, false);
+    }
 
     function hydrateStaticTexts() {
       var T = getT();
@@ -144,8 +192,11 @@
       var tbT = uiT.toolbar || {};
       var introT = T.intro || {};
       var mood = Lore.getActiveMood();
+      var code = (mood && mood.code) || 'LOU';
+      var baseBrand = uiT.brandTitle || 'SPAWN';
 
-      els.brandTitle.textContent = uiT.brandTitle || 'SPAWN';
+      document.title = baseBrand + ' (' + code + ')' + (mood ? ' — ' + mood.name : '');
+      els.brandTitle.innerHTML = baseBrand + ' <span class="brand-code">(' + code + ')</span>';
       els.shieldBadge.textContent = uiT.shieldBadge || '';
       els.btnJournal.textContent = uiT.btnJournal || 'Journal';
       els.btnCloseJournal.textContent = uiT.btnCloseJournal || 'Fermer';
@@ -164,17 +215,17 @@
       els.btnCloseInfo.textContent = (T.infos && T.infos.closeLabel) || 'Fermer';
 
       if (els.introMoodBadge && mood) {
-        els.introMoodBadge.textContent = (uiT.moodBadgePrefix || 'Ambiance :') + ' ' + mood.name + ' · ' + mood.genre;
+        els.introMoodBadge.textContent = (uiT.moodBadgePrefix || 'Ambiance :') + ' (' + code + ') ' + mood.name + ' · ' + mood.genre;
       }
       if (els.btnRerollMood) {
         els.btnRerollMood.textContent = uiT.btnRerollMood || '🎲 Autre ambiance';
       }
       els.introKicker.textContent = introT.kicker || '';
-      els.introTitle.textContent = introT.title || 'SPAWN';
+      els.introTitle.textContent = (introT.title || 'SPAWN') + ' (' + code + ')';
       els.introLead.textContent = introT.lead || '';
       els.introSub.textContent = introT.sub || '';
       els.btnStartNew.textContent = introT.btnStartNew || 'Commencer';
-      els.btnResumeSave.textContent = introT.btnResumeSave || 'Reprendre';
+      updateResumeButton();
 
       var mapRes = [
         ['fuel', els.resFuel, els.lblFuel],
@@ -632,8 +683,16 @@
         resetBtn.style.marginTop = '10px';
         resetBtn.textContent = act.resetBtn;
         resetBtn.addEventListener('click', function () {
-          toggle(els.modalJournal, false);
-          engine.startNewGame(false, null, '__random__');
+          var cf = (getT().ui && getT().ui.confirm) || {};
+          var activeM = Lore.getActiveMood();
+          var msgTxt = Lore.format(cf.resetGame || 'Recommencer ?', {
+            savedCode: (activeM && activeM.code) || 'LOU',
+            savedName: (activeM && activeM.name) || ''
+          });
+          openConfirm(msgTxt, function () {
+            toggle(els.modalJournal, false);
+            engine.startNewGame(false, null, '__random__');
+          });
         });
         sys.appendChild(resetBtn);
         els.journalBody.appendChild(sys);
@@ -906,8 +965,39 @@
     }
 
     els.btnStartNew.addEventListener('click', function () {
+      var info = engine.getSavedGameInfo();
+      if (info) {
+        var cf = (getT().ui && getT().ui.confirm) || {};
+        var savedMood = Lore.getMoodById(info.moodId) || Lore.getActiveMood();
+        var newMood = engine.getIntroMood() || Lore.getActiveMood();
+        var msgTxt = Lore.format(cf.newGameOverwrite || 'Écraser la sauvegarde ?', {
+          savedCode: (savedMood && savedMood.code) || 'LOU',
+          savedName: (savedMood && savedMood.name) || '',
+          newCode: (newMood && newMood.code) || 'LOU',
+          newName: (newMood && newMood.name) || ''
+        });
+        openConfirm(msgTxt, function () {
+          toggle(els.overlayIntro, false);
+          engine.startNewGame(false);
+        });
+        return;
+      }
       toggle(els.overlayIntro, false);
       engine.startNewGame(false);
+    });
+
+    els.btnConfirmOk.addEventListener('click', function () {
+      var cb = pendingConfirmCb;
+      closeConfirm();
+      if (cb) cb();
+    });
+
+    els.btnConfirmCancel.addEventListener('click', function () {
+      closeConfirm();
+    });
+
+    els.modalConfirm.addEventListener('click', function (e) {
+      if (e.target === els.modalConfirm) closeConfirm();
     });
 
     els.btnResumeSave.addEventListener('click', function () {
@@ -933,7 +1023,7 @@
 
     return {
       initIntro: function () {
-        toggle(els.btnResumeSave, engine.hasSavedGame(), 'inline-block');
+        updateResumeButton();
       },
       update: function (state, opts) {
         if (!state) return;
@@ -955,6 +1045,7 @@
         toggle(els.modalJournal, true, 'flex');
       },
       closeModals: function () {
+        closeConfirm();
         closeInfoPopover();
         toggle(els.modalJournal, false);
         toggle(els.overlayChapter, false);

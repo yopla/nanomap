@@ -15,6 +15,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'loufoque',
+    code: 'LOU',
     name: 'La Quarantaine des Tampons',
     genre: 'Comédie SF Bureaucratique',
     accent: '#fbbf24',
@@ -110,6 +111,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'cyber',
+    code: 'CYB',
     name: 'Protocole Megagrid',
     genre: 'Cyberpunk Néon & Piratage',
     accent: '#22d3ee',
@@ -483,6 +485,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'spaceopera',
+    code: 'SOP',
     name: 'Chroniques de l’Astre-Vigil',
     genre: 'Space Opera Lyrique',
     accent: '#a78bfa',
@@ -856,6 +859,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   ,{
     id: 'horreur',
+    code: 'HOR',
     name: 'L’Œil de la Spirale',
     genre: 'Horreur Cosmique & Étrange',
     accent: '#fb7185',
@@ -1229,6 +1233,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'solarpunk',
+    code: 'SOL',
     name: 'L’Archipel des Graines',
     genre: 'Solarpunk & Fantastique',
     accent: '#34d399',
@@ -1602,6 +1607,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'retro',
+    code: 'RET',
     name: 'L’Odyssée du Spoutnik-Deluxe',
     genre: 'Atompunk Pulp 1950 & Humour',
     accent: '#fb923c',
@@ -1975,6 +1981,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'polar',
+    code: 'POL',
     name: 'La Dernière Étoile du Dock 9',
     genre: 'Polar Noir Spatial',
     accent: '#94a3b8',
@@ -2348,6 +2355,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'mycelium',
+    code: 'MYC',
     name: 'L’Éveil du Léviathan',
     genre: 'Bio-SF Organique & Symbiose',
     accent: '#2dd4bf',
@@ -2721,6 +2729,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'paradoxe',
+    code: 'PAR',
     name: 'Jeudi Prochain en Double File',
     genre: 'Comédie Temporelle & Paradoxes',
     accent: '#f472b6',
@@ -3094,6 +3103,7 @@ window.SPAWN_SCENARIOS = [
   // --------------------------------------------------------------------------
   {
     id: 'mythos',
+    code: 'MYT',
     name: 'La Quête de l’Éther-Lance',
     genre: 'Techno-Fantasy & Chevalerie Astrale',
     accent: '#eab308',

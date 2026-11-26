@@ -194,6 +194,21 @@
       }
     }
 
+    function getSavedGameInfo() {
+      try {
+        var raw = global.localStorage.getItem(SAVE_KEY);
+        if (!raw) return null;
+        var data = JSON.parse(raw);
+        return {
+          moodId: data.moodId || 'loufoque',
+          seed: data.seed,
+          starsCount: Array.isArray(data.discoveredStars) ? data.discoveredStars.length : 0
+        };
+      } catch (e) {
+        return null;
+      }
+    }
+
     function loadSavedGame() {
       try {
         var raw = global.localStorage.getItem(SAVE_KEY);
@@ -1258,6 +1273,7 @@
       getIntroMood: getIntroMood,
       rerollIntroMood: rerollIntroMood,
       hasSavedGame: hasSavedGame,
+      getSavedGameInfo: getSavedGameInfo,
       loadSavedGame: loadSavedGame,
       startNewGame: startNewGame,
       moveShipByStep: moveShipByStep,

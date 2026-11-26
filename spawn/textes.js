@@ -48,6 +48,14 @@ window.SPAWN_TEXTES = {
     btnRerollMood: '🎲 Autre ambiance',
     eventKicker: 'Événement de traversée',
     moodInfoLabel: 'Scénario actif : {name} ({genre})',
+    resumeSaveFormat: '{btn} ({code} · {name})',
+    confirm: {
+      title: 'Confirmer une nouvelle partie',
+      newGameOverwrite: 'Une traversée est déjà sauvegardée ({savedCode} · {savedName}). Lancer « {newName} ({newCode}) » effacera cette sauvegarde. Continuer ?',
+      resetGame: 'Effacer votre sauvegarde actuelle ({savedCode} · {savedName}) et lancer un nouveau scénario aléatoire ?',
+      btnConfirm: 'Oui, nouvelle partie',
+      btnCancel: 'Annuler'
+    },
 
     resources: {
       fuel: { label: 'Fuel', title: 'Carburant : 1 par pas local' },

@@ -887,3 +887,38 @@ html, body {
 .panel-kicker.event-kicker {
   color: var(--mood-accent, #f472b6);
 }
+
+.brand-code {
+  color: var(--mood-accent, #fbbf24);
+  font-size: 0.85em;
+  letter-spacing: 0.08em;
+}
+
+.secondary-btn.resume-thematic {
+  border-color: var(--saved-accent, var(--border));
+  color: var(--saved-accent, var(--text));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.secondary-btn.resume-thematic:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.confirm-card {
+  width: min(440px, 100%);
+}
+
+.danger-btn {
+  background: linear-gradient(135deg, #e11d48, #be123c);
+  color: #fff;
+  border: none;
+  border-radius: 11px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s, filter 0.2s;
+}
+
+.danger-btn:hover { filter: brightness(1.1); }
+.danger-btn:active { transform: scale(0.97); }
