@@ -870,6 +870,24 @@
     white-space: nowrap;
   }
 
+  /* ==================== OPTIMISATION GPU MOBILE (SANS BACKDROP BLUR) ==================== */
+  @media (pointer: coarse) {
+    .hud-card,
+    .round-btn,
+    #pan-hint,
+    .toast,
+    .expression-bar,
+    .modal-overlay,
+    .pause-overlay,
+    .sleep-overlay {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    .hud-card { background: rgba(8, 20, 34, 0.94); }
+    .round-btn { background: rgba(8, 20, 34, 0.95); }
+    .expression-bar { background: rgba(15, 23, 42, 0.96); }
+  }
+
   /* ==================== RESPONSIVE : BOUTONS HUD & DIALOGUE PLUS GROS ==================== */
   @media (max-width: 768px) {
     #pan-hint { display: none; }
@@ -1310,12 +1328,15 @@ function detectIPhoneDevice() {
   return false;
 }
 const IS_IPHONE_DEVICE = detectIPhoneDevice();
+const IS_MOBILE_DEVICE = IS_IPHONE_DEVICE ||
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '') ||
+  !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 function isIPhoneDevice() {
   return IS_IPHONE_DEVICE;
 }
 function getCanvasDpr() {
   const raw = window.devicePixelRatio || 1;
-  return IS_IPHONE_DEVICE ? Math.min(raw, 2) : raw;
+  return IS_MOBILE_DEVICE ? Math.min(raw, 1.75) : Math.min(raw, 2);
 }
 if (IS_IPHONE_DEVICE && document.documentElement) {
   document.documentElement.classList.add('is-iphone');
@@ -2039,6 +2060,8 @@ function updatePhysicsC(c, dt) {
     c.swimPhase += dt * (g.swimFreq * 1.65) * (0.4 + 0.85 * (c.speed / c.maxSpeed));
 
     if (Math.random() < 0.24 && c.joints.length > 0) {
+      const maxBubbles = IS_MOBILE_DEVICE ? 80 : 180;
+      if (state.bubbles.length >= maxBubbles) state.bubbles.shift();
       const tailJoint = c.joints[c.joints.length - 1];
       state.bubbles.push({
         x: tailJoint.x + (Math.random() - 0.5) * 10,
@@ -2046,6 +2069,7 @@ function updatePhysicsC(c, dt) {
         vx: -Math.cos(c.angle) * 15 + (Math.random() - 0.5) * 10,
         vy: -Math.sin(c.angle) * 15 + (Math.random() - 0.5) * 10,
         r: 1.4 + Math.random() * 2.2,
+        alpha: 0.85,
         life: 0.45,
         maxLife: 0.45,
         hue: g.hue
@@ -2157,7 +2181,8 @@ function updateLegsIK_F(c, dt, emitFootprints = true) {
         leg.liftHeight = 0;
 
         if (emitFootprints && (c.isPlayer || Math.random() < 0.3)) {
-          if (state.footprints.length > 250) {
+          const maxFootprints = IS_MOBILE_DEVICE ? 110 : 250;
+          if (state.footprints.length > maxFootprints) {
             state.footprints.shift();
           }
           state.footprints.push({
@@ -2369,12 +2394,15 @@ function updatePhysicsG(creature, dt) {
       const pal = FLAT_PALETTES_G[g.paletteIdx % FLAT_PALETTES_G.length];
       const jetX = creature.x - Math.cos(creature.angle) * (22 * scale);
       const jetY = creature.y - Math.sin(creature.angle) * (22 * scale);
+      const maxVortex = IS_MOBILE_DEVICE ? 35 : 80;
+      if (state.vortexRings.length >= maxVortex) state.vortexRings.shift();
       state.vortexRings.push({
         x: jetX,
         y: jetY,
         vx: Math.cos(creature.angle + Math.PI) * 28,
         vy: Math.sin(creature.angle + Math.PI) * 28,
         angle: creature.angle + Math.PI,
+        r: 4 * scale,
         radius: 4 * scale,
         maxRadius: 14 * scale,
         alpha: 0.6,
@@ -2477,12 +2505,15 @@ function updateHydroLegs_H(c, dt, emitWaterEffects = true) {
           const tip = pts[pts.length - 1];
           const pushAngle = c.angle + Math.PI + leg.side * 0.22;
           const pushSpeed = 80 + c.speed * 0.35;
+          const maxWaves = IS_MOBILE_DEVICE ? 35 : 80;
+          if (state.waterWaves.length >= maxWaves) state.waterWaves.shift();
           state.waterWaves.push({
             x: tip.x,
             y: tip.y,
             vx: Math.cos(pushAngle) * pushSpeed,
             vy: Math.sin(pushAngle) * pushSpeed,
             angle: pushAngle,
+            r: 7 * g.legSpanScale,
             radius: 7 * g.legSpanScale,
             growRate: 26 * g.legSpanScale,
             life: 0.45,
@@ -2552,8 +2583,17 @@ euLogoImage.src = EU_LOGO_DATA_URI;
 function drawEuFlagEmblem(ctx, radius, rimColor, glowColor) {
   // Aura bioluminescente liée au skin génératif
   ctx.save();
-  ctx.shadowColor = glowColor;
-  ctx.shadowBlur = 14;
+  if (!IS_MOBILE_DEVICE) {
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = 14;
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius + 4.5, 0, Math.PI * 2);
+    ctx.fillStyle = glowColor;
+    ctx.globalAlpha = 0.22;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fillStyle = '#003399';
@@ -4724,8 +4764,10 @@ function drawSpeechBubble(ctx, creature, now) {
     const rx = bx - boxW / 2;
     const ry = by - boxH + 14;
 
-    ctx.shadowColor = 'rgba(248, 250, 252, 0.35)';
-    ctx.shadowBlur = 12;
+    if (!IS_MOBILE_DEVICE) {
+      ctx.shadowColor = 'rgba(248, 250, 252, 0.35)';
+      ctx.shadowBlur = 12;
+    }
     ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
     ctx.strokeStyle = 'rgba(248, 250, 252, 0.72)';
     ctx.lineWidth = 1.5;
@@ -4739,7 +4781,7 @@ function drawSpeechBubble(ctx, creature, now) {
     ctx.fill();
     ctx.stroke();
 
-    ctx.shadowBlur = 0;
+    if (!IS_MOBILE_DEVICE) ctx.shadowBlur = 0;
     ctx.beginPath();
     ctx.moveTo(bx - 5, ry + boxH);
     ctx.lineTo(bx + 5, ry + boxH);
@@ -4750,8 +4792,10 @@ function drawSpeechBubble(ctx, creature, now) {
     ctx.stroke();
 
     ctx.fillStyle = '#f8fafc';
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
-    ctx.shadowBlur = 3;
+    if (!IS_MOBILE_DEVICE) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+      ctx.shadowBlur = 3;
+    }
     for (let i = 0; i < lines.length; i++) {
       const ly = ry + padY + lineHeight * (i + 0.5);
       ctx.fillText(lines[i], bx, ly);
@@ -4776,8 +4820,10 @@ function drawSpeechBubble(ctx, creature, now) {
   const rx = bx - boxW / 2;
   const ry = by - boxH / 2;
 
-  ctx.shadowColor = 'rgba(56, 189, 248, 0.45)';
-  ctx.shadowBlur = 12;
+  if (!IS_MOBILE_DEVICE) {
+    ctx.shadowColor = 'rgba(56, 189, 248, 0.45)';
+    ctx.shadowBlur = 12;
+  }
   ctx.fillStyle = 'rgba(15, 23, 42, 0.90)';
   ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
   ctx.lineWidth = 1.5;
@@ -4792,7 +4838,7 @@ function drawSpeechBubble(ctx, creature, now) {
   ctx.stroke();
 
   // Pointe vers la créature
-  ctx.shadowBlur = 0;
+  if (!IS_MOBILE_DEVICE) ctx.shadowBlur = 0;
   ctx.beginPath();
   ctx.moveTo(bx - 5, ry + boxH);
   ctx.lineTo(bx + 5, ry + boxH);
@@ -4802,8 +4848,10 @@ function drawSpeechBubble(ctx, creature, now) {
   ctx.fill();
   ctx.stroke();
 
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-  ctx.shadowBlur = 4;
+  if (!IS_MOBILE_DEVICE) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 4;
+  }
   ctx.fillText(bubble.text, bx, by);
 
   ctx.restore();
@@ -4892,7 +4940,8 @@ function initWorld() {
   savePlayerProfile();
   renderExpressionChoices();
 
-  for (let i = 0; i < 150; i++) {
+  const planktonCount = IS_MOBILE_DEVICE ? 85 : 150;
+  for (let i = 0; i < planktonCount; i++) {
     state.plankton.push({
       x: Math.random() * WORLD_WIDTH,
       y: Math.random() * WORLD_HEIGHT,
@@ -6635,6 +6684,13 @@ function onUserRemoved(snap) {
    7. GESTION DU BUDGET ÉNERGIE & COMPTEURS
    ========================================================================== */
 
+let _budgetDom = null;
+const _budgetUiCache = {
+  uText: '', uPct: '', uTitle: '',
+  gText: '', gPct: '', gTitle: '',
+  qtyText: '', freqText: ''
+};
+
 function updateBudgetUi() {
   const now = performance.now();
   const dt = (now - state.budget.lastUserRefillTime) / 1000;
@@ -6659,34 +6715,75 @@ function updateBudgetUi() {
     state.budget.lastGlobalRefillTime = now - (dtG % gRate) * 1000;
   }
 
-  const uNum = document.getElementById('userBudgetNum');
-  const uBar = document.getElementById('userBudgetBar');
-  if (uNum && uBar) {
-    uNum.textContent = `${Math.floor(state.budget.userCredits)}/${state.budget.userMax}`;
-    const pct = Math.max(0, Math.min(100, (state.budget.userCredits / state.budget.userMax) * 100));
-    uBar.style.width = `${pct}%`;
-    const box = uNum.closest('.budget-box');
-    if (box) {
-      box.title = `Player Energy: +${userQty} every ${userRate.toFixed(1)}s`;
+  if (!_budgetDom) {
+    const uNum = document.getElementById('userBudgetNum');
+    const gNum = document.getElementById('globalBudgetNum');
+    _budgetDom = {
+      uNum,
+      uBar: document.getElementById('userBudgetBar'),
+      uBox: uNum ? uNum.closest('.budget-box') : null,
+      gNum,
+      gBar: document.getElementById('globalBudgetBar'),
+      gBox: gNum ? gNum.closest('.budget-box') : null,
+      qtyEl: document.getElementById('rechargeQtyDisplay'),
+      freqEl: document.getElementById('rechargeFreqDisplay')
+    };
+  }
+
+  if (_budgetDom.uNum && _budgetDom.uBar) {
+    const uText = `${Math.floor(state.budget.userCredits)}/${state.budget.userMax}`;
+    if (uText !== _budgetUiCache.uText) {
+      _budgetUiCache.uText = uText;
+      _budgetDom.uNum.textContent = uText;
+    }
+    const pct = Math.max(0, Math.min(100, (state.budget.userCredits / state.budget.userMax) * 100)).toFixed(1) + '%';
+    if (pct !== _budgetUiCache.uPct) {
+      _budgetUiCache.uPct = pct;
+      _budgetDom.uBar.style.width = pct;
+    }
+    if (_budgetDom.uBox) {
+      const uTitle = `Player Energy: +${userQty} every ${userRate.toFixed(1)}s`;
+      if (uTitle !== _budgetUiCache.uTitle) {
+        _budgetUiCache.uTitle = uTitle;
+        _budgetDom.uBox.title = uTitle;
+      }
     }
   }
 
-  const gNum = document.getElementById('globalBudgetNum');
-  const gBar = document.getElementById('globalBudgetBar');
-  if (gNum && gBar) {
-    gNum.textContent = `${Math.floor(state.budget.globalCredits)}/${state.budget.globalMax}`;
-    const pctG = Math.max(0, Math.min(100, (state.budget.globalCredits / state.budget.globalMax) * 100));
-    gBar.style.width = `${pctG}%`;
-    const boxG = gNum.closest('.budget-box');
-    if (boxG) {
-      boxG.title = `Network Energy: +${gQty} every ${gRate.toFixed(1)}s`;
+  if (_budgetDom.gNum && _budgetDom.gBar) {
+    const gText = `${Math.floor(state.budget.globalCredits)}/${state.budget.globalMax}`;
+    if (gText !== _budgetUiCache.gText) {
+      _budgetUiCache.gText = gText;
+      _budgetDom.gNum.textContent = gText;
+    }
+    const pctG = Math.max(0, Math.min(100, (state.budget.globalCredits / state.budget.globalMax) * 100)).toFixed(1) + '%';
+    if (pctG !== _budgetUiCache.gPct) {
+      _budgetUiCache.gPct = pctG;
+      _budgetDom.gBar.style.width = pctG;
+    }
+    if (_budgetDom.gBox) {
+      const gTitle = `Network Energy: +${gQty} every ${gRate.toFixed(1)}s`;
+      if (gTitle !== _budgetUiCache.gTitle) {
+        _budgetUiCache.gTitle = gTitle;
+        _budgetDom.gBox.title = gTitle;
+      }
     }
   }
 
-  const qtyEl = document.getElementById('rechargeQtyDisplay');
-  const freqEl = document.getElementById('rechargeFreqDisplay');
-  if (qtyEl) qtyEl.textContent = `+${userQty}`;
-  if (freqEl) freqEl.textContent = `${userRate.toFixed(1)}s`;
+  if (_budgetDom.qtyEl) {
+    const qtyText = `+${userQty}`;
+    if (qtyText !== _budgetUiCache.qtyText) {
+      _budgetUiCache.qtyText = qtyText;
+      _budgetDom.qtyEl.textContent = qtyText;
+    }
+  }
+  if (_budgetDom.freqEl) {
+    const freqText = `${userRate.toFixed(1)}s`;
+    if (freqText !== _budgetUiCache.freqText) {
+      _budgetUiCache.freqText = freqText;
+      _budgetDom.freqEl.textContent = freqText;
+    }
+  }
 }
 
 function consumeActionToken() {
@@ -6760,61 +6857,77 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-function drawWorldSubstrate(ctx, now) {
+function drawWorldSubstrate(ctx, now, cullMinX, cullMaxX, cullMinY, cullMaxY) {
   ctx.save();
+  const minX = Math.max(0, cullMinX);
+  const maxX = Math.min(WORLD_WIDTH, cullMaxX);
+  const minY = Math.max(0, cullMinY);
+  const maxY = Math.min(WORLD_HEIGHT, cullMaxY);
+
   ctx.fillStyle = '#05131f';
-  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+  ctx.fillRect(minX, minY, Math.max(0, maxX - minX), Math.max(0, maxY - minY));
 
   const gridSize = 90;
+  const startX = Math.max(0, Math.floor(minX / gridSize) * gridSize);
+  const endX = Math.min(WORLD_WIDTH, Math.ceil(maxX / gridSize) * gridSize);
+  const startY = Math.max(0, Math.floor(minY / gridSize) * gridSize);
+  const endY = Math.min(WORLD_HEIGHT, Math.ceil(maxY / gridSize) * gridSize);
+
   ctx.strokeStyle = 'rgba(56, 189, 248, 0.05)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  for (let x = 0; x <= WORLD_WIDTH; x += gridSize) {
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, WORLD_HEIGHT);
+  for (let x = startX; x <= endX; x += gridSize) {
+    ctx.moveTo(x, minY);
+    ctx.lineTo(x, maxY);
   }
-  for (let y = 0; y <= WORLD_HEIGHT; y += gridSize) {
-    ctx.moveTo(0, y);
-    ctx.lineTo(WORLD_WIDTH, y);
+  for (let y = startY; y <= endY; y += gridSize) {
+    ctx.moveTo(minX, y);
+    ctx.lineTo(maxX, y);
   }
   ctx.stroke();
 
-  // Grand anneau central décoratif
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, CENTRAL_CIRCLE_RADIUS, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Inscription (Facultatea de Studii Europene + Co-Vision) à mi-hauteur entre le bas du cercle et le bas de la map
+  // Grand anneau central décoratif (cullé si hors viewport)
   const cx = WORLD_WIDTH / 2;
-  const circleBottomY = WORLD_HEIGHT / 2 + CENTRAL_CIRCLE_RADIUS;
-  const textCenterY = (circleBottomY + WORLD_HEIGHT) / 2;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-
-  const titleLines = ['facultatea', 'de', 'studii europene'];
-  ctx.font = '700 108px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-  ctx.fillStyle = 'rgba(186, 230, 253, 0.34)';
-  const titleLineHeight = 124;
-  const titleStartY = textCenterY - 196;
-  for (let i = 0; i < titleLines.length; i++) {
-    ctx.fillText(titleLines[i], cx, titleStartY + i * titleLineHeight);
+  const cy = WORLD_HEIGHT / 2;
+  if (cullMaxX >= cx - CENTRAL_CIRCLE_RADIUS - 8 && cullMinX <= cx + CENTRAL_CIRCLE_RADIUS + 8 &&
+      cullMaxY >= cy - CENTRAL_CIRCLE_RADIUS - 8 && cullMinY <= cy + CENTRAL_CIRCLE_RADIUS + 8) {
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.14)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, CENTRAL_CIRCLE_RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
-  const supportLines = [
-    'WITH THE SUPPORT OF',
-    'European Union - Creative Europe programme,',
-    'as part of the Co-Vision project'
-  ];
-  const supportLineHeight = 48;
+  // Inscription (Facultatea de Studii Europene + Co-Vision) cullée hors viewport
+  const circleBottomY = cy + CENTRAL_CIRCLE_RADIUS;
+  const textCenterY = (circleBottomY + WORLD_HEIGHT) / 2;
+  const titleStartY = textCenterY - 196;
   const supportStartY = textCenterY + 164;
-  for (let i = 0; i < supportLines.length; i++) {
-    ctx.font = i === 0
-      ? '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      : '400 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = i === 0 ? 'rgba(186, 230, 253, 0.30)' : 'rgba(186, 230, 253, 0.25)';
-    ctx.fillText(supportLines[i], cx, supportStartY + i * supportLineHeight);
+  if (cullMaxY >= titleStartY - 120 && cullMinY <= supportStartY + 180) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const titleLines = ['facultatea', 'de', 'studii europene'];
+    ctx.font = '700 108px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.34)';
+    const titleLineHeight = 124;
+    for (let i = 0; i < titleLines.length; i++) {
+      ctx.fillText(titleLines[i], cx, titleStartY + i * titleLineHeight);
+    }
+
+    const supportLines = [
+      'WITH THE SUPPORT OF',
+      'European Union - Creative Europe programme,',
+      'as part of the Co-Vision project'
+    ];
+    const supportLineHeight = 48;
+    for (let i = 0; i < supportLines.length; i++) {
+      ctx.font = i === 0
+        ? '600 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        : '400 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = i === 0 ? 'rgba(186, 230, 253, 0.30)' : 'rgba(186, 230, 253, 0.25)';
+      ctx.fillText(supportLines[i], cx, supportStartY + i * supportLineHeight);
+    }
   }
 
   // Bordures du bassin
@@ -6847,25 +6960,30 @@ function pushTargetOutOfCreature(c, avoidX, avoidY, fallbackNx, fallbackNy) {
   }
 }
 
+const _collisionCreatures = [];
+const MIN_CREATURE_SEPARATION_SQ = MIN_CREATURE_SEPARATION * MIN_CREATURE_SEPARATION;
+
 function resolveCreatureCollisions(dt) {
-  const all = [];
-  if (state.user) all.push(state.user);
+  _collisionCreatures.length = 0;
+  if (state.user) _collisionCreatures.push(state.user);
   for (const uid in state.players) {
-    if (state.players[uid]) all.push(state.players[uid]);
+    if (state.players[uid]) _collisionCreatures.push(state.players[uid]);
   }
   for (const bot of state.bots) {
-    if (bot) all.push(bot);
+    if (bot) _collisionCreatures.push(bot);
   }
 
   const blend = Math.min(1, Math.max(0.2, dt * 10));
-  for (let i = 0; i < all.length; i++) {
-    const a = all[i];
-    for (let j = i + 1; j < all.length; j++) {
-      const b = all[j];
+  const len = _collisionCreatures.length;
+  for (let i = 0; i < len; i++) {
+    const a = _collisionCreatures[i];
+    for (let j = i + 1; j < len; j++) {
+      const b = _collisionCreatures[j];
       const dx = a.x - b.x;
       const dy = a.y - b.y;
-      const dist = Math.hypot(dx, dy);
-      if (dist < MIN_CREATURE_SEPARATION) {
+      const distSq = dx * dx + dy * dy;
+      if (distSq < MIN_CREATURE_SEPARATION_SQ) {
+        const dist = Math.sqrt(distSq);
         let nx, ny;
         if (dist > 0.01) {
           nx = dx / dist;
@@ -7037,10 +7155,28 @@ function gameLoop(now) {
   ctx.scale(state.camera.zoom, state.camera.zoom);
   ctx.translate(-state.camera.x, -state.camera.y);
 
-  drawWorldSubstrate(ctx, now);
+  const halfViewW = (viewW * 0.5) / state.camera.zoom;
+  const halfViewH = (viewH * 0.5) / state.camera.zoom;
+  const cullMinX = state.camera.x - halfViewW;
+  const cullMaxX = state.camera.x + halfViewW;
+  const cullMinY = state.camera.y - halfViewH;
+  const cullMaxY = state.camera.y + halfViewH;
+  const fxPad = 64;
+  const fxMinX = cullMinX - fxPad;
+  const fxMaxX = cullMaxX + fxPad;
+  const fxMinY = cullMinY - fxPad;
+  const fxMaxY = cullMaxY + fxPad;
+  const creaturePad = 170;
+  const crMinX = cullMinX - creaturePad;
+  const crMaxX = cullMaxX + creaturePad;
+  const crMinY = cullMinY - creaturePad;
+  const crMaxY = cullMaxY + creaturePad;
+
+  drawWorldSubstrate(ctx, now, cullMinX, cullMaxX, cullMinY, cullMaxY);
 
   // Empreintes et traces au sol (Type F)
   for (const fp of state.footprints) {
+    if (fp.x < fxMinX || fp.x > fxMaxX || fp.y < fxMinY || fp.y > fxMaxY) continue;
     const fade = Math.max(0, Math.min(1, fp.life / (fp.maxLife || 1.5)));
     ctx.fillStyle = `hsla(${fp.hue || 199}, 85%, 65%, ${fade * (fp.alpha || 0.45)})`;
     ctx.beginPath();
@@ -7049,50 +7185,56 @@ function gameLoop(now) {
   }
 
   // Anneaux vortex (Type G)
-  for (const v of state.vortexRings) {
-    ctx.save();
-    ctx.strokeStyle = `rgba(192, 132, 252, ${Math.max(0, (v.life / 0.8) * 0.4)})`;
+  if (state.vortexRings.length > 0) {
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(v.x, v.y, v.r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    for (const v of state.vortexRings) {
+      if (v.x < fxMinX || v.x > fxMaxX || v.y < fxMinY || v.y > fxMaxY) continue;
+      const rad = v.r || v.radius || 4;
+      ctx.strokeStyle = `rgba(192, 132, 252, ${Math.max(0, (v.life / 0.8) * 0.4)})`;
+      ctx.beginPath();
+      ctx.arc(v.x, v.y, rad, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   // Vagues de pression (Type H)
-  for (const w of state.waterWaves) {
-    ctx.save();
-    ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0, (w.life / 0.9) * 0.4)})`;
+  if (state.waterWaves.length > 0) {
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    for (const w of state.waterWaves) {
+      if (w.x < fxMinX || w.x > fxMaxX || w.y < fxMinY || w.y > fxMaxY) continue;
+      const rad = w.r || w.radius || 6;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0, (w.life / 0.9) * 0.4)})`;
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, rad, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   // Ondes de clic destination
-  for (const r of state.ripples) {
-    ctx.save();
-    ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0, r.alpha)})`;
+  if (state.ripples.length > 0) {
     ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    for (const r of state.ripples) {
+      if (r.x < fxMinX || r.x > fxMaxX || r.y < fxMinY || r.y > fxMaxY) continue;
+      ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0, r.alpha)})`;
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   // Bulles
   for (const b of state.bubbles) {
-    ctx.save();
-    ctx.fillStyle = `rgba(125, 211, 252, ${Math.max(0, b.alpha * 0.6)})`;
+    if (b.x < fxMinX || b.x > fxMaxX || b.y < fxMinY || b.y > fxMaxY) continue;
+    const bAlpha = typeof b.alpha === 'number' ? b.alpha : Math.max(0, b.life / (b.maxLife || 0.45));
+    ctx.fillStyle = `rgba(125, 211, 252, ${Math.max(0, bAlpha * 0.6)})`;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
 
   // Plancton
   for (const p of state.plankton) {
+    if (p.x < cullMinX - 10 || p.x > cullMaxX + 10 || p.y < cullMinY - 10 || p.y > cullMaxY + 10) continue;
     const pulse = 0.5 + 0.5 * Math.sin(now * 0.003 + p.phase);
     ctx.fillStyle = `hsla(${p.hue}, 80%, 65%, ${0.25 + pulse * 0.45})`;
     ctx.beginPath();
@@ -7106,15 +7248,17 @@ function gameLoop(now) {
   drawVanishEffects(ctx);
   drawAppearEffects(ctx);
 
-  // Bots autonomes
+  // Bots autonomes (cullés hors viewport)
   for (const bot of state.bots) {
+    if (bot.x < crMinX || bot.x > crMaxX || bot.y < crMinY || bot.y > crMaxY) continue;
     drawCreatureAny(ctx, bot, false, true);
     drawSpeechBubble(ctx, bot, now);
   }
 
-  // Joueurs distants Firebase
+  // Joueurs distants Firebase (cullés hors viewport)
   for (const uid in state.players) {
     const p = state.players[uid];
+    if (p.x < crMinX || p.x > crMaxX || p.y < crMinY || p.y > crMaxY) continue;
     drawCreatureAny(ctx, p, false, true);
     drawSpeechBubble(ctx, p, now);
   }
@@ -7128,7 +7272,7 @@ function gameLoop(now) {
   ctx.restore();
   ctx.restore();
 
-  drawMiniHudPreview();
+  drawMiniHudPreview(now);
 
   requestAnimationFrame(gameLoop);
 }
@@ -7489,10 +7633,25 @@ function updateHudUI() {
   updateOnlineCounter();
 }
 
-function drawMiniHudPreview() {
-  const mini = document.getElementById('hudMiniCanvas');
-  if (!mini || !state.user) return;
-  const mctx = mini.getContext('2d');
+let _miniHudCanvas = null;
+let _miniHudCtx = null;
+let _lastMiniHudDrawAt = 0;
+
+function drawMiniHudPreview(now) {
+  if (!state.user) return;
+  const ts = typeof now === 'number' ? now : performance.now();
+  const minInterval = IS_MOBILE_DEVICE ? 66 : 33;
+  if (ts - _lastMiniHudDrawAt < minInterval) return;
+  _lastMiniHudDrawAt = ts;
+
+  if (!_miniHudCanvas) {
+    _miniHudCanvas = document.getElementById('hudMiniCanvas');
+    if (!_miniHudCanvas) return;
+    _miniHudCtx = _miniHudCanvas.getContext('2d');
+  }
+  const mini = _miniHudCanvas;
+  const mctx = _miniHudCtx;
+  if (!mctx) return;
   mctx.clearRect(0, 0, mini.width, mini.height);
 
   mctx.save();
@@ -8747,6 +8906,6 @@ window.addEventListener('keydown', () => {
 initWorld();
 requestAnimationFrame(gameLoop);
 </script>
-<div class="version-badge">v1.1</div>
+<div class="version-badge">v1.11</div>
 </body>
 </html>
