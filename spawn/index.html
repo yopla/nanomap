@@ -1,353 +1,222 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
-<title>SPAWN — Arcade Mini-Jeux</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    width: 100%; height: 100%; height: 100dvh;
-    background: #070b14; color: #e6f4ff;
-    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-    overflow: hidden;
-  }
-  .app {
-    display: flex; flex-direction: column;
-    width: 100%; height: 100%; height: 100dvh;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-  .topbar {
-    flex: 0 0 auto;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-    padding: 10px 12px;
-    background: #0f1728;
-    border-bottom: 2px solid #244a69;
-    z-index: 20;
-  }
-  .sel-wrap {
-    flex: 1 1 240px; min-width: 180px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  select#gameSel {
-    width: 100%; min-height: 50px;
-    background: #16233b; color: #e6f4ff;
-    border: 2px solid #38d6ff; border-radius: 12px;
-    padding: 11px 12px; font-size: 16px; font-weight: 700;
-    outline: none; cursor: pointer;
-  }
-  .file-badge {
-    flex: 0 1 auto;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 14px; font-weight: 700; color: #7dd3fc;
-    background: #0b1322; border: 1.5px solid #23415c;
-    border-radius: 10px; padding: 9px 12px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 280px;
-  }
-  .counter {
-    font-size: 14px; color: #cbd5e1; font-weight: 800; white-space: nowrap;
-  }
-  .btns {
-    display: flex; align-items: center; gap: 10px; flex-wrap: nowrap;
-  }
-  button.ctrl {
-    min-height: 52px;
-    background: #18304d; color: #e8faff;
-    border: 2px solid #38d6ff; border-radius: 12px;
-    padding: 12px 18px; font-size: 17px; font-weight: 800;
-    cursor: pointer; white-space: nowrap;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-    transition: background 0.12s, transform 0.08s;
-  }
-  button.ctrl:active { transform: scale(0.95); background: #22466e; }
-  button.ctrl.accent { background: #1e4670; border-color: #67e8f9; }
-  button.ctrl.help-btn {
-    min-width: 58px; min-height: 52px;
-    padding: 0 18px;
-    font-size: 28px; font-weight: 900; line-height: 1;
-    background: #332509; color: #fde047;
-    border: 2.5px solid #facc15;
-    box-shadow: 0 0 14px rgba(250, 204, 21, 0.35);
-  }
-  button.ctrl.help-btn:active,
-  button.ctrl.help-btn.open {
-    background: #facc15; color: #0b1322;
-  }
-  .fs-pill.fs-help {
-    min-width: 52px; padding: 6px 16px;
-    font-size: 24px; font-weight: 900; line-height: 1;
-    color: #fde047; border-color: #facc15;
-    background: rgba(51, 37, 9, 0.92);
-  }
-  .fs-pill.fs-help.open { background: #facc15; color: #0b1322; }
-  /* Objective modal (shows ONLY the game objective) */
-  #goalBackdrop {
-    position: fixed; inset: 0;
-    display: none; align-items: flex-start; justify-content: center;
-    padding-top: calc(78px + env(safe-area-inset-top));
-    background: rgba(4, 8, 16, 0.55);
-    backdrop-filter: blur(3px);
-    z-index: 9600;
-  }
-  #goalBackdrop.show { display: flex; }
-  #goalBox {
-    max-width: min(640px, 92vw);
-    background: rgba(12, 20, 36, 0.97);
-    border: 2.5px solid #facc15;
-    border-radius: 16px;
-    padding: 20px 26px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
-    color: #fef9c3;
-    font-size: 20px; font-weight: 700; line-height: 1.45;
-    text-align: center;
-    cursor: pointer;
-  }
-  .stage {
-    position: relative; flex: 1 1 auto; width: 100%; min-height: 0;
-    background: #0a0e18;
-  }
-  iframe#gameFrame {
-    width: 100%; height: 100%; border: 0; display: block;
-    background: #0a0e18;
-  }
-  /* Fullscreen / Immersive mode */
-  .app.immersive .topbar { display: none; }
-  .fs-float {
-    position: fixed;
-    top: calc(10px + env(safe-area-inset-top));
-    right: calc(10px + env(safe-area-inset-right));
-    display: none; gap: 8px; z-index: 9000;
-  }
-  .app.immersive .fs-float { display: flex; }
-  .fs-pill {
-    min-height: 48px;
-    background: rgba(15, 23, 40, 0.86);
-    color: #e6f4ff; border: 2px solid rgba(56, 214, 255, 0.85);
-    border-radius: 999px; padding: 10px 16px;
-    font-size: 17px; font-weight: 800; cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(6px);
-  }
-  .fs-pill:active { transform: scale(0.95); }
-  .fs-name-pill {
-    position: fixed;
-    bottom: calc(10px + env(safe-area-inset-bottom));
-    left: 50%; transform: translateX(-50%);
-    display: none;
-    background: rgba(11, 19, 34, 0.78);
-    color: #7dd3fc; border: 1.5px solid rgba(56, 214, 255, 0.45);
-    border-radius: 999px; padding: 5px 14px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 13px; font-weight: 700; z-index: 8999; pointer-events: none;
-  }
-  .app.immersive .fs-name-pill { display: block; }
-  /* Result toast */
-  #resToast {
-    position: fixed;
-    bottom: calc(16px + env(safe-area-inset-bottom));
-    left: 50%; transform: translateX(-50%);
-    display: none; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
-    background: rgba(12, 20, 36, 0.96);
-    border: 2px solid #38d6ff; border-radius: 14px;
-    padding: 12px 16px; z-index: 9500;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.7);
-    max-width: 96vw; font-size: 15px; font-weight: 700;
-  }
-  #resToast.show { display: flex; }
-  @media (max-width: 720px) {
-    .topbar { padding: 8px 10px; gap: 8px; }
-    .sel-wrap { flex: 1 1 100%; }
-    .file-badge { max-width: 72vw; font-size: 13px; padding: 6px 10px; }
-    .btns { width: 100%; gap: 8px; }
-    .btns button.ctrl { flex: 1 1 0; padding: 13px 10px; font-size: 16px; min-height: 54px; }
-    .btns button.ctrl.help-btn { flex: 0 0 60px; padding: 0; font-size: 28px; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>SPAWN — Dérive sur la Spirale</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-<div class="app" id="app">
-  <header class="topbar">
-    <div class="sel-wrap">
-      <select id="gameSel" aria-label="Choisir un mini-jeu"></select>
+  <div id="app" class="app-shell">
+    <!-- Barre supérieure de ressources (révélation strictement progressive) -->
+    <header class="hud-top">
+      <div class="hud-brand">
+        <span class="brand-title" id="brand-title">SPAWN</span>
+        <span id="zone-badge" class="zone-badge zone-forgot">ForgotLands</span>
+      </div>
+
+      <div id="resource-bar" class="resource-bar">
+        <div id="res-fuel" class="res-pill res-fuel" style="display:none;">
+          <span class="res-icon">◆</span>
+          <span class="res-label" id="lbl-fuel">Fuel</span>
+          <span class="res-value" id="val-fuel">40/96</span>
+        </div>
+        <div id="res-coque" class="res-pill res-coque" style="display:none;">
+          <span class="res-icon">⬡</span>
+          <span class="res-label" id="lbl-coque">Coque</span>
+          <span class="res-value" id="val-coque">24/48</span>
+        </div>
+        <div id="res-scan" class="res-pill res-scan" style="display:none;">
+          <span class="res-icon">◎</span>
+          <span class="res-label" id="lbl-scan">Scan</span>
+          <span class="res-value" id="val-scan">16/48</span>
+        </div>
+        <div id="res-hyper" class="res-pill res-hyper" style="display:none;">
+          <span class="res-icon">⟐</span>
+          <span class="res-label" id="lbl-hyper">Hyper</span>
+          <span class="res-value" id="val-hyper">3/12</span>
+        </div>
+        <div id="res-t2s" class="res-pill res-t2s" style="display:none;">
+          <span class="res-icon">◷</span>
+          <span class="res-label" id="lbl-t2s">T2s</span>
+          <span class="res-value" id="val-t2s">6/96</span>
+        </div>
+        <div id="res-lum" class="res-pill res-lum" style="display:none;">
+          <span class="res-icon">✦</span>
+          <span class="res-label" id="lbl-lum">Lum</span>
+          <span class="res-value" id="val-lum">0</span>
+        </div>
+      </div>
+
+      <div class="hud-meta">
+        <span id="shield-badge" class="shield-badge" style="display:none;">✦ Bouclier Lum actif</span>
+        <button id="btn-audio" class="icon-btn" title="Son activé / coupé" aria-label="Son">🔊</button>
+        <button id="btn-journal" class="icon-btn" style="display:none;" title="Ouvrir le Journal (J)">Journal</button>
+      </div>
+    </header>
+
+    <!-- Ligne d'objectif contextuel ("murmure") -->
+    <div id="whisper-bar" class="whisper-bar">
+      <span id="whisper-text"></span>
+      <span id="coords-readout" class="coords-readout" style="display:none;"></span>
     </div>
-    <span class="file-badge" id="fileLabel" title="Fichier HTML chargé">—</span>
-    <span class="counter" id="counterLabel">0/0</span>
-    <div class="btns">
-      <button class="ctrl help-btn" id="btnHelp" title="Objectif du jeu" aria-label="Objectif du jeu" aria-expanded="false">?</button>
-      <button class="ctrl accent" id="btnRandom" title="Mini-jeu aléatoire">🎲 Random</button>
-      <button class="ctrl" id="btnNext" title="Mini-jeu suivant">⏭️ Suivant</button>
-      <button class="ctrl" id="btnFs" title="Plein écran">⛶ Plein écran</button>
+
+    <!-- Bannière narrative non bloquante -->
+    <div id="story-toast" class="story-toast" style="display:none;">
+      <div class="toast-kicker" id="toast-kicker"></div>
+      <div class="toast-title" id="toast-title"></div>
+      <div class="toast-body" id="toast-body"></div>
+      <div class="toast-unlock" id="toast-unlock"></div>
     </div>
-  </header>
 
-  <main class="stage">
-    <iframe id="gameFrame" allow="fullscreen" allowfullscreen></iframe>
-  </main>
+    <!-- Zone centrale : Canvas carré + Panneau contextuel -->
+    <main class="main-stage">
+      <div class="viewport-wrap" id="viewport-wrap">
+        <canvas id="game-canvas" width="576" height="576"></canvas>
 
-  <div class="fs-float">
-    <button class="fs-pill fs-help" id="fsHelp" title="Objectif du jeu" aria-label="Objectif du jeu" aria-expanded="false">?</button>
-    <button class="fs-pill" id="fsRandom" title="Aléatoire">🎲</button>
-    <button class="fs-pill" id="fsNext" title="Suivant">⏭️</button>
-    <button class="fs-pill" id="fsExit" title="Quitter plein écran">✕ Barre</button>
+        <!-- Croix directionnelle discrète (tactile / souris) -->
+        <div id="dpad" class="dpad" style="display:none;">
+          <button class="dpad-btn dpad-up" data-dir="up" title="Haut (Z / ↑)">▲</button>
+          <button class="dpad-btn dpad-left" data-dir="left" title="Gauche (Q / ←)">◀</button>
+          <button class="dpad-btn dpad-center" data-dir="interact" title="Inspecter (Espace)">◎</button>
+          <button class="dpad-btn dpad-right" data-dir="right" title="Droite (D / →)">▶</button>
+          <button class="dpad-btn dpad-down" data-dir="down" title="Bas (S / ↓)">▼</button>
+        </div>
+
+        <!-- Indicateur de mode visée HyperJump -->
+        <div id="aim-banner" class="aim-banner" style="display:none;">
+          <span id="aim-text"></span> · <button id="btn-cancel-aim" class="inline-link">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Panneau contextuel du lieu sélectionné / survolé par le vaisseau -->
+      <aside id="context-panel" class="context-panel" style="display:none;">
+        <div class="panel-header">
+          <div>
+            <div class="panel-kicker" id="ctx-kicker"></div>
+            <h2 class="panel-title" id="ctx-title"></h2>
+          </div>
+          <span class="panel-id" id="ctx-id"></span>
+        </div>
+
+        <p class="panel-text" id="ctx-text"></p>
+        <div class="panel-meta" id="ctx-meta" style="display:none;"></div>
+        <div class="panel-actions" id="ctx-actions"></div>
+      </aside>
+    </main>
+
+    <!-- Barre d'outils progressive -->
+    <footer id="toolbar" class="toolbar" style="display:none;">
+      <button id="tool-hyper" class="tool-btn" style="display:none;" title="Activer la visée HyperJump (H)">
+        <span class="tool-icon">⟐</span>
+        <span class="tool-name" id="lbl-tool-hyper">HyperJump</span>
+        <span class="tool-cost" id="cost-tool-hyper">-1 H</span>
+      </button>
+
+      <button id="tool-radar" class="tool-btn" style="display:none;" title="Orienter la boussole vers l'étoile la plus proche">
+        <span class="tool-icon">⌖</span>
+        <span class="tool-name" id="lbl-tool-radar">LocatStar</span>
+        <span class="tool-cost" id="cost-tool-radar">Gratuit</span>
+      </button>
+
+      <div id="tool-compass-group" class="tool-group" style="display:none;">
+        <span class="group-label" id="lbl-compass-group">Boussole :</span>
+        <button class="tool-chip" data-compass="0" id="cmp-0" style="display:none;">B·0</button>
+        <button class="tool-chip" data-compass="500" id="cmp-500" style="display:none;">B·500</button>
+        <button class="tool-chip" data-compass="400" id="cmp-400" style="display:none;">B·400</button>
+        <button class="tool-chip" data-compass="256" id="cmp-256" style="display:none;">B·256</button>
+        <button class="tool-chip" data-compass="3030" id="cmp-3030" style="display:none;">B·714</button>
+        <button class="tool-chip" data-compass="clear" id="cmp-clear" style="display:none;">✕</button>
+      </div>
+
+      <div id="tool-go-group" class="tool-group" style="display:none;">
+        <span class="group-label" id="lbl-go-group">Balises :</span>
+        <button class="tool-chip accent-cyan" data-go="0" id="go-0" style="display:none;">Go·0 <small>1H</small></button>
+        <button class="tool-chip accent-cyan" data-go="500" id="go-500" style="display:none;">Go·500 <small>1H</small></button>
+        <button class="tool-chip accent-cyan" data-go="400" id="go-400" style="display:none;">Go·400 <small>1H</small></button>
+        <button class="tool-chip accent-magenta" data-go="rnd" id="go-rnd" style="display:none;">Go·RND <small>1H</small></button>
+      </div>
+
+      <button id="tool-shield" class="tool-btn accent-gold" style="display:none;" title="Bloquer le prochain malus">
+        <span class="tool-icon">✦</span>
+        <span class="tool-name" id="lbl-tool-shield">Bouclier</span>
+        <span class="tool-cost" id="cost-tool-shield">-2 L</span>
+      </button>
+
+      <button id="tool-convert" class="tool-btn" style="display:none;" title="Convertir le T2s en ressources">
+        <span class="tool-icon">◷</span>
+        <span class="tool-name" id="lbl-tool-convert">Recycler T2s</span>
+        <span class="tool-cost" id="cost-tool-convert">T2s</span>
+      </button>
+
+      <button id="tool-refill" class="tool-btn accent-emerald" style="display:none;" title="Régénérer les planètes dans un rayon de 10 cases">
+        <span class="tool-icon">↻</span>
+        <span class="tool-name" id="lbl-tool-refill">REFILL16</span>
+        <span class="tool-cost" id="cost-tool-refill">-12 S</span>
+      </button>
+
+      <button id="tool-reseed" class="tool-btn accent-magenta" style="display:none;" title="Générer une nouvelle spirale (RESEED)">
+        <span class="tool-icon">∞</span>
+        <span class="tool-name" id="lbl-tool-reseed">RESEED</span>
+        <span class="tool-cost" id="cost-tool-reseed">Nouvel élan</span>
+      </button>
+    </footer>
   </div>
-  <div class="fs-name-pill" id="fsNameLabel"></div>
 
-  <div id="goalBackdrop" role="dialog" aria-modal="true" aria-label="Objectif du jeu">
-    <div id="goalBox"><span id="goalText"></span></div>
+  <!-- Modale Journal / Convertisseur / Soute -->
+  <div id="modal-journal" class="modal-backdrop" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="journal-title">Journal de Bord &amp; Systèmes</h3>
+        <button id="btn-close-journal" class="icon-btn">Fermer</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="tab-btn active" data-tab="story"><span id="lbl-tab-story">Récit</span></button>
+        <button class="tab-btn" data-tab="stars"><span id="lbl-tab-stars">Étoiles</span> (<span id="tab-stars-count">0</span>)</button>
+        <button class="tab-btn" data-tab="cargo" id="tab-btn-cargo" style="display:none;"><span id="lbl-tab-cargo">Soute</span> (<span id="tab-cargo-count">0</span>)</button>
+        <button class="tab-btn" data-tab="convert" id="tab-btn-convert" style="display:none;"><span id="lbl-tab-convert">Recycleur T2s</span></button>
+        <button class="tab-btn" data-tab="system"><span id="lbl-tab-system">Système</span></button>
+      </div>
+      <div class="modal-body" id="journal-body"></div>
+    </div>
   </div>
 
-  <div id="resToast">
-    <span id="resText"></span>
-    <button class="ctrl" id="toastReplay">🔄</button>
-    <button class="ctrl accent" id="toastRandom">🎲 Random</button>
-    <button class="ctrl" id="toastNext">⏭️ Suivant</button>
-    <button class="ctrl" id="toastClose">✕</button>
+  <!-- Overlay Intro -->
+  <div id="overlay-intro" class="overlay-screen">
+    <div class="overlay-card">
+      <div class="overlay-kicker" id="intro-kicker"></div>
+      <h1 class="overlay-title" id="intro-title">SPAWN</h1>
+      <p class="overlay-lead" id="intro-lead"></p>
+      <p class="overlay-sub" id="intro-sub"></p>
+      <div class="overlay-actions">
+        <button id="btn-start-new" class="primary-btn"></button>
+        <button id="btn-resume-save" class="secondary-btn" style="display:none;"></button>
+      </div>
+    </div>
   </div>
-</div>
 
-<script>
-const CATALOG = /*JEUX_CATALOG_JSON*/[{"family":"sideClavSimple","file":"aster.html","folder":"minigames","goal":"Se poser en douceur sur les 4 plateformes dorées.","icon":"🛸","id":"aster","name":"Atterrisseur Caverne (Aster)","path":"jeux/minigames/aster.html"},{"family":"clavDir","file":"barque.html","folder":"minigames","goal":"Collecter les 8 balises flottantes avant la fin du chrono sans vider votre énergie hors des barges.","icon":"🛶","id":"barque","name":"Barges Dérivantes (Barque)","path":"jeux/minigames/barque.html"},{"family":"topMouseMut","file":"blocs.html","folder":"minigames","goal":"Guider 10 drones dans les zones vertes d'extraction en évitant les mines rouges.","icon":"🔴","id":"blocs","name":"Nuée Blocs","path":"jeux/minigames/blocs.html"},{"family":"zooEcosys","file":"bugg.html","folder":"minigames","goal":"Faire prospérer la colonie jusqu'à 22 bugs vivants avant la fin du chrono.","icon":"🪲","id":"bugg","name":"Évolution Génétique (Bugg)","path":"jeux/minigames/bugg.html"},{"family":"clavDir","file":"catchemall.html","folder":"minigames","goal":"Convertir simultanément les 12 disques en bleu.","icon":"🪢","id":"catchemall","name":"Lasso Ruban (CatchEmAll)","path":"jeux/minigames/catchemall.html"},{"family":"core","file":"creuseur.html","folder":"minigames","goal":"Excaver tous les blocs de minerai avant la fin du chrono.","icon":"⛏️","id":"creuseur","name":"Creuseur Radial","path":"jeux/minigames/creuseur.html"},{"family":"topMouseHnS","file":"diabi.html","folder":"minigames","goal":"Activer les 5 balises lumineuses sur les sommets avant la fin du chrono.","icon":"⛰️","id":"diabi","name":"Crêtes Isométriques (Diabi)","path":"jeux/minigames/diabi.html"},{"family":"core","file":"diger.html","folder":"minigames","goal":"Extraire tous les cristaux lumineux avant la fin du chrono sans percer 3 poches instables.","icon":"💎","id":"diger","name":"Foreuse Autonome (Diger)","path":"jeux/minigames/diger.html"},{"family":"core","file":"fluid.html","folder":"minigames","goal":"Balayer 70% des particules dans le vortex collecteur.","icon":"🌊","id":"fluid","name":"Courant Fluide","path":"jeux/minigames/fluid.html"},{"family":"clavDir","file":"folotete.html","folder":"minigames","goal":"Détruire les 5 drones autonomes avant la fin du chrono.","icon":"🚀","id":"folotete","name":"Duel Vectoriel (FoloTete)","path":"jeux/minigames/folotete.html"},{"family":"income","file":"fusee.html","folder":"minigames","goal":"Collecter 10 étoiles d'énergie sans détruire votre coque (3 PV).","icon":"🚀","id":"fusee","name":"Fusée Propulsée (Fusée)","path":"jeux/minigames/fusee.html"},{"family":"clavDir","file":"glide.html","folder":"minigames","goal":"Pulvériser tous les astéroïdes et leurs fragments avant la fin du chrono sans perdre vos 3 points de coque.","icon":"🛰️","id":"glide","name":"Glisseur Astéroïdes (Glide)","path":"jeux/minigames/glide.html"},{"family":"topMouseMut","file":"gliss.html","folder":"minigames","goal":"Pousser les 5 sphères dans les 4 poches d'angle vertes.","icon":"🧊","id":"gliss","name":"Pare-Chocs Gliss","path":"jeux/minigames/gliss.html"},{"family":"sideClavSimple","file":"grav.html","folder":"minigames","goal":"Collecter les 8 balises orbitales sans vous faire toucher par les satellites rouges.","icon":"🪐","id":"grav","name":"Orbite Planétoïde (Grav)","path":"jeux/minigames/grav.html"},{"family":"topMouseMut","file":"grf.html","folder":"minigames","goal":"Récupérer les 6 cœurs d'énergie dispersés dans les salles avant la fin du chrono.","icon":"🗺️","id":"grf","name":"Complexe 2.5D (GRF)","path":"jeux/minigames/grf.html"},{"family":"topMouseMut","file":"hyper.html","folder":"minigames","goal":"Collecter les 8 balises hyperespace avant la fin du chrono sans détruire votre bouclier.","icon":"🌌","id":"hyper","name":"Dérive Hyper","path":"jeux/minigames/hyper.html"},{"family":"zooEcosys","file":"invaiz.html","folder":"minigames","goal":"Ramener le nombre d'infectés à 0 avant la fin du chrono (et avant 60% de contagion).","icon":"🦠","id":"invaiz","name":"Quarantaine Virale (Invaiz)","path":"jeux/minigames/invaiz.html"},{"family":"core","file":"invglid.html","folder":"minigames","goal":"Retrouver et valider les 8 fiches du journal avant la fin du chrono sans faire 3 erreurs.","icon":"📜","id":"invglid","name":"Journal Inertiel (InvGlid)","path":"jeux/minigames/invglid.html"},{"family":"clavDir","file":"isobo.html","folder":"minigames","goal":"Collecter les 7 pylônes de données dorés avant la fin du chrono sans perdre vos 3 points de blindage.","icon":"🦿","id":"isobo","name":"Automate Isométrique (IsoBo)","path":"jeux/minigames/isobo.html"},{"family":"topMouseHnS","file":"isoo.html","folder":"minigames","goal":"Collecter les 8 cristaux flottants sans tomber dans le vide ni percuter les pylônes rouges.","icon":"🔮","id":"isoo","name":"Sphère Iso (Isoo)","path":"jeux/minigames/isoo.html"},{"family":"topOrthoClav","file":"isotir.html","folder":"minigames","goal":"Détruire les 10 drones de l'arène isométrique avant expiration sans perdre vos 3 points de coque.","icon":"💎","id":"isotir","name":"Arène Isométrique (IsoTir)","path":"jeux/minigames/isotir.html"},{"family":"topOrthoClav","file":"labycool.html","folder":"minigames","goal":"Rejoindre la brèche de sortie verte en bas à droite avant la fin du chrono.","icon":"🌈","id":"labycool","name":"Labyrinthe Éclair (LabyCool)","path":"jeux/minigames/labycool.html"},{"family":"core","file":"lurd.html","folder":"minigames","goal":"Éjecter les deux culbutos par le haut ouvert du puits.","icon":"🎯","id":"lurd","name":"Culbuto Daruma (Lurd)","path":"jeux/minigames/lurd.html"},{"family":"topOrthoClav","file":"mazy.html","folder":"minigames","goal":"Récupérer les 4 clés dorées puis rejoindre le portail vert en bas à droite.","icon":"🏛️","id":"mazy","name":"Couloirs Piliers (Mazy)","path":"jeux/minigames/mazy.html"},{"family":"clavDir","file":"micromach.html","folder":"minigames","goal":"Franchir la ligne d'arrivée à damier tout en haut sous 35s.","icon":"🏎️","id":"micromach","name":"Sprint MicroMach","path":"jeux/minigames/micromach.html"},{"family":"topOrthoClav","file":"minjap.html","folder":"minigames","goal":"Explorer le donjon à la lanterne et récupérer les 5 reliques lumineuses en esquivant les sentinelles d'ombre.","icon":"🔦","id":"minjap","name":"Donjon Lanterne (MinJap)","path":"jeux/minigames/minjap.html"},{"family":"income","file":"mongolfiere.html","folder":"minigames","goal":"Capturer 10 cellules thermiques dorées avec votre enveloppe avant la fin du chrono.","icon":"🎈","id":"mongolfiere","name":"Enveloppe Montgolfière (Mongolfière)","path":"jeux/minigames/mongolfiere.html"},{"family":"topMouseHnS","file":"pab.html","folder":"minigames","goal":"Vaincre le Boss final sans perdre vos 5 boucliers.","icon":"⚡","id":"pab","name":"Tranche-Éclair (PAB)","path":"jeux/minigames/pab.html"},{"family":"topOrthoClav","file":"pac.html","folder":"minigames","goal":"Ramasser les 32 pastilles sans percuter un gardien rouge.","icon":"🍒","id":"pac","name":"Moisson Wireframe (Pac)","path":"jeux/minigames/pac.html"},{"family":"topOrthoClav","file":"pacver.html","folder":"minigames","goal":"Récolter 20 pommes avant la fin du chrono sans vous faire dévorer par les vers éclos.","icon":"🍎","id":"pacver","name":"Propulseur Vers (PacVer)","path":"jeux/minigames/pacver.html"},{"family":"rogTil","file":"pat.html","folder":"minigames","goal":"Récolter plus d'herbe verte que les pigeons sans vous faire attraper.","icon":"👁️","id":"pat","name":"Moisson Furtive (Pat AI)","path":"jeux/minigames/pat.html"},{"family":"sideClavSimple","file":"plat.html","folder":"minigames","goal":"Récupérer la clé et collecter les 5 jetons dorés en évitant pics et patrouilleurs.","icon":"🏃","id":"plat","name":"Plateformes Néon (Plat)","path":"jeux/minigames/plat.html"},{"family":"zooEcosys","file":"proie.html","folder":"minigames","goal":"Maintenir les 3 espèces vivantes simultanément pendant 25 secondes.","icon":"🌿","id":"proie","name":"Biosphère Trophique (Proie)","path":"jeux/minigames/proie.html"},{"family":"core","file":"robots.html","folder":"minigames","goal":"Détruire tous les robots poursuivants par collision.","icon":"🤖","id":"robots","name":"Robots Tactiques","path":"jeux/minigames/robots.html"},{"family":"sideClavSimple","file":"roul.html","folder":"minigames","goal":"Collecter les 6 noyaux dorés et franchir le portail final avant la fin du chrono.","icon":"🟢","id":"roul","name":"Sphère Roulante (Roul)","path":"jeux/minigames/roul.html"},{"family":"sideClavSimple","file":"saut.html","folder":"minigames","goal":"Détruire les 6 cibles lumineuses en leur lançant les cubes bondissants.","icon":"📦","id":"saut","name":"Lancer-Saut (Saut)","path":"jeux/minigames/saut.html"},{"family":"core","file":"sim.html","folder":"minigames","goal":"Ranger intégralement toutes les pièces dans la soute sans chevauchement.","icon":"🧩","id":"sim","name":"Soute Polyomino (SIM)","path":"jeux/minigames/sim.html"},{"family":"topOrthoClav","file":"sok.html","folder":"minigames","goal":"Placer les 4 caisses sur les socles verts avant la fin du chrono.","icon":"📦","id":"sok","name":"Pousseur Sokoban (Sok)","path":"jeux/minigames/sok.html"},{"family":"core","file":"swarm.html","folder":"minigames","goal":"Maintenir 75% de l'essaim dans l'anneau vert jusqu'à charge 100%.","icon":"🐝","id":"swarm","name":"Swarm Floy","path":"jeux/minigames/swarm.html"},{"family":"topOrthoClav","file":"telep.html","folder":"minigames","goal":"Collecter les 8 orbes de résonance dans les 4 chambres sans toucher les sentinelles.","icon":"🌀","id":"telep","name":"Chambres de Warp (Telep)","path":"jeux/minigames/telep.html"},{"family":"topMouseMut","file":"tir.html","folder":"minigames","goal":"Traverser 4 salles consécutives en atteignant le portail vert de chaque salle.","icon":"☄️","id":"tir","name":"Laisse Inertielle (Tir)","path":"jeux/minigames/tir.html"},{"family":"topOrthoClav","file":"trail.html","folder":"minigames","goal":"Collecter les 18 noyaux dorés avant la fin du chrono sans laisser une étincelle toucher votre tête.","icon":"〰️","id":"trail","name":"Sillage Anneaux (Trail)","path":"jeux/minigames/trail.html"},{"family":"sideClavSimple","file":"vol.html","folder":"minigames","goal":"Collecter les 7 cristaux lumineux avant la fin du chrono sans briser la coque.","icon":"🦇","id":"vol","name":"Vol Caverne (Vol)","path":"jeux/minigames/vol.html"},{"family":"tactical","file":"wg.html","folder":"minigames","goal":"Neutraliser toutes les tourelles rouges adverses.","icon":"⚔️","id":"wg","name":"Escarmouche Labyrinthe (WG)","path":"jeux/minigames/wg.html"},{"family":"income","file":"zombies.html","folder":"minigames","goal":"Récupérer les 8 noyaux dorés dans le dédale sans perdre vos 3 vies.","icon":"🧟","id":"zombies","name":"Vague de Zombies (Zombies)","path":"jeux/minigames/zombies.html"},{"family":"topOrthoClav","file":"aig.html","folder":"minigame2","goal":"Valider les 6 stations dorées en commutant les aiguillages et en évitant le drone rouge.","icon":"🚂","id":"aig","name":"Aiguillage Rail (Aig)","path":"jeux/minigame2/aig.html"},{"family":"topMouseHnS","file":"appr.html","folder":"minigame2","goal":"Détruire les 8 noyaux ennemis en esquivant leurs tirs entre deux phases d'approche automatique.","icon":"🎯","id":"appr","name":"Approche Tactique","path":"jeux/minigame2/appr.html"},{"family":"sideClavSimple","file":"bon.html","folder":"minigame2","goal":"Collecter les 6 balises dorées avant la fin du chrono sans toucher les mines.","icon":"🧭","id":"bon","name":"Sonde Caverne (Bon)","path":"jeux/minigame2/bon.html"},{"family":"sideClavSimple","file":"bound.html","folder":"minigame2","goal":"Écraser 10 sphères rebondissantes avant la fin du chrono sans perdre vos 3 vies.","icon":"⚡","id":"bound","name":"Rebond Stomp (Bound)","path":"jeux/minigame2/bound.html"},{"family":"tactical","file":"bravewar.html","folder":"minigame2","goal":"Anéantir les 18 vaisseaux ennemis en coordonnant vos 3 escadrons.","icon":"⚔️","id":"bravewar","name":"Bataille Spatiale (BraveWar)","path":"jeux/minigame2/bravewar.html"},{"family":"sideClavSimple","file":"coin.html","folder":"minigame2","goal":"Ramasser les 10 pièces d'or en grimpant de corniche en corniche.","icon":"🪙","id":"coin","name":"Grimpeur de Corniches (Coin)","path":"jeux/minigame2/coin.html"},{"family":"topOrthoClav","file":"coli.html","folder":"minigame2","goal":"Collecter les 10 cristaux d'énergie avant la fin du chrono en évitant les sentinelles.","icon":"🧩","id":"coli","name":"Labyrinthe Glissant (Coli)","path":"jeux/minigame2/coli.html"},{"family":"sideClavSimple","file":"cont.html","folder":"minigame2","goal":"Collecter les 5 noyaux dorés en utilisant le bloc mobile avant la fin du chrono.","icon":"📦","id":"cont","name":"Caisse-Rebond (Cont)","path":"jeux/minigame2/cont.html"},{"family":"zooEcosys","file":"cooz.html","folder":"minigame2","goal":"Amener la colonie Rouge à 70% de dominance avant la fin du chrono.","icon":"🔴","id":"cooz","name":"Triade RPS (Cooz)","path":"jeux/minigame2/cooz.html"},{"family":"topMouseMut","file":"depl.html","folder":"minigame2","goal":"Tracter toutes les caisses dorées dans la zone d'extraction verte au centre.","icon":"🧲","id":"depl","name":"Grappin Magnétique","path":"jeux/minigame2/depl.html"},{"family":"sideClavSimple","file":"dess.html","folder":"minigame2","goal":"Collecter les 6 balises dorées jusqu'au sommet avant la fin du chrono.","icon":"🧱","id":"dess","name":"Ascension Blocs (Dess)","path":"jeux/minigame2/dess.html"},{"family":"topMouseMut","file":"diag.html","folder":"minigame2","goal":"Absorber tous les noyaux lumineux avant la fin du temps imparti.","icon":"⚡","id":"diag","name":"Labyrinthe Diagonal","path":"jeux/minigame2/diag.html"},{"family":"income","file":"dkay.html","folder":"minigame2","goal":"Éliminer toute l'escouade adverse avant que vos 3 unités ne tombent.","icon":"⚔️","id":"dkay","name":"Escouade dKaY","path":"jeux/minigame2/dkay.html"},{"family":"sideClavSimple","file":"ech.html","folder":"minigame2","goal":"Collecter les 6 cellules dorées sur les étages avant la fin du chrono sans perdre vos 3 vies.","icon":"🪜","id":"ech","name":"Échelles & Sauts (Ech)","path":"jeux/minigame2/ech.html"},{"family":"sideClavSimple","file":"essc.html","folder":"minigame2","goal":"Collecter les 6 cristaux dorés en escaladant les parois avant la fin du chrono.","icon":"🧗","id":"essc","name":"Escalade Murale (Essc)","path":"jeux/minigame2/essc.html"},{"family":"income","file":"eu7a.html","folder":"minigame2","goal":"Collecter les 8 orbes dorés en évitant les mines rouges avant la fin du chrono.","icon":"🛰️","id":"eu7a","name":"Sonde Gravité (Eu7a)","path":"jeux/minigame2/eu7a.html"},{"family":"topOrthoClav","file":"foloinf.html","folder":"minigame2","goal":"Rallier 12 drones endormis dans votre essaim avant la fin du chrono en évitant les mines.","icon":"🛸","id":"foloinf","name":"Essaim Infini (FoloInf)","path":"jeux/minigame2/foloinf.html"},{"family":"topMouseMut","file":"folosup.html","folder":"minigame2","goal":"Survivre 30 secondes face à l'essaim tout en récoltant des bonus.","icon":"🤖","id":"folosup","name":"Essaim Poursuivant","path":"jeux/minigame2/folosup.html"},{"family":"topMouseMut","file":"folotil.html","folder":"minigame2","goal":"Capturer 20 balises dorées avec vos drones avant la fin du temps tout en évitant les mines rouges.","icon":"💠","id":"folotil","name":"Essaim Tuilé","path":"jeux/minigame2/folotil.html"},{"family":"topOrthoClav","file":"glu.html","folder":"minigame2","goal":"Absorber les 12 spores dorées en évitant les toxines rouges.","icon":"🦠","id":"glu","name":"Cellule Gluante (Glu)","path":"jeux/minigame2/glu.html"},{"family":"topMouseMut","file":"gluu.html","folder":"minigame2","goal":"Absorber les 12 cellules nutritives vertes sans toucher les spores toxiques rouges.","icon":"🫧","id":"gluu","name":"Gluu Pulsant","path":"jeux/minigame2/gluu.html"},{"family":"topOrthoClav","file":"gros.html","folder":"minigame2","goal":"Atteindre la taille 40 sans toucher de cellule plus grosse avant la fin du chrono.","icon":"🟢","id":"gros","name":"Absorption Cellulaire (Gros)","path":"jeux/minigame2/gros.html"},{"family":"topOrthoClav","file":"hit.html","folder":"minigame2","goal":"Maintenir le verrouillage sur 8 cibles dans la zone active avant la fin du chrono.","icon":"🎯","id":"hit","name":"Zone de Verrouillage (Hit)","path":"jeux/minigame2/hit.html"},{"family":"topMouseMut","file":"inf.html","folder":"minigame2","goal":"Activer toutes les balises dorées puis rejoindre la zone verte d'extraction.","icon":"🌌","id":"inf","name":"Tore Infini","path":"jeux/minigame2/inf.html"},{"family":"topOrthoClav","file":"isod.html","folder":"minigame2","goal":"Récolter les 8 cristaux dorés en évitant les sentinelles rouges.","icon":"🏛️","id":"isod","name":"Forêt de Piliers (IsoD)","path":"jeux/minigame2/isod.html"},{"family":"topOrthoClav","file":"isohau.html","folder":"minigame2","goal":"Escalader les terrasses pour activer les 6 balises dorées avant la fin du chrono.","icon":"🪜","id":"isohau","name":"Terrasses Iso (IsoHau)","path":"jeux/minigame2/isohau.html"},{"family":"topOrthoClav","file":"labiso.html","folder":"minigame2","goal":"Collecter les 5 cubes de données puis atteindre le portail vert.","icon":"🧊","id":"labiso","name":"Labyrinthe Wireframe (LabIso)","path":"jeux/minigame2/labiso.html"},{"family":"topMouseMut","file":"liatan.html","folder":"minigame2","goal":"Illuminer et dissiper les 12 spectres d'ombre avant la fin du temps imparti.","icon":"🔦","id":"liatan","name":"Ombres Liatan","path":"jeux/minigame2/liatan.html"},{"family":"topMouseHnS","file":"lk.html","folder":"minigame2","goal":"Briser 10 monolithes en verrouillant vos attaques tout en esquivant leurs ondes de choc rouges.","icon":"⚔️","id":"lk","name":"Verrouillage Arène","path":"jeux/minigame2/lk.html"},{"family":"clavDir","file":"marchebug.html","folder":"minigame2","goal":"Collecter les 10 spores lumineuses en évitant les mines énergétiques.","icon":"🪲","id":"marchebug","name":"Marche Insecte (MarcheBug)","path":"jeux/minigame2/marchebug.html"},{"family":"topOrthoClav","file":"minmap.html","folder":"minigame2","goal":"Activer les 7 balises de secteur (une par salle) avant la fin du chrono.","icon":"🗺️","id":"minmap","name":"Cartographe Secteur (MinMap)","path":"jeux/minigame2/minmap.html"},{"family":"income","file":"msd8.html","folder":"minigame2","goal":"Faire passer les impulsions stellaires sur les 6 balises vertes sans traverser les anomalies rouges.","icon":"✨","id":"msd8","name":"Lignes Stellaires","path":"jeux/minigame2/msd8.html"},{"family":"topOrthoClav","file":"pie.html","folder":"minigame2","goal":"Atteindre la tarte dorée dans les 5 niveaux sans vous faire attraper.","icon":"🥧","id":"pie","name":"Chasse à la Tarte (Pie)","path":"jeux/minigame2/pie.html"},{"family":"zooEcosys","file":"plein2.html","folder":"minigame2","goal":"Guider l'essaim pour charger les 5 nœuds d'énergie avant la fin du chrono.","icon":"🐜","id":"plein2","name":"Essaim Labyrinthe (Plein2)","path":"jeux/minigame2/plein2.html"},{"family":"topMouseMut","file":"pleinz.html","folder":"minigame2","goal":"Évacuer au moins 40 unités sur 60 dans la zone verte en bas à droite sans les jeter dans les pièges rouges.","icon":"🐝","id":"pleinz","name":"Foule PleinZ","path":"jeux/minigame2/pleinz.html"},{"family":"topOrthoClav","file":"pousseur.html","folder":"minigame2","goal":"Pousser les 4 caisses cargo sur les 4 socles lumineux avant la fin du chrono.","icon":"📦","id":"pousseur","name":"Pousseur de Caisses (Pousseur)","path":"jeux/minigame2/pousseur.html"},{"family":"sideClavSimple","file":"res.html","folder":"minigame2","goal":"Positionner simultanément les 3 agents sur leurs balises de couleur correspondante.","icon":"👥","id":"res","name":"Escouade Triple (Res)","path":"jeux/minigame2/res.html"},{"family":"topMouseMut","file":"rndtile.html","folder":"minigame2","goal":"Percuter les billes avec votre bloc pour les charger en or et en dévier 10 dans le portail vert.","icon":"🧱","id":"rndtile","name":"Grille Rebond","path":"jeux/minigame2/rndtile.html"},{"family":"zooEcosys","file":"specc.html","folder":"minigame2","goal":"Maintenir les deux espèces vivantes jusqu'à la fin du chrono.","icon":"🌱","id":"specc","name":"Archipel Symbiose (Specc)","path":"jeux/minigame2/specc.html"},{"family":"sideClavSimple","file":"tech.html","folder":"minigame2","goal":"Collecter les 8 nœuds de données tout en évitant les drones patrouilleurs.","icon":"📡","id":"tech","name":"Sonde Raycast (Tech)","path":"jeux/minigame2/tech.html"},{"family":"topMouseMut","file":"tiran.html","folder":"minigame2","goal":"Collecter tous les cristaux d'énergie avant la fin du chrono.","icon":"📐","id":"tiran","name":"Glisse Triangulaire","path":"jeux/minigame2/tiran.html"},{"family":"zooEcosys","file":"trigo.html","folder":"minigame2","goal":"Faire pousser une forêt de 260 arbres simultanés avant la fin du chrono.","icon":"🔥","id":"trigo","name":"Automate RGB (Trigo)","path":"jeux/minigame2/trigo.html"},{"family":"zooEcosys","file":"tsou.html","folder":"minigame2","goal":"Faire survivre l'espèce rouge jusqu'à la fin du cycle (bonus si les rivaux jaunes s'éteignent).","icon":"🧬","id":"tsou","name":"Écosystème Peak (Tsou)","path":"jeux/minigame2/tsou.html"},{"family":"clavDir","file":"volan.html","folder":"minigame2","goal":"Valider les 8 balises dans l'ordre en évitant les pylônes.","icon":"🚚","id":"volan","name":"Volant Articulé (Volan)","path":"jeux/minigame2/volan.html"},{"family":"topMouseMut","file":"zvis.html","folder":"minigame2","goal":"Collecter 15 cristaux verts avec l'essaim sans perdre vos drones dans les zones rouges.","icon":"🐝","id":"zvis","name":"Essaim Grille","path":"jeux/minigame2/zvis.html"},{"family":"income","file":"89xo.html","folder":"minigame3","goal":"Compléter les 4 plans de calibrage avant la fin du chrono.","icon":"📐","id":"89xo","name":"Recadrage Spatial (89xO)","path":"jeux/minigame3/89xo.html"},{"family":"sideClavSimple","file":"ast.html","folder":"minigame3","goal":"Collecter les 8 cristaux d'énergie dans la caverne sans détruire vos 3 boucliers avant la fin du chrono.","icon":"☄️","id":"ast","name":"Sonde Caverne (Ast)","path":"jeux/minigame3/ast.html"},{"family":"topMouseMut","file":"att.html","folder":"minigame3","goal":"Détruire 15 cibles hostiles avant qu'elles ne surchargent votre bouclier.","icon":"🎯","id":"att","name":"Cercle de Commandement","path":"jeux/minigame3/att.html"},{"family":"zooEcosys","file":"aut.html","folder":"minigame3","goal":"Provoquer 25 naissances avant la fin du chrono sans extinction.","icon":"🧬","id":"aut","name":"Automate Cellulaire (Aut)","path":"jeux/minigame3/aut.html"},{"family":"topMouseHnS","file":"diad.html","folder":"minigame3","goal":"Pulvériser 18 drones hostiles avec le fléau avant la fin du chrono.","icon":"☄️","id":"diad","name":"Fléau Élastique","path":"jeux/minigame3/diad.html"},{"family":"topMouseHnS","file":"diadd.html","folder":"minigame3","goal":"Attirer les sentinelles dans 8 pièges EMP verts sans vous faire toucher.","icon":"⛓️","id":"diadd","name":"Laisse d'Aggro","path":"jeux/minigame3/diadd.html"},{"family":"topMouseHnS","file":"diaddd.html","folder":"minigame3","goal":"Récupérer les 8 balises dorées dans le secteur en évitant les patrouilleurs.","icon":"🧭","id":"diaddd","name":"Exploration Tactique","path":"jeux/minigame3/diaddd.html"},{"family":"topMouseHnS","file":"diia.html","folder":"minigame3","goal":"Éjecter 10 noyaux adverses hors du cercle plasma avant la fin du chrono.","icon":"💥","id":"diia","name":"Bélier Cinétique","path":"jeux/minigame3/diia.html"},{"family":"sideClavSimple","file":"esc.html","folder":"minigame3","goal":"Activer les 6 balises lumineuses puis atteindre le portail au sommet avant la fin du chrono.","icon":"🧗","id":"esc","name":"Escalade Ninja (Esc)","path":"jeux/minigame3/esc.html"},{"family":"sideClavSimple","file":"escc.html","folder":"minigame3","goal":"Capturer 10 cibles aériennes avant la fin du chrono tout en évitant les rayons laser.","icon":"⚡","id":"escc","name":"Rebond Mural (Escc)","path":"jeux/minigame3/escc.html"},{"family":"sideClavSimple","file":"grrav.html","folder":"minigame3","goal":"Récupérer les 6 puces d'accès et rejoindre le sas de sortie avant la fin du chrono.","icon":"🦿","id":"grrav","name":"Échasse & Tunnel (Grrav)","path":"jeux/minigame3/grrav.html"},{"family":"income","file":"im5m.html","folder":"minigame3","goal":"Révéler et capter les 8 balises cachées avant la fin du temps, sans heurter les drones.","icon":"👁️","id":"im5m","name":"Champ de Perception (im5M)","path":"jeux/minigame3/im5m.html"},{"family":"income","file":"minimap.html","folder":"minigame3","goal":"Centrer ou toucher les 6 anomalies spectrales indiquées par le radar avant la fin du temps.","icon":"🗺️","id":"minimap","name":"Carte Spirale Infinie (MiniMap)","path":"jeux/minigame3/minimap.html"},{"family":"topMouseMut","file":"olo.html","folder":"minigame3","goal":"Rabattre 10 drones dans l'enclos vert avant la fin du temps.","icon":"🧲","id":"olo","name":"Berger Olo","path":"jeux/minigame3/olo.html"},{"family":"zooEcosys","file":"pleinpf.html","folder":"minigame3","goal":"Évacuer 60 unités dans les portails dorés avant la fin du chrono.","icon":"🧭","id":"pleinpf","name":"Essaim Labyrinthe (PleinPF)","path":"jeux/minigame3/pleinpf.html"},{"family":"topOrthoClav","file":"pous.html","folder":"minigame3","goal":"Pousser les 6 cubes dorés dans la baie verte en bas avant la fin du temps.","icon":"🚜","id":"pous","name":"Bulldozer Pous","path":"jeux/minigame3/pous.html"},{"family":"topOrthoClav","file":"pouss.html","folder":"minigame3","goal":"Aligner la poutre 6 fois sur la cible verte avant la fin du temps.","icon":"⚖️","id":"pouss","name":"Levier Pouss","path":"jeux/minigame3/pouss.html"},{"family":"zooEcosys","file":"pro.html","folder":"minigame3","goal":"Maintenir les 3 espèces en vie jusqu'à la fin du chrono sans extinction.","icon":"🌿","id":"pro","name":"Équilibre Trophique (Pro)","path":"jeux/minigame3/pro.html"},{"family":"income","file":"rrle.html","folder":"minigame3","goal":"Zoomer et échantillonner 8 particules mutantes dorées avant la fin du temps.","icon":"🔬","id":"rrle","name":"Micro-Marche & Zoom (RRLE)","path":"jeux/minigame3/rrle.html"},{"family":"topMouseMut","file":"swi.html","folder":"minigame3","goal":"Scanner les 8 balises vertes grâce à la portée de vos unités en évitant les mines rouges.","icon":"🎯","id":"swi","name":"Escouade Swi","path":"jeux/minigame3/swi.html"},{"family":"topMouseHnS","file":"viv.html","folder":"minigame3","goal":"Décrypter les 5 relais d'équipage en évitant les drones patrouilleurs avant la fin du chrono.","icon":"📡","id":"viv","name":"Relais Vivant (Viv)","path":"jeux/minigame3/viv.html"},{"family":"topMouseMut","file":"vois.html","folder":"minigame3","goal":"Collecter 10 noyaux dorés sans perdre vos 3 boucliers face à l'essaim.","icon":"🫧","id":"vois","name":"Essaim Vois","path":"jeux/minigame3/vois.html"},{"family":"income","file":"zkne.html","folder":"minigame3","goal":"Trier les 12 modules dans leur colonne de couleur (bonus si classés 1-2-3).","icon":"🗂️","id":"zkne","name":"Tri à Ressorts (zknE)","path":"jeux/minigame3/zkne.html"},{"family":"income","file":"spawn_scroll.html","folder":"minigame4","goal":"Découvrir les 8 Reliques Stellaires cachées autour de l'origine avant que votre énergie ne tombe à zéro.","icon":"🛸","id":"spawn_scroll","name":"Dérive & Rebond (SpawnScroll)","path":"jeux/minigame4/spawn_scroll.html"},{"family":"core","file":"fluide_bassin.html","folder":"minigame5","goal":"Remplir les 3 collecteurs (15 gouttes chacun = 45 au total) avant la fin des 65 secondes.","icon":"🌊","id":"fluide_bassin","name":"Bassin de Fluides (Fluide Bassin)","path":"jeux/minigame5/fluide_bassin.html"},{"family":"zooEcosys","file":"katamari_glue.html","folder":"minigame5","goal":"Agréger 60 spores avant la fin des 60 secondes.","icon":"🟢","id":"katamari_glue","name":"Cellule Collante (Katamari Glue)","path":"jeux/minigame5/katamari_glue.html"},{"family":"topMouseHnS","file":"pyro_arcade.html","folder":"minigame5","goal":"Détruire les 30 cibles (3 vagues) avant de perdre vos 3 boucliers.","icon":"🔥","id":"pyro_arcade","name":"Pyromancien (Pyro Arcade)","path":"jeux/minigame5/pyro_arcade.html"},{"family":"topMouseHnS","file":"tesla_arcs.html","folder":"minigame5","goal":"Détruire 28 drones avant que 3 drones n'atteignent la bobine centrale.","icon":"⚡","id":"tesla_arcs","name":"Bobine Tesla (Tesla Arcs)","path":"jeux/minigame5/tesla_arcs.html"},{"family":"topMouseMut","file":"vortex_magnet.html","folder":"minigame5","goal":"Absorber 25 noyaux stellaires en 60 secondes sans perdre vos 3 points d'intégrité.","icon":"🌀","id":"vortex_magnet","name":"Trou Magnétique (Vortex Magnet)","path":"jeux/minigame5/vortex_magnet.html"},{"family":"zooEcosys","file":"ant_pheromones.html","folder":"minigame6","goal":"Rapporter 50 miettes d'ambre à la fourmilière avant la fin des 65 secondes.","icon":"🐜","id":"ant_pheromones","name":"Colonie Phéromones (Ant Pheromones)","path":"jeux/minigame6/ant_pheromones.html"},{"family":"topMouseHnS","file":"bio_turing_stg.html","folder":"minigame6","goal":"Détruire les 4 noyaux de spores avant que la contamination dépasse 68% ou la fin des 65 secondes.","icon":"🧫","id":"bio_turing_stg","name":"Bio-Turing STG (Réaction-Diffusion)","path":"jeux/minigame6/bio_turing_stg.html"},{"family":"topMouseMut","file":"boids_shark_tank.html","folder":"minigame6","goal":"Dévorer 35 sardines avant la fin des 60 secondes sans perdre vos 3 vies.","icon":"🦈","id":"boids_shark_tank","name":"Bancs & Requin (Boids Tank)","path":"jeux/minigame6/boids_shark_tank.html"},{"family":"topMouseMut","file":"cluster_fusion.html","folder":"minigame6","goal":"Verrouiller 78% des particules dans leurs zones de couleur correspondantes sur 3 manches en moins de 65 secondes.","icon":"🫧","id":"cluster_fusion","name":"Fusion d'Amas (Cluster Fusion)","path":"jeux/minigame6/cluster_fusion.html"},{"family":"tactical","file":"crowd_dungeon_pf.html","folder":"minigame6","goal":"Escorter 40 explorateurs jusqu'à leurs sorties avant de subir 15 pertes ou la fin des 65 secondes.","icon":"🧭","id":"crowd_dungeon_pf","name":"Carrefour & Donjon (Crowd PF)","path":"jeux/minigame6/crowd_dungeon_pf.html"},{"family":"zooEcosys","file":"epidemic_quarantine.html","folder":"minigame6","goal":"Éradiquer tous les cas jaunes et rouges tout en gardant au moins 65 survivants avant la fin des 60 secondes.","icon":"🦠","id":"epidemic_quarantine","name":"Quarantaine SEIRD (Epidemic Lab)","path":"jeux/minigame6/epidemic_quarantine.html"},{"family":"zooEcosys","file":"foodchain_evo.html","folder":"minigame6","goal":"Maintenir les 3 niveaux trophiques en équilibre pendant 35 secondes cumulées avant la fin des 65 secondes.","icon":"🌿","id":"foodchain_evo","name":"Écosystème & Gènes (FoodChain Evo)","path":"jeux/minigame6/foodchain_evo.html"},{"family":"tactical","file":"gol_glider_wars.html","folder":"minigame6","goal":"Détruire les 3 Ruches Cramoisies à l'aide de vos cellules et planeurs avant la perte de votre Base ou la fin des 65 secondes.","icon":"👾","id":"gol_glider_wars","name":"Guerre des Planeurs (GOL Glider Wars)","path":"jeux/minigame6/gol_glider_wars.html"},{"family":"core","file":"neural_social_grid.html","folder":"minigame6","goal":"Stabiliser les 3 vagues d'Harmonie (80% / 85% / 88%) avant la fin des 70 secondes.","icon":"🧠","id":"neural_social_grid","name":"Réseau Social & SOM (Neural Grid)","path":"jeux/minigame6/neural_social_grid.html"},{"family":"core","file":"orbit_magnets_3d.html","folder":"minigame6","goal":"Remplir les 3 collecteurs (15 particules chacun = 45 au total) avant la fin des 60 secondes.","icon":"🪐","id":"orbit_magnets_3d","name":"Aimants & Orbites 3D (Orbit Magnets)","path":"jeux/minigame6/orbit_magnets_3d.html"},{"family":"zooEcosys","file":"tri_element_wars.html","folder":"minigame6","goal":"Atteindre au moins 60% de territoire 🌿 Arbre (Vert) avant la fin des 65 secondes.","icon":"🔥","id":"tri_element_wars","name":"Triade Élémentaire (Tri-Element Wars)","path":"jeux/minigame6/tri_element_wars.html"},{"family":"core","file":"anemone_sketch3d.html","folder":"minigame7","goal":"Compléter les 4 silhouettes organiques (Étoile, Spirale, Méduse, Corail) en moins de 65 secondes.","icon":"🪸","id":"anemone_sketch3d","name":"Anémone 3D & Esquisse (Anemone 3D)","path":"jeux/minigame7/anemone_sketch3d.html"},{"family":"core","file":"cloth_cut.html","folder":"minigame7","goal":"Collecter 15 perles dorées dans le bassin vert en moins de 65 secondes sans laisser tomber 3 mines rouges.","icon":"🧶","id":"cloth_cut","name":"Voile d'Algues (Cloth Cut)","path":"jeux/minigame7/cloth_cut.html"},{"family":"zooEcosys","file":"kelp_currents.html","folder":"minigame7","goal":"Guider 25 spores dorées dans le récif sanctuaire en moins de 65 secondes tout en maintenant l'intégrité des algues au-dessus de 40%.","icon":"🌿","id":"kelp_currents","name":"Champ d'Algues & Courants (Kelp Currents)","path":"jeux/minigame7/kelp_currents.html"},{"family":"topMouseMut","file":"marimo_fuzz.html","folder":"minigame7","goal":"Absorber 30 gouttes nutritives vertes en moins de 60 secondes sans subir 3 morsures de sangsues rouges.","icon":"🟢","id":"marimo_fuzz","name":"Marimo Poilu (Marimo Fuzz)","path":"jeux/minigame7/marimo_fuzz.html"},{"family":"topMouseMut","file":"melon_domes.html","folder":"minigame7","goal":"Capturer 24 pollens dorés par résonance en moins de 60 secondes sans laisser 3 épines percer vos dômes.","icon":"🍈","id":"melon_domes","name":"Dômes Élastiques (Melon Domes)","path":"jeux/minigame7/melon_domes.html"},{"family":"topOrthoClav","file":"puyo_pac.html","folder":"minigame7","goal":"Livrer 18 spores dans le panier mobile vert en moins de 65 secondes sans perdre vos 3 vies face aux fantômes rouges.","icon":"🫧","id":"puyo_pac","name":"Puyo-Pac Soft-Body","path":"jeux/minigame7/puyo_pac.html"},{"family":"core","file":"tentacle_curtain.html","folder":"minigame7","goal":"Faire atterrir 22 perles détachées dans les bassins verts en moins de 65 secondes.","icon":"🎐","id":"tentacle_curtain","name":"Rideau de Tentacules (Tentacle Curtain)","path":"jeux/minigame7/tentacle_curtain.html"},{"family":"topMouseHnS","file":"tentacle_dancer.html","folder":"minigame7","goal":"Attraper 28 notes de plancton doré en moins de 65 secondes sans perdre vos 3 cœurs face aux parasites rouges.","icon":"🐙","id":"tentacle_dancer","name":"Tentacule Danseur (IK Marionette)","path":"jeux/minigame7/tentacle_dancer.html"},{"family":"topMouseHnS","file":"whip_fibers.html","folder":"minigame7","goal":"Briser 18 spores rouges au fouet et aspirer 18 éclats dorés en moins de 65 secondes sans perdre vos 3 cœurs.","icon":"〰️","id":"whip_fibers","name":"Fouet & Fibres IK (Whip Fibers)","path":"jeux/minigame7/whip_fibers.html"},{"family":"core","file":"bouncing_snow.html","folder":"minigame8","goal":"Remplir les 3 silos verts (24 flocons chacun = 72 au total) en moins de 65 secondes par-dessus les fosses de lave.","icon":"❄️","id":"bouncing_snow","name":"Neige & Pixels Rebondissants (Bouncing Snow)","path":"jeux/minigame8/bouncing_snow.html"},{"family":"core","file":"bytebeat_choir.html","folder":"minigame8","goal":"Verrouiller les 5 signaux harmoniques en moins de 70 secondes.","icon":"📻","id":"bytebeat_choir","name":"Accordeur Bytebeat & Chœur de Formants (Bytebeat Choir)","path":"jeux/minigame8/bytebeat_choir.html"},{"family":"core","file":"corinth_pinball.html","folder":"minigame8","goal":"Atteindre 2500 points en moins de 10 billes et 70 secondes.","icon":"🎱","id":"corinth_pinball","name":"Pachinko / Flipper Musical (Corinth Pinball)","path":"jeux/minigame8/corinth_pinball.html"},{"family":"core","file":"curl_smoke.html","folder":"minigame8","goal":"Guider 35 braises dorées dans les 2 cheminées vertes en moins de 65 secondes tout en évitant 12 surchauffes sur les capteurs rouges.","icon":"🌫️","id":"curl_smoke","name":"Fumée Thermique & Curl-Noise 3D (Curl Smoke)","path":"jeux/minigame8/curl_smoke.html"},{"family":"core","file":"gravity_chamber.html","folder":"minigame8","goal":"Drainer 20 gouttes lourdes (Ambre) et évacuer 20 bulles de gaz (Cyan) en moins de 65 secondes.","icon":"🧭","id":"gravity_chamber","name":"Chambre Gravitaire 360° (Gravity Chamber)","path":"jeux/minigame8/gravity_chamber.html"},{"family":"topMouseHnS","file":"mosquito_swat.html","folder":"minigame8","goal":"Écraser 18 moustiques en moins de 60 secondes avant de subir 5 piqûres.","icon":"🦟","id":"mosquito_swat","name":"Tapette à Moustique Sonore (Mosquito Swat)","path":"jeux/minigame8/mosquito_swat.html"},{"family":"topMouseHnS","file":"mouse_beat.html","folder":"minigame8","goal":"Atteindre 12 000 points avant 8 ratés ou la fin des 65 secondes.","icon":"🎵","id":"mouse_beat","name":"Rythme Circulaire (Mouse Beat)","path":"jeux/minigame8/mouse_beat.html"},{"family":"core","file":"multiphase_alchemy.html","folder":"minigame8","goal":"Remplir les 3 cuves de couleur (15 gouttes chacune = 45) en moins de 65 secondes sans dépasser 10 contaminations.","icon":"🧪","id":"multiphase_alchemy","name":"Alchimie Multiphase (Multiphase Alchemy)","path":"jeux/minigame8/multiphase_alchemy.html"},{"family":"tactical","file":"normalmap_puzzle.html","folder":"minigame8","goal":"Trier toutes les billes blanches à gauche et noires à droite sur les 3 manches en moins de 70 secondes (max 4 erreurs de camp).","icon":"🎨","id":"normalmap_puzzle","name":"Puzzle Normal-Map (Normal-Map Currents)","path":"jeux/minigame8/normalmap_puzzle.html"},{"family":"topMouseMut","file":"pacman_trail.html","folder":"minigame8","goal":"Collecter 24 pastilles dorées en moins de 60 secondes sans perdre vos 3 cœurs face au Pacman.","icon":"🟡","id":"pacman_trail","name":"Fuis le Pacman ! (Pacman Trail)","path":"jeux/minigame8/pacman_trail.html"},{"family":"topMouseMut","file":"perlin_arrows.html","folder":"minigame8","goal":"Traverser 16 anneaux d'énergie en moins de 60 secondes sans perdre vos 3 boucliers sur les anomalies rouges.","icon":"🏹","id":"perlin_arrows","name":"Surf sur Courants Perlin (Perlin Arrows)","path":"jeux/minigame8/perlin_arrows.html"},{"family":"tactical","file":"rutherford_beam.html","folder":"minigame8","goal":"Charger les 4 détecteurs à 100 % en moins de 65 secondes sans laisser les absorbeurs rouges atteindre 100 %.","icon":"⚛️","id":"rutherford_beam","name":"Déflecteur Rutherford & Lentilles (Rutherford Beam)","path":"jeux/minigame8/rutherford_beam.html"},{"family":"topMouseMut","file":"tornado_funnel.html","folder":"minigame8","goal":"Hisser 22 reliques dorées dans le portail céleste en moins de 60 secondes sans aspirer 3 mines rouges.","icon":"🌪️","id":"tornado_funnel","name":"Œil de la Tornade 3D (Tornado Funnel)","path":"jeux/minigame8/tornado_funnel.html"},{"family":"tactical","file":"wind_tunnel.html","folder":"minigame8","goal":"Charger les 3 turbines cibles à 100 % en moins de 65 secondes.","icon":"💨","id":"wind_tunnel","name":"Soufflerie & Ailerons (Wind Tunnel)","path":"jeux/minigame8/wind_tunnel.html"},{"family":"core","file":"zerog_percussion.html","folder":"minigame8","goal":"Valider 24 frappes sur les pads illuminés en moins de 65 secondes.","icon":"🥁","id":"zerog_percussion","name":"Percussions Élastiques Zero-G (Zero-G Percussion)","path":"jeux/minigame8/zerog_percussion.html"},{"family":"topMouseMut","file":"arabesque_curl.html","folder":"minigame9","goal":"Tisser et capturer 22 esprits lumineux dans vos arabesques en moins de 60 secondes sans toucher 3 ronces rouges.","icon":"🌀","id":"arabesque_curl","name":"Calligraphie Arabesque & Volutes (Arabesque Curl)","path":"jeux/minigame9/arabesque_curl.html"},{"family":"core","file":"braid_tree_3d.html","folder":"minigame9","goal":"Aligner 18 anneaux orbitaux dorés avec les pointes de votre sculpture 3D en moins de 65 secondes sans heurter 3 sphères d'ombre.","icon":"🌳","id":"braid_tree_3d","name":"Sculpture 3D : Arbre & Tresses Voxel (Braid Tree 3D)","path":"jeux/minigame9/braid_tree_3d.html"},{"family":"tactical","file":"candle_shadows.html","folder":"minigame9","goal":"Charger simultanément les 3 cristaux d'or (lumière) et les 2 cristaux d'obsidienne (cône d'ombre d'une bougie) jusqu'à 100 % en moins de 65 secondes.","icon":"🕯️","id":"candle_shadows","name":"Danse des Bougies & Ombres Croisées (Candle Shadows)","path":"jeux/minigame9/candle_shadows.html"},{"family":"core","file":"chroma_light_aura.html","folder":"minigame9","goal":"Accorder et charger 8 prismes chromatiques en moins de 65 secondes en combinant la couleur de votre orbe avec les métaballes RGB dansantes.","icon":"🌈","id":"chroma_light_aura","name":"Métaballes RGB & Auras d'Encre (Chroma Light Aura)","path":"jeux/minigame9/chroma_light_aura.html"},{"family":"core","file":"drawsound_ribbon.html","folder":"minigame9","goal":"Activer 24 carillons lumineux en guidant la bille musicale le long de vos tracés en moins de 65 secondes.","icon":"🎵","id":"drawsound_ribbon","name":"Ruban Musical & Arpégiateur (DrawSound Ribbon)","path":"jeux/minigame9/drawsound_ribbon.html"},{"family":"core","file":"dripping_splatter.html","folder":"minigame9","goal":"Peindre les 5 toiles cibles à 100 % en moins de 65 secondes tout en évitant plus de 15 taches sur les zones interdites rouges.","icon":"🎨","id":"dripping_splatter","name":"Éclaboussures 3D & Aquarelle (Dripping Splatter)","path":"jeux/minigame9/dripping_splatter.html"},{"family":"topMouseHnS","file":"feu_follet_blast.html","folder":"minigame9","goal":"Pulvériser 22 cibles spectrales avec vos salves d'explosions en moins de 60 secondes sans perdre vos 3 cœurs.","icon":"✨","id":"feu_follet_blast","name":"Feu Follet & Salves Plasma (Feu Follet Blast)","path":"jeux/minigame9/feu_follet_blast.html"},{"family":"tactical","file":"god_rays_prism.html","folder":"minigame9","goal":"Aligner les rayons volumétriques sur 12 capteurs solaires périphériques et les charger à 100 % en moins de 65 secondes.","icon":"☀️","id":"god_rays_prism","name":"Rayons Divins & Boule Disco (God Rays Prism)","path":"jeux/minigame9/god_rays_prism.html"},{"family":"topMouseHnS","file":"hanabi_fountain.html","folder":"minigame9","goal":"Allumer 16 bouquets Hanabi en touchant les lanceurs dérivants avec votre fontaine en moins de 65 secondes.","icon":"🎆","id":"hanabi_fountain","name":"Feux d'Artifice & Fontaine (Hanabi Fountain)","path":"jeux/minigame9/hanabi_fountain.html"},{"family":"core","file":"kamikire_confetti.html","folder":"minigame9","goal":"Souffler et guider 24 confettis côté FACE COLORÉE dans le panier doré en bas en moins de 60 secondes.","icon":"🎊","id":"kamikire_confetti","name":"Pluie de Confettis 3D (Kamikire Confetti)","path":"jeux/minigame9/kamikire_confetti.html"},{"family":"topMouseHnS","file":"neon_hearts.html","folder":"minigame9","goal":"Charger 24 essences dorées dérivantes avec vos cœurs néon en moins de 60 secondes sans laisser 5 ombres rouges franchir le bas.","icon":"❤️","id":"neon_hearts","name":"Pluie de Cœurs Néon (Neon Hearts)","path":"jeux/minigame9/neon_hearts.html"},{"family":"topMouseMut","file":"rain_shield_reveal.html","folder":"minigame9","goal":"Révéler et charger 5 glyphes cachés sous l'averse en moins de 65 secondes tout en protégeant la flamme sacrée au sol (3 PV).","icon":"☔","id":"rain_shield_reveal","name":"Parapluie & Pluie Révélatrice (Rain Shield Reveal)","path":"jeux/minigame9/rain_shield_reveal.html"},{"family":"tactical","file":"root_territory.html","folder":"minigame9","goal":"Faire éclore 10 nœuds nutritifs dorés avec vos racines en moins de 65 secondes sans déclencher 3 poches toxiques rouges.","icon":"🌿","id":"root_territory","name":"Réseau de Racines Auto-Évitantes (Root Territory)","path":"jeux/minigame9/root_territory.html"},{"family":"zooEcosys","file":"sakura_bonsai.html","folder":"minigame9","goal":"Récolter 25 fleurs de pollen doré en moins de 65 secondes tout en taillant les arbres infectés avant que la corruption n'atteigne 100 %.","icon":"🌸","id":"sakura_bonsai","name":"Verger Sakura & Grammaires Botaniques (Sakura Bonsai)","path":"jeux/minigame9/sakura_bonsai.html"},{"family":"topMouseMut","file":"shadowcast_runner.html","folder":"minigame9","goal":"Révéler et charger 15 reliques dorées (5 par manche sur les 3 moteurs d'ombre) en moins de 65 secondes sans déclencher 3 alertes de sentinelles.","icon":"🔦","id":"shadowcast_runner","name":"Labyrinthe d'Ombres Dynamiques (ShadowCast Runner)","path":"jeux/minigame9/shadowcast_runner.html"},{"family":"topMouseMut","file":"wind_canopy.html","folder":"minigame9","goal":"Capturer 28 lucioles dorées dans vos branches en moins de 60 secondes tout en esquivant les éclairs rouges (3 PV).","icon":"🌬️","id":"wind_canopy","name":"Canopée Fractale & Forêt au Vent (Wind Canopy)","path":"jeux/minigame9/wind_canopy.html"},{"family":"core","file":"window_raindrops.html","folder":"minigame9","goal":"Faire glisser 18 gouttes lourdes (r > 6) dans les 3 rigoles vertes du bas en moins de 65 secondes en évitant plus de 6 pertes sur les plaques de givre rouges.","icon":"💧","id":"window_raindrops","name":"Gouttes sur Vitre & Fusion (Window Raindrops)","path":"jeux/minigame9/window_raindrops.html"}]/*JEUX_CATALOG_JSON_END*/;
-const FOLDER_LABELS = /*JEUX_FOLDER_LABELS_JSON*/{"minigame2":"📁 minigame2 (45)","minigame3":"📁 minigame3 (23)","minigame4":"📁 minigame4 (1)","minigame5":"📁 minigame5 (5)","minigame6":"📁 minigame6 (11)","minigame7":"📁 minigame7 (9)","minigame8":"📁 minigame8 (15)","minigame9":"📁 minigame9 (17)","minigames":"📁 minigames (45)"}/*JEUX_FOLDER_LABELS_JSON_END*/;
+  <!-- Overlay Épilogue / Chapitre majeur -->
+  <div id="overlay-chapter" class="overlay-screen" style="display:none;">
+    <div class="overlay-card chapter-card">
+      <div class="overlay-kicker" id="chap-kicker"></div>
+      <h2 class="overlay-title" id="chap-title"></h2>
+      <p class="overlay-lead" id="chap-text"></p>
+      <div class="chap-unlock" id="chap-unlock" style="display:none;"></div>
+      <div class="overlay-actions">
+        <button id="btn-chap-continue" class="primary-btn">Continuer</button>
+        <button id="btn-chap-reseed" class="secondary-btn" style="display:none;"></button>
+      </div>
+    </div>
+  </div>
 
-const app = document.getElementById("app");
-const sel = document.getElementById("gameSel");
-const frame = document.getElementById("gameFrame");
-const fileLabel = document.getElementById("fileLabel");
-const counterLabel = document.getElementById("counterLabel");
-const fsNameLabel = document.getElementById("fsNameLabel");
-const resToast = document.getElementById("resToast");
-const resText = document.getElementById("resText");
-const btnHelp = document.getElementById("btnHelp");
-const fsHelp = document.getElementById("fsHelp");
-const goalBackdrop = document.getElementById("goalBackdrop");
-const goalText = document.getElementById("goalText");
-
-let curIdx = 0;
-let randomBag = [];
-
-// Build hierarchical <optgroup> dropdown by folder
-const groups = {};
-CATALOG.forEach((g, idx) => {
-  if (!groups[g.folder]) {
-    const og = document.createElement("optgroup");
-    og.label = FOLDER_LABELS[g.folder] || ("📁 " + g.folder);
-    sel.appendChild(og);
-    groups[g.folder] = og;
-  }
-  const opt = document.createElement("option");
-  opt.value = String(idx);
-  opt.textContent = g.icon + " " + g.name + "  [" + g.file + "]";
-  groups[g.folder].appendChild(opt);
-});
-
-function hideToast() {
-  resToast.classList.remove("show");
-}
-
-function setGoalOpen(open) {
-  const show = Boolean(open);
-  goalBackdrop.classList.toggle("show", show);
-  btnHelp.classList.toggle("open", show);
-  fsHelp.classList.toggle("open", show);
-  btnHelp.setAttribute("aria-expanded", String(show));
-  fsHelp.setAttribute("aria-expanded", String(show));
-}
-
-function toggleGoal() {
-  setGoalOpen(!goalBackdrop.classList.contains("show"));
-}
-
-function loadIndex(idx, updateHash = true) {
-  curIdx = ((idx % CATALOG.length) + CATALOG.length) % CATALOG.length;
-  const g = CATALOG[curIdx];
-  sel.value = String(curIdx);
-  fileLabel.textContent = g.path;
-  fileLabel.title = g.path;
-  counterLabel.textContent = (curIdx + 1) + "/" + CATALOG.length;
-  fsNameLabel.textContent = g.path + " (" + (curIdx + 1) + "/" + CATALOG.length + ")";
-  goalText.textContent = (g.goal && g.goal.trim()) ? g.goal.trim() : "Atteindre l'objectif du mini-jeu.";
-  document.title = g.icon + " " + g.file + " — SPAWN Arcade";
-  hideToast();
-  setGoalOpen(false);
-  frame.src = g.path;
-  if (updateHash) {
-    try { history.replaceState(null, "", "#" + g.path); } catch (e) {}
-  }
-}
-
-function pickRandom() {
-  if (randomBag.length === 0) {
-    randomBag = CATALOG.map((_, i) => i).filter(i => i !== curIdx);
-    for (let i = randomBag.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = randomBag[i]; randomBag[i] = randomBag[j]; randomBag[j] = tmp;
-    }
-  }
-  const next = randomBag.pop();
-  loadIndex(typeof next === "number" ? next : 0);
-}
-
-function nextGame() {
-  loadIndex(curIdx + 1);
-}
-
-function setImmersive(on) {
-  app.classList.toggle("immersive", on);
-  if (on) {
-    const el = document.documentElement;
-    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-    if (req) { try { req.call(el).catch(() => {}); } catch (e) {} }
-  } else {
-    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
-    if (exit && (document.fullscreenElement || document.webkitFullscreenElement)) {
-      try { exit.call(document).catch(() => {}); } catch (e) {}
-    }
-  }
-}
-
-document.addEventListener("fullscreenchange", () => {
-  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-    app.classList.remove("immersive");
-  }
-});
-
-sel.addEventListener("change", () => loadIndex(Number(sel.value)));
-btnHelp.addEventListener("click", toggleGoal);
-fsHelp.addEventListener("click", toggleGoal);
-goalBackdrop.addEventListener("click", () => setGoalOpen(false));
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && goalBackdrop.classList.contains("show")) {
-    setGoalOpen(false);
-  }
-});
-document.getElementById("btnRandom").addEventListener("click", pickRandom);
-document.getElementById("btnNext").addEventListener("click", nextGame);
-document.getElementById("btnFs").addEventListener("click", () => setImmersive(!app.classList.contains("immersive")));
-document.getElementById("fsRandom").addEventListener("click", pickRandom);
-document.getElementById("fsNext").addEventListener("click", nextGame);
-document.getElementById("fsExit").addEventListener("click", () => setImmersive(false));
-
-document.getElementById("toastReplay").addEventListener("click", () => loadIndex(curIdx, false));
-document.getElementById("toastRandom").addEventListener("click", pickRandom);
-document.getElementById("toastNext").addEventListener("click", nextGame);
-document.getElementById("toastClose").addEventListener("click", hideToast);
-
-window.addEventListener("message", (e) => {
-  if (e.data && e.data.type === "spawn_minigame_result") {
-    const icon = e.data.won ? "🏆 Victoire" : "🎮 Terminé";
-    resText.textContent = icon + " (" + CATALOG[curIdx].file + ") • Score " + (e.data.score || 0);
-    resToast.classList.add("show");
-  }
-});
-
-// Init from URL hash if present
-const hash = (location.hash || "").replace(/^#/, "");
-const found = hash ? CATALOG.findIndex(g => g.path === hash || g.file === hash || g.id === hash) : -1;
-loadIndex(found >= 0 ? found : 0, false);
-</script>
+  <script src="textes.js"></script>
+  <script src="js/spiral.js"></script>
+  <script src="js/lore.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
