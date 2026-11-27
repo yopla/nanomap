@@ -127,6 +127,10 @@
     gap: 8px;
     opacity: 0;
     will-change: opacity;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
   }
 
   #minigd-stage.has-minimap {
@@ -321,6 +325,8 @@
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
 
@@ -1747,6 +1753,9 @@
           onKeyDown: null,
           readyPromise: null,
           resolveReady: null,
+          iframeReady: false,
+          configSent: false,
+          hasStarted: false,
         };
         activeSession = session;
 
@@ -2147,6 +2156,9 @@
                 activeIds[key] = e.pointerId !== undefined ? e.pointerId : 1;
                 recompute();
               });
+              addTracked(btn, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+              addTracked(btn, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+              addTracked(btn, "contextmenu", (e) => e.preventDefault());
               const rel = (e) => {
                 const pid = e.pointerId !== undefined ? e.pointerId : 1;
                 if (activeIds[key] === pid) { activeIds[key] = null; recompute(); }
@@ -2191,6 +2203,12 @@
             };
             addTracked(bL, "pointerdown", (e) => { e.preventDefault(); lId = e.pointerId ?? 1; upd(); });
             addTracked(bR, "pointerdown", (e) => { e.preventDefault(); rId = e.pointerId ?? 2; upd(); });
+            addTracked(bL, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(bR, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(bL, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(bR, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(bL, "contextmenu", (e) => e.preventDefault());
+            addTracked(bR, "contextmenu", (e) => e.preventDefault());
             const endDp = (e) => {
               const pid = e.pointerId ?? 1;
               if (lId === pid) { lId = null; upd(); }
@@ -2218,6 +2236,9 @@
               emitExt();
             };
             addTracked(track, "pointerdown", (e) => { e.preventDefault(); sId = e.pointerId ?? 1; updateSl(e.clientX); });
+            addTracked(track, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(track, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(track, "contextmenu", (e) => e.preventDefault());
             addTracked(window, "pointermove", (e) => { if (sId === (e.pointerId ?? 1)) updateSl(e.clientX); });
             const endSl = (e) => {
               if (sId === (e.pointerId ?? 1)) { sId = null; curSteer = 0; thumb.style.left = "50%"; emitExt(); }
@@ -2312,9 +2333,12 @@
                   hx = 0; hy = 0; curSteer = 0;
                 }
               } else if (cs.type === "steering_wheel") {
-                const ang = Math.atan2(dy, dx) + Math.PI * 0.5;
-                wAng = Math.max(-2.0, Math.min(2.0, ang));
-                curSteer = wAng / 2.0;
+                let ang = Math.atan2(dy, dx) + Math.PI * 0.5;
+                while (ang > Math.PI) ang -= Math.PI * 2;
+                while (ang < -Math.PI) ang += Math.PI * 2;
+                const maxWheelAng = Math.PI * 0.5; // Bloqué à 180° (-90° / +90°)
+                wAng = Math.max(-maxWheelAng, Math.min(maxWheelAng, ang));
+                curSteer = wAng / maxWheelAng;
               } else {
                 const count = Math.max(2, cs.nWayDirections || 4);
                 const stepAng = (Math.PI * 2) / count;
@@ -2343,13 +2367,16 @@
               pid = e.pointerId ?? 1;
               applyPtr(e.clientX, e.clientY);
             });
+            addTracked(cv, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(cv, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+            addTracked(cv, "contextmenu", (e) => e.preventDefault());
             addTracked(window, "pointermove", (e) => {
               if (pid === (e.pointerId ?? 1)) applyPtr(e.clientX, e.clientY);
             });
             const endW = (e) => {
               if (pid === (e.pointerId ?? 1)) {
                 pid = null;
-                hx = 0; hy = 0; nSector = -1;
+                hx = 0; hy = 0; wAng = 0; nSector = -1;
                 curSteer = 0; curTargetAng = null;
                 if (cs.type === "fixed_bottom_n_way") curThrottle = 0;
                 drawW();
@@ -2365,10 +2392,16 @@
         let applyPresetPhysics = true;
         let drawnTrackPts = [];
         let isDrawingTrack = false;
+        let pendingSettingsModalRebuild = false;
+        let lastRenderedControlType = null;
 
         const renderSettingsModalContent = () => {
           const st = session.settingsState;
           if (!st) return;
+          const prevBody = settingsOverlay.querySelector(".minigd-set-body");
+          const prevScrollTop = prevBody ? prevBody.scrollTop : 0;
+          lastRenderedControlType = st.controlType;
+          pendingSettingsModalRebuild = false;
           settingsOverlay.innerHTML = "";
 
           const card = document.createElement("div");
@@ -2443,6 +2476,7 @@
             wrap.appendChild(h);
             wrap.appendChild(inp);
             parent.appendChild(wrap);
+            return wrap;
           };
 
           const addCheck = (parent, label, checked, onChange) => {
@@ -2471,6 +2505,7 @@
           });
           selPreset.value = st.car.id;
           selPreset.addEventListener("change", () => {
+            pendingSettingsModalRebuild = true;
             sendIframeMsg({ type: "minigd_settings_action", action: "select_preset", id: selPreset.value, applyPhysics: applyPresetPhysics });
           });
           pSkin.appendChild(selPreset);
@@ -2492,6 +2527,7 @@
             inp.type = "color";
             inp.value = cur;
             inp.addEventListener("input", () => {
+              st.car[key] = inp.value;
               sendIframeMsg({ type: "minigd_settings_update", patch: { [key]: inp.value } });
             });
             lb.appendChild(sp);
@@ -2515,6 +2551,7 @@
           });
           selLiv.value = st.car.livery;
           selLiv.addEventListener("change", () => {
+            st.car.livery = selLiv.value;
             sendIframeMsg({ type: "minigd_settings_update", patch: { livery: selLiv.value } });
           });
           pSkin.appendChild(selLiv);
@@ -2616,6 +2653,9 @@
           const endPad = (ev) => { if (ev) ev.stopPropagation(); if (!isDrawingTrack) return; isDrawingTrack = false; drawPad(); };
           pad.addEventListener("pointerup", endPad);
           pad.addEventListener("pointercancel", endPad);
+          pad.addEventListener("touchstart", (ev) => { if (ev.cancelable) ev.preventDefault(); }, { passive: false });
+          pad.addEventListener("touchmove", (ev) => { if (ev.cancelable) ev.preventDefault(); }, { passive: false });
+          pad.addEventListener("contextmenu", (ev) => ev.preventDefault());
           drawPad();
 
           const trBtns = document.createElement("div");
@@ -2647,8 +2687,11 @@
           pTrack.appendChild(trHint);
           pTrack.appendChild(trBtns);
 
-          // Tab 2: Physique (Caméra + Véhicule + Élastique + N-Directions)
+          // Tab 2: Physique (adapté au mode d'interface actif)
           const pPhy = panes.physics;
+          const isSling = (st.controlType === "slingshot");
+          const isNWay = (st.controlType === "floating_n_way" || st.controlType === "fixed_bottom_n_way");
+
           const secCam = document.createElement("div");
           secCam.className = "minigd-set-sec";
           secCam.textContent = "🎥 Caméra";
@@ -2665,78 +2708,99 @@
           });
           selCam.value = st.cameraRotates ? "camera" : "vehicle";
           selCam.addEventListener("change", () => {
-            sendIframeMsg({ type: "minigd_settings_update", patch: { cameraRotates: selCam.value === "camera" } });
+            const val = selCam.value === "camera";
+            st.cameraRotates = val;
+            sendIframeMsg({ type: "minigd_settings_update", patch: { cameraRotates: val } });
           });
           pPhy.appendChild(selCam);
 
-          const appendSlingshotSection = () => {
+          if (isSling) {
             const secSl = document.createElement("div");
             secSl.className = "minigd-set-sec";
             secSl.textContent = "🎯 Physique Élastique (Fronde)";
             pPhy.appendChild(secSl);
-            addRange(pPhy, "Puissance Élastique", 300, 2200, 25, st.slingshotPower, (v) => String(Math.round(v)), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotPower: v } }));
-            addRange(pPhy, "Allongement Max (px)", 80, 320, 10, st.slingshotMaxPull, (v) => String(Math.round(v)), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotMaxPull: v } }));
-            addRange(pPhy, "Glisse / Roulement", 0.920, 0.996, 0.002, st.slingshotFriction, (v) => v.toFixed(3), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotFriction: v } }));
-            addRange(pPhy, "Rebond Barrières", 0.10, 1.00, 0.05, st.slingshotBounce, (v) => v.toFixed(2), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotBounce: v } }));
-            addRange(pPhy, "Courbe de Tension", 0.5, 2.5, 0.1, st.slingshotTensionCurve, (v) => v.toFixed(1), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotTensionCurve: v } }));
-            if (!st.slingshotStopToShoot) {
-              addRange(pPhy, "Ralenti en Visée", 0.05, 1.00, 0.05, st.slingshotAimSlowmo, (v) => v.toFixed(2), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotAimSlowmo: v } }));
-            }
-            addCheck(pPhy, "Tir uniquement à l'arrêt (Mode Billes pur)", st.slingshotStopToShoot, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotStopToShoot: v } }));
-            addCheck(pPhy, "Afficher la trajectoire prédictive", st.slingshotShowTrajectory, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotShowTrajectory: v } }));
-          };
-
-          if (st.controlType === "slingshot") {
-            appendSlingshotSection();
-          }
-
-          const secPhy = document.createElement("div");
-          secPhy.className = "minigd-set-sec";
-          secPhy.textContent = "🏎️ Physique du véhicule & Piste";
-          pPhy.appendChild(secPhy);
-          const phyDefs = [
-            { key: "maxSpeed", label: "Vitesse Max", min: 200, max: 850, step: 10, fmt: (v) => String(Math.round(v)) },
-            { key: "acceleration", label: "Accélération", min: 150, max: 900, step: 10, fmt: (v) => String(Math.round(v)) },
-            { key: "braking", label: "Freinage", min: 150, max: 1000, step: 10, fmt: (v) => String(Math.round(v)) },
-            { key: "turnSpeed", label: "Vitesse Braquage", min: 1.5, max: 6.5, step: 0.1, fmt: (v) => v.toFixed(1) },
-            { key: "traction", label: "Adhérence Sol", min: 0.05, max: 1.0, step: 0.02, fmt: (v) => v.toFixed(2) },
-            { key: "driftFactor", label: "Facteur Drift", min: 0.2, max: 0.98, step: 0.02, fmt: (v) => v.toFixed(2) },
-            { key: "naturalFriction", label: "Friction Naturelle", min: 0.95, max: 0.998, step: 0.002, fmt: (v) => v.toFixed(3) },
-            { key: "mass", label: "Masse / Poids", min: 0.3, max: 3.0, step: 0.1, fmt: (v) => v.toFixed(1) },
-            { key: "trackWidth", label: "Largeur de Piste", min: 110, max: 280, step: 5, fmt: (v) => String(Math.round(v)), isTrack: true },
-          ];
-          phyDefs.forEach((pd) => {
-            const cur = pd.isTrack ? st.trackWidth : st.car[pd.key];
-            addRange(pPhy, pd.label, pd.min, pd.max, pd.step, cur, pd.fmt, (v) => {
-              sendIframeMsg({ type: "minigd_settings_update", patch: { [pd.key]: v } });
+            addRange(pPhy, "Puissance Élastique", 300, 2200, 25, st.slingshotPower, (v) => String(Math.round(v)), (v) => { st.slingshotPower = v; sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotPower: v } }); });
+            addRange(pPhy, "Allongement Max (px)", 80, 320, 10, st.slingshotMaxPull, (v) => String(Math.round(v)), (v) => { st.slingshotMaxPull = v; sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotMaxPull: v } }); });
+            addRange(pPhy, "Glisse / Roulement", 0.920, 0.996, 0.002, st.slingshotFriction, (v) => v.toFixed(3), (v) => { st.slingshotFriction = v; sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotFriction: v } }); });
+            addRange(pPhy, "Rebond Barrières", 0.10, 1.00, 0.05, st.slingshotBounce, (v) => v.toFixed(2), (v) => { st.slingshotBounce = v; sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotBounce: v } }); });
+            addRange(pPhy, "Courbe de Tension", 0.5, 2.5, 0.1, st.slingshotTensionCurve, (v) => v.toFixed(1), (v) => { st.slingshotTensionCurve = v; sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotTensionCurve: v } }); });
+            const slowmoWrap = addRange(pPhy, "Ralenti en Visée", 0.05, 1.00, 0.05, st.slingshotAimSlowmo, (v) => v.toFixed(2), (v) => { st.slingshotAimSlowmo = v; sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotAimSlowmo: v } }); });
+            slowmoWrap.style.display = st.slingshotStopToShoot ? "none" : "";
+            addCheck(pPhy, "Tir uniquement à l'arrêt (Mode Billes pur)", st.slingshotStopToShoot, (v) => {
+              st.slingshotStopToShoot = v;
+              slowmoWrap.style.display = v ? "none" : "";
+              sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotStopToShoot: v } });
             });
-          });
+            addCheck(pPhy, "Afficher la trajectoire prédictive", st.slingshotShowTrajectory, (v) => {
+              st.slingshotShowTrajectory = v;
+              sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotShowTrajectory: v } });
+            });
 
-          if (st.controlType !== "slingshot") {
-            appendSlingshotSection();
+            const secPhySl = document.createElement("div");
+            secPhySl.className = "minigd-set-sec";
+            secPhySl.textContent = "🛣️ Piste & Masse";
+            pPhy.appendChild(secPhySl);
+            addRange(pPhy, "Masse / Poids", 0.3, 3.0, 0.1, st.car.mass, (v) => v.toFixed(1), (v) => { st.car.mass = v; sendIframeMsg({ type: "minigd_settings_update", patch: { mass: v } }); });
+            addRange(pPhy, "Largeur de Piste", 110, 280, 5, st.trackWidth, (v) => String(Math.round(v)), (v) => { st.trackWidth = v; sendIframeMsg({ type: "minigd_settings_update", patch: { trackWidth: v } }); });
+          } else {
+            if (isNWay) {
+              const secNw = document.createElement("div");
+              secNw.className = "minigd-set-sec";
+              secNw.textContent = "🧭 Options N-Directions";
+              pPhy.appendChild(secNw);
+              addRange(pPhy, "Nombre de directions", 2, 16, 1, st.nWayDirections, (v) => String(Math.round(v)), (v) => {
+                st.nWayDirections = Math.round(v);
+                sendIframeMsg({ type: "minigd_settings_update", patch: { nWayDirections: Math.round(v) } });
+              });
+              addRange(pPhy, "Temps rotation vers l'axe", 0, 1, 0.02, st.alignTime, (v) => v <= 0.001 ? "0 s" : `${v.toFixed(2)} s`, (v) => {
+                st.alignTime = v;
+                sendIframeMsg({ type: "minigd_settings_update", patch: { alignTime: v } });
+              });
+              addCheck(pPhy, "Accélération continue", st.continuousAccel, (v) => { st.continuousAccel = v; sendIframeMsg({ type: "minigd_settings_update", patch: { continuousAccel: v } }); });
+              if (st.controlType === "floating_n_way") {
+                addCheck(pPhy, "Accélérer au toucher d'une direction", st.nWayAutoAccel, (v) => { st.nWayAutoAccel = v; sendIframeMsg({ type: "minigd_settings_update", patch: { nWayAutoAccel: v } }); });
+              }
+              addCheck(pPhy, "Distance au centre module la vitesse", st.nWayDistanceAffectsSpeed, (v) => { st.nWayDistanceAffectsSpeed = v; sendIframeMsg({ type: "minigd_settings_update", patch: { nWayDistanceAffectsSpeed: v } }); });
+              addCheck(pPhy, "Décaler la roue d'un demi-pas", st.nWayShiftedHalfStep, (v) => { st.nWayShiftedHalfStep = v; sendIframeMsg({ type: "minigd_settings_update", patch: { nWayShiftedHalfStep: v } }); });
+            }
+
+            const secPhy = document.createElement("div");
+            secPhy.className = "minigd-set-sec";
+            secPhy.textContent = "🏎️ Physique du véhicule & Piste";
+            pPhy.appendChild(secPhy);
+            const phyDefs = [
+              { key: "maxSpeed", label: "Vitesse Max", min: 200, max: 850, step: 10, fmt: (v) => String(Math.round(v)) },
+              { key: "acceleration", label: "Accélération", min: 150, max: 900, step: 10, fmt: (v) => String(Math.round(v)) },
+              { key: "braking", label: "Freinage", min: 150, max: 1000, step: 10, fmt: (v) => String(Math.round(v)) },
+              { key: "turnSpeed", label: "Vitesse Braquage", min: 1.5, max: 6.5, step: 0.1, fmt: (v) => v.toFixed(1) },
+              { key: "traction", label: "Adhérence Sol", min: 0.05, max: 1.0, step: 0.02, fmt: (v) => v.toFixed(2) },
+              { key: "driftFactor", label: "Facteur Drift", min: 0.2, max: 0.98, step: 0.02, fmt: (v) => v.toFixed(2) },
+              { key: "naturalFriction", label: "Friction Naturelle", min: 0.95, max: 0.998, step: 0.002, fmt: (v) => v.toFixed(3) },
+              { key: "mass", label: "Masse / Poids", min: 0.3, max: 3.0, step: 0.1, fmt: (v) => v.toFixed(1) },
+              { key: "trackWidth", label: "Largeur de Piste", min: 110, max: 280, step: 5, fmt: (v) => String(Math.round(v)), isTrack: true },
+            ];
+            phyDefs.forEach((pd) => {
+              const cur = pd.isTrack ? st.trackWidth : st.car[pd.key];
+              addRange(pPhy, pd.label, pd.min, pd.max, pd.step, cur, pd.fmt, (v) => {
+                if (pd.isTrack) st.trackWidth = v;
+                else st.car[pd.key] = v;
+                sendIframeMsg({ type: "minigd_settings_update", patch: { [pd.key]: v } });
+              });
+            });
+            if (!isNWay) {
+              addCheck(pPhy, "Accélération continue", st.continuousAccel, (v) => { st.continuousAccel = v; sendIframeMsg({ type: "minigd_settings_update", patch: { continuousAccel: v } }); });
+            }
           }
-
-          const secNw = document.createElement("div");
-          secNw.className = "minigd-set-sec";
-          secNw.textContent = "🧭 Options N-Directions";
-          pPhy.appendChild(secNw);
-          addRange(pPhy, "Nombre de directions", 2, 16, 1, st.nWayDirections, (v) => String(Math.round(v)), (v) => {
-            sendIframeMsg({ type: "minigd_settings_update", patch: { nWayDirections: Math.round(v) } });
-          });
-          addRange(pPhy, "Temps rotation vers l'axe", 0, 1, 0.02, st.alignTime, (v) => v <= 0.001 ? "0 s" : `${v.toFixed(2)} s`, (v) => {
-            sendIframeMsg({ type: "minigd_settings_update", patch: { alignTime: v } });
-          });
-          addCheck(pPhy, "Accélération continue", st.continuousAccel, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { continuousAccel: v } }));
-          addCheck(pPhy, "Accélérer au toucher d'une direction", st.nWayAutoAccel, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { nWayAutoAccel: v } }));
-          addCheck(pPhy, "Distance au centre module la vitesse", st.nWayDistanceAffectsSpeed, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { nWayDistanceAffectsSpeed: v } }));
-          addCheck(pPhy, "Décaler la roue d'un demi-pas", st.nWayShiftedHalfStep, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { nWayShiftedHalfStep: v } }));
 
           const phyBtns = document.createElement("div");
           phyBtns.className = "minigd-set-row";
           const btnRstPhy = document.createElement("button");
           btnRstPhy.type = "button"; btnRstPhy.className = "minigd-set-btn"; btnRstPhy.style.flex = "1";
           btnRstPhy.textContent = "↺ Réinitialiser";
-          btnRstPhy.addEventListener("click", () => sendIframeMsg({ type: "minigd_settings_action", action: "reset_physics" }));
+          btnRstPhy.addEventListener("click", () => {
+            pendingSettingsModalRebuild = true;
+            sendIframeMsg({ type: "minigd_settings_action", action: "reset_physics" });
+          });
           const btnRepo = document.createElement("button");
           btnRepo.type = "button"; btnRepo.className = "minigd-set-btn"; btnRepo.style.flex = "1";
           btnRepo.textContent = "📍 Replacer voiture";
@@ -2761,6 +2825,9 @@
           card.appendChild(body);
           card.appendChild(foot);
           settingsOverlay.appendChild(card);
+          if (prevScrollTop > 0) {
+            body.scrollTop = prevScrollTop;
+          }
         };
 
         const setQuickPickersEnabled = (enabled) => {
@@ -2891,27 +2958,40 @@
         iframe.addEventListener("load", () => {
           if (session.aborted) return;
           try {
-            if (iframe.contentWindow) {
+            if (iframe.contentWindow && !session.hasStarted) {
               iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
             }
           } catch (_e) {}
           if (session.resolveReady) {
-            const r = session.resolveReady;
-            session.resolveReady = null;
-            r();
+            if (session.iframeReady) {
+              const r = session.resolveReady;
+              session.resolveReady = null;
+              r();
+            } else {
+              const graceTimer = setTimeout(() => {
+                if (session.resolveReady) {
+                  const r = session.resolveReady;
+                  session.resolveReady = null;
+                  r();
+                }
+              }, 250);
+              session.timerIds.add(graceTimer);
+            }
           }
         }, { once: true });
 
         let infoAnimating = false;
 
         const startPausedMiniGame = async (withFadeOut = false) => {
-          if (session.aborted || session.exiting || infoAnimating) return;
+          if (session.aborted || session.exiting) return;
+          session.hasStarted = true;
           if (withFadeOut && infoCard.classList.contains("open")) {
             infoAnimating = true;
             await animateInfoCardFadeBlur(session, infoCard, false, Math.min(280, fadeDurationMs));
             infoAnimating = false;
             if (session.aborted || session.exiting) return;
           } else {
+            infoAnimating = false;
             infoCard.classList.remove("open");
             infoCard.style.opacity = "";
             infoCard.style.filter = "";
@@ -3097,15 +3177,25 @@
           e.preventDefault();
           triggerOuterFire();
         });
+        fireBtn.addEventListener("touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        fireBtn.addEventListener("touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+        fireBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+        stage.addEventListener("contextmenu", (e) => e.preventDefault());
+        stage.addEventListener("selectstart", (e) => {
+          const tag = e.target && e.target.tagName;
+          if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") e.preventDefault();
+        });
         fireBtn.addEventListener("click", (e) => {
           if (e.detail === 0) triggerOuterFire();
         });
 
         session.onMessage = (ev) => {
           if (session.aborted) return;
+          if (ev && ev.source && iframe && iframe.contentWindow && ev.source !== iframe.contentWindow) return;
           const d = ev && ev.data;
           if (!d || typeof d !== "object") return;
           if (d.type === "minigd_ready") {
+            session.iframeReady = true;
             const iframeMeta = (d.meta && typeof d.meta === "object") ? d.meta : {};
             const mergedMeta = Object.assign({}, iframeMeta, session.manifestMeta || {});
             session.meta = mergedMeta;
@@ -3167,6 +3257,7 @@
             }
             try {
               if (iframe.contentWindow) {
+                session.configSent = true;
                 iframe.contentWindow.postMessage({
                   type: "minigd_config",
                   meta: session.meta,
@@ -3174,7 +3265,11 @@
                   texts: session.resolvedTexts,
                   custom: Object.assign({}, session.resolvedParams, { texts: session.resolvedTexts }),
                 }, "*");
-                iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+                if (session.hasStarted && !session.infoOpen && !session.settingsOpen && !session.exiting && !session.aborted) {
+                  iframe.contentWindow.postMessage({ type: "minigd_start" }, "*");
+                } else {
+                  iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+                }
               }
             } catch (_e) {}
             if (session.resolveReady) {
@@ -3202,9 +3297,10 @@
             session.controlState = d.controlState;
             buildExternalControls();
           } else if (d.type === "minigd_settings_state" && d.settingsState) {
+            const nextCtrl = d.settingsState.controlType;
             session.settingsState = d.settingsState;
             syncQuickPickers();
-            if (session.settingsOpen) {
+            if (session.settingsOpen && (pendingSettingsModalRebuild || nextCtrl !== lastRenderedControlType)) {
               renderSettingsModalContent();
             }
           } else if (d.type === "minigd_minimap_track") {
@@ -3326,7 +3422,8 @@
         settingsBtn.style.pointerEvents = "auto";
 
         try {
-          if (iframe.contentWindow) {
+          if (iframe.contentWindow && !session.configSent) {
+            session.configSent = true;
             iframe.contentWindow.postMessage({
               type: "spawn_minigame_init",
               meta: session.meta,
@@ -3337,6 +3434,19 @@
             iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
           }
         } catch (_e) {}
+
+        const onHostReturnVisible = () => {
+          if (document.hidden || session.aborted || session.exiting) return;
+          if (session.hasStarted && !session.awaitingStart && !session.infoOpen && !session.settingsOpen) {
+            sendIframeMsg({ type: "minigd_resume" });
+          }
+        };
+        document.addEventListener("visibilitychange", onHostReturnVisible);
+        window.addEventListener("focus", onHostReturnVisible);
+        session.cleanupFns.add(() => {
+          document.removeEventListener("visibilitychange", onHostReturnVisible);
+          window.removeEventListener("focus", onHostReturnVisible);
+        });
 
         if (effectiveShowSummary) {
           session.awaitingStart = true;

@@ -30,7 +30,21 @@
     }
   }
 
+  function installNoLongPressVibrationGuard() {
+    if (typeof document === "undefined" || window.__minigdNoLongPressGuard) return;
+    window.__minigdNoLongPressGuard = true;
+    const style = document.createElement("style");
+    style.textContent = "* { -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }";
+    (document.head || document.documentElement).appendChild(style);
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+    document.addEventListener("selectstart", (e) => {
+      const tag = e.target && e.target.tagName;
+      if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") e.preventDefault();
+    });
+  }
+
   function create(opts = {}) {
+    installNoLongPressVibrationGuard();
     const meta = Object.assign({}, readEmbeddedMeta(), opts.meta || {});
     const gameId = String(opts.id || meta.id || "minigd");
     const params = Object.assign({}, opts.defaultParams || {});

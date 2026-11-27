@@ -1020,8 +1020,9 @@
 
       u.fireCd -= dt;
       if (visibleTarget) {
-        u.aim = Math.atan2(visibleTarget.y - u.y, visibleTarget.x - u.x);
-        if (u.fireCd <= 0) {
+        const rot = SP.stepAimAngle(u.aim, Math.atan2(visibleTarget.y - u.y, visibleTarget.x - u.x), ap.aim_turn_time, dt);
+        u.aim = rot.angle;
+        if (rot.aligned && u.fireCd <= 0) {
           u.fireCd = fireInt * SP.randRange(0.86, 1.14);
           u.muzzle = 1;
           const ang = u.aim + SP.randRange(-0.08, 0.08);
@@ -1037,7 +1038,7 @@
           SP.playSfx("shoot");
         }
       } else if (spd > 10) {
-        u.aim = Math.atan2(u.vy, u.vx);
+        u.aim = SP.stepAimAngle(u.aim, Math.atan2(u.vy, u.vx), Math.max(ap.aim_turn_time, 0.18), dt).angle;
       }
     }
 

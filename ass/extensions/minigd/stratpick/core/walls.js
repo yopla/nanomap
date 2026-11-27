@@ -331,27 +331,65 @@
 
   function steerAroundWalls(u, gx, gy) {
     const walls = SP.state.walls;
-    if (!walls.length || (gx === 0 && gy === 0)) return { x: gx, y: gy };
+    if (!walls.length || (gx === 0 && gy === 0)) {
+      u.wallSteerWall = null;
+      return { x: gx, y: gy };
+    }
     const gl = Math.hypot(gx, gy) || 1;
     const nx = gx / gl, ny = gy / gl;
-    const look = SP.UNIT_RADIUS + 18;
-    const px = u.x + nx * look;
-    const py = u.y + ny * look;
-    for (const w of walls) {
-      if (w.broken) continue;
-      const pad = SP.UNIT_RADIUS + 4;
-      if (px >= w.x - pad && px <= w.x + w.w + pad && py >= w.y - pad && py <= w.y + w.h + pad) {
-        const wcx = w.x + w.w * 0.5;
-        const wcy = w.y + w.h * 0.5;
-        if (w.w >= w.h) {
-          const dirX = u.x <= wcx ? -1 : 1;
-          return { x: dirX * 0.95, y: ny * 0.35 };
+    const pad = SP.UNIT_RADIUS + 4;
+    const looks = [SP.UNIT_RADIUS + 6, SP.UNIT_RADIUS + 18];
+    let hitW = null;
+    for (const look of looks) {
+      const px = u.x + nx * look;
+      const py = u.y + ny * look;
+      for (const w of walls) {
+        if (w.broken) continue;
+        if (px >= w.x - pad && px <= w.x + w.w + pad && py >= w.y - pad && py <= w.y + w.h + pad) {
+          hitW = w;
+          break;
         }
-        const dirY = u.y <= wcy ? -1 : 1;
-        return { x: nx * 0.35, y: dirY * 0.95 };
       }
+      if (hitW) break;
     }
-    return { x: gx, y: gy };
+    if (!hitW) {
+      u.wallSteerWall = null;
+      return { x: gx, y: gy };
+    }
+
+    const w = hitW;
+    const wcx = w.x + w.w * 0.5;
+    const wcy = w.y + w.h * 0.5;
+    // Choose a sticky slide direction along the wall face to prevent left/right oscillation
+    let sign = (u.wallSteerWall === w && u.wallSteerSign) ? u.wallSteerSign : 0;
+    if (w.w >= w.h) {
+      if (!sign) {
+        if (Math.abs(nx) > 0.28) sign = nx > 0 ? 1 : -1;
+        else sign = u.x <= wcx ? -1 : 1;
+      }
+      // Flip if blocked on chosen slide side by arena border or another wall
+      const probeX = u.x + sign * (SP.UNIT_RADIUS + 14);
+      const ar = SP.state.arena;
+      if (probeX < ar.x + SP.UNIT_RADIUS + 6 || probeX > ar.x + ar.w - SP.UNIT_RADIUS - 6 || pointInWall(probeX, u.y, SP.UNIT_RADIUS + 2)) {
+        sign = -sign;
+      }
+      u.wallSteerWall = w;
+      u.wallSteerSign = sign;
+      return { x: sign * 1.0, y: ny * 0.12 };
+    } else {
+      if (!sign) {
+        if (Math.abs(ny) > 0.28) sign = ny > 0 ? 1 : -1;
+        else sign = u.y <= wcy ? -1 : 1;
+      }
+      const probeY = u.y + sign * (SP.UNIT_RADIUS + 14);
+      const ar = SP.state.arena;
+      if (probeY < ar.y + SP.UNIT_RADIUS + 6 || probeY > ar.y + ar.h - SP.UNIT_RADIUS - 6 || pointInWall(u.x, probeY, SP.UNIT_RADIUS + 2)) {
+        sign = -sign;
+      }
+      u.wallSteerWall = w;
+      u.wallSteerSign = sign;
+      return { x: nx * 0.12, y: sign * 1.0 };
+    }
   }
 
   function renderWalls(ctx) {

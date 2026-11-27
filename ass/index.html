@@ -1732,9 +1732,12 @@
   /* --- Extensions HTML : Paramètres, Carton Titre & Modale --- */
   #settings-extensions-slot:empty { display: none; }
   .settings-ext-section {
-    margin-top: 12px;
+    margin-top: 4px;
     padding-top: 12px;
     border-top: 1px solid rgba(90, 180, 210, 0.28);
+    margin-bottom: 4px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(90, 180, 210, 0.28);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -2068,6 +2071,7 @@
           <span class="slider"></span>
         </span>
       </label>
+      <div id="settings-extensions-slot"></div>
       <div class="setting-row action-row">
         <div class="setting-info">
           <div class="setting-label">🛸 Revenir à 30 m du vaisseau</div>
@@ -2105,7 +2109,6 @@
           <button id="settings-restart-confirm-btn" class="settings-action-btn danger" type="button">Confirmer</button>
         </div>
       </div>
-      <div id="settings-extensions-slot"></div>
     </div>
   </div>
 </div>
@@ -2273,6 +2276,47 @@
   const ASSET_BASE = String(SCENARIO_META?.assetBase || "");
   window.ASSEMBLAGE_ASSET_BASE = ASSET_BASE;
   window.ASSEMBLAGE_SCENARIO_ID = String(SCENARIO_META?.id || "base");
+
+  // Mémorisation et reprise automatique du dernier scénario actif (évite de revenir au scénario d'origine à la réouverture)
+  const LAST_SCENARIO_KEY = "assemblage_last_scenario_v1";
+  const BOOT_SCENARIO_ID = String(SCENARIO_META?.id || "base");
+  try {
+    const bootUrlParams = new URLSearchParams(window.location.search);
+    const isSwitched = bootUrlParams.get("switched") === "1";
+    const isDirect = bootUrlParams.get("direct") === "1";
+    const isRestart = bootUrlParams.get("restart") === "1";
+    const hasTransferred = Boolean(window.__ASSEMBLAGE_TRANSFERRED_STATE);
+    if (isSwitched || isDirect) {
+      try { window.localStorage.setItem(LAST_SCENARIO_KEY, BOOT_SCENARIO_ID); } catch (_) {}
+      try {
+        bootUrlParams.delete("switched");
+        bootUrlParams.delete("direct");
+        const cleanQs = bootUrlParams.toString();
+        const cleanUrl = `${window.location.pathname}${cleanQs ? `?${cleanQs}` : ""}${window.location.hash || ""}`;
+        window.history.replaceState({}, "", cleanUrl);
+      } catch (_) {}
+    } else if (!isRestart && !hasTransferred && (window.location.protocol === "http:" || window.location.protocol === "https:")) {
+      let savedSid = "";
+      try { savedSid = String(window.localStorage.getItem(LAST_SCENARIO_KEY) || "").trim(); } catch (_) {}
+      if (savedSid && savedSid !== BOOT_SCENARIO_ID) {
+        const enc = encodeURIComponent(savedSid);
+        const candidates = savedSid === "base"
+          ? (ASSET_BASE ? [`${ASSET_BASE}index.html`] : ["index.html"])
+          : (ASSET_BASE ? [`../${enc}/index.html`] : [`scenarios/${enc}/index.html`, `export/web/scenarios/${enc}/index.html`]);
+        for (const c of candidates) {
+          try {
+            const res = await fetch(c, { method: "HEAD", cache: "no-store" });
+            if (res.ok) {
+              const sep = c.includes("?") ? "&" : "?";
+              window.location.replace(`${c}${sep}switched=1`);
+              return;
+            }
+          } catch (_) {}
+        }
+        try { window.localStorage.setItem(LAST_SCENARIO_KEY, BOOT_SCENARIO_ID); } catch (_) {}
+      }
+    }
+  } catch (_) {}
 
   const GAME_CONFIG = /*GAME_CONFIG_JSON*/{
 	"activeBiomeId": "plaine_astrale",
@@ -5336,15 +5380,15 @@
 		},
 		{
 			"accentColor": "#33b8ff",
-			"controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain pour déplacer.",
-			"description": "Jeu tactique en arène (4 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, et Pathfind groupes d'unités nombreuses parmi des roches irrégulières) avec 5 objectifs contre une IA configurable.",
+			"controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain • TOWER : choisissez Mitrailleuse/Sniper/Canon, touchez pour poser, glissez pour déplacer.",
+			"description": "Jeu tactique en arène (5 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, Pathfind groupes d'unités nombreuses parmi des roches irrégulières, et Tower fixe tourelles plaçables et déplaçables) avec 5 objectifs contre une IA configurable.",
 			"family": "stratpick",
 			"folder": "stratpick",
-			"goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, ou manœuvrez vos groupes en pathfinding !",
+			"goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, manœuvrez vos groupes en pathfinding, ou défendez et conquérez avec vos tourelles fixes !",
 			"icon": "🤏",
 			"id": "stratpick",
 			"layout": "fullframe",
-			"name": "StratPick / StratGlide / StratTour / Pathfind",
+			"name": "StratPick / StratGlide / StratTour / Pathfind / Tower",
 			"ownExit": false,
 			"params": {
 				"ai_color": "#ff5761",
@@ -5402,7 +5446,16 @@
 				"wall_hp": 160,
 				"wall_pattern": "symmetrical",
 				"wall_seed": 0,
-				"walls_enabled": true
+				"walls_enabled": true,
+				"tw_variant": "hybrid",
+				"tw_max_turrets": 5,
+				"tw_turret_hp": 140,
+				"tw_redeploy_time": 0.25,
+				"tw_min_spacing": 38,
+				"tw_respawn_delay": 4.0,
+				"tw_base_hp": 300,
+				"tw_wave_interval": 5.5,
+				"aim_turn_time": 0.35
 			},
 			"path": "stratpick/stratpick.html",
 			"presets": [],
@@ -5430,7 +5483,8 @@
 				"returnButtonLabel": "← RETOUR AU JEU",
 				"startButtonText": "▶ Commencer",
 				"timeoutTitle": "Temps écoulé !",
-				"victoryTitle": "VICTOIRE !"
+				"victoryTitle": "VICTOIRE !",
+				"modeTowerLabel": "🗼 TOWER"
 			}
 		}
 	],
@@ -8506,6 +8560,10 @@
   let playTimeSec = 0;
   let autosaveDirty = false;
   let autosaveTimer = 0;
+  let lastSavedPosX = 115;
+  let lastSavedPosY = 70;
+  let isSwitchingScenario = false;
+  const AUTOSAVE_INTERVAL_SEC = 5;
   const extensionStates = new Map(); // instanceKey (id || filename) -> { unlocked: bool, enabled: bool, unlocked_at: string, state: {} }
   const unlockedBiomes = new Set(); // biome_id débloqués par condition de campagne
   const campaignFlags = new Map(); // flagKey -> boolean | primitive
@@ -8776,8 +8834,11 @@
     const ok = storageSet(SAVE_KEY_PREFIX + sid, JSON.stringify(payload));
     if (ok) {
       storageSet(SAVE_LAST_KEY, sid);
+      if (!isSwitchingScenario) storageSet(LAST_SCENARIO_KEY, BOOT_SCENARIO_ID);
       autosaveDirty = false;
       autosaveTimer = 0;
+      lastSavedPosX = alien.x;
+      lastSavedPosY = alien.y;
       if (shipViewMode === "saves") renderSavesView();
       if (!silent) {
         if (wasExisting) {
@@ -8893,8 +8954,11 @@
     updateChunks(alien.x, alien.y);
 
     storageSet(SAVE_LAST_KEY, currentSlotId);
+    storageSet(LAST_SCENARIO_KEY, BOOT_SCENARIO_ID);
     autosaveDirty = false;
     autosaveTimer = 0;
+    lastSavedPosX = alien.x;
+    lastSavedPosY = alien.y;
     if (val.needsResave) saveCurrentSlot(true, currentSlotId);
     renderShipUI();
     if (shipViewMode === "saves") renderSavesView();
@@ -9200,11 +9264,16 @@
     joyMag = 0;
   }
 
+  function hasUnsavedProgress() {
+    if (autosaveDirty) return true;
+    return Math.hypot(alien.x - lastSavedPosX, alien.y - lastSavedPosY) >= 8;
+  }
+
   function openShipUI() {
     if (Math.hypot(alien.x, alien.y) <= SHIP_CONTACT_ENTER_DIST) {
       shipContactLocked = true;
     }
-    if (autosaveDirty) saveCurrentSlot(true);
+    if (hasUnsavedProgress()) saveCurrentSlot(true);
     uiOpen = true;
     cancelActivePointer();
     alien.vx = 0;
@@ -9227,7 +9296,7 @@
 
   function closeShipUI() {
     if (dragState) endDrag(dragState.lastX, dragState.lastY, true);
-    if (autosaveDirty) saveCurrentSlot(true);
+    if (hasUnsavedProgress()) saveCurrentSlot(true);
     uiOpen = false;
     overlayEl.classList.remove("open");
     emitHostEvent("ship:exited", { biomeId: activeBiomeId });
@@ -9394,11 +9463,19 @@
 
   function navigateToScenario(targetScenario, forceRestart) {
     if (!targetScenario || !targetScenario.url) return;
-    try { saveCurrentSlot(true); } catch (_) {}
+    isSwitchingScenario = true;
+    try {
+      const hasExistingSave = Boolean(storageGet(SAVE_KEY_PREFIX + (currentSlotId || "slot_1")));
+      if (hasUnsavedProgress() || hasExistingSave) {
+        saveCurrentSlot(true);
+      }
+    } catch (_) {}
+    storageSet(LAST_SCENARIO_KEY, String(targetScenario.id || "base"));
     let dest = targetScenario.url;
+    const sep1 = dest.includes("?") ? "&" : "?";
+    dest = `${dest}${sep1}switched=1`;
     if (forceRestart) {
-      const sep = dest.includes("?") ? "&" : "?";
-      dest = `${dest}${sep}restart=1`;
+      dest = `${dest}&restart=1`;
     }
     window.location.href = dest;
   }
@@ -10098,9 +10175,12 @@
         extCheckAccum = 0;
         syncUnlockedExtensions(false);
       }
+      if (!autosaveDirty && Math.hypot(alien.x - lastSavedPosX, alien.y - lastSavedPosY) >= 24) {
+        autosaveDirty = true;
+      }
       if (autosaveDirty) {
         autosaveTimer += dt;
-        if (autosaveTimer >= 20) {
+        if (autosaveTimer >= AUTOSAVE_INTERVAL_SEC) {
           autosaveTimer = 0;
           saveCurrentSlot(true);
         }
@@ -11087,6 +11167,7 @@
         },
         onDeath(_info, self) {
           actorKillsById.set(arch.id, (actorKillsById.get(arch.id) || 0) + 1);
+          autosaveDirty = true;
           emitHostEvent("actor:killed", { actorId: arch.id, entityId: self.id, x: self.x, y: self.y, tags: self.tags });
           const lootRef = String(eff.lootElementId || "").trim();
           const chance = Number(eff.lootChance ?? 0.5);
@@ -11278,6 +11359,16 @@
           a.play().catch(() => {});
           return a;
         } catch (_e) { return null; }
+      },
+      suspend() {
+        if (audioCtx && audioCtx.state === "running") {
+          try { audioCtx.suspend().catch(() => {}); } catch (_e) {}
+        }
+      },
+      resume() {
+        if (!muted && audioCtx && audioCtx.state === "suspended") {
+          try { audioCtx.resume().catch(() => {}); } catch (_e) {}
+        }
       },
     };
   })();
@@ -13638,6 +13729,7 @@
 
   function pauseOldWindowForFullscreen(childWin, fallbackUrl) {
     fsPaused = true;
+    releaseScreenWakeLock();
     if (fsPauseOverlayEl) fsPauseOverlayEl.classList.add("open");
     if (btnFallbackFsLinkEl) {
       if (fallbackUrl) {
@@ -13676,6 +13768,7 @@
     fsPaused = false;
     if (fsPauseOverlayEl) fsPauseOverlayEl.classList.remove("open");
     if (btnFallbackFsLinkEl) btnFallbackFsLinkEl.style.display = "none";
+    requestScreenWakeLock();
     showToast("🛸 Partie reprise dans cette fenêtre !");
   }
 
@@ -13695,6 +13788,7 @@
       if (window.opener && !window.opener.closed) {
         window.opener.postMessage({
           type: msgType,
+          scenarioId: CURRENT_SCENARIO_ID,
           slotId: currentSlotId,
           payload: buildSavePayload(currentSlotId),
           useJoystick: useJoystick,
@@ -13707,6 +13801,12 @@
     const msg = event && event.data;
     if (!msg || typeof msg !== "object") return;
     if (msg.type === "assemblage_state_sync" || msg.type === "assemblage_popup_closed") {
+      if (msg.scenarioId && String(msg.scenarioId) !== CURRENT_SCENARIO_ID) {
+        if (msg.type === "assemblage_popup_closed" && fsPaused) {
+          resumeCurrentWindow();
+        }
+        return;
+      }
       if (typeof msg.useJoystick === "boolean") {
         setUseJoystick(msg.useJoystick, true);
       }
@@ -13813,10 +13913,60 @@
       toggleFullScreen();
     });
   }
-  document.addEventListener("fullscreenchange", updateFsIcons);
-  document.addEventListener("webkitfullscreenchange", updateFsIcons);
-  document.addEventListener("mozfullscreenchange", updateFsIcons);
-  document.addEventListener("MSFullscreenChange", updateFsIcons);
+  function onFullscreenStateChanged() {
+    updateFsIcons();
+    if (!document.hidden && !fsPaused) requestScreenWakeLock();
+  }
+  document.addEventListener("fullscreenchange", onFullscreenStateChanged);
+  document.addEventListener("webkitfullscreenchange", onFullscreenStateChanged);
+  document.addEventListener("mozfullscreenchange", onFullscreenStateChanged);
+  document.addEventListener("MSFullscreenChange", onFullscreenStateChanged);
+
+  /* ==========================================================================
+     SCREEN WAKE LOCK (EMPÊCHE LA MISE EN VEILLE SMARTPHONE)
+     ========================================================================== */
+  let screenWakeLock = null;
+  let wakeLockRequestInFlight = false;
+
+  async function requestScreenWakeLock() {
+    if (fsPaused || document.hidden) return;
+    if (screenWakeLock || wakeLockRequestInFlight) return;
+    if (!("wakeLock" in navigator) || !navigator.wakeLock || typeof navigator.wakeLock.request !== "function") return;
+    wakeLockRequestInFlight = true;
+    try {
+      const sentinel = await navigator.wakeLock.request("screen");
+      if (fsPaused || document.hidden) {
+        try { await sentinel.release(); } catch (_) {}
+        return;
+      }
+      screenWakeLock = sentinel;
+      sentinel.addEventListener("release", () => {
+        if (screenWakeLock === sentinel) screenWakeLock = null;
+      });
+    } catch (_) {
+      // Peut échouer hors HTTPS, dans un iframe sans allow="screen-wake-lock" ou avant un geste utilisateur
+    } finally {
+      wakeLockRequestInFlight = false;
+    }
+  }
+
+  function releaseScreenWakeLock() {
+    const sentinel = screenWakeLock;
+    screenWakeLock = null;
+    if (sentinel) {
+      try { sentinel.release().catch(() => {}); } catch (_) {}
+    }
+  }
+
+  function ensureWakeLockOnUserGesture() {
+    if (!screenWakeLock && !fsPaused && !document.hidden) {
+      requestScreenWakeLock();
+    }
+  }
+  window.addEventListener("pointerdown", ensureWakeLockOnUserGesture, { passive: true });
+  window.addEventListener("touchstart", ensureWakeLockOnUserGesture, { passive: true });
+  window.addEventListener("keydown", ensureWakeLockOnUserGesture, { passive: true });
+  requestScreenWakeLock();
 
   await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
 
@@ -13869,18 +14019,34 @@
       syncUnlockedExtensions(false);
     }
   }
+  function handlePageHidden(isUnload) {
+    if (!isSwitchingScenario && hasUnsavedProgress()) saveCurrentSlot(true);
+    notifyOpenerState(isUnload ? "assemblage_popup_closed" : "assemblage_state_sync");
+    setGamePaused("page_hidden", true);
+    hostAudio.suspend();
+    releaseScreenWakeLock();
+  }
+
+  function handlePageVisible() {
+    setGamePaused("page_hidden", false);
+    hostAudio.resume();
+    requestScreenWakeLock();
+  }
+
   window.addEventListener("beforeunload", () => {
-    if (autosaveDirty) saveCurrentSlot(true);
-    notifyOpenerState("assemblage_popup_closed");
+    handlePageHidden(true);
   });
   window.addEventListener("pagehide", () => {
-    if (autosaveDirty) saveCurrentSlot(true);
-    notifyOpenerState("assemblage_popup_closed");
+    handlePageHidden(true);
+  });
+  window.addEventListener("pageshow", () => {
+    if (!document.hidden) handlePageVisible();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      if (autosaveDirty) saveCurrentSlot(true);
-      notifyOpenerState("assemblage_state_sync");
+      handlePageHidden(false);
+    } else {
+      handlePageVisible();
     }
   });
 

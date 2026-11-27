@@ -25,6 +25,7 @@
     unit_hp: 100,
     fire_rate: 1.6,
     unit_speed: 62,
+    aim_turn_time: 0.35,
     shoot_range: 165,
     bullet_damage: 18,
     pickup_radius: 60,
@@ -73,7 +74,15 @@
     pf_unit_hp: 80,
     pf_unit_speed: 78,
     pf_shoot_range: 135,
-    pf_respawn_enabled: false
+    pf_respawn_enabled: false,
+    tw_variant: "hybrid",
+    tw_max_turrets: 5,
+    tw_turret_hp: 140,
+    tw_redeploy_time: 0.25,
+    tw_min_spacing: 38,
+    tw_respawn_delay: 4.0,
+    tw_base_hp: 300,
+    tw_wave_interval: 5.5
   };
 
   SP.DEFAULT_TEXTS = {
@@ -81,6 +90,7 @@
     modeGlideLabel: "🏹 GLIDE",
     modeTurnLabel: "♟ TOUR",
     modePathfindLabel: "🧭 PATHFIND",
+    modeTowerLabel: "🗼 TOWER",
     glidePlayButtonLabel: "▶ PLAY",
     victoryTitle: "VICTOIRE !",
     defeatTitle: "DÉFAITE !",
@@ -168,6 +178,27 @@
     }
   };
 
+  SP.TW_VARIANTS = {
+    hybrid: {
+      name: "Duel Tourelles + Soldats auto",
+      desc: "Les deux bases génèrent des soldats mobiles ; vos tourelles fixes et celles de l'IA soutiennent le front."
+    },
+    waves: {
+      name: "Tower Defense (Vagues)",
+      desc: "Des vagues d'ennemis foncent vers votre base : déplacez vos tourelles fixes pour tenir jusqu'au bout !"
+    },
+    duel: {
+      name: "Duel Tourelles vs Tourelles",
+      desc: "Affrontement pur de tourelles fixes entre vous et l'IA pour le contrôle des objectifs."
+    }
+  };
+
+  SP.TW_TURRET_TYPES = {
+    mg: { id: "mg", name: "Mitrailleuse", short: "MITR.", hpMult: 1.0, range: 145, fireRate: 3.6, damage: 13, bulletSpeed: 440, splash: 0, turnMult: 0.8, color: "#47d9ff" },
+    sniper: { id: "sniper", name: "Sniper", short: "SNIP.", hpMult: 0.78, range: 235, fireRate: 0.85, damage: 58, bulletSpeed: 680, splash: 0, turnMult: 1.3, color: "#ffdb4d" },
+    cannon: { id: "cannon", name: "Canon Zone", short: "CANON", hpMult: 1.22, range: 130, fireRate: 1.05, damage: 34, bulletSpeed: 310, splash: 52, turnMult: 1.5, color: "#ff8f3d" }
+  };
+
   SP.activeParams = Object.assign({}, SP.DEFAULT_PARAMS, {
     tb_weapons: SP.DEFAULT_PARAMS.tb_weapons.map((w) => Object.assign({}, w))
   });
@@ -235,6 +266,15 @@
   SP.randRange = function (a, b) { return a + Math.random() * (b - a); };
   SP.dist2 = function (ax, ay, bx, by) { const dx = ax - bx, dy = ay - by; return dx * dx + dy * dy; };
   SP.dist = function (ax, ay, bx, by) { return Math.hypot(ax - bx, ay - by); };
+  SP.stepAimAngle = function (cur, target, turnTime180, dt) {
+    if (!turnTime180 || turnTime180 <= 0.001) return { angle: target, aligned: true };
+    const diff = Math.atan2(Math.sin(target - cur), Math.cos(target - cur));
+    const maxStep = (Math.PI / turnTime180) * dt;
+    let next, rem;
+    if (Math.abs(diff) <= maxStep) { next = target; rem = 0; }
+    else { next = cur + Math.sign(diff) * maxStep; rem = Math.abs(diff) - maxStep; }
+    return { angle: next, aligned: rem <= 0.21 };
+  };
   SP.formatTime = function (s) {
     const sec = Math.max(0, Math.ceil(s));
     const m = Math.floor(sec / 60);
@@ -323,6 +363,7 @@
     if (dom.btnGameMenu) dom.btnGameMenu.classList.toggle("hidden", !showSwitch);
     if (dom.btnTbMenu) dom.btnTbMenu.classList.toggle("hidden", !showSwitch);
     if (dom.btnPfMenu) dom.btnPfMenu.classList.toggle("hidden", !showSwitch);
+    if (dom.btnTwMenu) dom.btnTwMenu.classList.toggle("hidden", !showSwitch);
     if (dom.startModeRowEl) dom.startModeRowEl.classList.toggle("hidden", !showSwitch);
 
     if (dom.btnExitTop) dom.btnExitTop.classList.toggle("visible", !st.isEmbedded || st.activeOwnExit);
@@ -333,10 +374,12 @@
     if (dom.btnMenuGlide) dom.btnMenuGlide.textContent = SP.activeTexts.modeGlideLabel;
     if (dom.btnMenuTurn) dom.btnMenuTurn.textContent = SP.activeTexts.modeTurnLabel;
     if (dom.btnMenuPathfind) dom.btnMenuPathfind.textContent = SP.activeTexts.modePathfindLabel;
+    if (dom.btnMenuTower) dom.btnMenuTower.textContent = SP.activeTexts.modeTowerLabel;
     if (dom.btnStartPick) dom.btnStartPick.textContent = SP.activeTexts.modePickLabel;
     if (dom.btnStartGlide) dom.btnStartGlide.textContent = SP.activeTexts.modeGlideLabel;
     if (dom.btnStartTurn) dom.btnStartTurn.textContent = SP.activeTexts.modeTurnLabel;
     if (dom.btnStartPathfind) dom.btnStartPathfind.textContent = SP.activeTexts.modePathfindLabel;
+    if (dom.btnStartTower) dom.btnStartTower.textContent = SP.activeTexts.modeTowerLabel;
     if (dom.btnGlidePlay) dom.btnGlidePlay.textContent = SP.activeTexts.glidePlayButtonLabel;
     if (dom.btnReplay) dom.btnReplay.textContent = SP.activeTexts.replayButtonLabel;
     if (dom.btnEndReturn) dom.btnEndReturn.textContent = SP.activeTexts.returnButtonLabel;
@@ -345,7 +388,7 @@
 
   SP.normalizeModeId = function (raw) {
     const gm = String(raw || "").trim().toLowerCase();
-    if (gm === "turn" || gm === "glide" || gm === "pathfind") return gm;
+    if (gm === "turn" || gm === "glide" || gm === "pathfind" || gm === "tower") return gm;
     return "pick";
   };
 
@@ -387,6 +430,7 @@
       ap.unit_hp = Math.round(SP.clampNum(p.unit_hp ?? ap.unit_hp, 30, 300, defs.unit_hp));
       ap.fire_rate = SP.clampNum(p.fire_rate ?? ap.fire_rate, 0.4, 4.0, defs.fire_rate);
       ap.unit_speed = SP.clampNum(p.unit_speed ?? ap.unit_speed, 25, 140, defs.unit_speed);
+      ap.aim_turn_time = SP.clampNum(p.aim_turn_time ?? ap.aim_turn_time, 0.0, 1.5, defs.aim_turn_time);
       ap.shoot_range = Math.round(SP.clampNum(p.shoot_range ?? ap.shoot_range, 80, 320, defs.shoot_range));
       ap.bullet_damage = Math.round(SP.clampNum(p.bullet_damage ?? ap.bullet_damage, 5, 60, defs.bullet_damage));
       ap.pickup_radius = Math.round(SP.clampNum(p.pickup_radius ?? ap.pickup_radius, 30, 120, defs.pickup_radius));
@@ -456,6 +500,19 @@
       ap.pf_unit_speed = Math.round(SP.clampNum(p.pf_unit_speed ?? ap.pf_unit_speed, 35, 150, defs.pf_unit_speed));
       ap.pf_shoot_range = Math.round(SP.clampNum(p.pf_shoot_range ?? ap.pf_shoot_range, 60, 240, defs.pf_shoot_range));
       if (typeof p.pf_respawn_enabled === "boolean") ap.pf_respawn_enabled = p.pf_respawn_enabled;
+
+      // Tower params
+      if (typeof p.tw_variant === "string") {
+        const tv = p.tw_variant.trim().toLowerCase();
+        if (SP.TW_VARIANTS[tv]) ap.tw_variant = tv;
+      }
+      ap.tw_max_turrets = Math.round(SP.clampNum(p.tw_max_turrets ?? ap.tw_max_turrets, 2, 10, defs.tw_max_turrets));
+      ap.tw_turret_hp = Math.round(SP.clampNum(p.tw_turret_hp ?? ap.tw_turret_hp, 60, 300, defs.tw_turret_hp));
+      ap.tw_redeploy_time = SP.clampNum(p.tw_redeploy_time ?? ap.tw_redeploy_time, 0.0, 2.0, defs.tw_redeploy_time);
+      ap.tw_min_spacing = Math.round(SP.clampNum(p.tw_min_spacing ?? ap.tw_min_spacing, 24, 64, defs.tw_min_spacing));
+      ap.tw_respawn_delay = SP.clampNum(p.tw_respawn_delay ?? ap.tw_respawn_delay, 1.0, 10.0, defs.tw_respawn_delay);
+      ap.tw_base_hp = Math.round(SP.clampNum(p.tw_base_hp ?? ap.tw_base_hp, 100, 600, defs.tw_base_hp));
+      ap.tw_wave_interval = SP.clampNum(p.tw_wave_interval ?? ap.tw_wave_interval, 2.5, 10.0, defs.tw_wave_interval);
     }
 
     const t = (initData.texts && typeof initData.texts === "object")

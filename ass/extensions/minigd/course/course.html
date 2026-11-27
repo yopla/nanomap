@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>SPAWN — Course 2D Top-Down</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
   html, body {
     width: 100%;
     height: 100%;
@@ -15,6 +15,9 @@
     background: #050a12;
     color: #e6f4ff;
     font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  }
+  canvas#race-canvas {
+    touch-action: none;
   }
   body.embedded canvas#race-canvas {
     position: fixed;
@@ -485,10 +488,9 @@
       "key": "defaultControlMode",
       "label": "Mode de pilotage par défaut",
       "type": "select",
-      "default": "joystick",
+      "default": "steering_wheel",
       "group": "Pilotage",
       "options": [
-        { "id": "joystick", "label": "Joystick Analogique + Pédales" },
         { "id": "steering_wheel", "label": "Volant Virtuel Rotatif + Pédales" },
         { "id": "buttons_dpad", "label": "Boutons Flèches D-Pad + Pédales" },
         { "id": "split_touch", "label": "Écran Divisé (Split-Touch Arcade)" },
@@ -496,7 +498,8 @@
         { "id": "slider_tilt", "label": "Slider Horizontal / Tilt + Pédales" },
         { "id": "floating_n_way", "label": "Pavé N-Directions Flottant" },
         { "id": "fixed_bottom_n_way", "label": "Pavé N-Directions Fixé en bas" },
-        { "id": "slingshot", "label": "Élastique / Tir aux Billes (Fronde)" }
+        { "id": "slingshot", "label": "Élastique / Tir aux Billes (Fronde)" },
+        { "id": "joystick", "label": "Joystick Analogique + Pédales" }
       ]
     },
     { "key": "cameraRotates", "label": "Caméra suit la rotation", "type": "bool", "default": false, "group": "Pilotage" },
@@ -613,13 +616,7 @@
           <div class="sec-title">🎯 Physique Élastique (Fronde)</div>
           <div id="ctrl-slingshot-sliders-top" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
-        <div class="sec-title">🏎️ Physique du véhicule &amp; Piste</div>
-        <div id="params-sliders-list" style="display:flex; flex-direction:column; gap:9px;"></div>
-        <div id="ctrl-slingshot-opts-bottom" style="display:flex; flex-direction:column; gap:8px; border-top:1px solid rgba(56,214,255,0.2); padding-top:8px;">
-          <div class="sec-title">🎯 Physique Élastique (Fronde)</div>
-          <div id="ctrl-slingshot-sliders-bottom" style="display:flex; flex-direction:column; gap:8px;"></div>
-        </div>
-        <div id="ctrl-nway-opts" style="display:flex; flex-direction:column; gap:8px; border-top:1px solid rgba(56,214,255,0.2); padding-top:8px;">
+        <div id="ctrl-nway-opts" style="display:none; flex-direction:column; gap:8px; border-top:1px solid rgba(56,214,255,0.2); padding-top:8px;">
           <div class="sec-title">🧭 Options N-Directions</div>
           <div class="param-row">
             <div class="param-head"><span>Nombre de directions</span><span id="val-nway-count">4</span></div>
@@ -629,10 +626,16 @@
             <div class="param-head"><span>Temps rotation vers l'axe</span><span id="val-align-time">0.25 s</span></div>
             <input type="range" id="ctrl-align-time" min="0" max="1" step="0.02" value="0.25">
           </div>
-          <label class="ctrl-check"><input type="checkbox" id="ctrl-cont-accel"><span>Accélération continue</span></label>
-          <label class="ctrl-check"><input type="checkbox" id="ctrl-nway-auto"><span>Accélérer au toucher d'une direction</span></label>
+          <label class="ctrl-check" id="ctrl-nway-auto-wrap"><input type="checkbox" id="ctrl-nway-auto"><span>Accélérer au toucher d'une direction</span></label>
           <label class="ctrl-check"><input type="checkbox" id="ctrl-nway-dist"><span>Distance au centre module la vitesse</span></label>
           <label class="ctrl-check"><input type="checkbox" id="ctrl-nway-shift"><span>Décaler la roue d'un demi-pas</span></label>
+        </div>
+        <div class="sec-title" id="params-sliders-title">🏎️ Physique du véhicule &amp; Piste</div>
+        <div id="params-sliders-list" style="display:flex; flex-direction:column; gap:9px;"></div>
+        <label class="ctrl-check" id="ctrl-cont-accel-wrap"><input type="checkbox" id="ctrl-cont-accel"><span>Accélération continue</span></label>
+        <div id="ctrl-slingshot-opts-bottom" style="display:none; flex-direction:column; gap:8px; border-top:1px solid rgba(56,214,255,0.2); padding-top:8px;">
+          <div class="sec-title">🎯 Physique Élastique (Fronde)</div>
+          <div id="ctrl-slingshot-sliders-bottom" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
         <div class="action-row" style="padding-top:4px;">
           <button id="btn-params-reset">↺ Réinitialiser</button>
@@ -724,7 +727,7 @@ const CFG = {
     width: 24.0,
     livery: "stripes"
   },
-  controlType: "joystick",
+  controlType: "steering_wheel",
   nWayDirections: 4,
   alignTime: 0.25,
   continuousAccel: false,
@@ -755,7 +758,6 @@ const VEHICLE_PRESETS = [
 ];
 
 const CONTROL_MODES = [
-  { id: "joystick", label: "Joystick Analogique + Pédales" },
   { id: "steering_wheel", label: "Volant Virtuel Rotatif + Pédales" },
   { id: "buttons_dpad", label: "Boutons Flèches D-Pad + Pédales" },
   { id: "split_touch", label: "Écran Divisé (Split-Touch Arcade)" },
@@ -763,7 +765,8 @@ const CONTROL_MODES = [
   { id: "slider_tilt", label: "Slider Horizontal / Tilt + Pédales" },
   { id: "floating_n_way", label: "Pavé N-Directions Flottant" },
   { id: "fixed_bottom_n_way", label: "Pavé N-Directions Fixé en bas" },
-  { id: "slingshot", label: "Élastique / Tir aux Billes (Fronde)" }
+  { id: "slingshot", label: "Élastique / Tir aux Billes (Fronde)" },
+  { id: "joystick", label: "Joystick Analogique + Pédales" }
 ];
 
 const LIVERIES = [
@@ -1017,7 +1020,7 @@ const DEFAULT_EXT_PARAMS = {
   useCustomColors: false,
   carColor: "#38d6ff",
   accentColor: "#0f172a",
-  defaultControlMode: "joystick",
+  defaultControlMode: "steering_wheel",
   cameraRotates: false,
   defaultTrackStyle: "classic",
   trackWidth: 185,
@@ -1165,6 +1168,18 @@ document.addEventListener("visibilitychange", () => {
     suspendAudio();
     cancelLoop();
   } else {
+    resumeAudioIfEnabled();
+    startLoopIfActive();
+  }
+});
+window.addEventListener("focus", () => {
+  if (!isGameplayPaused() && !over) {
+    resumeAudioIfEnabled();
+    startLoopIfActive();
+  }
+});
+window.addEventListener("pageshow", () => {
+  if (!isGameplayPaused() && !over) {
     resumeAudioIfEnabled();
     startLoopIfActive();
   }
@@ -1699,6 +1714,9 @@ function buildStandaloneExternalControls() {
         activeIds[key] = e.pointerId !== undefined ? e.pointerId : 1;
         recomputePedals();
       });
+      addTrackedListener(btn, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+      addTrackedListener(btn, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+      addTrackedListener(btn, "contextmenu", (e) => e.preventDefault());
       addTrackedListener(window, "pointerup", (e) => {
         const pid = e.pointerId !== undefined ? e.pointerId : 1;
         if (activeIds[key] === pid) { activeIds[key] = null; recomputePedals(); }
@@ -1745,6 +1763,12 @@ function buildStandaloneExternalControls() {
     }
     addTrackedListener(bL, "pointerdown", (e) => { e.preventDefault(); lId = e.pointerId ?? 1; updDpad(); });
     addTrackedListener(bR, "pointerdown", (e) => { e.preventDefault(); rId = e.pointerId ?? 2; updDpad(); });
+    addTrackedListener(bL, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(bR, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(bL, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(bR, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(bL, "contextmenu", (e) => e.preventDefault());
+    addTrackedListener(bR, "contextmenu", (e) => e.preventDefault());
     addTrackedListener(window, "pointerup", (e) => {
       const pid = e.pointerId ?? 1;
       if (lId === pid) { lId = null; updDpad(); }
@@ -1775,6 +1799,9 @@ function buildStandaloneExternalControls() {
       syncExt();
     }
     addTrackedListener(track, "pointerdown", (e) => { e.preventDefault(); sId = e.pointerId ?? 1; updateSlider(e.clientX); });
+    addTrackedListener(track, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(track, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(track, "contextmenu", (e) => e.preventDefault());
     addTrackedListener(window, "pointermove", (e) => { if (sId === (e.pointerId ?? 1)) updateSlider(e.clientX); });
     const endSl = (e) => {
       if (sId === (e.pointerId ?? 1)) { sId = null; curSteer = 0; thumb.style.left = "50%"; syncExt(); }
@@ -1871,9 +1898,12 @@ function buildStandaloneExternalControls() {
           hx = 0; hy = 0; curSteer = 0;
         }
       } else if (CFG.controlType === "steering_wheel") {
-        const ang = Math.atan2(dy, dx) + Math.PI * 0.5;
-        wAng = Math.max(-2.0, Math.min(2.0, ang));
-        curSteer = wAng / 2.0;
+        let ang = Math.atan2(dy, dx) + Math.PI * 0.5;
+        while (ang > Math.PI) ang -= Math.PI * 2;
+        while (ang < -Math.PI) ang += Math.PI * 2;
+        const maxWheelAng = Math.PI * 0.5; // Bloqué à 180° (-90° / +90°)
+        wAng = Math.max(-maxWheelAng, Math.min(maxWheelAng, ang));
+        curSteer = wAng / maxWheelAng;
       } else {
         const count = Math.max(2, CFG.nWayDirections || 4);
         const stepAng = (Math.PI * 2) / count;
@@ -1902,13 +1932,16 @@ function buildStandaloneExternalControls() {
       pid = e.pointerId ?? 1;
       applyPointer(e.clientX, e.clientY);
     });
+    addTrackedListener(cv, "touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(cv, "touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+    addTrackedListener(cv, "contextmenu", (e) => e.preventDefault());
     addTrackedListener(window, "pointermove", (e) => {
       if (pid === (e.pointerId ?? 1)) applyPointer(e.clientX, e.clientY);
     });
     const endW = (e) => {
       if (pid === (e.pointerId ?? 1)) {
         pid = null;
-        hx = 0; hy = 0; nSector = -1;
+        hx = 0; hy = 0; wAng = 0; nSector = -1;
         curSteer = 0; curTargetAng = null;
         if (CFG.controlType === "fixed_bottom_n_way") curThrottle = 0;
         drawWidget();
@@ -2036,7 +2069,14 @@ canvas.addEventListener("pointerdown", onPointerDown);
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("pointerup", onPointerUp);
 window.addEventListener("pointercancel", onPointerUp);
+canvas.addEventListener("touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+canvas.addEventListener("touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+document.addEventListener("contextmenu", (e) => e.preventDefault());
+document.addEventListener("selectstart", (e) => {
+  const tag = e.target && e.target.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") e.preventDefault();
+});
 
 // --- Modale Options Autonome (3 Onglets) + Sélecteurs rapides ---
 const optionsOverlay = document.getElementById("options-overlay");
@@ -2368,6 +2408,9 @@ function stopDrawingTrack(e) {
 }
 drawCanvas.addEventListener("pointerup", stopDrawingTrack);
 drawCanvas.addEventListener("pointercancel", stopDrawingTrack);
+drawCanvas.addEventListener("touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+drawCanvas.addEventListener("touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+drawCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 document.getElementById("btn-track-clear").addEventListener("click", () => {
   drawnPts = [];
@@ -2420,17 +2463,26 @@ function refreshPhysicsTab() {
   paramsSlidersList.innerHTML = "";
   if (ctrlCameraMode) ctrlCameraMode.value = CFG.cameraRotates ? "camera" : "vehicle";
   const isSling = (CFG.controlType === "slingshot");
+  const isNWay = (CFG.controlType === "floating_n_way" || CFG.controlType === "fixed_bottom_n_way");
   if (ctrlSlingshotOptsTop && ctrlSlingshotSlidersTop && ctrlSlingshotOptsBottom && ctrlSlingshotSlidersBottom) {
     ctrlSlingshotOptsTop.style.display = isSling ? "flex" : "none";
-    ctrlSlingshotOptsBottom.style.display = isSling ? "none" : "flex";
+    ctrlSlingshotOptsBottom.style.display = "none";
+    ctrlSlingshotSlidersBottom.innerHTML = "";
     if (isSling) {
       buildSlingshotControlsInto(ctrlSlingshotSlidersTop);
-      ctrlSlingshotSlidersBottom.innerHTML = "";
     } else {
       ctrlSlingshotSlidersTop.innerHTML = "";
-      buildSlingshotControlsInto(ctrlSlingshotSlidersBottom);
     }
   }
+  const nwayOptsEl = document.getElementById("ctrl-nway-opts");
+  if (nwayOptsEl) nwayOptsEl.style.display = isNWay ? "flex" : "none";
+  const nwayAutoWrap = document.getElementById("ctrl-nway-auto-wrap");
+  if (nwayAutoWrap) nwayAutoWrap.style.display = (CFG.controlType === "floating_n_way") ? "flex" : "none";
+  const contAccelWrap = document.getElementById("ctrl-cont-accel-wrap");
+  if (contAccelWrap) contAccelWrap.style.display = isSling ? "none" : "flex";
+  const slidersTitle = document.getElementById("params-sliders-title");
+  if (slidersTitle) slidersTitle.textContent = isSling ? "🛣️ Piste & Masse" : "🏎️ Physique du véhicule & Piste";
+
   ctrlNwayCount.value = CFG.nWayDirections;
   valNwayCount.textContent = String(CFG.nWayDirections);
   ctrlAlignTime.value = CFG.alignTime;
@@ -2440,7 +2492,11 @@ function refreshPhysicsTab() {
   ctrlNwayDist.checked = !!CFG.nWayDistanceAffectsSpeed;
   ctrlNwayShift.checked = !!CFG.nWayShiftedHalfStep;
 
-  PARAM_DEFS.forEach(def => {
+  const visibleDefs = isSling
+    ? PARAM_DEFS.filter(d => d.key === "mass" || d.isTrack)
+    : PARAM_DEFS;
+
+  visibleDefs.forEach(def => {
     const row = document.createElement("div");
     row.className = "param-row";
     const head = document.createElement("div");
@@ -3293,7 +3349,8 @@ window.addEventListener("message", (e) => {
     render();
   } else if (d.type === "minigd_start" || d.type === "minigd_resume") {
     externalPaused = false;
-    lastTime = 0;
+    destroyed = false;
+    cancelLoop();
     resumeAudioIfEnabled();
     render();
     startLoopIfActive();

@@ -5,6 +5,7 @@
   let menuTab = "game";
   let pendingMode = "pick";
   let pendingObj = "koth";
+  let pendingAimTurn = 0.35;
   let pendingWallsEnabled = true;
   let pendingWallPattern = "symmetrical";
   let pendingWallDensity = 50;
@@ -14,24 +15,29 @@
   let pendingTb = null;
   let pendingTbWeaponIdx = 0;
   let pendingPf = null;
+  let pendingTw = null;
 
   function setMenuTab(tabId) {
     const dom = SP.dom;
-    menuTab = ["walls", "turn", "pathfind"].includes(tabId) ? tabId : "game";
+    menuTab = ["walls", "turn", "pathfind", "tower"].includes(tabId) ? tabId : "game";
     dom.tabMenuGame.classList.toggle("active", menuTab === "game");
     dom.tabMenuWalls.classList.toggle("active", menuTab === "walls");
     dom.tabMenuTurn.classList.toggle("active", menuTab === "turn");
     dom.tabMenuPathfind.classList.toggle("active", menuTab === "pathfind");
+    dom.tabMenuTower.classList.toggle("active", menuTab === "tower");
     dom.paneMenuGame.classList.toggle("hidden", menuTab !== "game");
     dom.paneMenuWalls.classList.toggle("hidden", menuTab !== "walls");
     dom.paneMenuTurn.classList.toggle("hidden", menuTab !== "turn");
     dom.paneMenuPathfind.classList.toggle("hidden", menuTab !== "pathfind");
+    dom.paneMenuTower.classList.toggle("hidden", menuTab !== "tower");
     if (menuTab === "walls") {
       drawWallPreview();
     } else if (menuTab === "turn") {
       refreshTurnMenuUI();
     } else if (menuTab === "pathfind") {
       refreshPfMenuUI();
+    } else if (menuTab === "tower") {
+      refreshTwMenuUI();
     }
   }
 
@@ -191,6 +197,28 @@
     drawRockPreview();
   }
 
+  function refreshTwMenuUI() {
+    const dom = SP.dom;
+    if (!pendingTw) return;
+    dom.selTwVariant.value = pendingTw.tw_variant;
+    const tv = SP.TW_VARIANTS[pendingTw.tw_variant] || SP.TW_VARIANTS.hybrid;
+    dom.lblTwVariantDesc.textContent = tv.desc;
+    dom.rngTwMax.value = pendingTw.tw_max_turrets;
+    dom.lblTwMax.textContent = String(pendingTw.tw_max_turrets);
+    dom.rngTwRedeploy.value = pendingTw.tw_redeploy_time;
+    dom.lblTwRedeploy.textContent = Number(pendingTw.tw_redeploy_time).toFixed(2) + "s";
+    dom.rngTwHp.value = pendingTw.tw_turret_hp;
+    dom.lblTwHp.textContent = pendingTw.tw_turret_hp + " PV";
+    dom.rngTwSpacing.value = pendingTw.tw_min_spacing;
+    dom.lblTwSpacing.textContent = pendingTw.tw_min_spacing + " px";
+    dom.rngTwRespawn.value = pendingTw.tw_respawn_delay;
+    dom.lblTwRespawn.textContent = Number(pendingTw.tw_respawn_delay).toFixed(1) + "s";
+    dom.rngTwBaseHp.value = pendingTw.tw_base_hp;
+    dom.lblTwBaseHp.textContent = pendingTw.tw_base_hp + " PV";
+    dom.rngTwWaveInt.value = pendingTw.tw_wave_interval;
+    dom.lblTwWaveInt.textContent = Number(pendingTw.tw_wave_interval).toFixed(1) + "s";
+  }
+
   function refreshGameMenuUI() {
     const dom = SP.dom;
     const st = SP.state;
@@ -198,13 +226,20 @@
     const isGlide = pendingMode === "glide";
     const isTurn = pendingMode === "turn";
     const isPf = pendingMode === "pathfind";
+    const isTw = pendingMode === "tower";
     dom.btnMenuPick.classList.toggle("active", isPick);
     dom.btnMenuGlide.classList.toggle("active", isGlide);
     dom.btnMenuTurn.classList.toggle("active", isTurn);
     dom.btnMenuPathfind.classList.toggle("active", isPf);
-    dom.menuObjSection.classList.toggle("hidden", isTurn);
+    dom.btnMenuTower.classList.toggle("active", isTw);
+    const hideObj = isTurn || (isTw && pendingTw && pendingTw.tw_variant === "waves");
+    dom.menuObjSection.classList.toggle("hidden", hideObj);
     dom.menuTurnSummaryBox.classList.toggle("hidden", !isTurn);
     dom.menuPfSummaryBox.classList.toggle("hidden", !isPf);
+    dom.menuTwSummaryBox.classList.toggle("hidden", !isTw);
+    if (dom.rowMenuAimTurn) dom.rowMenuAimTurn.classList.toggle("hidden", isTurn);
+    if (dom.rngMenuAimTurn) dom.rngMenuAimTurn.value = String(pendingAimTurn);
+    if (dom.lblMenuAimTurn) dom.lblMenuAimTurn.textContent = pendingAimTurn <= 0.001 ? "Instantané" : `${Number(pendingAimTurn).toFixed(2)}s`;
 
     for (const btn of dom.menuObjButtons) {
       btn.classList.toggle("active", btn.dataset.obj === pendingObj);
@@ -243,6 +278,7 @@
 
     pendingMode = st.gameMode;
     pendingObj = st.objId;
+    pendingAimTurn = ap.aim_turn_time;
     pendingWallsEnabled = ap.walls_enabled;
     pendingWallPattern = ap.wall_pattern;
     pendingWallDensity = ap.wall_density;
@@ -283,6 +319,17 @@
       pf_respawn_enabled: ap.pf_respawn_enabled
     };
 
+    pendingTw = {
+      tw_variant: ap.tw_variant,
+      tw_max_turrets: ap.tw_max_turrets,
+      tw_turret_hp: ap.tw_turret_hp,
+      tw_redeploy_time: ap.tw_redeploy_time,
+      tw_min_spacing: ap.tw_min_spacing,
+      tw_respawn_delay: ap.tw_respawn_delay,
+      tw_base_hp: ap.tw_base_hp,
+      tw_wave_interval: ap.tw_wave_interval
+    };
+
     dom.selTbWeapon.innerHTML = "";
     pendingTb.weapons.forEach((w, i) => {
       const opt = document.createElement("option");
@@ -291,11 +338,12 @@
       dom.selTbWeapon.appendChild(opt);
     });
 
-    const autoTab = st.gameMode === "turn" ? "turn" : (st.gameMode === "pathfind" ? "pathfind" : (menuTab || "game"));
+    const autoTab = st.gameMode === "turn" ? "turn" : (st.gameMode === "pathfind" ? "pathfind" : (st.gameMode === "tower" ? "tower" : (menuTab || "game")));
     setMenuTab(initialTab || autoTab);
     refreshGameMenuUI();
     refreshTurnMenuUI();
     refreshPfMenuUI();
+    refreshTwMenuUI();
     dom.menuOverlay.classList.remove("hidden");
   }
 
@@ -348,9 +396,20 @@
       pendingPf.pf_rock_seed !== prevRockSeed ||
       pendingPf.pf_unit_hp !== ap.pf_unit_hp
     );
+    const twChanged = pendingTw && (
+      pendingTw.tw_variant !== ap.tw_variant ||
+      pendingTw.tw_max_turrets !== ap.tw_max_turrets ||
+      pendingTw.tw_turret_hp !== ap.tw_turret_hp ||
+      pendingTw.tw_redeploy_time !== ap.tw_redeploy_time ||
+      pendingTw.tw_min_spacing !== ap.tw_min_spacing ||
+      pendingTw.tw_respawn_delay !== ap.tw_respawn_delay ||
+      pendingTw.tw_base_hp !== ap.tw_base_hp ||
+      pendingTw.tw_wave_interval !== ap.tw_wave_interval
+    );
 
     ap.game_mode = pendingMode;
     ap.objective = pendingObj;
+    ap.aim_turn_time = pendingAimTurn;
     ap.walls_enabled = pendingWallsEnabled;
     ap.wall_pattern = pendingWallPattern;
     ap.wall_density = pendingWallDensity;
@@ -396,6 +455,17 @@
       }
     }
 
+    if (pendingTw) {
+      ap.tw_variant = pendingTw.tw_variant;
+      ap.tw_max_turrets = pendingTw.tw_max_turrets;
+      ap.tw_turret_hp = pendingTw.tw_turret_hp;
+      ap.tw_redeploy_time = pendingTw.tw_redeploy_time;
+      ap.tw_min_spacing = pendingTw.tw_min_spacing;
+      ap.tw_respawn_delay = pendingTw.tw_respawn_delay;
+      ap.tw_base_hp = pendingTw.tw_base_hp;
+      ap.tw_wave_interval = pendingTw.tw_wave_interval;
+    }
+
     if (pendingWallSeed > 0 && pendingWallSeed !== st.currentMapSeed) {
       ap.wall_seed = pendingWallSeed;
     } else if (!mapStructChanged && ap.wall_seed <= 0) {
@@ -410,7 +480,9 @@
       SP.startMatch();
     } else if (pendingMode === "pathfind" && (modeChanged || pfChanged || objChanged)) {
       SP.startMatch();
-    } else if (objChanged || mapStructChanged || (modeChanged && (st.gameMode === "turn" || st.gameMode === "pathfind"))) {
+    } else if (pendingMode === "tower" && (modeChanged || twChanged || objChanged)) {
+      SP.startMatch();
+    } else if (objChanged || mapStructChanged || (modeChanged && (st.gameMode === "turn" || st.gameMode === "pathfind" || st.gameMode === "tower"))) {
       SP.startMatch();
     } else if (modeChanged) {
       SP.setGameMode(pendingMode);
@@ -425,12 +497,15 @@
     dom.btnGameMenu.addEventListener("click", () => openGameMenu("game"));
     dom.btnTbMenu.addEventListener("click", () => openGameMenu("turn"));
     dom.btnPfMenu.addEventListener("click", () => openGameMenu("pathfind"));
+    dom.btnTwMenu.addEventListener("click", () => openGameMenu("tower"));
     dom.tabMenuGame.addEventListener("click", () => setMenuTab("game"));
     dom.tabMenuWalls.addEventListener("click", () => setMenuTab("walls"));
     dom.tabMenuTurn.addEventListener("click", () => setMenuTab("turn"));
     dom.tabMenuPathfind.addEventListener("click", () => setMenuTab("pathfind"));
+    dom.tabMenuTower.addEventListener("click", () => setMenuTab("tower"));
     dom.btnJumpTurnTab.addEventListener("click", () => setMenuTab("turn"));
     dom.btnJumpPfTab.addEventListener("click", () => setMenuTab("pathfind"));
+    dom.btnJumpTwTab.addEventListener("click", () => setMenuTab("tower"));
     dom.btnMenuClose.addEventListener("click", closeGameMenu);
     dom.btnMenuApply.addEventListener("click", applyGameMenu);
     dom.menuOverlay.addEventListener("click", (e) => {
@@ -441,6 +516,13 @@
     dom.btnMenuGlide.addEventListener("click", () => { pendingMode = "glide"; refreshGameMenuUI(); });
     dom.btnMenuTurn.addEventListener("click", () => { pendingMode = "turn"; refreshGameMenuUI(); });
     dom.btnMenuPathfind.addEventListener("click", () => { pendingMode = "pathfind"; refreshGameMenuUI(); });
+    dom.btnMenuTower.addEventListener("click", () => { pendingMode = "tower"; refreshGameMenuUI(); });
+    if (dom.rngMenuAimTurn) {
+      dom.rngMenuAimTurn.addEventListener("input", () => {
+        pendingAimTurn = Math.round(Number(dom.rngMenuAimTurn.value) * 100) / 100;
+        if (dom.lblMenuAimTurn) dom.lblMenuAimTurn.textContent = pendingAimTurn <= 0.001 ? "Instantané" : `${pendingAimTurn.toFixed(2)}s`;
+      });
+    }
 
     for (const btn of dom.menuObjButtons) {
       btn.addEventListener("click", () => {
@@ -502,6 +584,16 @@
     dom.rngPfRange.addEventListener("input", () => { if (pendingPf) { pendingPf.pf_shoot_range = Number(dom.rngPfRange.value); dom.lblPfRange.textContent = pendingPf.pf_shoot_range + " px"; } });
     dom.chkPfRockBlocks.addEventListener("change", () => { if (pendingPf) pendingPf.pf_rocks_block_bullets = dom.chkPfRockBlocks.checked; });
     dom.chkPfRespawn.addEventListener("change", () => { if (pendingPf) pendingPf.pf_respawn_enabled = dom.chkPfRespawn.checked; });
+
+    // Tower controls
+    dom.selTwVariant.addEventListener("change", () => { if (pendingTw) { pendingTw.tw_variant = dom.selTwVariant.value; refreshTwMenuUI(); refreshGameMenuUI(); } });
+    dom.rngTwMax.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_max_turrets = Number(dom.rngTwMax.value); dom.lblTwMax.textContent = String(pendingTw.tw_max_turrets); } });
+    dom.rngTwRedeploy.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_redeploy_time = Math.round(Number(dom.rngTwRedeploy.value) * 100) / 100; dom.lblTwRedeploy.textContent = pendingTw.tw_redeploy_time.toFixed(2) + "s"; } });
+    dom.rngTwHp.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_turret_hp = Number(dom.rngTwHp.value); dom.lblTwHp.textContent = pendingTw.tw_turret_hp + " PV"; } });
+    dom.rngTwSpacing.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_min_spacing = Number(dom.rngTwSpacing.value); dom.lblTwSpacing.textContent = pendingTw.tw_min_spacing + " px"; } });
+    dom.rngTwRespawn.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_respawn_delay = Number(dom.rngTwRespawn.value); dom.lblTwRespawn.textContent = pendingTw.tw_respawn_delay.toFixed(1) + "s"; } });
+    dom.rngTwBaseHp.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_base_hp = Number(dom.rngTwBaseHp.value); dom.lblTwBaseHp.textContent = pendingTw.tw_base_hp + " PV"; } });
+    dom.rngTwWaveInt.addEventListener("input", () => { if (pendingTw) { pendingTw.tw_wave_interval = Number(dom.rngTwWaveInt.value); dom.lblTwWaveInt.textContent = pendingTw.tw_wave_interval.toFixed(1) + "s"; } });
   }
 
   SP.menu = {

@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>StratPick / StratGlide / StratTour / Pathfind</title>
+<title>StratPick / StratGlide / StratTour / Pathfind / Tower</title>
 <link rel="stylesheet" href="stratpick.css" />
 </head>
 <body>
 <script type="application/json" data-spawn-minigame>
 {
   "id": "stratpick",
-  "name": "StratPick / StratGlide / StratTour / Pathfind",
+  "name": "StratPick / StratGlide / StratTour / Pathfind / Tower",
   "family": "stratpick",
   "icon": "🤏",
   "layout": "fullframe",
   "ownExit": false,
   "accentColor": "#33b8ff",
   "showSummaryMode": "inherit",
-  "description": "Jeu tactique en arène (4 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, et Pathfind groupes d'unités nombreuses parmi des roches irrégulières) avec 5 objectifs contre une IA configurable.",
-  "goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, ou manœuvrez vos groupes en pathfinding !",
-  "controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain pour déplacer.",
+  "description": "Jeu tactique en arène (5 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, Pathfind groupes d'unités nombreuses parmi des roches irrégulières, et Tower fixe tourelles plaçables et déplaçables) avec 5 objectifs contre une IA configurable.",
+  "goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, manœuvrez vos groupes en pathfinding, ou défendez et conquérez avec vos tourelles fixes !",
+  "controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain • TOWER : choisissez Mitrailleuse/Sniper/Canon, touchez pour poser, glissez pour déplacer.",
   "fields": [
     {
       "key": "game_mode",
@@ -31,7 +31,8 @@
         { "id": "pick", "label": "🤏 StratPick (Aspirer & Lâcher)" },
         { "id": "glide", "label": "🏹 StratGlide (Pause & Flèches)" },
         { "id": "turn", "label": "♟ StratTour (Tour par Tour)" },
-        { "id": "pathfind", "label": "🧭 Pathfind (Groupes & Roches)" }
+        { "id": "pathfind", "label": "🧭 Pathfind (Groupes & Roches)" },
+        { "id": "tower", "label": "🗼 Tower fixe (Tourelles)" }
       ]
     },
     {
@@ -82,6 +83,7 @@
     { "key": "unit_hp", "label": "PV des bonhommes", "type": "number", "default": 100, "min": 30, "max": 300, "step": 10, "group": "Combat & Unités" },
     { "key": "fire_rate", "label": "Cadence de tir (/s)", "type": "number", "default": 1.6, "min": 0.4, "max": 4.0, "step": 0.2, "group": "Combat & Unités" },
     { "key": "unit_speed", "label": "Vitesse déplacement", "type": "number", "default": 62, "min": 25, "max": 140, "step": 5, "group": "Combat & Unités" },
+    { "key": "aim_turn_time", "label": "Temps rotation canon 180° (s)", "type": "number", "default": 0.35, "min": 0.0, "max": 1.5, "step": 0.05, "group": "Combat & Unités" },
     { "key": "shoot_range", "label": "Portée de tir (px)", "type": "number", "default": 165, "min": 80, "max": 320, "step": 5, "group": "Combat & Unités" },
     { "key": "bullet_damage", "label": "Dégâts par tir", "type": "number", "default": 18, "min": 5, "max": 60, "step": 1, "group": "Combat & Unités" },
     { "key": "pickup_radius", "label": "Rayon d'aspiration (px, Pick)", "type": "number", "default": 60, "min": 30, "max": 120, "step": 5, "group": "Contrôles" },
@@ -186,13 +188,33 @@
     { "key": "pf_unit_hp", "label": "PV des unités (Pathfind)", "type": "number", "default": 80, "min": 30, "max": 220, "step": 10, "group": "Pathfind" },
     { "key": "pf_unit_speed", "label": "Vitesse des unités (Pathfind)", "type": "number", "default": 78, "min": 35, "max": 150, "step": 5, "group": "Pathfind" },
     { "key": "pf_shoot_range", "label": "Portée de tir (Pathfind)", "type": "number", "default": 135, "min": 60, "max": 240, "step": 5, "group": "Pathfind" },
-    { "key": "pf_respawn_enabled", "label": "Réapparition (Pathfind)", "type": "bool", "default": false, "group": "Pathfind" }
+    { "key": "pf_respawn_enabled", "label": "Réapparition (Pathfind)", "type": "bool", "default": false, "group": "Pathfind" },
+    {
+      "key": "tw_variant",
+      "label": "Variante d'adversaire (Tower)",
+      "type": "select",
+      "default": "hybrid",
+      "group": "Tower fixe",
+      "options": [
+        { "id": "hybrid", "label": "Duel Tourelles + Soldats auto" },
+        { "id": "waves", "label": "Tower Defense (Vagues)" },
+        { "id": "duel", "label": "Duel Tourelles vs Tourelles" }
+      ]
+    },
+    { "key": "tw_max_turrets", "label": "Tourelles max par camp", "type": "number", "default": 5, "min": 2, "max": 10, "step": 1, "group": "Tower fixe" },
+    { "key": "tw_redeploy_time", "label": "Délai redéploiement (s)", "type": "number", "default": 0.25, "min": 0.0, "max": 2.0, "step": 0.05, "group": "Tower fixe" },
+    { "key": "tw_turret_hp", "label": "PV des tourelles", "type": "number", "default": 140, "min": 60, "max": 300, "step": 10, "group": "Tower fixe" },
+    { "key": "tw_min_spacing", "label": "Espacement min (px)", "type": "number", "default": 38, "min": 24, "max": 64, "step": 2, "group": "Tower fixe" },
+    { "key": "tw_respawn_delay", "label": "Délai reconstruction (s)", "type": "number", "default": 4.0, "min": 1.0, "max": 10.0, "step": 0.5, "group": "Tower fixe" },
+    { "key": "tw_base_hp", "label": "PV de la base (Vagues)", "type": "number", "default": 300, "min": 100, "max": 600, "step": 25, "group": "Tower fixe" },
+    { "key": "tw_wave_interval", "label": "Intervalle vagues/soldats (s)", "type": "number", "default": 5.5, "min": 2.5, "max": 10.0, "step": 0.5, "group": "Tower fixe" }
   ],
   "texts": [
     { "key": "modePickLabel", "label": "Bouton mode PICK", "type": "text", "default": "🤏 PICK" },
     { "key": "modeGlideLabel", "label": "Bouton mode GLIDE", "type": "text", "default": "🏹 GLIDE" },
     { "key": "modeTurnLabel", "label": "Bouton mode TOUR", "type": "text", "default": "♟ TOUR" },
     { "key": "modePathfindLabel", "label": "Bouton mode PATHFIND", "type": "text", "default": "🧭 PATHFIND" },
+    { "key": "modeTowerLabel", "label": "Bouton mode TOWER", "type": "text", "default": "🗼 TOWER" },
     { "key": "glidePlayButtonLabel", "label": "Bouton PLAY (Glide)", "type": "text", "default": "▶ PLAY" },
     { "key": "victoryTitle", "label": "Titre de victoire", "type": "text", "default": "VICTOIRE !" },
     { "key": "defeatTitle", "label": "Titre de défaite", "type": "text", "default": "DÉFAITE !" },
@@ -287,6 +309,22 @@
     </div>
   </div>
 
+  <!-- Bottom HUD: Tower Fixe -->
+  <div class="tw-bar hidden" id="twBar">
+    <div class="tw-top-row">
+      <div class="tw-count-badge" id="twCountLbl">🗼 0/5 • Rés: 5</div>
+      <button class="tw-type-btn active" id="btnTwMg">🔫 MITR.</button>
+      <button class="tw-type-btn sniper" id="btnTwSniper">🎯 SNIP.</button>
+      <button class="tw-type-btn cannon" id="btnTwCannon">💥 CANON</button>
+    </div>
+    <div class="tw-bot-row">
+      <div class="tw-hint" id="twHintLbl">Touchez pour poser • Glissez une tourelle pour déplacer</div>
+      <button class="tw-act-btn" id="btnTwRecall" title="Rappeler la tourelle sélectionnée" disabled>↩</button>
+      <button class="icon-btn" id="btnTwMenu" title="Paramètres &amp; Modes">⚙️</button>
+      <button class="icon-btn" id="btnTwRestart" title="Recommencer">↻</button>
+    </div>
+  </div>
+
   <!-- Settings Modal -->
   <div class="overlay hidden" id="menuOverlay">
     <div class="card">
@@ -296,6 +334,7 @@
         <button class="menu-tab-btn" id="tabMenuWalls">🧱 Murs</button>
         <button class="menu-tab-btn" id="tabMenuTurn">♟ Tour</button>
         <button class="menu-tab-btn" id="tabMenuPathfind">🧭 Path</button>
+        <button class="menu-tab-btn" id="tabMenuTower">🗼 Tower</button>
       </div>
 
       <div class="menu-pane" id="paneMenuGame">
@@ -305,6 +344,7 @@
           <button class="mode-btn" id="btnMenuGlide">🏹 GLIDE</button>
           <button class="mode-btn" id="btnMenuTurn">♟ TOUR</button>
           <button class="mode-btn" id="btnMenuPathfind">🧭 PATHFIND</button>
+          <button class="mode-btn" id="btnMenuTower">🗼 TOWER</button>
         </div>
         <div id="menuObjSection">
           <div class="menu-section-lbl">Objectif</div>
@@ -328,6 +368,16 @@
             <b>Mode Pathfind</b> : encadrez des unités ou choisissez un groupe (G1–G3) et touchez le sol pour les diriger en pathfinding optimisé autour des roches irrégulières.
           </div>
           <button type="button" class="menu-turn-jump" id="btnJumpPfTab">🧭 Configurer Unités Nombreuses &amp; Roches →</button>
+        </div>
+        <div id="menuTwSummaryBox" class="hidden">
+          <div class="menu-obj-desc" style="margin: 8px 0 6px;">
+            <b>Mode Tower fixe</b> : placez et déplacez vos 3 types de tourelles (Mitrailleuse, Sniper, Canon Zone) avec temps de redéploiement paramétrable.
+          </div>
+          <button type="button" class="menu-turn-jump" id="btnJumpTwTab">🗼 Configurer Variante, Tourelles &amp; Redéploiement →</button>
+        </div>
+        <div class="tb-slider-row" id="rowMenuAimTurn" style="margin-top: 8px;">
+          <div class="tb-slider-top"><span>Temps rotation canon (180°)</span><span id="lblMenuAimTurn">0.35s</span></div>
+          <input type="range" id="rngMenuAimTurn" min="0" max="1.5" step="0.05" value="0.35" />
         </div>
       </div>
 
@@ -539,6 +589,48 @@
         </div>
       </div>
 
+      <div class="menu-pane hidden tb-menu-scroll" id="paneMenuTower">
+        <div class="menu-section-lbl">Variante d'adversaire</div>
+        <select class="tb-select" id="selTwVariant">
+          <option value="hybrid">Duel Tourelles + Soldats auto</option>
+          <option value="waves">Tower Defense (Vagues)</option>
+          <option value="duel">Duel Tourelles vs Tourelles</option>
+        </select>
+        <div class="menu-obj-desc" id="lblTwVariantDesc" style="margin: 6px 0 4px; min-height: 36px;"></div>
+
+        <div class="menu-section-lbl">Tourelles &amp; Redéploiement</div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Tourelles max par camp</span><span id="lblTwMax">5</span></div>
+          <input type="range" id="rngTwMax" min="2" max="10" step="1" value="5" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Délai de redéploiement</span><span id="lblTwRedeploy">0.25s</span></div>
+          <input type="range" id="rngTwRedeploy" min="0" max="2" step="0.05" value="0.25" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>PV des tourelles</span><span id="lblTwHp">140 PV</span></div>
+          <input type="range" id="rngTwHp" min="60" max="300" step="10" value="140" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Espacement minimal</span><span id="lblTwSpacing">38 px</span></div>
+          <input type="range" id="rngTwSpacing" min="24" max="64" step="2" value="38" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Délai reconstruction</span><span id="lblTwRespawn">4.0s</span></div>
+          <input type="range" id="rngTwRespawn" min="1" max="10" step="0.5" value="4" />
+        </div>
+
+        <div class="menu-section-lbl">Vagues / Base</div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>PV de la base (Vagues)</span><span id="lblTwBaseHp">300 PV</span></div>
+          <input type="range" id="rngTwBaseHp" min="100" max="600" step="25" value="300" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Intervalle vagues / soldats</span><span id="lblTwWaveInt">5.5s</span></div>
+          <input type="range" id="rngTwWaveInt" min="2.5" max="10" step="0.5" value="5.5" />
+        </div>
+      </div>
+
       <button class="btn-primary" id="btnMenuApply">✓ APPLIQUER</button>
       <button class="btn-secondary" id="btnMenuClose">Fermer</button>
     </div>
@@ -553,6 +645,7 @@
         <button class="mode-btn" id="btnStartGlide">🏹 GLIDE</button>
         <button class="mode-btn" id="btnStartTurn">♟ TOUR</button>
         <button class="mode-btn" id="btnStartPathfind">🧭 PATHFIND</button>
+        <button class="mode-btn" id="btnStartTower">🗼 TOWER</button>
       </div>
       <div class="obj-title" id="startObj"></div>
       <div class="obj-desc" id="startDesc"></div>
@@ -582,6 +675,7 @@
 <script src="modes/mode_glide.js"></script>
 <script src="modes/mode_turn.js"></script>
 <script src="modes/mode_pathfind.js"></script>
+<script src="modes/mode_tower.js"></script>
 <script src="core/menu.js"></script>
 <script src="core/main.js"></script>
 </body>

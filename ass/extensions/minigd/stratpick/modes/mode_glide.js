@@ -66,18 +66,22 @@
         let offX = 0, offY = 0;
         if (count > 1) {
           const ang = (Math.PI * 2 * k) / count;
-          offX = Math.cos(ang) * 18;
-          offY = Math.sin(ang) * 18;
+          offX = Math.cos(ang) * 22;
+          offY = Math.sin(ang) * 22;
         }
         const newPath = [];
         for (let pi = 1; pi < glide.glideActivePath.length; pi++) {
           let wp = glide.glideActivePath[pi];
           if (pi === glide.glideActivePath.length - 1 && count > 1) {
-            wp = SP.walls.clampArena(wp.x + offX, wp.y + offY);
+            wp = SP.walls.pushOutOfWalls(wp.x + offX, wp.y + offY, SP.UNIT_RADIUS + 3);
+          } else {
+            wp = SP.walls.pushOutOfWalls(wp.x, wp.y, SP.UNIT_RADIUS + 3);
           }
           newPath.push({ x: wp.x, y: wp.y });
         }
         u.glidePath = newPath;
+        u.glideStuckT = 0;
+        u.glideBestD = Infinity;
         if (newPath.length) {
           const dx = newPath[0].x - u.x, dy = newPath[0].y - u.y;
           if (dx * dx + dy * dy > 4) u.aim = Math.atan2(dy, dx);
@@ -107,10 +111,12 @@
       }
       if (glide.glideDrawingUnits.length) {
         glide.drawingPath = true;
-        glide.glideActivePath.push(SP.walls.clampArena(pt.x, pt.y));
+        glide.glideActivePath.push(SP.walls.pushOutOfWalls(pt.x, pt.y, SP.UNIT_RADIUS + 3));
         for (const idx of glide.glideDrawingUnits) {
           st.units[idx].pop = 1.4;
           st.units[idx].glidePath = [];
+          st.units[idx].glideStuckT = 0;
+          st.units[idx].glideBestD = Infinity;
         }
       } else {
         glide.drawingPath = false;
@@ -120,7 +126,7 @@
 
     onPointerMove(pt) {
       if (!glide.drawingPath) return;
-      const cp = SP.walls.clampArena(pt.x, pt.y);
+      const cp = SP.walls.pushOutOfWalls(pt.x, pt.y, SP.UNIT_RADIUS + 3);
       const last = glide.glideActivePath[glide.glideActivePath.length - 1];
       if (!last || SP.dist(last.x, last.y, cp.x, cp.y) >= 18) {
         glide.glideActivePath.push(cp);

@@ -17,6 +17,7 @@
     botBarEl: $("botBar"),
     turnBarEl: $("turnBar"),
     pfBarEl: $("pfBar"),
+    twBarEl: $("twBar"),
     btnTbPrevUnit: $("btnTbPrevUnit"),
     tbUnitLbl: $("tbUnitLbl"),
     btnTbNextUnit: $("btnTbNextUnit"),
@@ -46,25 +47,41 @@
     btnPfClear: $("btnPfClear"),
     btnPfMenu: $("btnPfMenu"),
     btnPfRestart: $("btnPfRestart"),
+    twCountLbl: $("twCountLbl"),
+    btnTwMg: $("btnTwMg"),
+    btnTwSniper: $("btnTwSniper"),
+    btnTwCannon: $("btnTwCannon"),
+    twHintLbl: $("twHintLbl"),
+    btnTwRecall: $("btnTwRecall"),
+    btnTwMenu: $("btnTwMenu"),
+    btnTwRestart: $("btnTwRestart"),
     btnGameMenu: $("btnGameMenu"),
     menuOverlay: $("menuOverlay"),
     tabMenuGame: $("tabMenuGame"),
     tabMenuWalls: $("tabMenuWalls"),
     tabMenuTurn: $("tabMenuTurn"),
     tabMenuPathfind: $("tabMenuPathfind"),
+    tabMenuTower: $("tabMenuTower"),
     paneMenuGame: $("paneMenuGame"),
     paneMenuWalls: $("paneMenuWalls"),
     paneMenuTurn: $("paneMenuTurn"),
     paneMenuPathfind: $("paneMenuPathfind"),
+    paneMenuTower: $("paneMenuTower"),
     btnMenuPick: $("btnMenuPick"),
     btnMenuGlide: $("btnMenuGlide"),
     btnMenuTurn: $("btnMenuTurn"),
     btnMenuPathfind: $("btnMenuPathfind"),
+    btnMenuTower: $("btnMenuTower"),
     menuObjSection: $("menuObjSection"),
     menuTurnSummaryBox: $("menuTurnSummaryBox"),
     menuPfSummaryBox: $("menuPfSummaryBox"),
+    menuTwSummaryBox: $("menuTwSummaryBox"),
     btnJumpTurnTab: $("btnJumpTurnTab"),
     btnJumpPfTab: $("btnJumpPfTab"),
+    btnJumpTwTab: $("btnJumpTwTab"),
+    rowMenuAimTurn: $("rowMenuAimTurn"),
+    rngMenuAimTurn: $("rngMenuAimTurn"),
+    lblMenuAimTurn: $("lblMenuAimTurn"),
     rngTbHp: $("rngTbHp"), lblTbHp: $("lblTbHp"),
     selTbMap: $("selTbMap"),
     rngTbAiSpd: $("rngTbAiSpd"), lblTbAiSpd: $("lblTbAiSpd"),
@@ -102,6 +119,14 @@
     rngPfRange: $("rngPfRange"), lblPfRange: $("lblPfRange"),
     chkPfRockBlocks: $("chkPfRockBlocks"),
     chkPfRespawn: $("chkPfRespawn"),
+    selTwVariant: $("selTwVariant"), lblTwVariantDesc: $("lblTwVariantDesc"),
+    rngTwMax: $("rngTwMax"), lblTwMax: $("lblTwMax"),
+    rngTwRedeploy: $("rngTwRedeploy"), lblTwRedeploy: $("lblTwRedeploy"),
+    rngTwHp: $("rngTwHp"), lblTwHp: $("lblTwHp"),
+    rngTwSpacing: $("rngTwSpacing"), lblTwSpacing: $("lblTwSpacing"),
+    rngTwRespawn: $("rngTwRespawn"), lblTwRespawn: $("lblTwRespawn"),
+    rngTwBaseHp: $("rngTwBaseHp"), lblTwBaseHp: $("lblTwBaseHp"),
+    rngTwWaveInt: $("rngTwWaveInt"), lblTwWaveInt: $("lblTwWaveInt"),
     menuObjGrid,
     menuObjButtons: Array.from(menuObjGrid.querySelectorAll(".obj-choice-btn")),
     menuObjDesc: $("menuObjDesc"),
@@ -125,6 +150,7 @@
     btnStartGlide: $("btnStartGlide"),
     btnStartTurn: $("btnStartTurn"),
     btnStartPathfind: $("btnStartPathfind"),
+    btnStartTower: $("btnStartTower"),
     btnGlidePlay: $("btnGlidePlay"),
     btnPickPause: $("btnPickPause"),
     pScoreEl: $("pScore"),
@@ -203,6 +229,10 @@
       SP.modes.pathfind.onResize();
       return;
     }
+    if (st.gameMode === "tower") {
+      SP.modes.tower.onResize();
+      return;
+    }
 
     if (!st.running && !st.matchHasTicked) {
       SP.arena.setupObjectiveLayout();
@@ -238,20 +268,24 @@
     const isGlide = st.gameMode === "glide";
     const isTurn = st.gameMode === "turn";
     const isPf = st.gameMode === "pathfind";
+    const isTw = st.gameMode === "tower";
 
     dom.btnMenuPick.classList.toggle("active", isPick);
     dom.btnMenuGlide.classList.toggle("active", isGlide);
     dom.btnMenuTurn.classList.toggle("active", isTurn);
     dom.btnMenuPathfind.classList.toggle("active", isPf);
+    dom.btnMenuTower.classList.toggle("active", isTw);
 
     dom.btnStartPick.classList.toggle("active", isPick);
     dom.btnStartGlide.classList.toggle("active", isGlide);
     dom.btnStartTurn.classList.toggle("active", isTurn);
     dom.btnStartPathfind.classList.toggle("active", isPf);
+    dom.btnStartTower.classList.toggle("active", isTw);
 
-    dom.botBarEl.classList.toggle("hidden", isTurn || isPf);
+    dom.botBarEl.classList.toggle("hidden", isTurn || isPf || isTw);
     dom.turnBarEl.classList.toggle("hidden", !isTurn);
     dom.pfBarEl.classList.toggle("hidden", !isPf);
+    dom.twBarEl.classList.toggle("hidden", !isTw);
 
     if (isTurn) {
       SP.modes.pick.pickPaused = false;
@@ -264,6 +298,14 @@
     dom.objBadgeEl.style.color = "";
     dom.startObjEl.textContent = `Objectif : ${st.objInfo.name} (${SP.activeParams.match_duration}s)`;
     dom.startDescEl.textContent = st.objInfo.desc;
+
+    if (isTw) {
+      SP.modes.pick.pickPaused = false;
+      SP.modes.glide.glidePaused = false;
+      SP.modes.tower.onEnter();
+      SP.modes.tower.syncHud(true);
+      return;
+    }
 
     if (isPf) {
       SP.modes.pick.pickPaused = false;
@@ -346,6 +388,15 @@
       SP.modes.pathfind.onPrepare();
       st.running = Boolean(shouldStartRunning);
       SP.modes.pathfind.syncHud(true);
+      render();
+      return;
+    }
+
+    if (st.gameMode === "tower") {
+      st.walls = [];
+      SP.modes.tower.onPrepare();
+      st.running = Boolean(shouldStartRunning);
+      SP.modes.tower.syncHud(true);
       render();
       return;
     }
@@ -476,7 +527,14 @@
   }
   canvas.addEventListener("pointerup", endPointer);
   canvas.addEventListener("pointercancel", endPointer);
+  canvas.addEventListener("touchstart", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+  canvas.addEventListener("touchmove", (e) => { if (e.cancelable) e.preventDefault(); }, { passive: false });
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("selectstart", (e) => {
+    const tag = e.target && e.target.tagName;
+    if (tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") e.preventDefault();
+  });
 
   // --- Host Bridge ---
   window.addEventListener("message", (e) => {
@@ -504,6 +562,7 @@
       SP.modes.pick.resetInput();
       SP.modes.glide.resetInput();
       SP.modes.pathfind.resetInput();
+      if (SP.modes.tower && SP.modes.tower.resetInput) SP.modes.tower.resetInput();
       cancelLoop();
       render();
     } else if (d.type === "minigd_start" || d.type === "minigd_resume") {
@@ -548,6 +607,10 @@
         SP.modes.pathfind.clearSelection();
         return;
       }
+      if (st.gameMode === "tower" && SP.modes.tower && SP.modes.tower.state.selectedTurretId !== -1) {
+        SP.modes.tower.clearSelection();
+        return;
+      }
       if (st.isEmbedded && !st.externalPaused && window.parent && window.parent !== window) {
         try {
           window.parent.postMessage({
@@ -568,6 +631,7 @@
   const dom = SP.dom;
   const tbMod = SP.modes.turn;
   const pfMod = SP.modes.pathfind;
+  const twMod = SP.modes.tower;
 
   dom.btnSound.addEventListener("click", () => {
     SP.state.soundEnabled = !SP.state.soundEnabled;
@@ -594,6 +658,10 @@
     SP.activeParams.game_mode = "pathfind";
     prepareMatch(false);
   });
+  dom.btnStartTower.addEventListener("click", () => {
+    SP.activeParams.game_mode = "tower";
+    prepareMatch(false);
+  });
 
   dom.btnGlidePlay.addEventListener("click", SP.modes.glide.resumeSimulation);
   dom.btnPickPause.addEventListener("click", SP.modes.pick.togglePause);
@@ -602,6 +670,7 @@
   dom.btnRestart.addEventListener("click", startMatch);
   dom.btnTbRestart.addEventListener("click", startMatch);
   dom.btnPfRestart.addEventListener("click", startMatch);
+  dom.btnTwRestart.addEventListener("click", startMatch);
 
   // Turn-based buttons
   dom.btnTbPrevUnit.addEventListener("click", () => tbMod.selectUnitDelta(-1));
@@ -627,6 +696,12 @@
   dom.btnPfSaveGrp.addEventListener("click", pfMod.toggleSaveGroupArmed);
   dom.btnPfStop.addEventListener("click", pfMod.stopSelectedUnits);
   dom.btnPfClear.addEventListener("click", pfMod.clearSelection);
+
+  // Tower buttons
+  dom.btnTwMg.addEventListener("click", () => twMod.selectBuildType("mg"));
+  dom.btnTwSniper.addEventListener("click", () => twMod.selectBuildType("sniper"));
+  dom.btnTwCannon.addEventListener("click", () => twMod.selectBuildType("cannon"));
+  dom.btnTwRecall.addEventListener("click", twMod.recallSelectedTurret);
 
   dom.btnExitTop.addEventListener("click", () => sendResultAndExit(Math.round(SP.state.playerScore) > Math.round(SP.state.aiScore), SP.state.playerScore));
   dom.btnEndReturn.addEventListener("click", () => sendResultAndExit(Math.round(SP.state.playerScore) > Math.round(SP.state.aiScore), SP.state.playerScore));

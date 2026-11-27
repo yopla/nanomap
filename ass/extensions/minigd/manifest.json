@@ -123,7 +123,7 @@
 				"boostDurationSec": 1.2,
 				"cameraRotates": false,
 				"carColor": "#38d6ff",
-				"defaultControlMode": "joystick",
+				"defaultControlMode": "steering_wheel",
 				"defaultLivery": "stripes",
 				"defaultTrackStyle": "classic",
 				"defaultVehicle": "kart",
@@ -159,15 +159,15 @@
 		},
 		{
 			"accentColor": "#33b8ff",
-			"controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain pour déplacer.",
-			"description": "Jeu tactique en arène (4 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, et Pathfind groupes d'unités nombreuses parmi des roches irrégulières) avec 5 objectifs contre une IA configurable.",
+			"controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain • TOWER : choisissez Mitrailleuse/Sniper/Canon, touchez pour poser, glissez pour déplacer.",
+			"description": "Jeu tactique en arène (5 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, Pathfind groupes d'unités nombreuses parmi des roches irrégulières, et Tower fixe tourelles plaçables et déplaçables) avec 5 objectifs contre une IA configurable.",
 			"family": "stratpick",
 			"folder": "stratpick",
-			"goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, ou manœuvrez vos groupes en pathfinding !",
+			"goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, manœuvrez vos groupes en pathfinding, ou défendez et conquérez avec vos tourelles fixes !",
 			"icon": "🤏",
 			"id": "stratpick",
 			"layout": "fullframe",
-			"name": "StratPick / StratGlide / StratTour / Pathfind",
+			"name": "StratPick / StratGlide / StratTour / Pathfind / Tower",
 			"ownExit": false,
 			"params": {
 				"ai_color": "#ff5761",
@@ -225,7 +225,16 @@
 				"wall_hp": 160,
 				"wall_pattern": "symmetrical",
 				"wall_seed": 0,
-				"walls_enabled": true
+				"walls_enabled": true,
+				"tw_variant": "hybrid",
+				"tw_max_turrets": 5,
+				"tw_turret_hp": 140,
+				"tw_redeploy_time": 0.25,
+				"tw_min_spacing": 38,
+				"tw_respawn_delay": 4.0,
+				"tw_base_hp": 300,
+				"tw_wave_interval": 5.5,
+				"aim_turn_time": 0.35
 			},
 			"path": "stratpick/stratpick.html",
 			"presets": [],
@@ -253,7 +262,8 @@
 				"returnButtonLabel": "← RETOUR AU JEU",
 				"startButtonText": "▶ Commencer",
 				"timeoutTitle": "Temps écoulé !",
-				"victoryTitle": "VICTOIRE !"
+				"victoryTitle": "VICTOIRE !",
+				"modeTowerLabel": "🗼 TOWER"
 			}
 		}
 	],

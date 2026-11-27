@@ -254,20 +254,51 @@
     }
   }
 
-  function getUnitGoal(u, enemy, enemyD2) {
+  function getUnitGoal(u, enemy, enemyD2, dt) {
     const st = SP.state;
     const ap = SP.activeParams;
     if (u.glidePath && u.glidePath.length) {
+      // Skip ahead if already closer to a subsequent waypoint (avoids backtracking around corners)
+      while (u.glidePath.length > 1) {
+        const d0 = SP.dist(u.x, u.y, u.glidePath[0].x, u.glidePath[0].y);
+        const d1 = SP.dist(u.x, u.y, u.glidePath[1].x, u.glidePath[1].y);
+        if (d1 < d0) {
+          u.glidePath.shift();
+          u.glideStuckT = 0;
+          u.glideBestD = Infinity;
+        } else {
+          break;
+        }
+      }
       while (u.glidePath.length) {
         const wp = u.glidePath[0];
         const dx = wp.x - u.x, dy = wp.y - u.y;
         const d = Math.hypot(dx, dy);
-        const thresh = u.glidePath.length > 1 ? 14 : 10;
+        const isLast = u.glidePath.length === 1;
+        const thresh = isLast ? 16 : 18;
         if (d <= thresh) {
           u.glidePath.shift();
-        } else {
-          return { x: (dx / d) * 1.15, y: (dy / d) * 1.15 };
+          u.glideStuckT = 0;
+          u.glideBestD = Infinity;
+          continue;
         }
+        // Anti-stuck: if unit isn't making progress toward current waypoint, skip/release it
+        if (u.glideBestD === undefined) u.glideBestD = Infinity;
+        if (u.glideStuckT === undefined) u.glideStuckT = 0;
+        if (d < u.glideBestD - 1.5) {
+          u.glideBestD = d;
+          u.glideStuckT = 0;
+        } else {
+          u.glideStuckT += (dt || 0.016);
+          const maxStuck = isLast ? (d < 44 ? 0.55 : 1.35) : 0.70;
+          if (u.glideStuckT >= maxStuck) {
+            u.glidePath.shift();
+            u.glideStuckT = 0;
+            u.glideBestD = Infinity;
+            continue;
+          }
+        }
+        return { x: (dx / d) * 1.15, y: (dy / d) * 1.15 };
       }
     }
     const shootRange = ap.shoot_range;
@@ -491,7 +522,7 @@
 
       const shootTarget = visibleTarget || (ap.wall_destructible ? nearest : null);
       const shootTargetD2 = visibleTarget ? visibleD2 : nearestD2;
-      const gRaw = getUnitGoal(u, visibleTarget || nearest, visibleTarget ? visibleD2 : nearestD2);
+      const gRaw = getUnitGoal(u, visibleTarget || nearest, visibleTarget ? visibleD2 : nearestD2, dt);
       const g = SP.walls.steerAroundWalls(u, gRaw.x, gRaw.y);
       let dvx = g.x * unitSpeed + sx;
       let dvy = g.y * unitSpeed + sy;
@@ -511,8 +542,9 @@
 
       u.fireCd -= dt;
       if (shootTarget && shootTargetD2 <= shootRange * shootRange) {
-        u.aim = Math.atan2(shootTarget.y - u.y, shootTarget.x - u.x);
-        if (u.fireCd <= 0) {
+        const rot = SP.stepAimAngle(u.aim, Math.atan2(shootTarget.y - u.y, shootTarget.x - u.x), ap.aim_turn_time, dt);
+        u.aim = rot.angle;
+        if (rot.aligned && u.fireCd <= 0) {
           u.fireCd = fireInt * SP.randRange(0.88, 1.12);
           u.muzzle = 1;
           const ang = u.aim + SP.randRange(-0.075, 0.075);
@@ -528,7 +560,7 @@
           SP.playSfx("shoot");
         }
       } else if (spd > 8) {
-        u.aim = Math.atan2(u.vy, u.vx);
+        u.aim = SP.stepAimAngle(u.aim, Math.atan2(u.vy, u.vx), Math.max(ap.aim_turn_time, 0.18), dt).angle;
       }
     }
 
