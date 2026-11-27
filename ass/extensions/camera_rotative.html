@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Caméra Rotative</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "toggleLabel",
+      "label": "Libellé interrupteur",
+      "type": "text",
+      "default": "Caméra rotative (suit le personnage)",
+      "hint": "Affiché dans le menu Paramètres."
+    },
+    {
+      "key": "toggleDesc",
+      "label": "Description interrupteur",
+      "type": "text",
+      "default": "Fait tourner la caméra plutôt que le personnage quand il tourne (compatible mode Parallaxe 2.5D, 0 impact FPS si désactivée).",
+      "hint": "Variables disponibles : {filename}, {name}"
+    },
+    {
+      "key": "defaultEnabled",
+      "label": "Activée par défaut",
+      "type": "bool",
+      "default": false,
+      "hint": "Active automatiquement la caméra rotative sur une nouvelle partie."
+    },
+    {
+      "key": "rotationSpeed",
+      "label": "Vitesse max de rotation (rad/s)",
+      "type": "number",
+      "default": 3.2,
+      "min": 1.0,
+      "max": 8.0,
+      "step": 0.2,
+      "hint": "Vitesse maximale de rotation de la caméra en rad/s."
+    },
+    {
+      "key": "responsiveness",
+      "label": "Réactivité du suivi",
+      "type": "number",
+      "default": 6.0,
+      "min": 2.0,
+      "max": 14.0,
+      "step": 0.5,
+      "hint": "Réactivité du suivi angulaire sur les petits virages."
+    },
+    {
+      "key": "transitionDurationMs",
+      "label": "Durée de transition (ms)",
+      "type": "number",
+      "default": 550,
+      "min": 150,
+      "max": 2000,
+      "step": 50,
+      "hint": "Durée de la transition caméra fixe ↔ caméra rotative à la fermeture des Paramètres."
+    },
+    {
+      "key": "toastOn",
+      "label": "Toast activation",
+      "type": "text",
+      "default": "🎥 Caméra rotative activée"
+    },
+    {
+      "key": "toastOff",
+      "label": "Toast désactivation",
+      "type": "text",
+      "default": "🧭 Caméra fixe restaurée"
+    }
+  ]
+}
+</script>
+<script>
+// Extension Assemblage : camera_rotative.html
+// Fait tourner la caméra plutôt que le personnage quand il tourne,
+// en mode 2D classique comme en mode Parallaxe 2.5D (0 impact FPS quand OFF).
+(function () {
+  const FILENAME = "camera_rotative.html";
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function normalizeAngle(a) {
+    let r = (a + Math.PI) % (Math.PI * 2);
+    if (r < 0) r += Math.PI * 2;
+    return r - Math.PI;
+  }
+
+  function lerpAngle(a, b, t) {
+    return normalizeAngle(a + normalizeAngle(b - a) * t);
+  }
+
+  function getCustomText(ext, key, fallback) {
+    const fname = (ext && ext.filename) || FILENAME;
+    const name = (ext && ext.name) || fname;
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    const raw = (custom && Object.prototype.hasOwnProperty.call(custom, key) && custom[key] !== undefined && custom[key] !== null)
+      ? String(custom[key])
+      : fallback;
+    return raw.replaceAll("{filename}", fname).replaceAll("{name}", name);
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const savedState = host.state.get() || {};
+      const defaultEnabled = Boolean(host.ui.getConfig("defaultEnabled", false));
+      let enabledCamRot = (savedState && savedState.enabledCamRot !== undefined)
+        ? Boolean(savedState.enabledCamRot)
+        : defaultEnabled;
+
+      const toggleLabel = getCustomText(ext, "toggleLabel", "Caméra rotative (suit le personnage)");
+      const toggleDesc = getCustomText(ext, "toggleDesc", "Fait tourner la caméra plutôt que le personnage quand il tourne (compatible mode Parallaxe 2.5D, 0 impact FPS si désactivée).");
+      const toastOn = getCustomText(ext, "toastOn", "🎥 Caméra rotative activée");
+      const toastOff = getCustomText(ext, "toastOff", "🧭 Caméra fixe restaurée");
+
+      const rotationSpeed = clamp(Number(host.ui.getConfig("rotationSpeed", 3.2)) || 3.2, 1.0, 8.0);
+      const responsiveness = clamp(Number(host.ui.getConfig("responsiveness", 6.0)) || 6.0, 2.0, 14.0);
+      const transitionDurationSec = clamp(Number(host.ui.getConfig("transitionDurationMs", 550)) || 550, 150, 2000) / 1000;
+
+      let unhookUpdate = null;
+      let blend = enabledCamRot ? 1 : 0;
+      let targetBlend = blend;
+      let lastTurnSign = 1;
+
+      function onUpdate(origUpdate, dt, timeSec) {
+        const cam = host.game.cam;
+        const alien = host.game.alien;
+        const prevFacing = alien ? alien.facing : 0;
+
+        origUpdate(dt, timeSec);
+
+        if (!cam || !alien) return;
+
+        const uiOpen = host.game.isAnyUIOpen();
+        if (uiOpen) {
+          if (blend <= 0.0001) return;
+        } else if (blend !== targetBlend) {
+          const step = dt / transitionDurationSec;
+          if (blend < targetBlend) blend = Math.min(targetBlend, blend + step);
+          else blend = Math.max(targetBlend, blend - step);
+        }
+
+        if (blend <= 0.0001 && targetBlend === 0) {
+          blend = 0;
+          cam.angle = 0;
+          window.AssemblageCamRotActive = false;
+          queueMicrotask(() => {
+            if (blend === 0 && targetBlend === 0) detachHooks();
+          });
+          return;
+        }
+
+        window.AssemblageCamRotActive = true;
+
+        if (!uiOpen) {
+          alien.facing = prevFacing;
+          const moveDir = host.game.lastMoveDir;
+          if (moveDir && moveDir.active) {
+            const desiredAngle = Math.atan2(moveDir.y, moveDir.x);
+            let diff = normalizeAngle(desiredAngle - alien.facing);
+            if (Math.abs(diff) > 2.85) {
+              diff = Math.abs(diff) * lastTurnSign;
+            } else if (Math.abs(diff) > 0.08) {
+              lastTurnSign = diff >= 0 ? 1 : -1;
+            }
+            const maxStep = rotationSpeed * dt;
+            const smoothStep = diff * Math.min(1, dt * responsiveness);
+            const step = clamp(smoothStep, -maxStep, maxStep);
+            alien.facing = normalizeAngle(alien.facing + step);
+          }
+        }
+
+        const targetCamAngle = normalizeAngle(-Math.PI * 0.5 - alien.facing);
+        if (blend >= 0.9999) {
+          cam.angle = targetCamAngle;
+        } else {
+          cam.angle = lerpAngle(0, targetCamAngle, easeInOutCubic(clamp(blend, 0, 1)));
+        }
+      }
+
+      function attachHooks() {
+        if (!unhookUpdate) {
+          unhookUpdate = host.hooks.wrap("update", onUpdate);
+        }
+      }
+
+      function detachHooks() {
+        window.AssemblageCamRotActive = false;
+        if (host.game.cam) {
+          host.game.cam.angle = 0;
+        }
+        if (unhookUpdate) {
+          unhookUpdate();
+          unhookUpdate = null;
+        }
+      }
+
+      host.registerCleanup(detachHooks);
+
+      if (enabledCamRot) {
+        if (host.game.cam && host.game.alien) {
+          host.game.cam.angle = normalizeAngle(-Math.PI * 0.5 - host.game.alien.facing);
+        }
+        window.AssemblageCamRotActive = true;
+        attachHooks();
+      }
+
+      host.ui.addSettingToggle({
+        id: "camera_rotative",
+        label: toggleLabel,
+        desc: toggleDesc,
+        checked: enabledCamRot,
+        onChange(checked) {
+          enabledCamRot = Boolean(checked);
+          host.state.set({ enabledCamRot }, true);
+          targetBlend = enabledCamRot ? 1 : 0;
+          if (targetBlend !== blend) {
+            attachHooks();
+          } else if (targetBlend === 0) {
+            detachHooks();
+          }
+          const msg = enabledCamRot ? toastOn : toastOff;
+          if (msg.trim()) host.ui.showToast(msg);
+        },
+      });
+    },
+
+    onDeactivate() {
+      // Les hooks et cam.angle sont nettoyés automatiquement par registerCleanup(detachHooks)
+    },
+  };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Plante de Roche sur Ancre (Feuille de Sprite)</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "anchorId",
+      "label": "ID de l'ancre cible",
+      "type": "anchor",
+      "default": "ancre_8",
+      "hint": "Ancre sur laquelle la plante minérale repose (affleurement au repos) et pousse à l'approche."
+    },
+    {
+      "key": "sheetId",
+      "label": "Feuille de sprite",
+      "type": "spritesheet",
+      "default": "plante_roche",
+      "hint": "ID d'une feuille de sprite dans config/visuals/sprites/<id>.json."
+    },
+    {
+      "key": "growRadiusM",
+      "label": "Rayon de pousse (m)",
+      "type": "number",
+      "default": 10,
+      "min": 2,
+      "max": 35,
+      "step": 0.5,
+      "hint": "Distance à partir de laquelle la plante sort de l'affleurement rocheux."
+    },
+    {
+      "key": "retractRadiusM",
+      "label": "Rayon de replantation (m)",
+      "type": "number",
+      "default": 13,
+      "min": 3,
+      "max": 45,
+      "step": 0.5,
+      "hint": "Distance au-delà de laquelle la plante se replante dans le sol (hystérésis anti-clignotement)."
+    },
+    {
+      "key": "growDurationSec",
+      "label": "Durée de pousse (s)",
+      "type": "number",
+      "default": 0.72,
+      "min": 0.15,
+      "max": 3.0,
+      "step": 0.05
+    },
+    {
+      "key": "retractDurationSec",
+      "label": "Durée de replantation (s)",
+      "type": "number",
+      "default": 0.62,
+      "min": 0.15,
+      "max": 3.0,
+      "step": 0.05
+    },
+    {
+      "key": "scale",
+      "label": "Échelle",
+      "type": "number",
+      "default": 0.52,
+      "min": 0.15,
+      "max": 2.5,
+      "step": 0.02
+    },
+    {
+      "key": "tint",
+      "label": "Teinte cristal ($tint)",
+      "type": "color",
+      "default": "#6be5b8"
+    },
+    {
+      "key": "tintStrength",
+      "label": "Intensité teinte",
+      "type": "number",
+      "default": 0.9,
+      "min": 0.0,
+      "max": 1.0,
+      "step": 0.05
+    },
+    {
+      "key": "projectionMode",
+      "label": "Orientation en mode 2.5D",
+      "type": "select",
+      "default": "billboard",
+      "options": [
+        { "id": "billboard", "label": "Vertical face caméra (billboard 2.5D)" },
+        { "id": "ground", "label": "À plat sur le sol (suit l'inclinaison)" }
+      ]
+    }
+  ]
+}
+</script>
+<script>
+(() => {
+  const FILENAME = "plante_roche_ancre.html";
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host) {
+      const anchorId = String(host.ui.getConfig("anchorId", "ancre_8") || "ancre_8").trim();
+      const sheetId = String(host.ui.getConfig("sheetId", "plante_roche") || "plante_roche").trim();
+      const growRadiusM = clamp(Number(host.ui.getConfig("growRadiusM", 10)) || 10, 2, 35);
+      const retractRadiusM = Math.max(growRadiusM + 1.0, clamp(Number(host.ui.getConfig("retractRadiusM", 13)) || 13, 3, 45));
+      const growDurationSec = clamp(Number(host.ui.getConfig("growDurationSec", 0.72)) || 0.72, 0.15, 3.0);
+      const retractDurationSec = clamp(Number(host.ui.getConfig("retractDurationSec", 0.62)) || 0.62, 0.15, 3.0);
+      const baseScale = clamp(Number(host.ui.getConfig("scale", 0.52)) || 0.52, 0.15, 2.5);
+      const tint = String(host.ui.getConfig("tint", "#6be5b8") || "#6be5b8");
+      const tintStrength = clamp(Number(host.ui.getConfig("tintStrength", 0.9)), 0, 1);
+      const rawMode = String(host.ui.getConfig("projectionMode", "billboard") || "billboard").trim().toLowerCase();
+      const projectionMode = rawMode === "ground" ? "ground" : "billboard";
+
+      const av = window.AssemblageVisuals;
+      if (av && typeof av.ensureSpriteSheet === "function") {
+        av.ensureSpriteSheet(sheetId);
+      }
+
+      // growth = 0 -> affleurement rocheux (frame 0)
+      // growth = 1 -> plante minérale pleinement déployée (dernière frame)
+      let growth = 0;
+      let targetGrowth = 0;
+      let lastFrameIdx = 0;
+      const pebbles = [];
+
+      function spawnRockDust(x, y, rising) {
+        const count = rising ? 5 : 4;
+        for (let i = 0; i < count; i++) {
+          const ang = -Math.PI * (0.15 + Math.random() * 0.7);
+          const spd = (rising ? 36 : 22) + Math.random() * 44;
+          const isCrystal = Math.random() < 0.35;
+          pebbles.push({
+            x: x + (Math.random() - 0.5) * 42 * baseScale,
+            y: y + (Math.random() - 0.5) * 8,
+            vx: Math.cos(ang) * spd * (Math.random() < 0.5 ? 1 : -1),
+            vy: Math.sin(ang) * spd - (rising ? 18 : 6),
+            r: (isCrystal ? 2.2 : 2.8) + Math.random() * 2.2,
+            color: isCrystal ? tint : "#566378",
+            life: 0.34 + Math.random() * 0.24,
+            maxLife: 0.58,
+          });
+        }
+      }
+
+      function computeFrameIndex() {
+        const sheet = window.AssemblageVisuals && window.AssemblageVisuals.getSpriteSheet
+          ? window.AssemblageVisuals.getSpriteSheet(sheetId)
+          : null;
+        const n = sheet && sheet.meta && Array.isArray(sheet.meta.frames) ? sheet.meta.frames.length : 6;
+        if (n <= 1) return 0;
+        // Easing léger pour que la sortie et la rentrée soient nerveuses
+        const eased = growth < 0.5
+          ? 2 * growth * growth
+          : 1 - Math.pow(-2 * growth + 2, 2) * 0.5;
+        return Math.min(n - 1, Math.max(0, Math.round(eased * (n - 1))));
+      }
+
+      function drawPlant(ctx, x, y, scale, timeSec) {
+        if (!window.AssemblageVisuals || typeof window.AssemblageVisuals.drawSpriteSheet !== "function") return;
+        const frameIdx = computeFrameIndex();
+
+        // Ombre discrète au sol sous l'affleurement / la plante
+        ctx.save();
+        ctx.fillStyle = "rgba(8, 12, 22, 0.36)";
+        ctx.beginPath();
+        ctx.ellipse(x, y + 2 * scale, (78 + 26 * growth) * scale, (22 + 6 * growth) * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Halo cristallin subtil lorsque la plante s'ouvre
+        if (growth > 0.35) {
+          const glowAlpha = ((growth - 0.35) / 0.65) * (0.18 + 0.06 * Math.sin((timeSec || 0) * 3.0));
+          const gy = y - 165 * scale * growth;
+          const gr = (65 + 45 * growth) * scale;
+          const grad = ctx.createRadialGradient(x, gy, 4 * scale, x, gy, gr);
+          grad.addColorStop(0, tint);
+          grad.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.globalAlpha = glowAlpha;
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(x, gy, gr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // Micro-respiration minérale uniquement quand déployée
+        const swayRot = growth > 0.75 ? Math.sin((timeSec || 0) * 1.9) * 0.025 * ((growth - 0.75) / 0.25) : 0;
+        window.AssemblageVisuals.drawSpriteSheet(ctx, sheetId, x, y, {
+          frame: frameIdx,
+          scale,
+          rot: swayRot,
+          tint,
+          tintStrength,
+        });
+
+        // Particules de graviers / éclats cristallins au pied
+        if (pebbles.length) {
+          ctx.save();
+          for (const p of pebbles) {
+            const a = clamp(p.life / p.maxLife, 0, 1);
+            ctx.globalAlpha = a * 0.85;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(x + (p.x - p.anchorX) * (scale / baseScale), y + (p.y - p.anchorY) * (scale / baseScale), p.r * (scale / baseScale), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      // Enregistrement pour le tri en profondeur Y en mode 2.5D
+      if (projectionMode === "billboard") {
+        const sourceKey = `${host.instanceId || FILENAME}:${anchorId}:${sheetId}`;
+        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+        window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+          if (!window.AssemblageVisuals) return;
+          const anchor = host.game.getAnchor(anchorId);
+          if (!anchor) return;
+          pushBillboard(anchor.y, (ctx, projectPoint, _blend, timeSec) => {
+            const pt = projectPoint(anchor.x, anchor.y, 0);
+            drawPlant(ctx, pt.x, pt.y, baseScale * pt.scale, timeSec);
+          }, anchor.x);
+        });
+        host.registerCleanup(() => {
+          if (window.Assemblage25DBillboardSources) {
+            window.Assemblage25DBillboardSources.delete(sourceKey);
+          }
+        });
+      }
+
+      host.hooks.after("update", (_, dt) => {
+        const safeDt = clamp(dt || 0.016, 0, 0.05);
+        const anchor = host.game.getAnchor(anchorId);
+        if (!anchor) return;
+
+        const distM = host.game.getAnchorDistance(anchorId);
+        if (Number.isFinite(distM)) {
+          if (distM <= growRadiusM) targetGrowth = 1;
+          else if (distM >= retractRadiusM) targetGrowth = 0;
+        }
+
+        if (growth < targetGrowth) {
+          growth = Math.min(targetGrowth, growth + safeDt / growDurationSec);
+        } else if (growth > targetGrowth) {
+          growth = Math.max(targetGrowth, growth - safeDt / retractDurationSec);
+        }
+
+        const curFrame = computeFrameIndex();
+        if (curFrame !== lastFrameIdx) {
+          const rising = curFrame > lastFrameIdx;
+          const prevLen = pebbles.length;
+          spawnRockDust(anchor.x, anchor.y, rising);
+          for (let i = prevLen; i < pebbles.length; i++) {
+            pebbles[i].anchorX = anchor.x;
+            pebbles[i].anchorY = anchor.y;
+          }
+          lastFrameIdx = curFrame;
+        }
+
+        for (let i = pebbles.length - 1; i >= 0; i--) {
+          const p = pebbles[i];
+          p.life -= safeDt;
+          if (p.life <= 0) {
+            pebbles.splice(i, 1);
+            continue;
+          }
+          p.vy += 180 * safeDt;
+          p.x += p.vx * safeDt;
+          p.y += p.vy * safeDt;
+        }
+      });
+
+      host.hooks.after("drawWorldAfter", (_, timeSec) => {
+        if (projectionMode === "billboard" && window.Assemblage25DActive) return;
+        const ctx = host.game.ctx;
+        if (!ctx || !window.AssemblageVisuals) return;
+        const anchor = host.game.getAnchor(anchorId);
+        if (!anchor) return;
+        drawPlant(ctx, anchor.x, anchor.y, baseScale, timeSec);
+      });
+    },
+  };
+})();
+</script>
+</body>
+</html>

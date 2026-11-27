@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Coop P2P (WebRTC)</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "anchorId",
+      "label": "ID de l'ancre dédiée P2P",
+      "type": "anchor",
+      "default": "ancre_7",
+      "hint": "Ancre sur laquelle apparaît la balise relais P2P (par défaut ancre_7)."
+    },
+    {
+      "key": "appearRadiusM",
+      "label": "Rayon d'apparition de la balise (m)",
+      "type": "number",
+      "default": 12,
+      "min": 4,
+      "max": 35,
+      "step": 0.5
+    },
+    {
+      "key": "contactRadiusM",
+      "label": "Rayon de contact d'ouverture (m)",
+      "type": "number",
+      "default": 2.8,
+      "min": 1,
+      "max": 8,
+      "step": 0.2
+    },
+    {
+      "key": "firebaseApiKey",
+      "label": "Firebase API Key",
+      "type": "text",
+      "default": "",
+      "placeholder": "AIzaSy...",
+      "hint": "Clé Web API du projet Firebase alienAssemblage (Paramètres du projet → Votre application Web)."
+    },
+    {
+      "key": "firebaseDatabaseURL",
+      "label": "Firebase Realtime Database URL",
+      "type": "text",
+      "default": "",
+      "placeholder": "https://alienassemblage-default-rtdb.europe-west1.firebasedatabase.app",
+      "hint": "URL de la Realtime Database Firebase (utilisée uniquement pour la mise en relation, jamais pendant la partie)."
+    },
+    {
+      "key": "firebaseProjectId",
+      "label": "Firebase Project ID",
+      "type": "text",
+      "default": "alienassemblage",
+      "placeholder": "alienassemblage"
+    },
+    {
+      "key": "useAnonymousAuth",
+      "label": "Authentification anonyme Firebase",
+      "type": "bool",
+      "default": true,
+      "hint": "Recommandé : active la connexion anonyme pour protéger la base avec auth != null."
+    },
+    {
+      "key": "stunUrls",
+      "label": "Serveurs STUN (séparés par virgules)",
+      "type": "text",
+      "default": "stun:stun.l.google.com:19302, stun:stun.cloudflare.com:3478",
+      "hint": "Serveurs STUN publics gratuits pour établir le lien P2P direct."
+    },
+    {
+      "key": "turnUrl",
+      "label": "Serveur TURN optionnel (relais NAT strict)",
+      "type": "text",
+      "default": "",
+      "placeholder": "turn:global.relay.metered.ca:80",
+      "hint": "Laisser vide pour du P2P pur STUN. Utile uniquement derrière certains réseaux 4G/pro très restrictifs."
+    },
+    {
+      "key": "turnUsername",
+      "label": "Utilisateur TURN (optionnel)",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "turnCredential",
+      "label": "Mot de passe TURN (optionnel)",
+      "type": "text",
+      "default": ""
+    },
+    {
+      "key": "syncHz",
+      "label": "Fréquence de sync P2P (Hz)",
+      "type": "number",
+      "default": 25,
+      "min": 10,
+      "max": 40,
+      "step": 1,
+      "hint": "Nombre d'envois de position par seconde en P2P direct (25 Hz recommandé)."
+    },
+    {
+      "key": "iceTimeoutSec",
+      "label": "Timeout connexion P2P (sec)",
+      "type": "number",
+      "default": 10,
+      "min": 4,
+      "max": 30,
+      "step": 1
+    },
+    {
+      "key": "p2Color",
+      "label": "Couleur d'accent du 2e joueur",
+      "type": "color",
+      "default": "#48dbfb"
+    }
+  ]
+}
+</script>
+<style>
+  .p2p-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .p2p-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 13px;
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(16, 40, 62, 0.92), rgba(18, 24, 44, 0.95));
+    border: 1.5px solid rgba(72, 219, 251, 0.48);
+  }
+  .p2p-banner-icon {
+    font-size: 28px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .p2p-banner-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: #9beeff;
+  }
+  .p2p-banner-sub {
+    font-size: 12px;
+    color: #c8e4f5;
+    line-height: 1.38;
+    margin-top: 2px;
+  }
+  .p2p-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .p2p-input {
+    flex: 1 1 160px;
+    padding: 8px 11px;
+    border-radius: 9px;
+    border: 1.5px solid rgba(112, 188, 240, 0.45);
+    background: rgba(10, 16, 30, 0.88);
+    color: #eef8ff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .p2p-input:focus {
+    outline: none;
+    border-color: #48dbfb;
+  }
+  .p2p-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .p2p-pill {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(72, 219, 251, 0.14);
+    border: 1px solid rgba(72, 219, 251, 0.42);
+    color: #bdf3ff;
+  }
+  .p2p-pill.ok {
+    background: rgba(66, 232, 152, 0.16);
+    border-color: rgba(66, 232, 152, 0.55);
+    color: #98ffd0;
+  }
+  .p2p-pill.warn {
+    background: rgba(255, 196, 61, 0.15);
+    border-color: rgba(255, 196, 61, 0.5);
+    color: #ffe39b;
+  }
+  .p2p-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .p2p-lobby-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: rgba(20, 32, 56, 0.9);
+    border: 1.5px solid rgba(72, 219, 251, 0.36);
+  }
+  .p2p-lobby-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .p2p-lobby-name {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+  .p2p-lobby-sub {
+    font-size: 11.5px;
+    color: #a9cbe4;
+  }
+  .p2p-empty {
+    padding: 11px 12px;
+    border-radius: 10px;
+    background: rgba(14, 22, 38, 0.72);
+    border: 1px dashed rgba(120, 175, 220, 0.32);
+    font-size: 12px;
+    color: #9fc4de;
+    text-align: center;
+  }
+  .p2p-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .p2p-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    padding: 9px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: transform 0.12s ease, filter 0.14s ease;
+  }
+  .p2p-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .p2p-btn:active { transform: scale(0.97); }
+  .p2p-btn-primary {
+    background: linear-gradient(135deg, #48dbfb, #1dd1a1);
+    color: #061822;
+    border-color: #b7f8ff;
+  }
+  .p2p-btn-danger {
+    background: rgba(176, 38, 52, 0.92);
+    color: #fff3f3;
+    border-color: rgba(255, 126, 126, 0.65);
+  }
+  .p2p-btn-secondary {
+    background: rgba(34, 48, 78, 0.92);
+    color: #dceeff;
+    border-color: rgba(112, 188, 240, 0.52);
+  }
+  .p2p-warn-box {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: rgba(120, 74, 14, 0.35);
+    border: 1px solid rgba(255, 196, 61, 0.55);
+    font-size: 12px;
+    color: #ffe7a8;
+    line-height: 1.45;
+  }
+  @media (max-width: 520px) {
+    .p2p-actions .p2p-btn {
+      flex: 1 1 130px;
+      min-height: 44px;
+      text-align: center;
+    }
+  }
+</style>
+<script>
+// Extension Assemblage : p2p_coop.html
+// Multijoueur coopératif P2P (WebRTC DataChannel direct + signalisation Firebase RTDB Spark) :
+// - Balise relais sur ancre_7 (approche + contact) et bouton dynamique dans Paramètres.
+// - Sans proposition en ligne : crée une proposition en ligne (Hôte).
+// - Avec proposition en ligne : l'affiche dans le menu UI côté user + modale pour rejoindre (Invité).
+// - Partage la map de l'hôte (biome, seeds, pickups, tirs, créatures, JCLCN) en P2P pur sans Firebase.
+// - Clic sur le 2e joueur OU sur soi-même pour mettre fin à la partie partagée (l'invité garde son butin).
+(() => {
+  const FILENAME = "p2p_coop.html";
+  const FB_VERSION = "10.8.0";
+  const LOBBY_TTL_MS = 10 * 60 * 1000;
+
+  let fbSdkPromise = null;
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+
+  function lerpAngle(a, b, t) {
+    let d = (b - a + Math.PI) % (Math.PI * 2) - Math.PI;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return a + d * t;
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function injectStyleOnce() {
+    const scripts = document.querySelectorAll("style");
+    let cssText = "";
+    for (const s of scripts) {
+      if (s.textContent && s.textContent.includes(".p2p-lobby-card")) {
+        cssText = s.textContent;
+        break;
+      }
+    }
+    if (!cssText) return null;
+    const stId = "ext-style-p2p-coop";
+    const prev = document.getElementById(stId);
+    if (prev) prev.remove();
+    const st = document.createElement("style");
+    st.id = stId;
+    st.textContent = cssText;
+    document.head.appendChild(st);
+    return () => st.remove();
+  }
+
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === "1") return resolve();
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Échec chargement " + src)), { once: true });
+        return;
+      }
+      const sc = document.createElement("script");
+      sc.src = src;
+      sc.async = false;
+      sc.onload = () => { sc.dataset.loaded = "1"; resolve(); };
+      sc.onerror = () => reject(new Error("Échec chargement " + src));
+      document.head.appendChild(sc);
+    });
+  }
+
+  async function ensureFirebaseSdk() {
+    if (window.firebase && window.firebase.database && window.firebase.auth) return window.firebase;
+    if (!fbSdkPromise) {
+      fbSdkPromise = (async () => {
+        const base = `https://www.gstatic.com/firebasejs/${FB_VERSION}`;
+        await loadScriptOnce(`${base}/firebase-app-compat.js`);
+        await loadScriptOnce(`${base}/firebase-auth-compat.js`);
+        await loadScriptOnce(`${base}/firebase-database-compat.js`);
+        return window.firebase;
+      })().catch((err) => {
+        fbSdkPromise = null;
+        throw err;
+      });
+    }
+    return fbSdkPromise;
+  }
+
+  function randomGuestName() {
+    const nouns = ["Astro", "Cosmo", "Nebula", "Nova", "Quasar", "Vega", "Comet", "Orion", "Pulsar", "Zephyr"];
+    const n = nouns[Math.floor(Math.random() * nouns.length)];
+    return `${n}-${Math.floor(10 + Math.random() * 89)}`;
+  }
+
+  function parseIceServers(stunRaw, turnUrl, turnUser, turnCred) {
+    const servers = [];
+    const stunList = String(stunRaw || "stun:stun.l.google.com:19302")
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.startsWith("stun:") || s.startsWith("stuns:"));
+    if (stunList.length > 0) {
+      servers.push({ urls: stunList });
+    } else {
+      servers.push({ urls: ["stun:stun.l.google.com:19302"] });
+    }
+    const tUrl = String(turnUrl || "").trim();
+    if (tUrl) {
+      const entry = { urls: tUrl };
+      if (String(turnUser || "").trim()) entry.username = String(turnUser).trim();
+      if (String(turnCred || "").trim()) entry.credential = String(turnCred).trim();
+      servers.push(entry);
+    }
+    return servers;
+  }
+
+  function collectCreatures(activeGen) {
+    if (!activeGen) return [];
+    if (typeof activeGen.getCreatures === "function") {
+      return activeGen.getCreatures() || [];
+    }
+    if (typeof activeGen.getChunkStates !== "function") return [];
+    const cs = activeGen.getChunkStates();
+    if (!cs) return [];
+    const list = [];
+    for (const st of cs.values()) {
+      if (Array.isArray(st.octopuses)) {
+        for (const o of st.octopuses) {
+          list.push({ kind: "octopus", ref: o, chunkState: st, x: o.x, y: o.y, r: o.bodyR || 20, hp: o.hp, maxHp: o.maxHp });
+        }
+      }
+      if (Array.isArray(st.puyos)) {
+        for (const p of st.puyos) {
+          list.push({ kind: "puyo", ref: p, chunkState: st, x: p.x, y: p.y, r: p.r || 15, hp: p.hp ?? 30, maxHp: p.maxHp ?? 30 });
+        }
+      }
+      if (Array.isArray(st.tentacles)) {
+        for (const t of st.tentacles) {
+          list.push({ kind: "tentacle", ref: t, chunkState: st, x: t.x, y: t.y, r: 20 * (t.scale || 1), hp: t.hp ?? 45, maxHp: t.maxHp ?? 45 });
+        }
+      }
+    }
+    return list;
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host) {
+      const canvas = host.game.canvas;
+      if (!canvas) return;
+
+      const anchorId = String(host.ui.getConfig("anchorId", "ancre_7") || "ancre_7").trim();
+      const appearRadiusM = clamp(Number(host.ui.getConfig("appearRadiusM", 12)) || 12, 4, 35);
+      const contactRadiusM = clamp(Number(host.ui.getConfig("contactRadiusM", 2.8)) || 2.8, 1, 8);
+      const firebaseApiKey = String(host.ui.getConfig("firebaseApiKey", "") || "").trim();
+      const firebaseDatabaseURL = String(host.ui.getConfig("firebaseDatabaseURL", "") || "").trim();
+      const firebaseProjectId = String(host.ui.getConfig("firebaseProjectId", "alienassemblage") || "alienassemblage").trim();
+      const useAnonymousAuth = host.ui.getConfig("useAnonymousAuth", true) !== false;
+      const stunUrls = String(host.ui.getConfig("stunUrls", "stun:stun.l.google.com:19302, stun:stun.cloudflare.com:3478") || "");
+      const turnUrl = String(host.ui.getConfig("turnUrl", "") || "").trim();
+      const turnUsername = String(host.ui.getConfig("turnUsername", "") || "").trim();
+      const turnCredential = String(host.ui.getConfig("turnCredential", "") || "").trim();
+      const syncHz = clamp(Number(host.ui.getConfig("syncHz", 25)) || 25, 10, 40);
+      const iceTimeoutSec = clamp(Number(host.ui.getConfig("iceTimeoutSec", 10)) || 10, 4, 30);
+      const p2AccentColor = String(host.ui.getConfig("p2Color", "#48dbfb") || "#48dbfb").trim();
+
+      const hasFirebaseConfig = Boolean(firebaseApiKey && firebaseDatabaseURL);
+      const iceServers = parseIceServers(stunUrls, turnUrl, turnUsername, turnCredential);
+
+      const removeCss = injectStyleOnce();
+      if (removeCss) host.registerCleanup(removeCss);
+
+      const saved = host.state.get() || {};
+      let playerName = String(saved.playerName || "").trim() || randomGuestName();
+      if (!saved.playerName) {
+        host.state.set({ playerName }, false);
+      }
+
+      // --- État global P2P ---
+      // idle | hosting_wait | connecting | connected
+      let mode = "idle";
+      let role = ""; // "host" | "guest" | ""
+      let fbApp = null;
+      let fbDb = null;
+      let fbAuth = null;
+      let myUid = "";
+      let fbReady = false;
+      let fbIsOnline = false;
+      let fbError = "";
+      let fbInitPromise = null;
+
+      // Salons disponibles sur Firebase
+      const openLobbies = new Map(); // roomId -> lobbyData
+      let lobbiesRef = null;
+      let lobbyCleanupFn = null;
+      let activeRoomId = "";
+      let activeRoomRef = null;
+      let roomListeners = [];
+
+      // WebRTC
+      let pc = null;
+      let dcFast = null;
+      let dcSync = null;
+      let iceTimeoutHandle = null;
+      let pendingRemoteCandidates = [];
+      let pendingLocalCandidates = [];
+      let roomWrittenToFirebase = false;
+      let pingMs = 0;
+      let lastPingSentAt = 0;
+      let pingTimer = 0;
+      let stateSendAccum = 0;
+      let creatureSendAccum = 0;
+      const sendInterval = 1 / syncHz;
+
+      // État du 2e joueur distant
+      const remotePlayer = {
+        connected: false,
+        name: "Joueur 2",
+        color: p2AccentColor,
+        x: 120,
+        y: 70,
+        targetX: 120,
+        targetY: 70,
+        vx: 0,
+        vy: 0,
+        facing: 0,
+        targetFacing: 0,
+        walkCycle: 0,
+        hitFlash: 0,
+        lastPacketMs: 0,
+      };
+
+      // État du JCLCN distant (si le partenaire a JCLCN actif)
+      const remoteJclcn = {
+        active: false,
+        x: 0,
+        y: 0,
+        targetX: 0,
+        targetY: 0,
+        facingX: 1,
+        isMoving: false,
+        appearT: 0,
+        scale: 0.65,
+        tint: "#f7c924",
+        moveId: "",
+        moveFrame: -1,
+      };
+      const remoteVfx = { shockwaves: [], floatingTexts: [] };
+
+      // Proximité ancre & UI
+      let beaconAppearT = 0;
+      let contactCooldown = false;
+      let modalOpenKind = ""; // "" | "lobby" | "session"
+      let animClock = 0;
+      let isHoveringP2OrSelf = false;
+      let lastTouchMs = 0;
+      let p2ScreenX = -9999;
+      let p2ScreenY = -9999;
+      let p2ScreenRadius = 0;
+      let selfScreenX = -9999;
+      let selfScreenY = -9999;
+      let selfScreenRadius = 0;
+      let suppressingCreatureHook = false;
+      const wrappedGenerators = new WeakSet();
+
+      // --- Bus P2P pour tir_alien.html et jclcn.html ---
+      const busHandlers = new Map();
+      const prevBus = window.AssemblageP2PBus;
+      window.AssemblageP2PBus = {
+        emit(event, payload) {
+          if (prevBus && typeof prevBus.emit === "function") {
+            try { prevBus.emit(event, payload); } catch (_e) {}
+          }
+          const set = busHandlers.get(event);
+          if (set) {
+            for (const fn of set) {
+              try { fn(payload); } catch (_e) {}
+            }
+          }
+        },
+        on(event, fn) {
+          if (!busHandlers.has(event)) busHandlers.set(event, new Set());
+          busHandlers.get(event).add(fn);
+          return () => {
+            const s = busHandlers.get(event);
+            if (s) s.delete(fn);
+          };
+        },
+      };
+      host.registerCleanup(() => {
+        if (prevBus) window.AssemblageP2PBus = prevBus;
+        else delete window.AssemblageP2PBus;
+      });
+
+      // --- Bouton dynamique dans le menu Paramètres côté joueur ---
+      const settingBtn = host.ui.addSettingButton({
+        id: "p2p_coop_menu",
+        label: "📡 Multijoueur P2P",
+        desc: "Proposer ou rejoindre une partie partagée en P2P direct.",
+        buttonText: "Ouvrir",
+        onClick() {
+          host.game.closeSettingsUI();
+          if (mode === "connected") openSessionModal();
+          else openLobbyModal();
+        },
+      });
+
+      function updateSettingsUiSummary() {
+        const row = settingBtn ? settingBtn.closest(".setting-row") : null;
+        if (!row) return;
+        const lbl = row.querySelector(".setting-label");
+        const desc = row.querySelector(".setting-desc");
+        const count = openLobbies.size;
+
+        if (mode === "connected") {
+          if (lbl) lbl.textContent = `🟢 P2P actif avec ${remotePlayer.name}`;
+          if (desc) desc.textContent = `Connexion directe P2P (${role === "host" ? "Hôte" : "Invité"}${pingMs > 0 ? ` • ${pingMs} ms` : ""}). Cliquez ici ou sur un personnage pour quitter.`;
+          settingBtn.textContent = "Gérer / Quitter";
+        } else if (mode === "hosting_wait") {
+          if (lbl) lbl.textContent = "📡 P2P — Proposition en ligne";
+          if (desc) desc.textContent = "Votre partie est visible en ligne. En attente d'un 2e joueur...";
+          settingBtn.textContent = "En attente...";
+        } else if (mode === "connecting") {
+          if (lbl) lbl.textContent = "⏳ P2P — Connexion directe...";
+          if (desc) desc.textContent = "Échange WebRTC en cours...";
+          settingBtn.textContent = "Statut";
+        } else if (count > 0) {
+          const names = Array.from(openLobbies.values()).map((l) => l.hostName).slice(0, 2).join(", ");
+          if (lbl) lbl.textContent = `📡 P2P — ${count} proposition${count > 1 ? "s" : ""} en ligne !`;
+          if (desc) desc.textContent = `${names}${count > 2 ? "…" : ""} attend un partenaire. Cliquez pour rejoindre.`;
+          settingBtn.textContent = `Rejoindre (${count})`;
+        } else {
+          if (lbl) lbl.textContent = "📡 Multijoueur P2P";
+          if (desc) desc.textContent = hasFirebaseConfig
+            ? "Aucune proposition en ligne. Approchez l'ancre 7 ou cliquez ici pour proposer une partie."
+            : "Configurez Firebase dans les paramètres de l'extension pour activer le P2P.";
+          settingBtn.textContent = "Ouvrir";
+        }
+      }
+
+      // --- Initialisation Firebase (uniquement signalisation/lobby) ---
+      async function ensureFirebaseConnected() {
+        if (!hasFirebaseConfig) {
+          fbError = "Paramètres Firebase manquants (API Key et Database URL requis).";
+          return false;
+        }
+        if (fbReady && fbDb && myUid) {
+          if (!fbIsOnline) {
+            try { fbDb.goOnline(); } catch (_e) {}
+            fbIsOnline = true;
+            attachLobbyListeners();
+            updateSettingsUiSummary();
+          }
+          return true;
+        }
+        if (fbInitPromise) return fbInitPromise;
+
+        fbInitPromise = (async () => {
+          try {
+            const fb = await ensureFirebaseSdk();
+            const appName = "assemblage_p2p";
+            let app = fb.apps.find((a) => a.name === appName);
+            if (!app) {
+              app = fb.initializeApp({
+                apiKey: firebaseApiKey,
+                databaseURL: firebaseDatabaseURL,
+                projectId: firebaseProjectId || undefined,
+              }, appName);
+            }
+            fbApp = app;
+            fbDb = app.database();
+            try { fbDb.goOnline(); } catch (_e) {}
+            fbIsOnline = true;
+            fbAuth = app.auth();
+
+            if (useAnonymousAuth) {
+              if (!fbAuth.currentUser) {
+                const cred = await fbAuth.signInAnonymously();
+                myUid = cred.user ? cred.user.uid : "";
+              } else {
+                myUid = fbAuth.currentUser.uid;
+              }
+            } else {
+              myUid = "anon_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+            }
+
+            fbReady = Boolean(fbDb && myUid);
+            fbError = "";
+            if (fbReady && mode !== "connected") {
+              attachLobbyListeners();
+            }
+            updateSettingsUiSummary();
+            return fbReady;
+          } catch (err) {
+            fbError = String(err && err.message ? err.message : err);
+            console.error("[P2P Firebase]", err);
+            return false;
+          } finally {
+            fbInitPromise = null;
+          }
+        })();
+
+        return fbInitPromise;
+      }
+
+      function detachLobbyListeners() {
+        if (lobbyCleanupFn) {
+          try { lobbyCleanupFn(); } catch (_e) {}
+          lobbyCleanupFn = null;
+        }
+      }
+
+      function disconnectFirebase() {
+        detachLobbyListeners();
+        openLobbies.clear();
+        if (fbDb && fbIsOnline) {
+          try { fbDb.goOffline(); } catch (_e) {}
+          fbIsOnline = false;
+        }
+      }
+
+      function isLobbyFresh(data) {
+        if (!data || typeof data !== "object") return false;
+        if (data.status !== "open") return false;
+        if (!data.hostUid || data.hostUid === myUid) return false;
+        const ts = Number(data.updatedAt || data.createdAt || 0);
+        if (ts > 0 && Date.now() - ts > LOBBY_TTL_MS) return false;
+        return Boolean(data.offer && data.offer.sdp);
+      }
+
+      function attachLobbyListeners() {
+        if (!fbDb || !fbIsOnline || lobbiesRef) return;
+        lobbiesRef = fbDb.ref("p2p_lobbies");
+
+        const onAddOrChange = (snap) => {
+          const id = snap.key;
+          const val = snap.val();
+          const hadBefore = openLobbies.has(id);
+          if (isLobbyFresh(val)) {
+            openLobbies.set(id, Object.assign({ id }, val));
+            if (!hadBefore && mode === "idle") {
+              host.ui.showToast(`📡 ${val.hostName || "Un joueur"} propose une partie P2P ! (Paramètres ou ancre)`);
+            }
+          } else {
+            openLobbies.delete(id);
+          }
+          updateSettingsUiSummary();
+          if (modalOpenKind === "lobby") refreshOpenLobbyModal();
+        };
+
+        const onRemove = (snap) => {
+          if (openLobbies.delete(snap.key)) {
+            updateSettingsUiSummary();
+            if (modalOpenKind === "lobby") refreshOpenLobbyModal();
+          }
+        };
+
+        lobbiesRef.on("child_added", onAddOrChange);
+        lobbiesRef.on("child_changed", onAddOrChange);
+        lobbiesRef.on("child_removed", onRemove);
+
+        const ref = lobbiesRef;
+        lobbyCleanupFn = () => {
+          try {
+            ref.off("child_added", onAddOrChange);
+            ref.off("child_changed", onAddOrChange);
+            ref.off("child_removed", onRemove);
+          } catch (_e) {}
+          if (lobbiesRef === ref) lobbiesRef = null;
+        };
+      }
+
+      function detachRoomListeners() {
+        for (const item of roomListeners) {
+          try { item.ref.off(item.evt, item.fn); } catch (_e) {}
+        }
+        roomListeners = [];
+      }
+
+      async function cleanupFirebaseRoom(deleteRoom = true) {
+        detachRoomListeners();
+        if (activeRoomRef) {
+          if (fbIsOnline) {
+            try { await activeRoomRef.onDisconnect().cancel(); } catch (_e) {}
+            if (deleteRoom) {
+              try { await activeRoomRef.remove(); } catch (_e) {}
+            }
+          }
+          activeRoomRef = null;
+        }
+        activeRoomId = "";
+      }
+
+      async function releaseFirebaseAfterP2PConnect(deleteRoom) {
+        await cleanupFirebaseRoom(deleteRoom);
+        if (mode !== "connected") return;
+        disconnectFirebase();
+        updateSettingsUiSummary();
+        if (modalOpenKind === "session") openSessionModal();
+      }
+
+      function clearIceTimeout() {
+        if (iceTimeoutHandle) {
+          clearTimeout(iceTimeoutHandle);
+          iceTimeoutHandle = null;
+        }
+      }
+
+      function closePeerConnectionOnly() {
+        clearIceTimeout();
+        pendingRemoteCandidates = [];
+        pendingLocalCandidates = [];
+        roomWrittenToFirebase = false;
+        if (dcFast) {
+          try { dcFast.onopen = dcFast.onclose = dcFast.onmessage = null; dcFast.close(); } catch (_e) {}
+          dcFast = null;
+        }
+        if (dcSync) {
+          try { dcSync.onopen = dcSync.onclose = dcSync.onmessage = null; dcSync.close(); } catch (_e) {}
+          dcSync = null;
+        }
+        if (pc) {
+          try { pc.onicecandidate = pc.onconnectionstatechange = pc.ondatachannel = null; pc.close(); } catch (_e) {}
+          pc = null;
+        }
+      }
+
+      function sendFast(obj) {
+        if (dcFast && dcFast.readyState === "open") {
+          try { dcFast.send(JSON.stringify(obj)); } catch (_e) {}
+        }
+      }
+
+      function sendSync(obj) {
+        if (dcSync && dcSync.readyState === "open") {
+          try { dcSync.send(JSON.stringify(obj)); } catch (_e) {}
+        }
+      }
+
+      // --- Terminer proprement la partie partagée ---
+      async function endSharedSession(notifyPeer = true, reasonToast = "", opts = {}) {
+        const wasConnected = mode === "connected";
+        const wasGuest = role === "guest";
+        const reconnectFirebase = opts.reconnectFirebase !== false;
+
+        if (notifyPeer && dcSync && dcSync.readyState === "open") {
+          sendSync({ t: "bye", by: playerName });
+        }
+
+        closePeerConnectionOnly();
+        await cleanupFirebaseRoom(true);
+
+        mode = "idle";
+        role = "";
+        pingMs = 0;
+        remotePlayer.connected = false;
+        remoteJclcn.active = false;
+        remoteVfx.shockwaves.length = 0;
+        remoteVfx.floatingTexts.length = 0;
+
+        if (wasGuest && typeof host.game.leaveRemoteWorld === "function" && host.game.isInRemoteWorld()) {
+          await host.game.leaveRemoteWorld();
+        }
+
+        if (reconnectFirebase && hasFirebaseConfig && fbReady && !fbIsOnline) {
+          ensureFirebaseConnected();
+        }
+
+        updateSettingsUiSummary();
+        if (modalOpenKind) {
+          modalOpenKind = "";
+          host.ui.closeModal();
+        }
+
+        if (reasonToast) {
+          host.ui.showToast(reasonToast);
+        } else if (wasConnected) {
+          host.ui.showToast(wasGuest
+            ? "🔌 Partie P2P terminée — retour sur votre map (butin conservé !)"
+            : "🔌 Partie P2P terminée.");
+        }
+      }
+
+      host.registerCleanup(() => {
+        endSharedSession(true, "", { reconnectFirebase: false });
+        disconnectFirebase();
+      });
+
+      // --- Gestion des messages P2P entrants ---
+      function handleFastMessage(msg) {
+        if (!msg || typeof msg !== "object") return;
+        if (msg.t === "p") {
+          remotePlayer.targetX = Number(msg.x) || 0;
+          remotePlayer.targetY = Number(msg.y) || 0;
+          remotePlayer.vx = Number(msg.vx) || 0;
+          remotePlayer.vy = Number(msg.vy) || 0;
+          remotePlayer.targetFacing = Number(msg.f) || 0;
+          remotePlayer.walkCycle = Number(msg.w) || 0;
+          remotePlayer.hitFlash = Number(msg.h) || 0;
+          if (!remotePlayer.lastPacketMs) {
+            remotePlayer.x = remotePlayer.targetX;
+            remotePlayer.y = remotePlayer.targetY;
+            remotePlayer.facing = remotePlayer.targetFacing;
+          }
+          remotePlayer.lastPacketMs = performance.now();
+
+          if (msg.j && msg.j.active) {
+            const j = msg.j;
+            if (!remoteJclcn.active) {
+              remoteJclcn.x = Number(j.x) || 0;
+              remoteJclcn.y = Number(j.y) || 0;
+            }
+            remoteJclcn.active = true;
+            remoteJclcn.targetX = Number(j.x) || 0;
+            remoteJclcn.targetY = Number(j.y) || 0;
+            remoteJclcn.facingX = j.facingX < 0 ? -1 : 1;
+            remoteJclcn.isMoving = Boolean(j.isMoving);
+            remoteJclcn.appearT = clamp(Number(j.appearT) || 1, 0, 1);
+            remoteJclcn.scale = clamp(Number(j.scale) || 0.65, 0.3, 2.0);
+            remoteJclcn.tint = String(j.tint || "#f7c924");
+            remoteJclcn.moveId = String(j.moveId || "");
+            remoteJclcn.moveFrame = Number(j.moveFrame ?? -1);
+          } else {
+            remoteJclcn.active = false;
+          }
+        } else if (msg.t === "shot") {
+          if (typeof window.AssemblageTirRemoteSpawn === "function") {
+            window.AssemblageTirRemoteSpawn(msg.s);
+          }
+        } else if (msg.t === "jclcn_mv") {
+          const mv = msg.m;
+          if (mv && Number.isFinite(mv.x) && Number.isFinite(mv.y)) {
+            remoteVfx.shockwaves.push({
+              x: mv.x,
+              y: mv.y,
+              r: 8,
+              maxR: Number(mv.aoeRadius) || 56,
+              color: mv.color || "#ffd32a",
+              life: 0.34,
+              maxLife: 0.34,
+            });
+            if (mv.cry) {
+              remoteVfx.floatingTexts.push({
+                x: mv.x,
+                y: mv.y - 44 * (Number(mv.scale) || 0.65),
+                vy: -52,
+                text: String(mv.cry),
+                color: mv.color || "#ffd32a",
+                life: 0.72,
+                maxLife: 0.72,
+              });
+            }
+          }
+        } else if (msg.t === "creatures" && role === "guest") {
+          // Synchronisation douce des positions/PV des créatures depuis l'hôte
+          const activeGen = host.game.getActiveBiomeGenerator();
+          const localList = collectCreatures(activeGen);
+          if (!Array.isArray(msg.list) || localList.length === 0) return;
+          for (const rc of msg.list) {
+            let best = null;
+            let bestD = 95;
+            for (const lc of localList) {
+              if (lc.kind !== rc.k) continue;
+              const d = Math.hypot(lc.x - rc.x, lc.y - rc.y);
+              if (d < bestD) {
+                bestD = d;
+                best = lc;
+              }
+            }
+            if (best && best.ref) {
+              best.ref.x = lerp(best.ref.x, rc.x, 0.35);
+              best.ref.y = lerp(best.ref.y, rc.y, 0.35);
+              if (Number.isFinite(rc.hp) && typeof best.ref.hp === "number") {
+                best.ref.hp = Math.min(best.ref.hp, rc.hp);
+              }
+            }
+          }
+        }
+      }
+
+      async function handleSyncMessage(msg) {
+        if (!msg || typeof msg !== "object") return;
+        if (msg.t === "hello") {
+          remotePlayer.name = String(msg.name || "Joueur 2").slice(0, 28);
+          remotePlayer.color = String(msg.color || p2AccentColor);
+          remotePlayer.connected = true;
+          updateSettingsUiSummary();
+          if (modalOpenKind === "session") openSessionModal();
+        } else if (msg.t === "world_init" && role === "guest") {
+          if (msg.hostName) remotePlayer.name = String(msg.hostName).slice(0, 28);
+          if (msg.hostColor) remotePlayer.color = String(msg.hostColor);
+          remotePlayer.connected = true;
+          remotePlayer.x = Number(msg.hostX) || 115;
+          remotePlayer.y = Number(msg.hostY) || 70;
+          remotePlayer.targetX = remotePlayer.x;
+          remotePlayer.targetY = remotePlayer.y;
+          remotePlayer.lastPacketMs = performance.now();
+
+          if (typeof host.game.enterRemoteWorld === "function" && msg.world) {
+            await host.game.enterRemoteWorld(msg.world, remotePlayer.x + 56, remotePlayer.y + 14);
+          }
+          host.ui.showToast(`🟢 Connecté en P2P avec ${remotePlayer.name} !`);
+          updateSettingsUiSummary();
+        } else if (msg.t === "biome" && role === "guest") {
+          if (typeof host.game.enterRemoteWorld === "function" && msg.world) {
+            await host.game.enterRemoteWorld(msg.world, (Number(msg.hostX) || 115) + 52, (Number(msg.hostY) || 70) + 12);
+            host.ui.showToast(`🚀 ${remotePlayer.name} a voyagé vers ${msg.world.biomeName || msg.world.activeBiomeId}`);
+          }
+        } else if (msg.t === "pickup") {
+          if (typeof host.game.applyRemotePickup === "function") {
+            host.game.applyRemotePickup(msg.b, msg.cx, msg.cy, msg.idx);
+          }
+        } else if (msg.t === "dmg") {
+          const activeGen = host.game.getActiveBiomeGenerator();
+          if (activeGen && typeof activeGen.damageCreature === "function") {
+            const list = collectCreatures(activeGen);
+            let best = null;
+            let bestD = 90;
+            for (const c of list) {
+              if (msg.k && c.kind !== msg.k) continue;
+              const d = Math.hypot(c.x - msg.x, c.y - msg.y);
+              if (d < bestD) {
+                bestD = d;
+                best = c;
+              }
+            }
+            if (best) {
+              suppressingCreatureHook = true;
+              try {
+                activeGen.damageCreature(best, Number(msg.dmg) || 10, Number(msg.kx) || 0, Number(msg.ky) || 0);
+              } finally {
+                suppressingCreatureHook = false;
+              }
+            }
+          }
+        } else if (msg.t === "ping") {
+          sendSync({ t: "pong", ts: msg.ts });
+        } else if (msg.t === "pong") {
+          if (Number.isFinite(msg.ts)) {
+            pingMs = Math.max(1, Math.round(performance.now() - msg.ts));
+            updateSettingsUiSummary();
+          }
+        } else if (msg.t === "bye") {
+          await endSharedSession(false, `🔌 ${msg.by || remotePlayer.name} a mis fin à la partie partagée.`);
+        }
+      }
+
+      function onChannelsReadyCheck() {
+        const fastOpen = dcFast && dcFast.readyState === "open";
+        const syncOpen = dcSync && dcSync.readyState === "open";
+        if (!fastOpen || !syncOpen) return;
+        if (mode === "connected") return;
+
+        clearIceTimeout();
+        mode = "connected";
+        remotePlayer.connected = true;
+        remotePlayer.lastPacketMs = 0;
+
+        // Une fois le tunnel P2P ouvert, on supprime le salon puis on coupe Firebase (goOffline) : 0 connexion simultanée en jeu !
+        releaseFirebaseAfterP2PConnect(role === "host");
+
+        if (modalOpenKind) {
+          modalOpenKind = "";
+          host.ui.closeModal();
+        }
+
+        sendSync({ t: "hello", name: playerName, color: p2AccentColor });
+
+        if (role === "host") {
+          const world = typeof host.game.exportWorldSyncState === "function"
+            ? host.game.exportWorldSyncState()
+            : null;
+          const al = host.game.alien;
+          sendSync({
+            t: "world_init",
+            hostName: playerName,
+            hostColor: p2AccentColor,
+            hostX: al ? al.x : 115,
+            hostY: al ? al.y : 70,
+            world,
+          });
+          host.ui.showToast("🟢 Joueur 2 connecté en P2P direct (sans Firebase) !");
+        }
+
+        updateSettingsUiSummary();
+      }
+
+      function wireDataChannel(ch, kind) {
+        ch.onopen = () => onChannelsReadyCheck();
+        ch.onclose = () => {
+          if (mode === "connected") {
+            endSharedSession(false, "🔌 Connexion P2P fermée.");
+          }
+        };
+        ch.onmessage = (ev) => {
+          let data = null;
+          try { data = JSON.parse(ev.data); } catch (_e) { return; }
+          if (kind === "fast") handleFastMessage(data);
+          else handleSyncMessage(data);
+        };
+      }
+
+      function createPeerConnection(isHost, roomRef) {
+        closePeerConnectionOnly();
+        const conn = new RTCPeerConnection({ iceServers });
+        pc = conn;
+
+        const candBranch = isHost ? "hostCandidates" : "guestCandidates";
+        conn.onicecandidate = (ev) => {
+          if (ev.candidate && roomRef && mode !== "connected") {
+            const payload = ev.candidate.toJSON();
+            if (!roomWrittenToFirebase) {
+              pendingLocalCandidates.push(payload);
+            } else {
+              roomRef.child(candBranch).push(payload).catch(() => {});
+            }
+          }
+        };
+
+        conn.onconnectionstatechange = () => {
+          const st = conn.connectionState;
+          if (st === "failed" || st === "disconnected" || st === "closed") {
+            if (mode === "connected") {
+              endSharedSession(false, "🔌 Connexion P2P perdue.");
+            } else if (mode === "connecting") {
+              endSharedSession(false, "⚠️ Échec de la connexion P2P directe (réseau/NAT strict).");
+            }
+          }
+        };
+
+        return conn;
+      }
+
+      async function flushPendingCandidates() {
+        if (!pc || !pc.remoteDescription) return;
+        while (pendingRemoteCandidates.length > 0) {
+          const c = pendingRemoteCandidates.shift();
+          try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_e) {}
+        }
+      }
+
+      // --- HÔTE : créer une proposition en ligne ---
+      async function startHostingLobby() {
+        const ok = await ensureFirebaseConnected();
+        if (!ok) {
+          host.ui.showToast("⚠️ " + (fbError || "Impossible de joindre Firebase."));
+          return;
+        }
+        await endSharedSession(false, "", { reconnectFirebase: false });
+
+        mode = "hosting_wait";
+        role = "host";
+        activeRoomId = `room_${myUid.slice(0, 8)}_${Date.now().toString(36)}`;
+        activeRoomRef = fbDb.ref(`p2p_lobbies/${activeRoomId}`);
+
+        const conn = createPeerConnection(true, activeRoomRef);
+        dcFast = conn.createDataChannel("fast", { ordered: false, maxRetransmits: 0 });
+        dcSync = conn.createDataChannel("sync", { ordered: true });
+        wireDataChannel(dcFast, "fast");
+        wireDataChannel(dcSync, "sync");
+
+        try {
+          const offer = await conn.createOffer();
+          await conn.setLocalDescription(offer);
+
+          const worldInfo = typeof host.game.exportWorldSyncState === "function"
+            ? host.game.exportWorldSyncState()
+            : { activeBiomeId: host.game.activeBiomeId, biomeName: host.game.activeBiomeId };
+
+          await activeRoomRef.set({
+            hostUid: myUid,
+            hostName: playerName.slice(0, 28),
+            hostColor: p2AccentColor,
+            biomeId: String(worldInfo.activeBiomeId || "plaine_astrale"),
+            biomeName: String(worldInfo.biomeName || worldInfo.activeBiomeId || "Monde"),
+            status: "open",
+            createdAt: window.firebase.database.ServerValue.TIMESTAMP,
+            updatedAt: window.firebase.database.ServerValue.TIMESTAMP,
+            offer: { type: offer.type, sdp: offer.sdp },
+          });
+          await activeRoomRef.onDisconnect().remove();
+          roomWrittenToFirebase = true;
+          while (pendingLocalCandidates.length > 0) {
+            const c = pendingLocalCandidates.shift();
+            activeRoomRef.child("hostCandidates").push(c).catch(() => {});
+          }
+
+          // Écoute la réponse de l'invité
+          const answerRef = activeRoomRef.child("answer");
+          const onAnswer = async (snap) => {
+            const ans = snap.val();
+            if (!ans || !ans.sdp || !pc || pc.currentRemoteDescription) return;
+            mode = "connecting";
+            updateSettingsUiSummary();
+            try {
+              await pc.setRemoteDescription(new RTCSessionDescription(ans));
+              await flushPendingCandidates();
+              clearIceTimeout();
+              iceTimeoutHandle = setTimeout(() => {
+                if (mode !== "connected") {
+                  endSharedSession(false, "⏱️ Timeout P2P : l'autre appareil n'a pas pu établir le lien direct.");
+                }
+              }, iceTimeoutSec * 1000);
+            } catch (err) {
+              console.error("[P2P Host setRemoteDescription]", err);
+            }
+          };
+          answerRef.on("value", onAnswer);
+          roomListeners.push({ ref: answerRef, evt: "value", fn: onAnswer });
+
+          // Écoute les ICE candidates de l'invité
+          const gCandRef = activeRoomRef.child("guestCandidates");
+          const onGuestCand = async (snap) => {
+            const c = snap.val();
+            if (!c || !c.candidate || !pc) return;
+            if (pc.remoteDescription) {
+              try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_e) {}
+            } else {
+              pendingRemoteCandidates.push(c);
+            }
+          };
+          gCandRef.on("child_added", onGuestCand);
+          roomListeners.push({ ref: gCandRef, evt: "child_added", fn: onGuestCand });
+
+          updateSettingsUiSummary();
+          host.ui.showToast("📡 Proposition P2P en ligne ! Vous pouvez explorer en attendant.");
+          if (modalOpenKind === "lobby") refreshOpenLobbyModal();
+        } catch (err) {
+          console.error("[P2P startHostingLobby]", err);
+          const detail = String(err && (err.code || err.message) ? (err.code || err.message) : err);
+          fbError = detail;
+          await endSharedSession(false, `⚠️ Erreur proposition P2P : ${detail}`);
+        }
+      }
+
+      // --- INVITÉ : rejoindre une proposition existante ---
+      async function joinLobby(roomId) {
+        const ok = await ensureFirebaseConnected();
+        if (!ok) {
+          host.ui.showToast("⚠️ " + (fbError || "Impossible de joindre Firebase."));
+          return;
+        }
+        const lobby = openLobbies.get(roomId);
+        if (!lobby || !lobby.offer || !lobby.offer.sdp) {
+          host.ui.showToast("⚠️ Cette proposition n'est plus disponible.");
+          return;
+        }
+
+        await endSharedSession(false, "", { reconnectFirebase: false });
+
+        mode = "connecting";
+        role = "guest";
+        activeRoomId = roomId;
+        activeRoomRef = fbDb.ref(`p2p_lobbies/${roomId}`);
+        remotePlayer.name = String(lobby.hostName || "Hôte").slice(0, 28);
+        remotePlayer.color = String(lobby.hostColor || p2AccentColor);
+
+        const conn = createPeerConnection(false, activeRoomRef);
+        conn.ondatachannel = (ev) => {
+          const ch = ev.channel;
+          if (ch.label === "fast") {
+            dcFast = ch;
+            wireDataChannel(ch, "fast");
+          } else {
+            dcSync = ch;
+            wireDataChannel(ch, "sync");
+          }
+        };
+
+        try {
+          await conn.setRemoteDescription(new RTCSessionDescription(lobby.offer));
+          const answer = await conn.createAnswer();
+          await conn.setLocalDescription(answer);
+
+          await activeRoomRef.update({
+            guestUid: myUid,
+            guestName: playerName.slice(0, 28),
+            guestColor: p2AccentColor,
+            status: "connecting",
+            answer: { type: answer.type, sdp: answer.sdp },
+          });
+          roomWrittenToFirebase = true;
+          while (pendingLocalCandidates.length > 0) {
+            const c = pendingLocalCandidates.shift();
+            activeRoomRef.child("guestCandidates").push(c).catch(() => {});
+          }
+
+          const hCandRef = activeRoomRef.child("hostCandidates");
+          const onHostCand = async (snap) => {
+            const c = snap.val();
+            if (!c || !c.candidate || !pc) return;
+            try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch (_e) {}
+          };
+          hCandRef.on("child_added", onHostCand);
+          roomListeners.push({ ref: hCandRef, evt: "child_added", fn: onHostCand });
+
+          clearIceTimeout();
+          iceTimeoutHandle = setTimeout(() => {
+            if (mode !== "connected") {
+              endSharedSession(false, "⏱️ Impossible d'établir le P2P direct (essayez sur un autre réseau ou configurez un TURN).");
+            }
+          }, iceTimeoutSec * 1000);
+
+          updateSettingsUiSummary();
+          host.ui.showToast(`⏳ Connexion P2P vers ${remotePlayer.name}...`);
+          if (modalOpenKind === "lobby") refreshOpenLobbyModal();
+        } catch (err) {
+          console.error("[P2P joinLobby]", err);
+          await endSharedSession(false, "⚠️ Échec de connexion à la partie.");
+        }
+      }
+
+      // --- Modales UI (Ancre / Paramètres / Clic joueur) ---
+      function buildLobbyModalHtml() {
+        const lobbies = Array.from(openLobbies.values());
+        let statusPill = `<span class="p2p-pill">Hors ligne</span>`;
+        if (mode === "hosting_wait") statusPill = `<span class="p2p-pill warn">📡 Proposition en ligne — en attente</span>`;
+        else if (mode === "connecting") statusPill = `<span class="p2p-pill warn">⏳ Négociation WebRTC P2P...</span>`;
+        else if (fbReady && fbIsOnline) statusPill = `<span class="p2p-pill ok">Firebase prêt (signalisation)</span>`;
+
+        let configWarn = "";
+        if (!hasFirebaseConfig) {
+          configWarn = `
+            <div class="p2p-warn-box">
+              ⚙️ <strong>Firebase non configuré</strong> : renseignez <code>firebaseApiKey</code> et <code>firebaseDatabaseURL</code> de votre projet <strong>alienAssemblage</strong> dans l'éditeur d'extensions Godot, puis exportez.
+            </div>`;
+        } else if (fbError) {
+          configWarn = `<div class="p2p-warn-box">⚠️ Erreur Firebase : ${escapeHtml(fbError)}</div>`;
+        }
+
+        let lobbiesHtml = "";
+        if (lobbies.length > 0) {
+          lobbiesHtml = `<div class="p2p-list">${lobbies.map((l) => `
+            <div class="p2p-lobby-card">
+              <div class="p2p-lobby-meta">
+                <div class="p2p-lobby-name">👽 ${escapeHtml(l.hostName || "Explorateur")}</div>
+                <div class="p2p-lobby-sub">Biome : ${escapeHtml(l.biomeName || l.biomeId || "Monde")} • P2P direct</div>
+              </div>
+              <button type="button" class="p2p-btn p2p-btn-primary" data-p2p-join="${escapeHtml(l.id)}">⚡ Rejoindre</button>
+            </div>
+          `).join("")}</div>`;
+        } else if (mode === "hosting_wait") {
+          lobbiesHtml = `<div class="p2p-empty">📡 Votre proposition est en ligne ! Dès qu'un 2e appareil clique sur « Rejoindre », il arrivera sur votre map en P2P direct.</div>`;
+        } else {
+          lobbiesHtml = `<div class="p2p-empty">Personne ne propose de partie pour le moment. Cliquez sur <strong>Se connecter</strong> pour créer une proposition en ligne.</div>`;
+        }
+
+        const primaryBtn = mode === "hosting_wait" || mode === "connecting"
+          ? `<button type="button" class="p2p-btn p2p-btn-danger" data-p2p-act="cancel">✖️ Annuler la proposition</button>`
+          : `<button type="button" class="p2p-btn p2p-btn-primary" data-p2p-act="host" ${!hasFirebaseConfig ? "disabled" : ""}>📡 ${lobbies.length > 0 ? "Créer ma propre proposition" : "Se connecter (proposer)"}</button>`;
+
+        return `
+          <div class="p2p-wrap">
+            <div class="p2p-banner">
+              <div class="p2p-banner-icon">📡</div>
+              <div>
+                <div class="p2p-banner-title">Relais Coop P2P — Deux appareils, même monde</div>
+                <div class="p2p-banner-sub">Firebase sert uniquement à se trouver ; toute la partie tourne ensuite en <strong>WebRTC P2P direct</strong> sur la map de l'hôte.</div>
+              </div>
+            </div>
+            <div class="p2p-pills">
+              ${statusPill}
+              <span class="p2p-pill">⚡ ${syncHz} Hz P2P</span>
+              <span class="p2p-pill">🎒 Butin conservé</span>
+            </div>
+            ${configWarn}
+            <div class="p2p-row">
+              <label for="p2p-name-input" style="font-size:12px;color:#b8d7ef;font-weight:700;">Votre pseudo :</label>
+              <input id="p2p-name-input" class="p2p-input" type="text" maxlength="24" value="${escapeHtml(playerName)}" />
+            </div>
+            ${lobbiesHtml}
+            <div class="p2p-actions">
+              <button type="button" class="p2p-btn p2p-btn-secondary" data-p2p-act="close">Fermer</button>
+              ${primaryBtn}
+            </div>
+          </div>
+        `;
+      }
+
+      function bindLobbyModalEvents(bodyEl) {
+        const nameInp = bodyEl.querySelector("#p2p-name-input");
+        if (nameInp) {
+          nameInp.addEventListener("input", () => {
+            const cleaned = nameInp.value.trim().slice(0, 24);
+            if (cleaned) {
+              playerName = cleaned;
+              host.state.set({ playerName }, true);
+            }
+          });
+        }
+        const btnClose = bodyEl.querySelector('[data-p2p-act="close"]');
+        if (btnClose) {
+          btnClose.addEventListener("click", () => {
+            modalOpenKind = "";
+            host.ui.closeModal();
+          });
+        }
+        const btnHost = bodyEl.querySelector('[data-p2p-act="host"]');
+        if (btnHost) {
+          btnHost.addEventListener("click", () => startHostingLobby());
+        }
+        const btnCancel = bodyEl.querySelector('[data-p2p-act="cancel"]');
+        if (btnCancel) {
+          btnCancel.addEventListener("click", () => endSharedSession(false, "📡 Proposition annulée."));
+        }
+        for (const jBtn of bodyEl.querySelectorAll("[data-p2p-join]")) {
+          jBtn.addEventListener("click", () => {
+            const rid = jBtn.getAttribute("data-p2p-join");
+            if (rid) joinLobby(rid);
+          });
+        }
+      }
+
+      function refreshOpenLobbyModal() {
+        if (modalOpenKind !== "lobby") return;
+        const bodyEl = host.ui.showModal({
+          icon: "📡",
+          title: "Coop P2P (WebRTC)",
+          html: buildLobbyModalHtml(),
+          onMount: bindLobbyModalEvents,
+        });
+        return bodyEl;
+      }
+
+      async function openLobbyModal() {
+        modalOpenKind = "lobby";
+        refreshOpenLobbyModal();
+        if (hasFirebaseConfig && (!fbReady || !fbIsOnline)) {
+          await ensureFirebaseConnected();
+          if (modalOpenKind === "lobby") refreshOpenLobbyModal();
+        }
+      }
+
+      function openSessionModal() {
+        modalOpenKind = "session";
+        const html = `
+          <div class="p2p-wrap">
+            <div class="p2p-banner">
+              <div class="p2p-banner-icon">🟢</div>
+              <div>
+                <div class="p2p-banner-title">Partie partagée avec ${escapeHtml(remotePlayer.name)}</div>
+                <div class="p2p-banner-sub">Lien WebRTC P2P direct actif (0 connexion Firebase). ${role === "host" ? "Vous hébergez la map." : "Vous explorez la map de l'hôte (votre butin est conservé)."}</div>
+              </div>
+            </div>
+            <div class="p2p-pills">
+              <span class="p2p-pill ok">Rôle : ${role === "host" ? "Hôte (map)" : "Invité"}</span>
+              <span class="p2p-pill ok">${fbIsOnline ? "⏳ Coupure Firebase..." : "⚡ Firebase coupé (0 co)"}</span>
+              <span class="p2p-pill">📶 Latence : ${pingMs > 0 ? pingMs + " ms" : "mesure..."}</span>
+              <span class="p2p-pill">🌍 Biome : ${escapeHtml(host.game.activeBiomeId)}</span>
+            </div>
+            <div class="p2p-actions">
+              <button type="button" class="p2p-btn p2p-btn-secondary" data-p2p-sact="stay">Continuer la partie</button>
+              <button type="button" class="p2p-btn p2p-btn-danger" data-p2p-sact="leave">🔌 Mettre fin à la partie partagée</button>
+            </div>
+          </div>
+        `;
+        host.ui.showModal({
+          icon: "📡",
+          title: "Partie P2P en cours",
+          html,
+          onMount(bodyEl) {
+            const btnStay = bodyEl.querySelector('[data-p2p-sact="stay"]');
+            const btnLeave = bodyEl.querySelector('[data-p2p-sact="leave"]');
+            if (btnStay) {
+              btnStay.addEventListener("click", () => {
+                modalOpenKind = "";
+                host.ui.closeModal();
+              });
+            }
+            if (btnLeave) {
+              btnLeave.addEventListener("click", () => endSharedSession(true));
+            }
+          },
+        });
+      }
+
+      // Connexion silencieuse au lobby Firebase au démarrage (pour peupler le menu UI dès qu'un joueur propose)
+      if (hasFirebaseConfig) {
+        ensureFirebaseConnected();
+      } else {
+        updateSettingsUiSummary();
+      }
+
+      // --- Hooks de synchronisation (récoltes, biomes, tirs, JCLCN, créatures) ---
+      host.hooks.after("onCollect", (_, _elId, _isNew, info) => {
+        if (mode !== "connected" || !info) return;
+        sendSync({
+          t: "pickup",
+          b: info.biomeId,
+          cx: info.cx,
+          cy: info.cy,
+          idx: info.pickupIdx,
+        });
+      });
+
+      host.hooks.after("onBiomeChange", () => {
+        if (mode !== "connected" || role !== "host") return;
+        const world = typeof host.game.exportWorldSyncState === "function"
+          ? host.game.exportWorldSyncState()
+          : null;
+        const al = host.game.alien;
+        sendSync({
+          t: "biome",
+          world,
+          hostX: al ? al.x : 115,
+          hostY: al ? al.y : 70,
+        });
+      });
+
+      const unsubTir = window.AssemblageP2PBus.on("tir_shot", (shot) => {
+        if (mode !== "connected") return;
+        sendFast({ t: "shot", s: shot });
+      });
+      const unsubJclcn = window.AssemblageP2PBus.on("jclcn_move", (mv) => {
+        if (mode !== "connected") return;
+        sendFast({ t: "jclcn_mv", m: mv });
+      });
+      host.registerCleanup(() => {
+        unsubTir();
+        unsubJclcn();
+      });
+
+      function ensureGeneratorDamageHook(activeGen) {
+        if (!activeGen || typeof activeGen.damageCreature !== "function" || wrappedGenerators.has(activeGen)) return;
+        wrappedGenerators.add(activeGen);
+        const origDamage = activeGen.damageCreature.bind(activeGen);
+        activeGen.damageCreature = (creature, dmg, kx, ky) => {
+          const res = origDamage(creature, dmg, kx, ky);
+          if (!suppressingCreatureHook && mode === "connected" && creature && res && res.hit) {
+            sendSync({
+              t: "dmg",
+              k: creature.kind || "",
+              x: Math.round(creature.x),
+              y: Math.round(creature.y),
+              dmg: Math.round(dmg),
+              kx: Math.round(kx || 0),
+              ky: Math.round(ky || 0),
+            });
+          }
+          return res;
+        };
+      }
+
+      // --- Clic / Tap sur le 2e joueur OU sur soi-même pour mettre fin à la partie ---
+      function isHitP2OrSelf(sx, sy) {
+        if (mode !== "connected") return false;
+        const hitP2 = p2ScreenRadius > 0 && Math.hypot(sx - p2ScreenX, sy - p2ScreenY) <= p2ScreenRadius;
+        const hitSelf = selfScreenRadius > 0 && Math.hypot(sx - selfScreenX, sy - selfScreenY) <= selfScreenRadius;
+        return hitP2 || hitSelf;
+      }
+
+      const onTouchStartCapture = (e) => {
+        lastTouchMs = performance.now();
+        if (mode !== "connected" || host.game.isAnyUIOpen()) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          const pos = host.game.getCanvasPos(t.clientX, t.clientY);
+          if (isHitP2OrSelf(pos.x, pos.y)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            host.game.stopMovement();
+            openSessionModal();
+            return;
+          }
+        }
+      };
+
+      const onMouseDownCapture = (e) => {
+        if (e.button !== 0) return;
+        if (performance.now() - lastTouchMs < 500) return;
+        if (mode !== "connected" || host.game.isAnyUIOpen()) return;
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        if (isHitP2OrSelf(pos.x, pos.y)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          host.game.stopMovement();
+          openSessionModal();
+        }
+      };
+
+      const onMouseMoveHover = (e) => {
+        if (performance.now() - lastTouchMs < 500) return;
+        if (mode !== "connected" || host.game.isAnyUIOpen()) {
+          if (isHoveringP2OrSelf) {
+            isHoveringP2OrSelf = false;
+            canvas.style.cursor = "";
+          }
+          return;
+        }
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        const hit = isHitP2OrSelf(pos.x, pos.y);
+        if (hit !== isHoveringP2OrSelf) {
+          isHoveringP2OrSelf = hit;
+          canvas.style.cursor = hit ? "pointer" : "";
+        }
+      };
+
+      canvas.addEventListener("touchstart", onTouchStartCapture, { capture: true, passive: false });
+      canvas.addEventListener("mousedown", onMouseDownCapture, true);
+      window.addEventListener("mousemove", onMouseMoveHover);
+      host.registerCleanup(() => {
+        canvas.removeEventListener("touchstart", onTouchStartCapture, true);
+        canvas.removeEventListener("mousedown", onMouseDownCapture, true);
+        window.removeEventListener("mousemove", onMouseMoveHover);
+        if (isHoveringP2OrSelf) canvas.style.cursor = "";
+      });
+
+      // --- Boucle de mise à jour (proximité ancre, envoi P2P, interpolation) ---
+      host.hooks.after("update", (_, dt) => {
+        const safeDt = Math.max(0.001, Math.min(dt || 0.016, 0.05));
+        animClock += safeDt;
+
+        // Proximité ancre dédiée P2P
+        const distM = host.game.getAnchorDistance(anchorId);
+        if (distM !== null && distM <= appearRadiusM) {
+          beaconAppearT = Math.min(1, beaconAppearT + safeDt * 3.0);
+        } else {
+          beaconAppearT = Math.max(0, beaconAppearT - safeDt * 3.0);
+        }
+        if (contactCooldown && (distM === null || distM > contactRadiusM + 1.8)) {
+          contactCooldown = false;
+        }
+        if (!contactCooldown && distM !== null && distM <= contactRadiusM && !host.game.isAnyUIOpen()) {
+          contactCooldown = true;
+          host.game.stopMovement();
+          if (mode === "connected") openSessionModal();
+          else openLobbyModal();
+        }
+
+        // VFX distants
+        for (let i = remoteVfx.shockwaves.length - 1; i >= 0; i--) {
+          remoteVfx.shockwaves[i].life -= safeDt;
+          if (remoteVfx.shockwaves[i].life <= 0) remoteVfx.shockwaves.splice(i, 1);
+        }
+        for (let i = remoteVfx.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = remoteVfx.floatingTexts[i];
+          ft.y += ft.vy * safeDt;
+          ft.vy *= Math.exp(-2.8 * safeDt);
+          ft.life -= safeDt;
+          if (ft.life <= 0) remoteVfx.floatingTexts.splice(i, 1);
+        }
+
+        if (mode !== "connected") return;
+
+        const activeGen = host.game.getActiveBiomeGenerator();
+        ensureGeneratorDamageHook(activeGen);
+
+        // Interpolation fluide du 2e joueur
+        const smooth = 1 - Math.exp(-16 * safeDt);
+        const extrapX = remotePlayer.targetX + remotePlayer.vx * Math.min(0.06, safeDt);
+        const extrapY = remotePlayer.targetY + remotePlayer.vy * Math.min(0.06, safeDt);
+        if (Math.hypot(extrapX - remotePlayer.x, extrapY - remotePlayer.y) > 420) {
+          remotePlayer.x = remotePlayer.targetX;
+          remotePlayer.y = remotePlayer.targetY;
+        } else {
+          remotePlayer.x = lerp(remotePlayer.x, extrapX, smooth);
+          remotePlayer.y = lerp(remotePlayer.y, extrapY, smooth);
+        }
+        remotePlayer.facing = lerpAngle(remotePlayer.facing, remotePlayer.targetFacing, smooth);
+
+        if (remoteJclcn.active) {
+          if (Math.hypot(remoteJclcn.targetX - remoteJclcn.x, remoteJclcn.targetY - remoteJclcn.y) > 420) {
+            remoteJclcn.x = remoteJclcn.targetX;
+            remoteJclcn.y = remoteJclcn.targetY;
+          } else {
+            remoteJclcn.x = lerp(remoteJclcn.x, remoteJclcn.targetX, smooth);
+            remoteJclcn.y = lerp(remoteJclcn.y, remoteJclcn.targetY, smooth);
+          }
+        }
+
+        // Envoi P2P à syncHz
+        stateSendAccum += safeDt;
+        if (stateSendAccum >= sendInterval) {
+          stateSendAccum = 0;
+          const al = host.game.alien;
+          if (al) {
+            const jclcnState = (window.AssemblageJclcnSync && typeof window.AssemblageJclcnSync.getState === "function")
+              ? window.AssemblageJclcnSync.getState()
+              : null;
+            sendFast({
+              t: "p",
+              x: Math.round(al.x * 10) / 10,
+              y: Math.round(al.y * 10) / 10,
+              vx: Math.round((al.vx || 0) * 10) / 10,
+              vy: Math.round((al.vy || 0) * 10) / 10,
+              f: Math.round((al.facing || 0) * 1000) / 1000,
+              w: Math.round((al.walkCycle || 0) * 100) / 100,
+              h: 0,
+              j: jclcnState && jclcnState.active ? {
+                active: true,
+                x: Math.round(jclcnState.x * 10) / 10,
+                y: Math.round(jclcnState.y * 10) / 10,
+                facingX: jclcnState.facingX,
+                isMoving: jclcnState.isMoving,
+                appearT: Math.round(jclcnState.appearT * 100) / 100,
+                scale: jclcnState.scale,
+                tint: jclcnState.tint,
+                moveId: jclcnState.moveId,
+                moveFrame: Math.round(jclcnState.moveFrame * 10) / 10,
+              } : null,
+            });
+          }
+        }
+
+        // Hôte : synchro périodique (~5 Hz) des créatures proches
+        if (role === "host" && activeGen) {
+          creatureSendAccum += safeDt;
+          if (creatureSendAccum >= 0.2) {
+            creatureSendAccum = 0;
+            const list = collectCreatures(activeGen);
+            if (list.length > 0) {
+              const al = host.game.alien;
+              const nearby = [];
+              for (const c of list) {
+                const d1 = al ? Math.hypot(c.x - al.x, c.y - al.y) : 9999;
+                const d2 = Math.hypot(c.x - remotePlayer.x, c.y - remotePlayer.y);
+                if (Math.min(d1, d2) <= 780) {
+                  nearby.push({
+                    k: c.kind,
+                    x: Math.round(c.x),
+                    y: Math.round(c.y),
+                    hp: Math.round(c.hp ?? 30),
+                  });
+                  if (nearby.length >= 28) break;
+                }
+              }
+              if (nearby.length > 0) {
+                sendFast({ t: "creatures", list: nearby });
+              }
+            }
+          }
+        }
+
+        // Ping toutes les 2 secondes
+        pingTimer += safeDt;
+        if (pingTimer >= 2.0) {
+          pingTimer = 0;
+          lastPingSentAt = performance.now();
+          sendSync({ t: "ping", ts: lastPingSentAt });
+        }
+      });
+
+      // --- Rendu du 2e Alien, du JCLCN distant et de la balise sur ancre_7 ---
+      function drawRemoteAlien(ctx, sx, sy, scaleVal) {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.scale(scaleVal, scaleVal);
+
+        const stride = Math.sin(remotePlayer.walkCycle) * 5;
+        const bob = Math.abs(Math.cos(remotePlayer.walkCycle)) * 1.5;
+        const fx = Math.cos(remotePlayer.facing);
+        const fy = Math.sin(remotePlayer.facing);
+        const rx = -fy;
+        const ry = fx;
+        const accent = remotePlayer.color || p2AccentColor;
+
+        // Halo discret au sol (plus visible au survol)
+        ctx.strokeStyle = isHoveringP2OrSelf ? "rgba(255, 224, 102, 0.9)" : accent;
+        ctx.globalAlpha = isHoveringP2OrSelf ? 0.9 : 0.45;
+        ctx.lineWidth = isHoveringP2OrSelf ? 2.6 : 1.8;
+        ctx.beginPath();
+        ctx.arc(0, 4, 22, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Ombre
+        ctx.fillStyle = "rgba(0,0,0,0.32)";
+        ctx.beginPath(); ctx.arc(3, 5, 17, 0, Math.PI * 2); ctx.fill();
+
+        // Pieds
+        ctx.fillStyle = "#26314d";
+        ctx.beginPath(); ctx.arc(-rx * 7.5 + fx * stride, -ry * 7.5 + fy * stride, 5.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rx * 7.5 - fx * stride, ry * 7.5 - fy * stride, 5.2, 0, Math.PI * 2); ctx.fill();
+
+        // Sac à dos & torse (teinté avec la couleur du joueur 2)
+        ctx.fillStyle = "#2b4263";
+        ctx.beginPath(); ctx.arc(-fx * 6, -fy * 6, 10.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = accent;
+        ctx.beginPath(); ctx.arc(0, 0, 14.5, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "#17263d"; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.arc(0, 0, 14.5, 0, Math.PI * 2); ctx.stroke();
+
+        // Bras
+        ctx.fillStyle = "#7cf0d8";
+        ctx.beginPath(); ctx.arc(-rx * 13.5 - fx * stride * 0.6, -ry * 13.5 - fy * stride * 0.6, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rx * 13.5 + fx * stride * 0.6, ry * 13.5 + fy * stride * 0.6, 4.5, 0, Math.PI * 2); ctx.fill();
+
+        // Tête
+        const hx = fx * (2.5 + bob * 0.3);
+        const hy = fy * (2.5 + bob * 0.3);
+        ctx.fillStyle = "#5ee7c8";
+        ctx.beginPath(); ctx.arc(hx, hy, 12.2, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(180, 255, 240, 0.65)";
+        ctx.beginPath(); ctx.arc(hx - fx * 1.5 - rx * 2, hy - fy * 1.5 - ry * 2, 8.2, 0, Math.PI * 2); ctx.fill();
+
+        // Antennes
+        const sway = Math.sin(animClock * 4.5 + remotePlayer.walkCycle * 0.5) * 2.2;
+        for (const side of [-1, 1]) {
+          const bx = hx + rx * 5.5 * side - fx * 4;
+          const by = hy + ry * 5.5 * side - fy * 4;
+          const tx = bx + rx * 5 * side - fx * 9 + rx * sway;
+          const ty = by + ry * 5 * side - fy * 9 + ry * sway;
+          ctx.strokeStyle = accent; ctx.lineWidth = 2.2;
+          ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(tx, ty); ctx.stroke();
+          ctx.fillStyle = "#ffffff";
+          ctx.beginPath(); ctx.arc(tx, ty, 3.0, 0, Math.PI * 2); ctx.fill();
+        }
+
+        // Yeux
+        const lex = hx + fx * 6.2 - rx * 4.6, ley = hy + fy * 6.2 - ry * 4.6;
+        const rex = hx + fx * 6.2 + rx * 4.6, rey = hy + fy * 6.2 + ry * 4.6;
+        ctx.fillStyle = "#0f1424";
+        ctx.beginPath(); ctx.arc(lex, ley, 3.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rex, rey, 3.6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.beginPath(); ctx.arc(lex + fx - rx, ley + fy - ry, 1.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rex + fx - rx, rey + fy - ry, 1.2, 0, Math.PI * 2); ctx.fill();
+
+        ctx.restore();
+
+        // Badge pseudo + ping
+        ctx.save();
+        const label = pingMs > 0 ? `${remotePlayer.name} (${pingMs}ms)` : remotePlayer.name;
+        ctx.font = `700 ${Math.max(10, Math.round(11 * scaleVal))}px -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.textAlign = "center";
+        const tw = ctx.measureText(label).width + 14;
+        const bx = sx - tw * 0.5;
+        const by = sy - 34 * scaleVal - 16;
+        ctx.fillStyle = "rgba(10, 18, 34, 0.86)";
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, tw, 18, 8);
+        else ctx.rect(bx, by, tw, 18);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#e8fbff";
+        ctx.fillText(label, sx, by + 12.5);
+        ctx.restore();
+      }
+
+      function drawRemoteJclcn(ctx, sx, sy, scaleVal) {
+        if (!remoteJclcn.active || !window.AssemblageVisuals) return;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.scale(remoteJclcn.facingX, 1);
+        const animId = remoteJclcn.moveId || (remoteJclcn.isMoving ? "jclcn_run" : "jclcn_idle");
+        const opts = {
+          scale: remoteJclcn.scale * scaleVal,
+          tint: remoteJclcn.tint,
+          alpha: remoteJclcn.appearT,
+        };
+        if (remoteJclcn.moveId && remoteJclcn.moveFrame >= 0) {
+          opts.frame = remoteJclcn.moveFrame;
+        }
+        const drew = window.AssemblageVisuals.drawAnimation(ctx, animId, 0, 0, animClock, opts);
+        if (!drew) {
+          window.AssemblageVisuals.drawVisual(ctx, "jclcn_skin", 0, 0, opts);
+        }
+        ctx.restore();
+      }
+
+      function drawBeaconGround(ctx, ax, ay) {
+        if (beaconAppearT <= 0.02) return;
+        const pulse = (animClock * 0.9) % 1;
+        const col = mode === "connected"
+          ? "66, 232, 152"
+          : (openLobbies.size > 0 || mode === "hosting_wait" ? "72, 219, 251" : "130, 195, 255");
+
+        ctx.save();
+        ctx.translate(ax, ay);
+        // Onde radio pulsante
+        ctx.strokeStyle = `rgba(${col}, ${((1 - pulse) * 0.72 * beaconAppearT).toFixed(3)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14 + pulse * 44, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Socle holographique
+        ctx.fillStyle = `rgba(${col}, ${(0.18 * beaconAppearT).toFixed(3)})`;
+        ctx.strokeStyle = `rgba(${col}, ${(0.82 * beaconAppearT).toFixed(3)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, 22 * beaconAppearT, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Icône antenne
+        ctx.font = `${Math.round(20 * beaconAppearT)}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("📡", 0, 0);
+        ctx.restore();
+      }
+
+      // Rendu 2.5D (billboards triés en Y)
+      const sourceKey = `${FILENAME}:entities`;
+      window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+      window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+        if (mode !== "connected") return;
+
+        // Met à jour la hitbox écran de soi-même en 2.5D
+        const al = host.game.alien;
+        if (al) {
+          pushBillboard(al.y - 0.1, (_ctx, projectPoint) => {
+            const pt = projectPoint(al.x, al.y, 18);
+            selfScreenX = pt.x;
+            selfScreenY = pt.y;
+            selfScreenRadius = Math.max(24, 32 * pt.scale);
+          }, al.x);
+        }
+
+        // Joueur 2 en 2.5D
+        pushBillboard(remotePlayer.y, (ctx, projectPoint) => {
+          const pt = projectPoint(remotePlayer.x, remotePlayer.y, 18);
+          p2ScreenX = pt.x;
+          p2ScreenY = pt.y;
+          p2ScreenRadius = Math.max(26, 36 * pt.scale);
+          drawRemoteAlien(ctx, pt.x, pt.y, pt.scale);
+        }, remotePlayer.x);
+
+        // JCLCN distant en 2.5D
+        if (remoteJclcn.active) {
+          pushBillboard(remoteJclcn.y, (ctx, projectPoint) => {
+            const pt = projectPoint(remoteJclcn.x, remoteJclcn.y, 34 * remoteJclcn.scale);
+            drawRemoteJclcn(ctx, pt.x, pt.y, pt.scale);
+          }, remoteJclcn.x);
+        }
+
+        for (const ft of remoteVfx.floatingTexts) {
+          pushBillboard(ft.y + 4, (ctx, projectPoint) => {
+            const pt = projectPoint(ft.x, ft.y, 44);
+            const t = clamp(ft.life / ft.maxLife, 0, 1);
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, t * 1.4);
+            ctx.font = `900 ${Math.max(10, Math.round(13 * pt.scale))}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.strokeStyle = "rgba(10, 12, 20, 0.92)";
+            ctx.lineWidth = 3.5;
+            ctx.strokeText(ft.text, pt.x, pt.y);
+            ctx.fillStyle = ft.color;
+            ctx.fillText(ft.text, pt.x, pt.y);
+            ctx.restore();
+          }, ft.x);
+        }
+      });
+
+      host.registerCleanup(() => {
+        if (window.Assemblage25DBillboardSources) {
+          window.Assemblage25DBillboardSources.delete(sourceKey);
+        }
+      });
+
+      function worldToScreen2D(wx, wy) {
+        const cam = host.game.cam;
+        const zoom = host.game.currentZoom || 1;
+        const dx = wx - cam.x;
+        const dy = wy - cam.y;
+        let rx = dx;
+        let ry = dy;
+        if (cam.angle) {
+          const c = Math.cos(cam.angle);
+          const s = Math.sin(cam.angle);
+          rx = dx * c - dy * s;
+          ry = dx * s + dy * c;
+        }
+        return {
+          x: host.game.viewW * 0.5 + rx * zoom,
+          y: host.game.viewH * 0.5 + ry * zoom,
+          zoom,
+        };
+      }
+
+      // Rendu 2D + effets sol
+      host.hooks.after("drawWorldAfter", () => {
+        const ctx = host.game.ctx;
+        if (!ctx) return;
+
+        const anchor = host.game.getAnchor(anchorId);
+        if (anchor && beaconAppearT > 0.02) {
+          drawBeaconGround(ctx, anchor.x, anchor.y);
+        }
+
+        // Ondes de choc distantes au sol (2D et 2.5D)
+        for (const sw of remoteVfx.shockwaves) {
+          const p = 1 - clamp(sw.life / sw.maxLife, 0, 1);
+          const r = sw.r + (sw.maxR - sw.r) * (1 - Math.pow(1 - p, 2));
+          ctx.save();
+          ctx.globalAlpha = (1 - p) * 0.85;
+          ctx.strokeStyle = sw.color;
+          ctx.lineWidth = Math.max(1, 3.6 * (1 - p * 0.65));
+          ctx.beginPath();
+          ctx.arc(sw.x, sw.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (window.Assemblage25DActive) return;
+
+        if (mode !== "connected") {
+          p2ScreenRadius = 0;
+          selfScreenRadius = 0;
+          return;
+        }
+
+        // Hitboxes écran 2D pour soi et Joueur 2
+        const al = host.game.alien;
+        if (al) {
+          const spSelf = worldToScreen2D(al.x, al.y);
+          selfScreenX = spSelf.x;
+          selfScreenY = spSelf.y;
+          selfScreenRadius = Math.max(24, 30 * spSelf.zoom);
+        }
+        const spP2 = worldToScreen2D(remotePlayer.x, remotePlayer.y);
+        p2ScreenX = spP2.x;
+        p2ScreenY = spP2.y;
+        p2ScreenRadius = Math.max(26, 34 * spP2.zoom);
+
+        drawRemoteAlien(ctx, remotePlayer.x, remotePlayer.y, 1);
+        if (remoteJclcn.active) {
+          drawRemoteJclcn(ctx, remoteJclcn.x, remoteJclcn.y - 22 * remoteJclcn.scale, 1);
+        }
+        for (const ft of remoteVfx.floatingTexts) {
+          const t = clamp(ft.life / ft.maxLife, 0, 1);
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, t * 1.4);
+          ctx.font = "900 13px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.textAlign = "center";
+          ctx.strokeStyle = "rgba(10, 12, 20, 0.92)";
+          ctx.lineWidth = 3.5;
+          ctx.strokeText(ft.text, ft.x, ft.y);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+      });
+    },
+
+    onDeactivate() {
+      // Nettoyage automatique via host.registerCleanup
+    },
+  };
+})();
+</script>
+</body>
+</html>

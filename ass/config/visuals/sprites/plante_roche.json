@@ -1,0 +1,111 @@
+{
+	"version": 1,
+	"id": "plante_roche",
+	"name": "Plante Minérale (Roche)",
+	"category": "biomes",
+	"tags": [
+		"plante",
+		"roche",
+		"ancre",
+		"spritesheet"
+	],
+	"image": "plante_roche.png",
+	"tintImage": "plante_roche_tint.png",
+	"tintStrength": 0.88,
+	"frames": [
+		{
+			"id": "stade_0",
+			"x": 51,
+			"y": 163,
+			"w": 242,
+			"h": 107,
+			"pivotX": 134,
+			"pivotY": 97
+		},
+		{
+			"id": "stade_1",
+			"x": 390,
+			"y": 107,
+			"w": 252,
+			"h": 167,
+			"pivotX": 134,
+			"pivotY": 157
+		},
+		{
+			"id": "stade_2",
+			"x": 752,
+			"y": 38,
+			"w": 201,
+			"h": 241,
+			"pivotX": 103,
+			"pivotY": 231
+		},
+		{
+			"id": "stade_3",
+			"x": 82,
+			"y": 352,
+			"w": 201,
+			"h": 300,
+			"pivotX": 97,
+			"pivotY": 290
+		},
+		{
+			"id": "stade_4",
+			"x": 383,
+			"y": 312,
+			"w": 260,
+			"h": 344,
+			"pivotX": 129,
+			"pivotY": 334
+		},
+		{
+			"id": "stade_5",
+			"x": 686,
+			"y": 324,
+			"w": 313,
+			"h": 332,
+			"pivotX": 161,
+			"pivotY": 322
+		}
+	],
+	"clips": {
+		"affleurement": {
+			"frames": [
+				0
+			],
+			"fps": 1,
+			"loop": true
+		},
+		"grow": {
+			"frames": [
+				0,
+				1,
+				2,
+				3,
+				4,
+				5
+			],
+			"fps": 9,
+			"loop": false
+		},
+		"idle": {
+			"frames": [
+				5
+			],
+			"fps": 4,
+			"loop": true
+		},
+		"retract": {
+			"frames": [
+				5,
+				4,
+				3,
+				2,
+				1,
+				0
+			],
+			"fps": 11,
+			"loop": false
+		}
+	}
+}

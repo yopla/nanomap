@@ -1,0 +1,5955 @@
+{
+	"id": "jclcn",
+	"name": "🥋 JCLCN — Jean-Claude Lee Chan Norris",
+	"symbols": {
+		"jclcn_balayage_tourbillon": {
+			"category": "characters",
+			"duration": 38.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#7be3ff",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.3,
+							"sy": 0.3,
+							"x": 0.0,
+							"y": 32.0
+						},
+						{
+							"alpha": 0.52,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 1.05,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 0.45,
+							"ease": "easeOut",
+							"f": 26.0,
+							"rot": 0.0,
+							"sx": 1.25,
+							"sy": 1.1,
+							"x": 0.0,
+							"y": 28.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 38.0,
+							"rot": 0.0,
+							"sx": 1.4,
+							"sy": 1.2,
+							"x": 0.0,
+							"y": 32.0
+						}
+					],
+					"name": "Anneau vent cyclone",
+					"rx": 58.0,
+					"ry": 22.0,
+					"stroke": "#ffffff",
+					"strokeW": 3.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.42,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.1,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 30.0,
+					"ry": 9.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 38.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 0.0,
+							"rot": -20.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 10.0,
+							"rot": -85.0,
+							"sx": 1.0,
+							"sy": 1.15,
+							"x": 28.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 20.0,
+							"rot": 85.0,
+							"sx": 1.0,
+							"sy": 1.15,
+							"x": -28.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 30.0,
+							"rot": -82.0,
+							"sx": 1.0,
+							"sy": 1.1,
+							"x": 26.0,
+							"y": 28.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 38.0,
+							"rot": -14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe balayage",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 14.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 19.0,
+							"rot": 180.0,
+							"sx": 0.92,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 38.0,
+							"rot": 360.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse tourbillon",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 19.0,
+							"rot": 14.0,
+							"sx": -1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -16.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 38.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				}
+			],
+			"name": "Combat 6 — Tourbillon Balayage (Jackie)"
+		},
+		"jclcn_coup_de_tete_barbu": {
+			"category": "characters",
+			"duration": 42.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.2,
+							"sy": 0.2,
+							"x": 0.0,
+							"y": 36.0
+						},
+						{
+							"alpha": 0.85,
+							"ease": "easeOut",
+							"f": 18.0,
+							"rot": 0.0,
+							"sx": 0.4,
+							"sy": 0.4,
+							"x": 0.0,
+							"y": 36.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 34.0,
+							"rot": 0.0,
+							"sx": 1.6,
+							"sy": 1.5,
+							"x": 0.0,
+							"y": 36.0
+						}
+					],
+					"name": "Onde sismique dorée",
+					"rx": 52.0,
+					"ry": 26.0,
+					"stroke": "#ffffff",
+					"strokeW": 3.5,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 0.15,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.5,
+							"sy": 0.5,
+							"x": 0.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 0.72,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": 25.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": 0.0,
+							"y": -14.0
+						},
+						{
+							"alpha": 0.9,
+							"ease": "easeOut",
+							"f": 22.0,
+							"rot": 45.0,
+							"sx": 1.38,
+							"sy": 1.38,
+							"x": 8.0,
+							"y": 2.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 42.0,
+							"rot": 60.0,
+							"sx": 0.6,
+							"sy": 0.6,
+							"x": 0.0,
+							"y": -6.0
+						}
+					],
+					"name": "Aura barbe divine",
+					"pts": [
+						[
+							0.0,
+							-48.0
+						],
+						[
+							16.0,
+							-24.0
+						],
+						[
+							42.0,
+							-28.0
+						],
+						[
+							26.0,
+							-4.0
+						],
+						[
+							46.0,
+							18.0
+						],
+						[
+							18.0,
+							22.0
+						],
+						[
+							12.0,
+							44.0
+						],
+						[
+							0.0,
+							26.0
+						],
+						[
+							-12.0,
+							44.0
+						],
+						[
+							-18.0,
+							22.0
+						],
+						[
+							-46.0,
+							18.0
+						],
+						[
+							-26.0,
+							-4.0
+						],
+						[
+							-42.0,
+							-28.0
+						],
+						[
+							-16.0,
+							-24.0
+						]
+					],
+					"stroke": "#ff9a3c",
+					"strokeW": 2.4,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 18.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": 24.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -14.0,
+							"y": 20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 20.0,
+							"rot": 26.0,
+							"sx": 1.0,
+							"sy": 0.9,
+							"x": -12.0,
+							"y": 32.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 42.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe gauche",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -18.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": -24.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 14.0,
+							"y": 20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 20.0,
+							"rot": -26.0,
+							"sx": 1.0,
+							"sy": 0.9,
+							"x": 14.0,
+							"y": 32.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 42.0,
+							"rot": -14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe droite",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": -24.0,
+							"sx": 0.96,
+							"sy": 1.06,
+							"x": -4.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 20.0,
+							"rot": 36.0,
+							"sx": 1.12,
+							"sy": 0.92,
+							"x": 12.0,
+							"y": 10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 42.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -2.0,
+							"y": -20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": -26.0,
+							"sx": 1.08,
+							"sy": 1.08,
+							"x": -10.0,
+							"y": -32.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 20.0,
+							"rot": 42.0,
+							"sx": 1.2,
+							"sy": 1.2,
+							"x": 24.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 42.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				}
+			],
+			"name": "Combat 7 — Onde de Barbe (Super Chuck)"
+		},
+		"jclcn_grand_ecart_kick": {
+			"category": "characters",
+			"duration": 44.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.42,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.22,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 0.0,
+							"sx": 1.5,
+							"sy": 0.7,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.25,
+							"ease": "easeInOut",
+							"f": 32.0,
+							"rot": 0.0,
+							"sx": 1.4,
+							"sy": 0.75,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.42,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 28.0,
+					"ry": 8.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#48dbfb",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.1,
+							"sy": 0.1,
+							"x": -52.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 0.85,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": 0.0,
+							"sx": 1.1,
+							"sy": 1.1,
+							"x": -56.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 28.0,
+							"rot": 0.0,
+							"sx": 1.45,
+							"sy": 1.35,
+							"x": -68.0,
+							"y": -10.0
+						}
+					],
+					"name": "Onde choc gauche",
+					"rx": 18.0,
+					"ry": 26.0,
+					"stroke": "#ffffff",
+					"strokeW": 2.5,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#48dbfb",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.1,
+							"sy": 0.1,
+							"x": 52.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 0.85,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": 0.0,
+							"sx": 1.1,
+							"sy": 1.1,
+							"x": 56.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 28.0,
+							"rot": 0.0,
+							"sx": 1.45,
+							"sy": 1.35,
+							"x": 68.0,
+							"y": -10.0
+						}
+					],
+					"name": "Onde choc droite",
+					"rx": 18.0,
+					"ry": 26.0,
+					"stroke": "#ffffff",
+					"strokeW": 2.5,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": 88.0,
+							"sx": 1.0,
+							"sy": 1.1,
+							"x": -30.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": 92.0,
+							"sx": 1.0,
+							"sy": 1.12,
+							"x": -32.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe gauche grand écart",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -13.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": 88.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": -48.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": 92.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": -50.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -13.0,
+							"y": 44.0
+						}
+					],
+					"name": "Chaussure gauche",
+					"rx": 9.0,
+					"ry": 4.8,
+					"stroke": "#48dbfb",
+					"strokeW": 1.8,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": -10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": -88.0,
+							"sx": 1.0,
+							"sy": 1.1,
+							"x": 30.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": -92.0,
+							"sx": 1.0,
+							"sy": 1.12,
+							"x": 32.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": -10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe droite grand écart",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 13.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": -88.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": 48.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": -92.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": 50.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 13.0,
+							"y": 44.0
+						}
+					],
+					"name": "Chaussure droite",
+					"rx": 9.0,
+					"ry": 4.8,
+					"stroke": "#48dbfb",
+					"strokeW": 1.8,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.05,
+							"sy": 0.94,
+							"x": 0.0,
+							"y": 8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 0.96,
+							"sy": 1.04,
+							"x": 0.0,
+							"y": -20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -22.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"fill": "$tint",
+					"h": 20.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 30.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -18.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 70.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -24.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": 75.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -26.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 30.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -18.0,
+							"y": 4.0
+						}
+					],
+					"name": "Bras croisés kung-fu G",
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0
+				},
+				{
+					"fill": "$tint",
+					"h": 20.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": -30.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -70.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 20.0,
+							"y": -24.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": -75.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 22.0,
+							"y": -26.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": -30.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 4.0
+						}
+					],
+					"name": "Bras croisés kung-fu D",
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -19.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -47.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 28.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -49.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 44.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				}
+			],
+			"name": "Combat 2 — Grand Écart Volant (JCVD)"
+		},
+		"jclcn_idle": {
+			"category": "characters",
+			"duration": 48.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.44,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.36,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 0.92,
+							"sy": 0.92,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.44,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 1.02,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.36,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 0.92,
+							"sy": 0.92,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.44,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 28.0,
+					"ry": 8.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -11.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 27.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 16.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 27.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe gauche",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -14.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -5.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -13.0,
+							"y": 41.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -15.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": -5.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -13.0,
+							"y": 41.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -14.0,
+							"y": 44.0
+						}
+					],
+					"name": "Chaussure gauche",
+					"rx": 8.5,
+					"ry": 4.5,
+					"stroke": "#f5f5f5",
+					"strokeW": 1.6,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 11.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 27.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": -16.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": -10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 27.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": -14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe droite",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 14.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 5.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 13.0,
+							"y": 41.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 15.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 5.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 13.0,
+							"y": 41.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 14.0,
+							"y": 44.0
+						}
+					],
+					"name": "Chaussure droite",
+					"rx": 8.5,
+					"ry": 4.5,
+					"stroke": "#f5f5f5",
+					"strokeW": 1.6,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 20.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 30.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -18.0,
+							"y": 2.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 40.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -17.0,
+							"y": -3.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 28.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -18.0,
+							"y": 2.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 40.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -17.0,
+							"y": -3.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 30.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -18.0,
+							"y": 2.0
+						}
+					],
+					"name": "Bras arrière",
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0
+				},
+				{
+					"fill": "#f0b48a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -6.0
+						}
+					],
+					"name": "Poing arrière",
+					"rx": 5.5,
+					"ry": 5.2,
+					"stroke": "#181a24",
+					"strokeW": 2.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 2.0,
+							"sx": 1.03,
+							"sy": 0.97,
+							"x": 0.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -2.0,
+							"sx": 0.98,
+							"sy": 1.03,
+							"x": 0.0,
+							"y": 1.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 2.0,
+							"sx": 1.03,
+							"sy": 0.97,
+							"x": 0.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": -2.0,
+							"sx": 0.98,
+							"sy": 1.03,
+							"x": 0.0,
+							"y": 1.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 2.0,
+							"sx": 1.03,
+							"sy": 0.97,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"fill": "#181a24",
+					"h": 6.5,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 2.0,
+							"sx": 1.02,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -2.0,
+							"sx": 0.98,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 2.0,
+							"sx": 1.02,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": -2.0,
+							"sx": 0.98,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 2.0,
+							"sx": 1.02,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						}
+					],
+					"name": "Ceinture noire",
+					"rx": 2.0,
+					"stroke": "#0c0d12",
+					"strokeW": 1.6,
+					"type": "rect",
+					"visible": true,
+					"w": 34.0
+				},
+				{
+					"closed": true,
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 1.06,
+							"sy": 1.06,
+							"x": 0.0,
+							"y": 12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.06,
+							"sy": 1.06,
+							"x": 0.0,
+							"y": 12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						}
+					],
+					"name": "Boucle étoile",
+					"pts": [
+						[
+							0.0,
+							-5.0
+						],
+						[
+							1.5,
+							-1.5
+						],
+						[
+							5.0,
+							-1.5
+						],
+						[
+							2.2,
+							1.0
+						],
+						[
+							3.2,
+							4.5
+						],
+						[
+							0.0,
+							2.2
+						],
+						[
+							-3.2,
+							4.5
+						],
+						[
+							-2.2,
+							1.0
+						],
+						[
+							-5.0,
+							-1.5
+						],
+						[
+							-1.5,
+							-1.5
+						]
+					],
+					"stroke": "#8a5c00",
+					"strokeW": 1.2,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 2.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -21.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -2.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -26.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 2.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -21.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": -2.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -26.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 2.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 20.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -36.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": -48.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 20.0,
+							"y": -5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": -36.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": -48.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 20.0,
+							"y": -5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": -36.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 0.0
+						}
+					],
+					"name": "Bras avant",
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0
+				},
+				{
+					"fill": "#f0b48a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 24.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 26.0,
+							"y": -14.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 24.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 26.0,
+							"y": -14.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 48.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 24.0,
+							"y": -8.0
+						}
+					],
+					"name": "Poing avant",
+					"rx": 5.8,
+					"ry": 5.4,
+					"stroke": "#181a24",
+					"strokeW": 2.0,
+					"type": "ellipse",
+					"visible": true
+				}
+			],
+			"name": "JCLCN — Garde Martiale (Idle)"
+		},
+		"jclcn_nunchaku_furie": {
+			"category": "characters",
+			"duration": 36.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.42,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 28.0,
+					"ry": 8.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 0.25,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -28.0,
+							"sx": 0.7,
+							"sy": 0.7,
+							"x": 28.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 0.55,
+							"ease": "easeInOut",
+							"f": 12.0,
+							"rot": 45.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": 34.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 0.65,
+							"ease": "easeOut",
+							"f": 24.0,
+							"rot": 120.0,
+							"sx": 1.25,
+							"sy": 1.2,
+							"x": 38.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 0.25,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 180.0,
+							"sx": 0.7,
+							"sy": 0.7,
+							"x": 28.0,
+							"y": -6.0
+						}
+					],
+					"name": "Anneau vitesse nunchaku",
+					"rx": 36.0,
+					"ry": 20.0,
+					"stroke": "#ff9a3c",
+					"strokeW": 3.5,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe gauche",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": -14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe droite",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -6.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 18.0,
+							"rot": 12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 4.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": -6.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -4.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -21.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 18.0,
+							"rot": 8.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 4.0,
+							"y": -22.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": -4.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				},
+				{
+					"fill": "#8c4a1e",
+					"h": 22.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 0.0,
+							"rot": 25.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 26.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 9.0,
+							"rot": 135.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 38.0,
+							"y": -22.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 18.0,
+							"rot": 245.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 48.0,
+							"y": 2.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 27.0,
+							"rot": 325.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 30.0,
+							"y": 12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 385.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 26.0,
+							"y": -10.0
+						}
+					],
+					"name": "Nunchaku manche 1",
+					"rx": 2.0,
+					"stroke": "#ffd32a",
+					"strokeW": 1.6,
+					"type": "rect",
+					"visible": true,
+					"w": 5.0
+				},
+				{
+					"fill": "#8c4a1e",
+					"h": 22.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 0.0,
+							"rot": -55.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 36.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 9.0,
+							"rot": 65.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 52.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 18.0,
+							"rot": 185.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 62.0,
+							"y": -8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 27.0,
+							"rot": 265.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 42.0,
+							"y": 16.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 305.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 36.0,
+							"y": 4.0
+						}
+					],
+					"name": "Nunchaku manche 2",
+					"rx": 2.0,
+					"stroke": "#ffd32a",
+					"strokeW": 1.6,
+					"type": "rect",
+					"visible": true,
+					"w": 5.0
+				}
+			],
+			"name": "Combat 4 — Furie Nunchaku"
+		},
+		"jclcn_rafale_poings": {
+			"category": "characters",
+			"duration": 30.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.42,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 28.0,
+					"ry": 8.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 18.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe gauche",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": -18.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe droite",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 0.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 5.0,
+							"rot": 14.0,
+							"sx": 1.03,
+							"sy": 0.97,
+							"x": 5.0,
+							"y": 5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 10.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 15.0,
+							"rot": 16.0,
+							"sx": 1.03,
+							"sy": 0.97,
+							"x": 6.0,
+							"y": 5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 20.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 25.0,
+							"rot": 18.0,
+							"sx": 1.04,
+							"sy": 0.96,
+							"x": 7.0,
+							"y": 5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 30.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 8.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.0,
+							"y": -20.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 0.2,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": -10.0,
+							"sx": 0.4,
+							"sy": 0.8,
+							"x": 22.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 0.95,
+							"ease": "easeOut",
+							"f": 5.0,
+							"rot": -14.0,
+							"sx": 1.2,
+							"sy": 1.0,
+							"x": 28.0,
+							"y": -14.0
+						},
+						{
+							"alpha": 0.3,
+							"ease": "easeOut",
+							"f": 10.0,
+							"rot": 4.0,
+							"sx": 0.5,
+							"sy": 0.8,
+							"x": 22.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 0.95,
+							"ease": "easeOut",
+							"f": 15.0,
+							"rot": -8.0,
+							"sx": 1.25,
+							"sy": 1.1,
+							"x": 30.0,
+							"y": -12.0
+						},
+						{
+							"alpha": 0.3,
+							"ease": "easeOut",
+							"f": 20.0,
+							"rot": 8.0,
+							"sx": 0.5,
+							"sy": 0.8,
+							"x": 22.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 25.0,
+							"rot": -4.0,
+							"sx": 1.35,
+							"sy": 1.15,
+							"x": 32.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 0.2,
+							"ease": "linear",
+							"f": 30.0,
+							"rot": -10.0,
+							"sx": 0.4,
+							"sy": 0.8,
+							"x": 22.0,
+							"y": -10.0
+						}
+					],
+					"name": "Éclair rafale haut",
+					"pts": [
+						[
+							0.0,
+							-4.0
+						],
+						[
+							32.0,
+							-8.0
+						],
+						[
+							46.0,
+							0.0
+						],
+						[
+							32.0,
+							8.0
+						],
+						[
+							0.0,
+							4.0
+						]
+					],
+					"stroke": "#ff6b35",
+					"strokeW": 2.0,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "#f0b48a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 5.0,
+							"rot": 0.0,
+							"sx": 1.25,
+							"sy": 1.1,
+							"x": 54.0,
+							"y": -16.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 10.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 16.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 15.0,
+							"rot": 0.0,
+							"sx": 1.25,
+							"sy": 1.1,
+							"x": 58.0,
+							"y": -2.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 20.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 16.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 25.0,
+							"rot": 0.0,
+							"sx": 1.35,
+							"sy": 1.2,
+							"x": 64.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 30.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": -4.0
+						}
+					],
+					"name": "Poing rafale 1",
+					"rx": 7.0,
+					"ry": 6.0,
+					"stroke": "#ff6b35",
+					"strokeW": 2.2,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 0.85,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.15,
+							"sy": 1.0,
+							"x": 52.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 0.6,
+							"ease": "easeOut",
+							"f": 5.0,
+							"rot": 0.0,
+							"sx": 0.9,
+							"sy": 0.9,
+							"x": 18.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 0.9,
+							"ease": "easeOut",
+							"f": 10.0,
+							"rot": 0.0,
+							"sx": 1.2,
+							"sy": 1.1,
+							"x": 56.0,
+							"y": -14.0
+						},
+						{
+							"alpha": 0.6,
+							"ease": "easeOut",
+							"f": 15.0,
+							"rot": 0.0,
+							"sx": 0.9,
+							"sy": 0.9,
+							"x": 18.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 0.9,
+							"ease": "easeOut",
+							"f": 20.0,
+							"rot": 0.0,
+							"sx": 1.2,
+							"sy": 1.1,
+							"x": 58.0,
+							"y": 8.0
+						},
+						{
+							"alpha": 0.6,
+							"ease": "easeOut",
+							"f": 25.0,
+							"rot": 0.0,
+							"sx": 0.9,
+							"sy": 0.9,
+							"x": 20.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 0.85,
+							"ease": "linear",
+							"f": 30.0,
+							"rot": 0.0,
+							"sx": 1.15,
+							"sy": 1.0,
+							"x": 52.0,
+							"y": 6.0
+						}
+					],
+					"name": "Poing rafale 2",
+					"rx": 6.5,
+					"ry": 5.5,
+					"stroke": "#ffffff",
+					"strokeW": 1.8,
+					"type": "ellipse",
+					"visible": true
+				}
+			],
+			"name": "Combat 3 — Rafale de Poings (Bruce Lee)"
+		},
+		"jclcn_roundhouse_kick": {
+			"category": "characters",
+			"duration": 36.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.44,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.35,
+							"ease": "easeOut",
+							"f": 14.0,
+							"rot": 0.0,
+							"sx": 1.2,
+							"sy": 0.9,
+							"x": 6.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.44,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 30.0,
+					"ry": 9.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.2,
+							"sy": 0.2,
+							"x": 8.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 0.95,
+							"ease": "easeOut",
+							"f": 11.0,
+							"rot": -10.0,
+							"sx": 1.15,
+							"sy": 1.15,
+							"x": 16.0,
+							"y": -2.0
+						},
+						{
+							"alpha": 0.85,
+							"ease": "easeOut",
+							"f": 18.0,
+							"rot": 4.0,
+							"sx": 1.32,
+							"sy": 1.25,
+							"x": 24.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 26.0,
+							"rot": 8.0,
+							"sx": 1.4,
+							"sy": 1.1,
+							"x": 28.0,
+							"y": -4.0
+						}
+					],
+					"name": "Arc d'énergie coup de pied",
+					"pts": [
+						[
+							0.0,
+							-34.0
+						],
+						[
+							38.0,
+							-22.0
+						],
+						[
+							58.0,
+							0.0
+						],
+						[
+							42.0,
+							24.0
+						],
+						[
+							12.0,
+							16.0
+						],
+						[
+							28.0,
+							0.0
+						],
+						[
+							18.0,
+							-16.0
+						]
+					],
+					"stroke": "#ff4d4d",
+					"strokeW": 2.8,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 25.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": 18.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 29.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 22.0,
+							"rot": 16.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 29.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe appui",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 30.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 7.0,
+							"rot": -42.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 4.0,
+							"y": 14.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 13.0,
+							"rot": -88.0,
+							"sx": 1.0,
+							"sy": 1.15,
+							"x": 30.0,
+							"y": -2.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 21.0,
+							"rot": -84.0,
+							"sx": 1.0,
+							"sy": 1.1,
+							"x": 28.0,
+							"y": -1.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": -12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe frappeuse",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 13.0,
+							"y": 44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 7.0,
+							"rot": -38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 16.0,
+							"y": 24.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 13.0,
+							"rot": -88.0,
+							"sx": 1.2,
+							"sy": 1.2,
+							"x": 49.0,
+							"y": -3.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 21.0,
+							"rot": -84.0,
+							"sx": 1.1,
+							"sy": 1.1,
+							"x": 47.0,
+							"y": -2.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 13.0,
+							"y": 44.0
+						}
+					],
+					"name": "Chaussure frappeuse",
+					"rx": 9.5,
+					"ry": 5.0,
+					"stroke": "#ffd32a",
+					"strokeW": 2.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 7.0,
+							"rot": -18.0,
+							"sx": 1.05,
+							"sy": 0.95,
+							"x": -6.0,
+							"y": 8.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 13.0,
+							"rot": -34.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 3.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 21.0,
+							"rot": -28.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"fill": "#181a24",
+					"h": 6.5,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 13.0,
+							"rot": -34.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -6.0,
+							"y": 12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 17.0
+						}
+					],
+					"name": "Ceinture noire",
+					"rx": 2.0,
+					"stroke": "#ffd32a",
+					"strokeW": 1.4,
+					"type": "rect",
+					"visible": true,
+					"w": 34.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -21.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 7.0,
+							"rot": -16.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -10.0,
+							"y": -18.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 13.0,
+							"rot": -22.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 21.0,
+							"rot": -18.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -18.0,
+							"y": -19.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 36.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#ffffff",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.1,
+							"sy": 0.1,
+							"x": 54.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 12.0,
+							"rot": 20.0,
+							"sx": 1.35,
+							"sy": 1.35,
+							"x": 54.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 22.0,
+							"rot": 65.0,
+							"sx": 0.4,
+							"sy": 0.4,
+							"x": 58.0,
+							"y": -4.0
+						}
+					],
+					"name": "Étoile impact",
+					"pts": [
+						[
+							0.0,
+							-18.0
+						],
+						[
+							5.0,
+							-5.0
+						],
+						[
+							18.0,
+							0.0
+						],
+						[
+							5.0,
+							5.0
+						],
+						[
+							0.0,
+							18.0
+						],
+						[
+							-5.0,
+							5.0
+						],
+						[
+							-18.0,
+							0.0
+						],
+						[
+							-5.0,
+							-5.0
+						]
+					],
+					"stroke": "#ff6b35",
+					"strokeW": 2.4,
+					"type": "polygon",
+					"visible": true
+				}
+			],
+			"name": "Combat 1 — Roundhouse Kick (Chuck)"
+		},
+		"jclcn_run": {
+			"category": "characters",
+			"duration": 32.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.42,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.3,
+							"ease": "easeInOut",
+							"f": 8.0,
+							"rot": 0.0,
+							"sx": 0.85,
+							"sy": 0.85,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.42,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.3,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 0.0,
+							"sx": 0.85,
+							"sy": 0.85,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.42,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 28.0,
+					"ry": 8.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#e6e0c8",
+					"keys": [
+						{
+							"alpha": 0.55,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.6,
+							"sy": 0.6,
+							"x": -18.0,
+							"y": 46.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 14.0,
+							"rot": 0.0,
+							"sx": 1.3,
+							"sy": 1.1,
+							"x": -38.0,
+							"y": 40.0
+						},
+						{
+							"alpha": 0.55,
+							"ease": "easeOut",
+							"f": 16.0,
+							"rot": 0.0,
+							"sx": 0.6,
+							"sy": 0.6,
+							"x": -18.0,
+							"y": 46.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 30.0,
+							"rot": 0.0,
+							"sx": 1.3,
+							"sy": 1.1,
+							"x": -38.0,
+							"y": 40.0
+						}
+					],
+					"name": "Poussière pied",
+					"rx": 10.0,
+					"ry": 5.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 28.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": -38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 27.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 28.0
+						}
+					],
+					"name": "Jambe gauche",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 24.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": 40.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": -22.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 20.0,
+							"y": 38.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 24.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": 40.0
+						}
+					],
+					"name": "Chaussure gauche",
+					"rx": 8.5,
+					"ry": 4.5,
+					"stroke": "#f5f5f5",
+					"strokeW": 1.6,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 27.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -12.0,
+							"y": 28.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": -38.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 12.0,
+							"y": 27.0
+						}
+					],
+					"name": "Jambe droite",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "#181a24",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -22.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 20.0,
+							"y": 38.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 24.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": 40.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": -22.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 20.0,
+							"y": 38.0
+						}
+					],
+					"name": "Chaussure droite",
+					"rx": 8.5,
+					"ry": 4.5,
+					"stroke": "#f5f5f5",
+					"strokeW": 1.6,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 20.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 48.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -16.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": -42.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 16.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 48.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -16.0,
+							"y": 4.0
+						}
+					],
+					"name": "Bras arrière",
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 3.0,
+							"y": 5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 8.0,
+							"rot": 16.0,
+							"sx": 0.98,
+							"sy": 1.03,
+							"x": 4.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 3.0,
+							"y": 5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 16.0,
+							"sx": 0.98,
+							"sy": 1.03,
+							"x": 4.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 3.0,
+							"y": 5.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"fill": "#181a24",
+					"h": 6.5,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": 16.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 8.0,
+							"rot": 16.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": 11.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": 16.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 16.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": 11.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 1.0,
+							"y": 16.0
+						}
+					],
+					"name": "Ceinture noire",
+					"rx": 2.0,
+					"stroke": "#0c0d12",
+					"strokeW": 1.6,
+					"type": "rect",
+					"visible": true,
+					"w": 34.0
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 9.0,
+							"y": -20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 8.0,
+							"rot": 12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": -25.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 9.0,
+							"y": -20.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 24.0,
+							"rot": 12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": -25.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 9.0,
+							"y": -20.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 20.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": -42.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 0.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 48.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -14.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": -42.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 18.0,
+							"y": 0.0
+						}
+					],
+					"name": "Bras avant",
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0
+				},
+				{
+					"fill": "#f0b48a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 26.0,
+							"y": -6.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": 11.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 32.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 26.0,
+							"y": -6.0
+						}
+					],
+					"name": "Poing avant",
+					"rx": 5.5,
+					"ry": 5.2,
+					"stroke": "#181a24",
+					"strokeW": 2.0,
+					"type": "ellipse",
+					"visible": true
+				}
+			],
+			"name": "JCLCN — Course Ninja"
+		},
+		"jclcn_tete": {
+			"category": "clips",
+			"duration": 90.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#e83b3b",
+					"h": 5.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-4.0,
+									-5.0
+								]
+							},
+							"rot": -12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 22.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-6.0,
+									4.0
+								]
+							},
+							"rot": -4.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 45.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-3.0,
+									-6.0
+								]
+							},
+							"rot": -15.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 68.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-5.0,
+									5.0
+								]
+							},
+							"rot": -5.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 90.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-4.0,
+									-5.0
+								]
+							},
+							"rot": -12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -22.0,
+							"y": -10.0
+						}
+					],
+					"name": "Ruban bandeau haut",
+					"pinSoftness": 24.0,
+					"pins": [
+						{
+							"id": "p1",
+							"rx": 10.0,
+							"ry": 0.0
+						},
+						{
+							"id": "p2",
+							"rx": -10.0,
+							"ry": 0.0
+						}
+					],
+					"rx": 2.5,
+					"stroke": "#7d1414",
+					"strokeW": 1.4,
+					"type": "rect",
+					"visible": true,
+					"w": 24.0
+				},
+				{
+					"fill": "#c92a2a",
+					"h": 4.5,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-4.0,
+									5.0
+								]
+							},
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 22.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-6.0,
+									-3.0
+								]
+							},
+							"rot": 24.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 45.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-3.0,
+									6.0
+								]
+							},
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 68.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-5.0,
+									-4.0
+								]
+							},
+							"rot": 22.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -5.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 90.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-4.0,
+									5.0
+								]
+							},
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -20.0,
+							"y": -5.0
+						}
+					],
+					"name": "Ruban bandeau bas",
+					"pinSoftness": 24.0,
+					"pins": [
+						{
+							"id": "p1",
+							"rx": 8.0,
+							"ry": 0.0
+						},
+						{
+							"id": "p2",
+							"rx": -8.0,
+							"ry": 0.0
+						}
+					],
+					"rx": 2.0,
+					"stroke": "#7d1414",
+					"strokeW": 1.4,
+					"type": "rect",
+					"visible": true,
+					"w": 20.0
+				},
+				{
+					"closed": true,
+					"fill": "#3a2314",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 2.0
+						}
+					],
+					"name": "Mullet arrière",
+					"pts": [
+						[
+							-15.0,
+							-10.0
+						],
+						[
+							-19.0,
+							8.0
+						],
+						[
+							-11.0,
+							14.0
+						],
+						[
+							0.0,
+							12.0
+						],
+						[
+							11.0,
+							14.0
+						],
+						[
+							17.0,
+							6.0
+						],
+						[
+							14.0,
+							-10.0
+						]
+					],
+					"stroke": "#1e1108",
+					"strokeW": 2.0,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "#f0b48a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 0.0
+						}
+					],
+					"name": "Visage",
+					"rx": 14.0,
+					"ry": 14.5,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#3a2314",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -2.0
+						}
+					],
+					"name": "Cheveux dessus",
+					"pts": [
+						[
+							-14.0,
+							-2.0
+						],
+						[
+							-15.0,
+							-11.0
+						],
+						[
+							-7.0,
+							-17.0
+						],
+						[
+							1.0,
+							-18.0
+						],
+						[
+							10.0,
+							-16.0
+						],
+						[
+							15.0,
+							-9.0
+						],
+						[
+							14.0,
+							-2.0
+						],
+						[
+							6.0,
+							-6.0
+						],
+						[
+							-5.0,
+							-6.0
+						]
+					],
+					"stroke": "#1e1108",
+					"strokeW": 1.8,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "#e83b3b",
+					"h": 5.8,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -7.0
+						}
+					],
+					"name": "Bandeau rouge",
+					"rx": 2.4,
+					"stroke": "#7d1414",
+					"strokeW": 1.6,
+					"type": "rect",
+					"visible": true,
+					"w": 30.0
+				},
+				{
+					"closed": true,
+					"fill": "#9e4b1c",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 4.0
+						}
+					],
+					"name": "Barbe rousse Chuck",
+					"pts": [
+						[
+							-13.0,
+							-4.0
+						],
+						[
+							-13.0,
+							6.0
+						],
+						[
+							-8.0,
+							13.0
+						],
+						[
+							0.0,
+							16.0
+						],
+						[
+							8.0,
+							13.0
+						],
+						[
+							13.0,
+							6.0
+						],
+						[
+							13.0,
+							-4.0
+						],
+						[
+							8.0,
+							2.0
+						],
+						[
+							0.0,
+							3.0
+						],
+						[
+							-8.0,
+							2.0
+						]
+					],
+					"stroke": "#5c260a",
+					"strokeW": 1.8,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#7d3812",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 5.0
+						}
+					],
+					"name": "Moustache",
+					"pts": [
+						[
+							-8.0,
+							1.0
+						],
+						[
+							-3.0,
+							-2.0
+						],
+						[
+							0.0,
+							-1.0
+						],
+						[
+							3.0,
+							-2.0
+						],
+						[
+							8.0,
+							1.0
+						],
+						[
+							5.0,
+							3.5
+						],
+						[
+							0.0,
+							2.0
+						],
+						[
+							-5.0,
+							3.5
+						]
+					],
+					"stroke": "#4a1e06",
+					"strokeW": 1.2,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "#ffffff",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -5.0,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 76.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -5.0,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 81.0,
+							"rot": 0.0,
+							"sx": 1.15,
+							"sy": 0.12,
+							"x": -5.0,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 86.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -5.0,
+							"y": -0.5
+						}
+					],
+					"name": "Œil gauche",
+					"rx": 3.1,
+					"ry": 3.4,
+					"stroke": "#181a24",
+					"strokeW": 1.2,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#ffffff",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.0,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 76.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.0,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 81.0,
+							"rot": 0.0,
+							"sx": 1.15,
+							"sy": 0.12,
+							"x": 6.0,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 86.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.0,
+							"y": -0.5
+						}
+					],
+					"name": "Œil droit",
+					"rx": 3.1,
+					"ry": 3.4,
+					"stroke": "#181a24",
+					"strokeW": 1.2,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#101a2d",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -4.2,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 76.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -4.2,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 81.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 0.12,
+							"x": -4.2,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 86.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -4.2,
+							"y": -0.5
+						}
+					],
+					"name": "Pupille gauche",
+					"rx": 1.6,
+					"ry": 1.7,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#101a2d",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.8,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 76.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.8,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 81.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 0.12,
+							"x": 6.8,
+							"y": -0.5
+						},
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 86.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.8,
+							"y": -0.5
+						}
+					],
+					"name": "Pupille droite",
+					"rx": 1.6,
+					"ry": 1.7,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "#3a2314",
+					"h": 2.3,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 15.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -5.0,
+							"y": -4.0
+						}
+					],
+					"name": "Sourcil gauche",
+					"rx": 1.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "rect",
+					"visible": true,
+					"w": 7.5
+				},
+				{
+					"fill": "#3a2314",
+					"h": 2.3,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": -15.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 6.0,
+							"y": -4.0
+						}
+					],
+					"name": "Sourcil droit",
+					"rx": 1.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "rect",
+					"visible": true,
+					"w": 7.5
+				}
+			],
+			"name": "Tête JCLCN (Clip)"
+		},
+		"jclcn_uppercut_dragon": {
+			"category": "characters",
+			"duration": 40.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#090d16",
+					"keys": [
+						{
+							"alpha": 0.45,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.15,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.2,
+							"ease": "easeInOut",
+							"f": 18.0,
+							"rot": 0.0,
+							"sx": 0.72,
+							"sy": 0.72,
+							"x": 4.0,
+							"y": 50.0
+						},
+						{
+							"alpha": 0.42,
+							"ease": "linear",
+							"f": 40.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 50.0
+						}
+					],
+					"name": "Ombre sol",
+					"rx": 28.0,
+					"ry": 8.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"closed": true,
+					"fill": "#ff6b35",
+					"keys": [
+						{
+							"alpha": 0.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.2,
+							"sy": 0.2,
+							"x": 16.0,
+							"y": 8.0
+						},
+						{
+							"alpha": 0.9,
+							"ease": "easeOut",
+							"f": 10.0,
+							"rot": 4.0,
+							"sx": 1.1,
+							"sy": 1.2,
+							"x": 20.0,
+							"y": -14.0
+						},
+						{
+							"alpha": 0.85,
+							"ease": "easeOut",
+							"f": 20.0,
+							"rot": -4.0,
+							"sx": 1.25,
+							"sy": 1.35,
+							"x": 22.0,
+							"y": -32.0
+						},
+						{
+							"alpha": 0.0,
+							"ease": "linear",
+							"f": 30.0,
+							"rot": 2.0,
+							"sx": 0.8,
+							"sy": 1.1,
+							"x": 22.0,
+							"y": -44.0
+						}
+					],
+					"name": "Flamme dragon ascendante",
+					"pts": [
+						[
+							0.0,
+							-48.0
+						],
+						[
+							16.0,
+							-12.0
+						],
+						[
+							12.0,
+							24.0
+						],
+						[
+							0.0,
+							36.0
+						],
+						[
+							-12.0,
+							24.0
+						],
+						[
+							-16.0,
+							-12.0
+						]
+					],
+					"stroke": "#ffd32a",
+					"strokeW": 3.0,
+					"type": "polygon",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 20.0,
+							"sx": 1.0,
+							"sy": 0.9,
+							"x": -11.0,
+							"y": 32.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 18.0,
+							"sx": 1.0,
+							"sy": 1.08,
+							"x": -8.0,
+							"y": 4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 40.0,
+							"rot": 14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": -11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe gauche",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 24.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": -20.0,
+							"sx": 1.0,
+							"sy": 0.9,
+							"x": 11.0,
+							"y": 32.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": -10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 10.0,
+							"y": 10.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 40.0,
+							"rot": -14.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 11.0,
+							"y": 30.0
+						}
+					],
+					"name": "Jambe droite",
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0
+				},
+				{
+					"fill": "$tint",
+					"h": 34.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 14.0,
+							"sx": 1.08,
+							"sy": 0.9,
+							"x": 0.0,
+							"y": 14.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": -12.0,
+							"sx": 0.94,
+							"sy": 1.08,
+							"x": 4.0,
+							"y": -18.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 40.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 6.0
+						}
+					],
+					"name": "Torse combinaison",
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0
+				},
+				{
+					"fill": "#ffd32a",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 0.85,
+							"sy": 0.85,
+							"x": 16.0,
+							"y": 18.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": 0.0,
+							"sx": 1.35,
+							"sy": 1.35,
+							"x": 20.0,
+							"y": -54.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 40.0,
+							"rot": 0.0,
+							"sx": 0.85,
+							"sy": 0.85,
+							"x": 22.0,
+							"y": -8.0
+						}
+					],
+					"name": "Poing dragon",
+					"rx": 8.5,
+					"ry": 8.5,
+					"stroke": "#ff4d4d",
+					"strokeW": 2.4,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"firstFrame": 0.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeOut",
+							"f": 0.0,
+							"rot": 10.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 3.0,
+							"y": -12.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 16.0,
+							"rot": -12.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 2.0,
+							"y": -44.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 40.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -21.0
+						}
+					],
+					"mode": "clip",
+					"name": "Tête JCLCN",
+					"symbolId": "jclcn_tete",
+					"type": "instance",
+					"visible": true
+				}
+			],
+			"name": "Combat 5 — Uppercut du Dragon"
+		}
+	},
+	"version": 1,
+	"visuals": {
+		"jclcn_medaillon_ancre": {
+			"category": "extensions",
+			"layers": [
+				{
+					"alpha": 0.16,
+					"fill": "#f7c924",
+					"name": "Halo doré externe",
+					"rot": 0.0,
+					"rx": 58.0,
+					"ry": 58.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.92,
+					"fill": "#1b2030",
+					"name": "Anneau dojo externe",
+					"rot": 0.0,
+					"rx": 46.0,
+					"ry": 46.0,
+					"stroke": "#f7c924",
+					"strokeW": 4.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.95,
+					"fill": "#8f1d24",
+					"name": "Cercle rouge interne",
+					"rot": 0.0,
+					"rx": 34.0,
+					"ry": 34.0,
+					"stroke": "#ffd32a",
+					"strokeW": 2.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#ffd32a",
+					"name": "Étoile martiale",
+					"pts": [
+						[
+							0.0,
+							-24.0
+						],
+						[
+							6.5,
+							-7.5
+						],
+						[
+							24.0,
+							-7.5
+						],
+						[
+							10.0,
+							4.0
+						],
+						[
+							15.0,
+							21.0
+						],
+						[
+							0.0,
+							11.0
+						],
+						[
+							-15.0,
+							21.0
+						],
+						[
+							-10.0,
+							4.0
+						],
+						[
+							-24.0,
+							-7.5
+						],
+						[
+							-6.5,
+							-7.5
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#fff3b0",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				}
+			],
+			"name": "Médaillon Dojo JCLCN",
+			"tags": [
+				"ancre",
+				"combat",
+				"extension"
+			]
+		},
+		"jclcn_skin": {
+			"category": "characters",
+			"layers": [
+				{
+					"alpha": 0.42,
+					"fill": "#090d16",
+					"name": "Ombre sol",
+					"rot": 0.0,
+					"rx": 28.0,
+					"ry": 9.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 50.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#e83b3b",
+					"name": "Ruban bandeau haut",
+					"pts": [
+						[
+							0.0,
+							0.0
+						],
+						[
+							-22.0,
+							-7.0
+						],
+						[
+							-26.0,
+							-2.0
+						],
+						[
+							-4.0,
+							4.0
+						]
+					],
+					"rot": -6.0,
+					"stroke": "#7d1414",
+					"strokeW": 1.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": -12.0,
+					"y": -29.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#c92a2a",
+					"name": "Ruban bandeau bas",
+					"pts": [
+						[
+							0.0,
+							0.0
+						],
+						[
+							-20.0,
+							4.0
+						],
+						[
+							-23.0,
+							10.0
+						],
+						[
+							-3.0,
+							5.0
+						]
+					],
+					"rot": 8.0,
+					"stroke": "#7d1414",
+					"strokeW": 1.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": -12.0,
+					"y": -27.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "$tint",
+					"h": 24.0,
+					"name": "Jambe gauche",
+					"rot": 10.0,
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0,
+					"x": -10.0,
+					"y": 30.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"h": 19.0,
+					"name": "Bande noire jambe G",
+					"rot": 10.0,
+					"rx": 1.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 3.0,
+					"x": -12.0,
+					"y": 30.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"name": "Chaussure gauche",
+					"rot": -4.0,
+					"rx": 8.5,
+					"ry": 4.5,
+					"stroke": "#f5f5f5",
+					"strokeW": 1.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -13.0,
+					"y": 44.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "$tint",
+					"h": 24.0,
+					"name": "Jambe droite",
+					"rot": -10.0,
+					"rx": 5.0,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 11.0,
+					"x": 10.0,
+					"y": 30.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"h": 19.0,
+					"name": "Bande noire jambe D",
+					"rot": -10.0,
+					"rx": 1.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 3.0,
+					"x": 12.0,
+					"y": 30.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"name": "Chaussure droite",
+					"rot": 4.0,
+					"rx": 8.5,
+					"ry": 4.5,
+					"stroke": "#f5f5f5",
+					"strokeW": 1.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 13.0,
+					"y": 44.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "$tint",
+					"h": 20.0,
+					"name": "Bras arrière",
+					"rot": 28.0,
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0,
+					"x": -18.0,
+					"y": 2.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#f0b48a",
+					"name": "Poing arrière",
+					"rot": 0.0,
+					"rx": 5.5,
+					"ry": 5.2,
+					"stroke": "#181a24",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -22.0,
+					"y": -7.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "$tint",
+					"h": 34.0,
+					"name": "Torse combinaison",
+					"rot": 0.0,
+					"rx": 9.0,
+					"stroke": "#181a24",
+					"strokeW": 2.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 32.0,
+					"x": 0.0,
+					"y": 6.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"h": 27.0,
+					"name": "Bande noire torse G",
+					"rot": 0.0,
+					"rx": 1.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 3.5,
+					"x": -11.5,
+					"y": 6.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"h": 27.0,
+					"name": "Bande noire torse D",
+					"rot": 0.0,
+					"rx": 1.5,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 3.5,
+					"x": 11.5,
+					"y": 6.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#f0b48a",
+					"name": "Col en V",
+					"pts": [
+						[
+							-7.0,
+							-10.0
+						],
+						[
+							0.0,
+							0.0
+						],
+						[
+							7.0,
+							-10.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#181a24",
+					"strokeW": 1.8,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#181a24",
+					"h": 6.5,
+					"name": "Ceinture noire",
+					"rot": 0.0,
+					"rx": 2.0,
+					"stroke": "#0c0d12",
+					"strokeW": 1.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 34.0,
+					"x": 0.0,
+					"y": 17.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#ffd32a",
+					"name": "Boucle étoile Texas",
+					"pts": [
+						[
+							0.0,
+							-5.5
+						],
+						[
+							1.6,
+							-1.6
+						],
+						[
+							5.5,
+							-1.6
+						],
+						[
+							2.4,
+							1.0
+						],
+						[
+							3.5,
+							5.0
+						],
+						[
+							0.0,
+							2.5
+						],
+						[
+							-3.5,
+							5.0
+						],
+						[
+							-2.4,
+							1.0
+						],
+						[
+							-5.5,
+							-1.6
+						],
+						[
+							-1.6,
+							-1.6
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#8a5c00",
+					"strokeW": 1.2,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 17.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "$tint",
+					"h": 20.0,
+					"name": "Bras avant",
+					"rot": -34.0,
+					"rx": 4.5,
+					"stroke": "#181a24",
+					"strokeW": 2.2,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 9.0,
+					"x": 18.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#f0b48a",
+					"name": "Poing avant",
+					"rot": 0.0,
+					"rx": 5.8,
+					"ry": 5.4,
+					"stroke": "#181a24",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 24.0,
+					"y": -8.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#3a2314",
+					"name": "Mullet arrière",
+					"pts": [
+						[
+							-15.0,
+							-10.0
+						],
+						[
+							-19.0,
+							8.0
+						],
+						[
+							-11.0,
+							14.0
+						],
+						[
+							0.0,
+							12.0
+						],
+						[
+							11.0,
+							14.0
+						],
+						[
+							17.0,
+							6.0
+						],
+						[
+							14.0,
+							-10.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#1e1108",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": -20.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#f0b48a",
+					"name": "Tête",
+					"rot": 0.0,
+					"rx": 14.0,
+					"ry": 14.5,
+					"stroke": "#181a24",
+					"strokeW": 2.4,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": -22.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#3a2314",
+					"name": "Cheveux dessus",
+					"pts": [
+						[
+							-14.0,
+							-2.0
+						],
+						[
+							-15.0,
+							-11.0
+						],
+						[
+							-7.0,
+							-17.0
+						],
+						[
+							1.0,
+							-18.0
+						],
+						[
+							10.0,
+							-16.0
+						],
+						[
+							15.0,
+							-9.0
+						],
+						[
+							14.0,
+							-2.0
+						],
+						[
+							6.0,
+							-6.0
+						],
+						[
+							-5.0,
+							-6.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#1e1108",
+					"strokeW": 1.8,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": -24.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#e83b3b",
+					"h": 5.8,
+					"name": "Bandeau rouge",
+					"rot": 0.0,
+					"rx": 2.4,
+					"stroke": "#7d1414",
+					"strokeW": 1.6,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 30.0,
+					"x": 0.0,
+					"y": -29.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#9e4b1c",
+					"name": "Barbe rousse Chuck",
+					"pts": [
+						[
+							-13.0,
+							-4.0
+						],
+						[
+							-13.0,
+							6.0
+						],
+						[
+							-8.0,
+							13.0
+						],
+						[
+							0.0,
+							16.0
+						],
+						[
+							8.0,
+							13.0
+						],
+						[
+							13.0,
+							6.0
+						],
+						[
+							13.0,
+							-4.0
+						],
+						[
+							8.0,
+							2.0
+						],
+						[
+							0.0,
+							3.0
+						],
+						[
+							-8.0,
+							2.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#5c260a",
+					"strokeW": 1.8,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": -18.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#7d3812",
+					"name": "Moustache",
+					"pts": [
+						[
+							-8.0,
+							1.0
+						],
+						[
+							-3.0,
+							-2.0
+						],
+						[
+							0.0,
+							-1.0
+						],
+						[
+							3.0,
+							-2.0
+						],
+						[
+							8.0,
+							1.0
+						],
+						[
+							5.0,
+							3.5
+						],
+						[
+							0.0,
+							2.0
+						],
+						[
+							-5.0,
+							3.5
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#4a1e06",
+					"strokeW": 1.2,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": -17.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffffff",
+					"name": "Œil gauche",
+					"rot": 0.0,
+					"rx": 3.1,
+					"ry": 3.4,
+					"stroke": "#181a24",
+					"strokeW": 1.2,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -5.0,
+					"y": -22.5
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffffff",
+					"name": "Œil droit",
+					"rot": 0.0,
+					"rx": 3.1,
+					"ry": 3.4,
+					"stroke": "#181a24",
+					"strokeW": 1.2,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 6.0,
+					"y": -22.5
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#101a2d",
+					"name": "Pupille gauche",
+					"rot": 0.0,
+					"rx": 1.6,
+					"ry": 1.7,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -4.3,
+					"y": -22.5
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#101a2d",
+					"name": "Pupille droite",
+					"rot": 0.0,
+					"rx": 1.6,
+					"ry": 1.7,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 6.7,
+					"y": -22.5
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#3a2314",
+					"h": 2.3,
+					"name": "Sourcil gauche",
+					"rot": 14.0,
+					"rx": 1.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 7.5,
+					"x": -5.0,
+					"y": -26.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#3a2314",
+					"h": 2.3,
+					"name": "Sourcil droit",
+					"rot": -14.0,
+					"rx": 1.0,
+					"stroke": "",
+					"strokeW": 0.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 7.5,
+					"x": 6.0,
+					"y": -26.0
+				}
+			],
+			"name": "Jean-Claude Lee Chan Norris (Skin)",
+			"tags": [
+				"combat",
+				"avatar",
+				"extension"
+			]
+		}
+	}
+}

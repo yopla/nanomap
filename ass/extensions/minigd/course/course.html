@@ -1,0 +1,3411 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Course 2D Top-Down</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #050a12;
+    color: #e6f4ff;
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  }
+  body.embedded canvas#race-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #050a12;
+    touch-action: none;
+  }
+
+  /* Stage autonome (miroir exact de transition_vers_minigd : tout hors du cadre) */
+  #standalone-stage {
+    --stage-w: min(500px, calc(100vw - 20px), max(210px, calc(100dvh - 360px)));
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  #standalone-stage.fullscreen-ctrl {
+    --stage-w: min(520px, calc(100vw - 20px), calc(100dvh - 230px));
+  }
+  body.embedded #standalone-stage {
+    display: contents;
+  }
+
+  .bar {
+    width: var(--stage-w);
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 25, 43, 0.90);
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    padding: 6px 9px;
+    border-radius: 10px;
+    font-size: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+    flex-shrink: 0;
+  }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  .bar-btns { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  button {
+    background: #1a3350;
+    color: #aef0ff;
+    border: 1px solid #38d6ff;
+    border-radius: 7px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 12px;
+    transition: background 0.12s, transform 0.08s, border-color 0.12s;
+  }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  button[disabled] { opacity: 0.48; cursor: default; }
+
+  #standalone-header-row {
+    width: var(--stage-w);
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  #standalone-minimap-box {
+    width: 116px;
+    height: 64px;
+    flex-shrink: 0;
+    position: relative;
+    border-radius: 10px;
+    background: rgba(10, 18, 32, 0.92);
+    border: 1px solid rgba(56, 214, 255, 0.50);
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  }
+  #standalone-minimap-canvas { width: 100%; height: 100%; display: block; }
+  #standalone-minimap-badges {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    display: flex;
+    gap: 3px;
+    pointer-events: none;
+  }
+  .mm-badge {
+    display: none;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 4px;
+  }
+  .mm-badge.drift { background: rgba(245, 158, 11, 0.92); color: #050a12; }
+  .mm-badge.turbo { background: rgba(14, 116, 144, 0.94); border: 1px solid #38d6ff; color: #e6f4ff; }
+
+  #stat {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(14, 23, 40, 0.88);
+    border: 1px solid rgba(56, 214, 255, 0.42);
+    color: #e2f1ff;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  #game-frame {
+    width: var(--stage-w);
+    height: var(--stage-w);
+    aspect-ratio: 1 / 1;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    background: #050a12;
+    border: 2px solid #38d6ff;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.65), 0 0 26px rgba(56, 214, 255, 0.18);
+    flex-shrink: 0;
+  }
+  body.embedded #game-frame {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    aspect-ratio: auto;
+  }
+  body:not(.embedded) canvas#race-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  #standalone-bottom {
+    width: var(--stage-w);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  #standalone-ext-controls {
+    display: none;
+    width: 100%;
+    background: rgba(12, 22, 38, 0.90);
+    border: 1px solid rgba(56, 214, 255, 0.45);
+    border-radius: 14px;
+    padding: 8px 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    touch-action: none;
+  }
+  #standalone-ext-controls.visible { display: flex; }
+
+  .ext-ctrl-left { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; }
+  .ext-ctrl-canvas { display: block; touch-action: none; border-radius: 12px; }
+  .ext-ctrl-pedals { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .ext-ctrl-pedals-row { display: flex; gap: 6px; align-items: stretch; }
+  .ext-pedal-btn {
+    min-width: 66px;
+    height: 44px;
+    padding: 0 9px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #e6f4ff;
+    background: rgba(16, 28, 48, 0.92);
+    border: 1.5px solid #38d6ff;
+    touch-action: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ext-pedal-btn.gas { border-color: #4ade80; color: #dcfce7; }
+  .ext-pedal-btn.gas.active { background: rgba(34, 197, 94, 0.85); color: #050a12; }
+  .ext-pedal-btn.brake { border-color: #f87171; color: #fee2e2; }
+  .ext-pedal-btn.brake.active { background: rgba(239, 68, 68, 0.85); color: #050a12; }
+  .ext-pedal-btn.drift { border-color: #fde047; color: #fef08a; height: 30px; width: 100%; }
+  .ext-pedal-btn.drift.active { background: rgba(250, 204, 21, 0.92); color: #050a12; }
+  .ext-dpad-row { display: flex; gap: 8px; align-items: center; justify-content: center; }
+  .ext-dpad-btn { width: 58px; height: 58px; border-radius: 12px; font-size: 20px; touch-action: none; }
+  .ext-dpad-btn.active { background: rgba(56, 214, 255, 0.85); color: #050a12; }
+  .ext-slider-track {
+    position: relative;
+    width: 100%;
+    max-width: 210px;
+    height: 44px;
+    border-radius: 999px;
+    background: rgba(10, 18, 32, 0.92);
+    border: 1.5px solid rgba(56, 214, 255, 0.55);
+    touch-action: none;
+  }
+  .ext-slider-thumb {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #38d6ff;
+    border: 2px solid #e6f4ff;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  #standalone-bottom-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  #quick-ctrl-select {
+    width: min(100%, 280px);
+    height: 36px;
+    padding: 0 28px 0 10px;
+    border-radius: 12px;
+    border: 1.5px solid #38d6ff;
+    background: rgba(14, 26, 46, 0.94);
+    color: #e8f8ff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2338d6ff' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    text-overflow: ellipsis;
+  }
+  #quick-ctrl-select option { background: #0c1726; color: #e8f8ff; }
+
+  .select-icon-btn {
+    position: relative;
+    display: inline-flex;
+    overflow: hidden;
+  }
+  .select-icon-btn select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  #btn-boost {
+    width: min(100%, 280px);
+    min-height: 38px;
+    padding: 7px 16px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    background: linear-gradient(180deg, rgba(24, 58, 92, 0.96), rgba(14, 34, 58, 0.96));
+  }
+
+  .hint {
+    width: 100%;
+    pointer-events: none;
+    font-size: 11px;
+    color: #8fb4d4;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .hint b { color: #bae6fd; }
+
+  /* Modale d'options autonome (toujours hors du cadre) */
+  #options-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 18, 0.84);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+    padding: 14px;
+  }
+  #options-overlay.open { display: flex; }
+  #options-card {
+    width: min(440px, 94vw);
+    max-height: calc(100vh - 28px);
+    max-height: calc(100dvh - 28px);
+    background: #121a2b;
+    border: 1.5px solid #38d6ff;
+    border-radius: 12px;
+    color: #e6f4ff;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .opt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid rgba(56, 214, 255, 0.25);
+  }
+  .opt-head h3 { font-size: 15px; color: #38d6ff; font-weight: 800; }
+  .opt-tabs {
+    display: flex;
+    gap: 5px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(56, 214, 255, 0.2);
+    background: rgba(10, 18, 32, 0.65);
+    flex-wrap: wrap;
+  }
+  .opt-tab {
+    flex: 1 1 auto;
+    padding: 5px 7px;
+    font-size: 11.5px;
+    border-radius: 7px;
+    background: #132338;
+    border: 1px solid rgba(56, 214, 255, 0.35);
+    color: #9fc4e2;
+  }
+  .opt-tab.active { background: #1e4268; border-color: #38d6ff; color: #e6f4ff; }
+  .opt-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .opt-pane { display: none; flex-direction: column; gap: 10px; }
+  .opt-pane.active { display: flex; }
+  .sec-title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #38d6ff;
+  }
+  .ui-select {
+    width: 100%;
+    background: #0c1726;
+    color: #e6f4ff;
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    border-radius: 8px;
+    padding: 8px 28px 8px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2338d6ff' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  .ui-select option { background: #0c1726; color: #e6f4ff; }
+  .select-row { display: flex; gap: 8px; align-items: center; }
+  .select-row .ui-select { flex: 1; min-width: 0; }
+  .param-row { display: flex; flex-direction: column; gap: 4px; }
+  .param-head { display: flex; justify-content: space-between; font-size: 12px; color: #cbe0f5; }
+  .param-head span:last-child { color: #fde047; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .param-row input[type=range] { width: 100%; accent-color: #38d6ff; margin: 0; }
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-field {
+    flex: 1;
+    min-width: 125px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(20, 35, 58, 0.75);
+    border: 1px solid rgba(56, 214, 255, 0.3);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .color-field input[type=color] { width: 32px; height: 22px; border: none; background: none; padding: 0; cursor: pointer; }
+  .ctrl-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #d6e8f8; cursor: pointer; }
+  .ctrl-check input { width: 15px; height: 15px; accent-color: #38d6ff; flex-shrink: 0; }
+  .action-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .action-row button { flex: 1; min-width: 110px; padding: 7px 10px; }
+  .opt-foot { padding: 10px 14px; border-top: 1px solid rgba(56, 214, 255, 0.25); background: rgba(10, 18, 32, 0.65); }
+  .opt-close-main { width: 100%; padding: 8px; font-size: 13px; }
+  #track-draw-canvas {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    border-radius: 8px;
+    background: #08121f;
+    border: 1px solid rgba(56, 214, 255, 0.45);
+    touch-action: none;
+    cursor: crosshair;
+    display: block;
+  }
+  @media (max-width: 480px) {
+    .bar-title { display: none; }
+    button { padding: 4px 7px; font-size: 11.5px; }
+  }
+  @media (max-height: 760px) {
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "course",
+  "name": "Course 2D Top-Down",
+  "family": "course",
+  "icon": "🏎️",
+  "layout": "framed",
+  "ownExit": false,
+  "accentColor": "#38d6ff",
+  "controls": "Flèches / ZQSD ou commandes tactiles : piloter • Espace : déraper • Shift / E / Bouton Boost : turbo ⚡ • ⚙️ : véhicule, contrôles, circuit",
+  "description": "Course 2D vue de dessus avec physique de drift, turbo rechargeable, 7 véhicules configurables, 9 modes de pilotage tactiles (joystick, volant, D-pad, split-touch, suivi du doigt, slider, N-directions, élastique) et éditeur de circuit.",
+  "goal": "Boucler 3 tours du circuit en moins de 75 secondes en maîtrisant les dérapages et le boost turbo pour maximiser votre score.",
+  "fields": [
+    { "key": "targetLaps", "label": "Tours à boucler", "type": "number", "default": 3, "min": 1, "max": 20, "step": 1, "group": "Course" },
+    { "key": "durationSec", "label": "Temps limite (s)", "type": "number", "default": 75, "min": 20, "max": 300, "step": 5, "group": "Course" },
+    {
+      "key": "defaultVehicle",
+      "label": "Véhicule par défaut",
+      "type": "select",
+      "default": "kart",
+      "group": "Véhicule",
+      "options": [
+        { "id": "kart", "label": "Karting Arcade" },
+        { "id": "sport_gt", "label": "Voiture de Sport GT" },
+        { "id": "drift", "label": "Drift Machine" },
+        { "id": "f1", "label": "Monoplace F1 (Aéro)" },
+        { "id": "truck", "label": "Poids Lourd (Truck)" },
+        { "id": "hovercraft", "label": "Aéroglisseur" },
+        { "id": "micro_rc", "label": "Micro RC Car" }
+      ]
+    },
+    {
+      "key": "defaultLivery",
+      "label": "Livrée / Motif par défaut",
+      "type": "select",
+      "default": "stripes",
+      "group": "Véhicule",
+      "options": [
+        { "id": "classic", "label": "Classique" },
+        { "id": "stripes", "label": "Bandes Racing" },
+        { "id": "chevron", "label": "Flèche Sport" },
+        { "id": "neon", "label": "Néon" }
+      ]
+    },
+    { "key": "useCustomColors", "label": "Forcer couleurs personnalisées", "type": "bool", "default": false, "group": "Véhicule", "hint": "Remplace les couleurs du modèle par les couleurs personnalisées ci-dessous." },
+    { "key": "carColor", "label": "Couleur carrosserie", "type": "color", "default": "#38d6ff", "group": "Véhicule" },
+    { "key": "accentColor", "label": "Couleur accent / bordure", "type": "color", "default": "#0f172a", "group": "Véhicule" },
+    {
+      "key": "defaultControlMode",
+      "label": "Mode de pilotage par défaut",
+      "type": "select",
+      "default": "joystick",
+      "group": "Pilotage",
+      "options": [
+        { "id": "joystick", "label": "Joystick Analogique + Pédales" },
+        { "id": "steering_wheel", "label": "Volant Virtuel Rotatif + Pédales" },
+        { "id": "buttons_dpad", "label": "Boutons Flèches D-Pad + Pédales" },
+        { "id": "split_touch", "label": "Écran Divisé (Split-Touch Arcade)" },
+        { "id": "follow_finger", "label": "Pointeur / Suivi du Doigt" },
+        { "id": "slider_tilt", "label": "Slider Horizontal / Tilt + Pédales" },
+        { "id": "floating_n_way", "label": "Pavé N-Directions Flottant" },
+        { "id": "fixed_bottom_n_way", "label": "Pavé N-Directions Fixé en bas" },
+        { "id": "slingshot", "label": "Élastique / Tir aux Billes (Fronde)" }
+      ]
+    },
+    { "key": "cameraRotates", "label": "Caméra suit la rotation", "type": "bool", "default": false, "group": "Pilotage" },
+    {
+      "key": "defaultTrackStyle",
+      "label": "Circuit par défaut",
+      "type": "select",
+      "default": "classic",
+      "group": "Circuit",
+      "options": [
+        { "id": "classic", "label": "🏁 Classique" },
+        { "id": "oval", "label": "🏎️ Ovale Rapide" },
+        { "id": "technical", "label": "🌀 Sinueux" },
+        { "id": "random", "label": "🎲 Aléatoire" }
+      ]
+    },
+    { "key": "trackWidth", "label": "Largeur de piste (px)", "type": "number", "default": 185, "min": 110, "max": 280, "step": 5, "group": "Circuit" },
+    { "key": "speedMultiplier", "label": "Multiplicateur de vitesse", "type": "number", "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.05, "group": "Physique" },
+    { "key": "boostDurationSec", "label": "Durée du turbo (s)", "type": "number", "default": 1.2, "min": 0.4, "max": 4.0, "step": 0.1, "group": "Turbo" },
+    { "key": "boostCooldownSec", "label": "Recharge du turbo (s)", "type": "number", "default": 3.5, "min": 0.5, "max": 10.0, "step": 0.5, "group": "Turbo" }
+  ],
+  "texts": [
+    { "key": "boostReadyLabel", "label": "Bouton Boost prêt", "type": "text", "default": "⚡ BOOST TURBO" },
+    { "key": "boostActiveLabel", "label": "Bouton Boost actif", "type": "text", "default": "🔥 BOOST ACTIF !" },
+    { "key": "driftBadgeText", "label": "Badge DRIFT (minimap)", "type": "text", "default": "DRIFT" },
+    { "key": "turboBadgeText", "label": "Badge TURBO (minimap)", "type": "text", "default": "TURBO" },
+    { "key": "victoryTitle", "label": "Titre de victoire", "type": "text", "default": "COURSE REMPORTÉE !" },
+    { "key": "timeoutTitle", "label": "Titre temps écoulé", "type": "text", "default": "CHRONO ÉCOULÉ" },
+    { "key": "endReturnHint", "label": "Indice de fin de partie", "type": "text", "default": "Cliquez pour revenir au jeu principal" }
+  ]
+}
+</script>
+
+<div id="standalone-stage">
+  <!-- Barre supérieure hors cadre (mode autonome) -->
+  <div class="bar">
+    <span class="bar-title">🏎️ Course 2D</span>
+    <div class="bar-btns">
+      <span id="btn-skin-wrap" class="select-icon-btn" title="Choisir son skin en un clic">
+        <button type="button" tabindex="-1">🎨</button>
+        <select id="quick-skin-select" aria-label="Choisir son skin"></select>
+      </span>
+      <button id="btn-options" onclick="openOptionsModal()" title="Skin, Physique &amp; Circuit">⚙️</button>
+      <button id="btn-audio" onclick="toggleAudio()" title="Audio">🔇</button>
+      <button id="btn-help" onclick="toggleSpawnHelp()" title="Aide">?</button>
+      <button id="btn-reset" onclick="resetGame()" title="Recommencer">🔄</button>
+      <button id="btn-exit" onclick="sendResultAndExit(won, score)" title="Revenir au jeu principal">✕ Retour</button>
+    </div>
+  </div>
+
+  <!-- Minimap + stats au-dessus du cadre (mode autonome) -->
+  <div id="standalone-header-row">
+    <div id="standalone-minimap-box">
+      <canvas id="standalone-minimap-canvas"></canvas>
+      <div id="standalone-minimap-badges">
+        <span id="mm-badge-drift" class="mm-badge drift">DRIFT</span>
+        <span id="mm-badge-turbo" class="mm-badge turbo">TURBO</span>
+      </div>
+    </div>
+    <div id="stat">Tour 1/3 • 0 km/h • Score 0 • 75s</div>
+  </div>
+
+  <!-- Cadre du mini-jeu -->
+  <div id="game-frame">
+    <canvas id="race-canvas" width="512" height="512"></canvas>
+  </div>
+
+  <!-- Contrôles externes + Boost sous le cadre (mode autonome) -->
+  <div id="standalone-bottom">
+    <div id="standalone-ext-controls"></div>
+    <div id="standalone-bottom-actions">
+      <button id="btn-boost" onclick="triggerBoost()" title="Boost Turbo (Shift / E)">⚡ BOOST TURBO</button>
+      <select id="quick-ctrl-select" aria-label="Mode de contrôle" title="Choisir le mode de contrôle"></select>
+    </div>
+  </div>
+</div>
+
+<!-- Modale Options autonome (hors cadre) -->
+<div id="options-overlay" onclick="if(event.target===this)closeOptionsModal(true)">
+  <div id="options-card">
+    <div class="opt-head">
+      <h3>⚙️ Réglages Course 2D</h3>
+      <button onclick="closeOptionsModal(true)" title="Fermer">✕</button>
+    </div>
+    <div class="opt-tabs">
+      <button class="opt-tab active" data-tab="skin">🎨 Skin</button>
+      <button class="opt-tab" data-tab="physics">⚙️ Physique</button>
+      <button class="opt-tab" data-tab="track">🛣️ Circuit</button>
+    </div>
+    <div class="opt-body">
+      <div class="opt-pane active" data-pane="skin">
+        <div class="sec-title">Modèle de véhicule</div>
+        <select id="skin-preset-select" class="ui-select"></select>
+        <label class="ctrl-check">
+          <input type="checkbox" id="skin-apply-physics" checked>
+          <span>Appliquer aussi la physique du modèle</span>
+        </label>
+        <div class="sec-title">Couleurs personnalisées</div>
+        <div class="color-row">
+          <label class="color-field"><span>Carrosserie</span><input type="color" id="skin-body-color"></label>
+          <label class="color-field"><span>Bordure / Accent</span><input type="color" id="skin-accent-color"></label>
+        </div>
+        <div class="sec-title">Motif / Livrée</div>
+        <select id="skin-livery-select" class="ui-select"></select>
+      </div>
+
+      <div class="opt-pane" data-pane="physics">
+        <div class="sec-title">🎥 Caméra</div>
+        <select id="ctrl-camera-mode" class="ui-select">
+          <option value="vehicle">🏎️ Le véhicule tourne (caméra fixe)</option>
+          <option value="camera">🎥 La caméra tourne (véhicule droit)</option>
+        </select>
+        <div id="ctrl-slingshot-opts-top" style="display:none; flex-direction:column; gap:8px;">
+          <div class="sec-title">🎯 Physique Élastique (Fronde)</div>
+          <div id="ctrl-slingshot-sliders-top" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+        <div class="sec-title">🏎️ Physique du véhicule &amp; Piste</div>
+        <div id="params-sliders-list" style="display:flex; flex-direction:column; gap:9px;"></div>
+        <div id="ctrl-slingshot-opts-bottom" style="display:flex; flex-direction:column; gap:8px; border-top:1px solid rgba(56,214,255,0.2); padding-top:8px;">
+          <div class="sec-title">🎯 Physique Élastique (Fronde)</div>
+          <div id="ctrl-slingshot-sliders-bottom" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+        <div id="ctrl-nway-opts" style="display:flex; flex-direction:column; gap:8px; border-top:1px solid rgba(56,214,255,0.2); padding-top:8px;">
+          <div class="sec-title">🧭 Options N-Directions</div>
+          <div class="param-row">
+            <div class="param-head"><span>Nombre de directions</span><span id="val-nway-count">4</span></div>
+            <input type="range" id="ctrl-nway-count" min="2" max="16" step="1" value="4">
+          </div>
+          <div class="param-row">
+            <div class="param-head"><span>Temps rotation vers l'axe</span><span id="val-align-time">0.25 s</span></div>
+            <input type="range" id="ctrl-align-time" min="0" max="1" step="0.02" value="0.25">
+          </div>
+          <label class="ctrl-check"><input type="checkbox" id="ctrl-cont-accel"><span>Accélération continue</span></label>
+          <label class="ctrl-check"><input type="checkbox" id="ctrl-nway-auto"><span>Accélérer au toucher d'une direction</span></label>
+          <label class="ctrl-check"><input type="checkbox" id="ctrl-nway-dist"><span>Distance au centre module la vitesse</span></label>
+          <label class="ctrl-check"><input type="checkbox" id="ctrl-nway-shift"><span>Décaler la roue d'un demi-pas</span></label>
+        </div>
+        <div class="action-row" style="padding-top:4px;">
+          <button id="btn-params-reset">↺ Réinitialiser</button>
+          <button id="btn-car-reposition">📍 Replacer sur la ligne</button>
+        </div>
+      </div>
+
+      <div class="opt-pane" data-pane="track">
+        <div class="sec-title">Générateur rapide</div>
+        <div class="select-row">
+          <select id="track-preset-select" class="ui-select">
+            <option value="classic">🏁 Classique</option>
+            <option value="oval">🏎️ Ovale Rapide</option>
+            <option value="technical">🌀 Sinueux</option>
+            <option value="random">🎲 Aléatoire</option>
+          </select>
+          <button id="btn-track-generate" style="flex:0 0 auto; padding:8px 12px;">⚡ Charger</button>
+        </div>
+        <div class="sec-title">Dessiner un circuit fermé à la main</div>
+        <canvas id="track-draw-canvas" width="360" height="200"></canvas>
+        <div id="track-draw-hint" style="font-size:11px; color:#8fb4d4;">Tracez une boucle continue avec le doigt ou la souris, puis validez.</div>
+        <div class="action-row">
+          <button id="btn-track-clear">🧹 Effacer</button>
+          <button id="btn-track-apply">✅ Valider ce tracé</button>
+        </div>
+      </div>
+    </div>
+    <div class="opt-foot">
+      <button class="opt-close-main" onclick="closeOptionsModal(true)">Reprendre la course</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAME_ID = "course";
+const stageEl = document.getElementById("standalone-stage");
+const gameFrameEl = document.getElementById("game-frame");
+const canvas = document.getElementById("race-canvas");
+const ctx = canvas.getContext("2d");
+const statEl = document.getElementById("stat");
+const boostBtnEl = document.getElementById("btn-boost");
+const standaloneExtControlsEl = document.getElementById("standalone-ext-controls");
+const standaloneMinimapCanvas = document.getElementById("standalone-minimap-canvas");
+const standaloneMmDrift = document.getElementById("mm-badge-drift");
+const standaloneMmTurbo = document.getElementById("mm-badge-turbo");
+
+if (!ctx.roundRect) {
+  ctx.roundRect = function(x, y, w, h) { this.rect(x, y, w, h); };
+}
+
+const params = new URLSearchParams(window.location.search);
+let externalPaused = params.get("minigd_paused") === "1";
+const isEmbedded = params.get("minigd_embedded") === "1";
+
+if (isEmbedded) {
+  document.body.classList.add("embedded");
+  const barEl = document.querySelector(".bar");
+  if (barEl) barEl.style.display = "none";
+  const hdrEl = document.getElementById("standalone-header-row");
+  if (hdrEl) hdrEl.style.display = "none";
+  const botEl = document.getElementById("standalone-bottom");
+  if (botEl) botEl.style.display = "none";
+  const exitBtn = document.getElementById("btn-exit");
+  if (exitBtn) exitBtn.style.display = "none";
+}
+
+let helpOpen = false;
+let optionsOpen = false;
+let destroyed = false;
+let rafId = null;
+let lastTime = 0;
+
+const CFG = {
+  car: {
+    id: "kart",
+    name: "Karting Arcade",
+    maxSpeed: 460.0,
+    acceleration: 440.0,
+    braking: 520.0,
+    reverseSpeed: 180.0,
+    turnSpeed: 4.0,
+    traction: 0.84,
+    driftFactor: 0.86,
+    naturalFriction: 0.985,
+    mass: 0.8,
+    color: "#38d6ff",
+    accent: "#0f172a",
+    length: 38.0,
+    width: 24.0,
+    livery: "stripes"
+  },
+  controlType: "joystick",
+  nWayDirections: 4,
+  alignTime: 0.25,
+  continuousAccel: false,
+  nWayAutoAccel: false,
+  nWayDistanceAffectsSpeed: true,
+  nWayShiftedHalfStep: false,
+  slingshotPower: 1100.0,
+  slingshotMaxPull: 180.0,
+  slingshotFriction: 0.982,
+  slingshotBounce: 0.75,
+  slingshotTensionCurve: 1.2,
+  slingshotAimSlowmo: 0.25,
+  slingshotStopToShoot: false,
+  slingshotShowTrajectory: true,
+  cameraRotates: false,
+  trackWidth: 185
+};
+const DEFAULT_CFG = JSON.parse(JSON.stringify(CFG));
+
+const VEHICLE_PRESETS = [
+  { id: "kart", name: "Karting Arcade", maxSpeed: 460, acceleration: 440, braking: 520, reverseSpeed: 180, turnSpeed: 4.0, traction: 0.84, driftFactor: 0.86, naturalFriction: 0.985, mass: 0.8, color: "#38d6ff", accent: "#0f172a", length: 38, width: 24 },
+  { id: "sport_gt", name: "Voiture de Sport GT", maxSpeed: 580, acceleration: 360, braking: 480, reverseSpeed: 200, turnSpeed: 3.2, traction: 0.78, driftFactor: 0.82, naturalFriction: 0.99, mass: 1.2, color: "#268cf2", accent: "#191919", length: 46, width: 25 },
+  { id: "drift", name: "Drift Machine", maxSpeed: 520, acceleration: 460, braking: 400, reverseSpeed: 190, turnSpeed: 4.2, traction: 0.52, driftFactor: 0.65, naturalFriction: 0.988, mass: 1.0, color: "#fa8c19", accent: "#191919", length: 44, width: 24 },
+  { id: "f1", name: "Monoplace F1 (Aéro)", maxSpeed: 720, acceleration: 680, braking: 750, reverseSpeed: 220, turnSpeed: 4.6, traction: 0.93, driftFactor: 0.94, naturalFriction: 0.992, mass: 0.7, color: "#26d966", accent: "#0d0d0d", length: 52, width: 26 },
+  { id: "truck", name: "Poids Lourd (Truck)", maxSpeed: 340, acceleration: 190, braking: 260, reverseSpeed: 130, turnSpeed: 2.2, traction: 0.88, driftFactor: 0.85, naturalFriction: 0.98, mass: 2.5, color: "#8059bf", accent: "#333333", length: 58, width: 28 },
+  { id: "hovercraft", name: "Aéroglisseur", maxSpeed: 500, acceleration: 350, braking: 180, reverseSpeed: 180, turnSpeed: 3.6, traction: 0.12, driftFactor: 0.25, naturalFriction: 0.996, mass: 0.9, color: "#33d9d9", accent: "#194d66", length: 42, width: 28 },
+  { id: "micro_rc", name: "Micro RC Car", maxSpeed: 400, acceleration: 560, braking: 600, reverseSpeed: 240, turnSpeed: 5.5, traction: 0.86, driftFactor: 0.88, naturalFriction: 0.975, mass: 0.4, color: "#f2d926", accent: "#191919", length: 28, width: 18 }
+];
+
+const CONTROL_MODES = [
+  { id: "joystick", label: "Joystick Analogique + Pédales" },
+  { id: "steering_wheel", label: "Volant Virtuel Rotatif + Pédales" },
+  { id: "buttons_dpad", label: "Boutons Flèches D-Pad + Pédales" },
+  { id: "split_touch", label: "Écran Divisé (Split-Touch Arcade)" },
+  { id: "follow_finger", label: "Pointeur / Suivi du Doigt" },
+  { id: "slider_tilt", label: "Slider Horizontal / Tilt + Pédales" },
+  { id: "floating_n_way", label: "Pavé N-Directions Flottant" },
+  { id: "fixed_bottom_n_way", label: "Pavé N-Directions Fixé en bas" },
+  { id: "slingshot", label: "Élastique / Tir aux Billes (Fronde)" }
+];
+
+const LIVERIES = [
+  { id: "classic", label: "Classique" },
+  { id: "stripes", label: "Bandes Racing" },
+  { id: "chevron", label: "Flèche Sport" },
+  { id: "neon", label: "Néon" }
+];
+
+function getControlPlacement(type) {
+  if (type === "split_touch" || type === "follow_finger" || type === "slingshot") return "fullscreen";
+  if (type === "floating_n_way") return "hybrid";
+  return "external";
+}
+
+function getControlStatePayload() {
+  return {
+    type: CFG.controlType,
+    placement: getControlPlacement(CFG.controlType),
+    nWayDirections: CFG.nWayDirections,
+    nWayShiftedHalfStep: !!CFG.nWayShiftedHalfStep,
+    nWayDistanceAffectsSpeed: !!CFG.nWayDistanceAffectsSpeed
+  };
+}
+
+function getSettingsStatePayload() {
+  return {
+    car: Object.assign({}, CFG.car),
+    controlType: CFG.controlType,
+    nWayDirections: CFG.nWayDirections,
+    alignTime: CFG.alignTime,
+    continuousAccel: !!CFG.continuousAccel,
+    nWayAutoAccel: !!CFG.nWayAutoAccel,
+    nWayDistanceAffectsSpeed: !!CFG.nWayDistanceAffectsSpeed,
+    nWayShiftedHalfStep: !!CFG.nWayShiftedHalfStep,
+    slingshotPower: CFG.slingshotPower,
+    slingshotMaxPull: CFG.slingshotMaxPull,
+    slingshotFriction: CFG.slingshotFriction,
+    slingshotBounce: CFG.slingshotBounce,
+    slingshotTensionCurve: CFG.slingshotTensionCurve,
+    slingshotAimSlowmo: CFG.slingshotAimSlowmo,
+    slingshotStopToShoot: !!CFG.slingshotStopToShoot,
+    slingshotShowTrajectory: !!CFG.slingshotShowTrajectory,
+    cameraRotates: !!CFG.cameraRotates,
+    trackWidth: CFG.trackWidth,
+    presets: VEHICLE_PRESETS.map(p => ({ id: p.id, name: p.name })),
+    controlModes: CONTROL_MODES,
+    liveries: LIVERIES
+  };
+}
+
+function getMinimapTrackPayload() {
+  return {
+    points: centerLine.map(pt => [Math.round(pt.x), Math.round(pt.y)]),
+    bounds: trackContentBounds
+  };
+}
+
+function postToParent(msg) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(msg, "*");
+  }
+}
+
+// Viewport adaptatif
+let dpr = Math.min(2, window.devicePixelRatio || 1);
+let W = 512, H = 512;
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (isEmbedded || !gameFrameEl) {
+    W = window.innerWidth || document.documentElement.clientWidth || 512;
+    H = window.innerHeight || document.documentElement.clientHeight || 512;
+  } else {
+    const r = gameFrameEl.getBoundingClientRect();
+    W = Math.max(120, Math.round(r.width || 440));
+    H = Math.max(120, Math.round(r.height || 440));
+  }
+  canvas.width = Math.max(1, Math.round(W * dpr));
+  canvas.height = Math.max(1, Math.round(H * dpr));
+  canvas.style.width = W + "px";
+  canvas.style.height = H + "px";
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  render();
+  if (!isEmbedded) drawStandaloneMinimap();
+}
+window.addEventListener("resize", resize);
+window.addEventListener("orientationchange", () => setTimeout(resize, 100));
+
+// Audio Web (démarré uniquement à la demande)
+let audioCtx = null;
+let engineOsc = null, engineGain = null;
+let skidNoise = null, skidGain = null;
+let soundEnabled = false;
+
+function updateAudioButtons() {
+  const icon = soundEnabled ? "🔊" : "🔇";
+  const b1 = document.getElementById("btn-audio");
+  if (b1) b1.textContent = icon;
+  if (isEmbedded) {
+    postToParent({ type: "minigd_audio_state", id: GAME_ID, enabled: soundEnabled });
+  }
+}
+
+function initAudioNodes() {
+  if (audioCtx || destroyed) return;
+  try {
+    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtor) return;
+    audioCtx = new AudioCtor();
+
+    engineOsc = audioCtx.createOscillator();
+    engineOsc.type = "sawtooth";
+    engineGain = audioCtx.createGain();
+    engineGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(320, audioCtx.currentTime);
+
+    engineOsc.connect(filter);
+    filter.connect(engineGain);
+    engineGain.connect(audioCtx.destination);
+    engineOsc.start();
+
+    const bufferSize = audioCtx.sampleRate;
+    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+    skidNoise = audioCtx.createBufferSource();
+    skidNoise.buffer = noiseBuffer;
+    skidNoise.loop = true;
+    const skidFilter = audioCtx.createBiquadFilter();
+    skidFilter.type = "bandpass";
+    skidFilter.frequency.setValueAtTime(1200, audioCtx.currentTime);
+    skidGain = audioCtx.createGain();
+    skidGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+    skidNoise.connect(skidFilter);
+    skidFilter.connect(skidGain);
+    skidGain.connect(audioCtx.destination);
+    skidNoise.start();
+  } catch (_e) {}
+}
+
+function suspendAudio() {
+  if (!audioCtx) return;
+  try {
+    if (engineGain) engineGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+    if (skidGain) skidGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+    if (audioCtx.state === "running") audioCtx.suspend();
+  } catch (_e) {}
+}
+
+function resumeAudioIfEnabled() {
+  if (!soundEnabled || isGameplayPaused() || over) return;
+  if (!audioCtx) initAudioNodes();
+  if (!audioCtx) return;
+  try {
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (engineGain) engineGain.gain.setValueAtTime(0.055, audioCtx.currentTime);
+  } catch (_e) {}
+}
+
+function closeAudio() {
+  soundEnabled = false;
+  updateAudioButtons();
+  if (!audioCtx) return;
+  try {
+    if (engineGain) engineGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+    if (skidGain) skidGain.gain.setValueAtTime(0.0, audioCtx.currentTime);
+    if (engineOsc) engineOsc.stop();
+    if (skidNoise) skidNoise.stop();
+    audioCtx.close();
+  } catch (_e) {}
+  audioCtx = null;
+  engineOsc = null;
+  engineGain = null;
+  skidNoise = null;
+  skidGain = null;
+}
+
+function toggleAudio() {
+  if (destroyed) return;
+  soundEnabled = !soundEnabled;
+  updateAudioButtons();
+  if (soundEnabled) {
+    resumeAudioIfEnabled();
+  } else {
+    suspendAudio();
+  }
+}
+
+// Géométrie du circuit Catmull-Rom
+const CLASSIC_POINTS = [
+  { x: 650, y: 320 }, { x: 1050, y: 320 }, { x: 1450, y: 360 }, { x: 1800, y: 580 },
+  { x: 1920, y: 950 }, { x: 1720, y: 1300 }, { x: 1380, y: 1400 }, { x: 1100, y: 1150 },
+  { x: 950, y: 880 }, { x: 750, y: 980 }, { x: 550, y: 1320 }, { x: 240, y: 1200 },
+  { x: 160, y: 850 }, { x: 200, y: 550 }, { x: 380, y: 340 }
+];
+
+function catmullRom(pts, subs) {
+  const res = [];
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+    for (let s = 0; s < subs; s++) {
+      const t = s / subs;
+      const t2 = t * t, t3 = t2 * t;
+      res.push({
+        x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
+        y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+      });
+    }
+  }
+  return res;
+}
+
+let currentBasePoints = CLASSIC_POINTS.map(p => ({ x: p.x, y: p.y }));
+let centerLine = [];
+let outerBoundary = [];
+let innerBoundary = [];
+let checkpoints = [];
+let trackBounds = { minX: -600, minY: -400, maxX: 2800, maxY: 2200 };
+let trackContentBounds = { minX: 0, minY: 0, maxX: 2000, maxY: 1500 };
+
+const car = {
+  x: 650, y: 320,
+  rot: 0,
+  vx: 0, vy: 0,
+  steerInput: 0,
+  throttleInput: 0,
+  handbrakeInput: false,
+  targetHeadingAngle: null,
+  wheelAngle: 0,
+  isDrifting: false,
+  isOffroad: false,
+  skidMarks: [],
+  flameTrail: []
+};
+
+let targetLaps = 3;
+let durationSec = 75;
+const DEFAULT_EXT_PARAMS = {
+  targetLaps: 3,
+  durationSec: 75,
+  defaultVehicle: "kart",
+  defaultLivery: "stripes",
+  useCustomColors: false,
+  carColor: "#38d6ff",
+  accentColor: "#0f172a",
+  defaultControlMode: "joystick",
+  cameraRotates: false,
+  defaultTrackStyle: "classic",
+  trackWidth: 185,
+  speedMultiplier: 1.0,
+  boostDurationSec: 1.2,
+  boostCooldownSec: 3.5
+};
+const DEFAULT_TEXTS = {
+  boostReadyLabel: "⚡ BOOST TURBO",
+  boostActiveLabel: "🔥 BOOST ACTIF !",
+  driftBadgeText: "DRIFT",
+  turboBadgeText: "TURBO",
+  victoryTitle: "COURSE REMPORTÉE !",
+  timeoutTitle: "CHRONO ÉCOULÉ",
+  endReturnHint: "Cliquez pour revenir au jeu principal"
+};
+let activeParams = Object.assign({}, DEFAULT_EXT_PARAMS);
+let activeTexts = Object.assign({}, DEFAULT_TEXTS);
+let currentTrackStyle = "classic";
+let currentLap = 1;
+let lapTimer = 0;
+let bestLap = null;
+let timeLeft = 75;
+let score = 0;
+let driftScoreAcc = 0;
+let won = false;
+let over = false;
+let nextCpIdx = 1;
+let cpFlash = 0;
+
+let boostActiveTimer = 0;
+let boostCooldown = 0;
+
+let slingshotTouchId = null, slingshotAnchor = { x: 0, y: 0 }, slingshotPull = { x: 0, y: 0 };
+let slingshotSnapFlash = 0, slingshotSnapPos = { x: 0, y: 0 }, slingshotPulse = 0, slingshotAimCamRot = 0;
+const SLINGSHOT_DEADZONE = 16;
+
+// Entrées venant du deck externe (mode intégré ou autonome)
+let extInput = { steer: 0, throttle: 0, handbrake: false, targetHeadingAngle: null, active: false };
+
+let lastStatTxt = "";
+let lastStatAction = "";
+let lastStatOver = null;
+let lastMmSentAt = 0;
+
+function readMeta() {
+  const el = document.querySelector("script[data-spawn-minigame]");
+  if (!el) return {};
+  try { return JSON.parse(el.textContent || "{}") || {}; } catch (_e) { return {}; }
+}
+
+function clampNum(val, lo, hi, fallback) {
+  const n = Number(val);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
+}
+
+function applyRuntimeConfig(initData, applyDefaults) {
+  if (!initData || typeof initData !== "object") return;
+  const p = (initData.params && typeof initData.params === "object")
+    ? initData.params
+    : ((initData.custom && typeof initData.custom === "object" && initData.custom.params)
+      ? initData.custom.params
+      : ((initData.custom && typeof initData.custom === "object") ? initData.custom : initData));
+  if (p && typeof p === "object") {
+    activeParams.targetLaps = Math.round(clampNum(p.targetLaps ?? activeParams.targetLaps, 1, 20, DEFAULT_EXT_PARAMS.targetLaps));
+    activeParams.durationSec = Math.round(clampNum(p.durationSec ?? activeParams.durationSec, 20, 300, DEFAULT_EXT_PARAMS.durationSec));
+    activeParams.speedMultiplier = clampNum(p.speedMultiplier ?? activeParams.speedMultiplier, 0.5, 2.0, DEFAULT_EXT_PARAMS.speedMultiplier);
+    activeParams.boostDurationSec = clampNum(p.boostDurationSec ?? activeParams.boostDurationSec, 0.4, 4.0, DEFAULT_EXT_PARAMS.boostDurationSec);
+    activeParams.boostCooldownSec = clampNum(p.boostCooldownSec ?? activeParams.boostCooldownSec, 0.5, 10.0, DEFAULT_EXT_PARAMS.boostCooldownSec);
+    if (typeof p.defaultVehicle === "string" && VEHICLE_PRESETS.some(v => v.id === p.defaultVehicle)) {
+      activeParams.defaultVehicle = p.defaultVehicle;
+    }
+    if (typeof p.defaultLivery === "string" && LIVERIES.some(l => l.id === p.defaultLivery)) {
+      activeParams.defaultLivery = p.defaultLivery;
+    }
+    if (typeof p.useCustomColors === "boolean") activeParams.useCustomColors = p.useCustomColors;
+    if (typeof p.carColor === "string" && p.carColor.trim()) activeParams.carColor = p.carColor.trim();
+    if (typeof p.accentColor === "string" && p.accentColor.trim()) activeParams.accentColor = p.accentColor.trim();
+    if (typeof p.defaultControlMode === "string" && CONTROL_MODES.some(m => m.id === p.defaultControlMode)) {
+      activeParams.defaultControlMode = p.defaultControlMode;
+    }
+    if (typeof p.cameraRotates === "boolean") activeParams.cameraRotates = p.cameraRotates;
+    if (typeof p.defaultTrackStyle === "string" && ["classic", "oval", "technical", "random"].includes(p.defaultTrackStyle)) {
+      activeParams.defaultTrackStyle = p.defaultTrackStyle;
+    }
+    activeParams.trackWidth = Math.round(clampNum(p.trackWidth ?? activeParams.trackWidth, 110, 280, DEFAULT_EXT_PARAMS.trackWidth));
+  }
+  const t = (initData.texts && typeof initData.texts === "object")
+    ? initData.texts
+    : ((initData.custom && typeof initData.custom === "object" && initData.custom.texts) ? initData.custom.texts : null);
+  if (t && typeof t === "object") {
+    for (const k of Object.keys(DEFAULT_TEXTS)) {
+      if (typeof t[k] === "string" && t[k].trim()) {
+        activeTexts[k] = t[k].trim();
+      }
+    }
+  }
+  if (standaloneMmDrift) standaloneMmDrift.textContent = activeTexts.driftBadgeText;
+  if (standaloneMmTurbo) standaloneMmTurbo.textContent = activeTexts.turboBadgeText;
+
+  if (applyDefaults) {
+    applyVehiclePreset(activeParams.defaultVehicle, true);
+    CFG.car.livery = activeParams.defaultLivery;
+    if (activeParams.useCustomColors) {
+      CFG.car.color = activeParams.carColor;
+      CFG.car.accent = activeParams.accentColor;
+    }
+    CFG.controlType = activeParams.defaultControlMode;
+    CFG.cameraRotates = !!activeParams.cameraRotates;
+    CFG.trackWidth = activeParams.trackWidth;
+    currentTrackStyle = activeParams.defaultTrackStyle;
+    rebuildTrack(generateProceduralTrack(currentTrackStyle), true);
+    clearTouchInputs();
+    if (!isEmbedded) {
+      refreshQuickPickers();
+      buildStandaloneExternalControls();
+    }
+  }
+}
+
+function isGameplayPaused() {
+  return externalPaused || optionsOpen || helpOpen || destroyed || document.hidden;
+}
+
+function cancelLoop() {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  lastTime = 0;
+}
+
+function startLoopIfActive() {
+  if (isGameplayPaused() || over) return;
+  if (rafId === null) {
+    lastTime = 0;
+    rafId = requestAnimationFrame(loop);
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    clearTouchInputs();
+    keys = {};
+    suspendAudio();
+    cancelLoop();
+  } else {
+    resumeAudioIfEnabled();
+    startLoopIfActive();
+  }
+});
+
+function sendResultAndExit(didWin, finalScore) {
+  postToParent({
+    type: "spawn_minigame_result",
+    id: GAME_ID,
+    won: !!didWin,
+    score: Math.round(finalScore || 0),
+    resource_deltas: {}
+  });
+}
+
+function getActionLabel() {
+  if (boostActiveTimer > 0) return activeTexts.boostActiveLabel;
+  if (boostCooldown > 0) return `⚡ BOOST (${Math.ceil(boostCooldown)}s)`;
+  return activeTexts.boostReadyLabel;
+}
+
+function triggerBoost() {
+  if (over || isGameplayPaused()) return;
+  if (boostActiveTimer > 0 || boostCooldown > 0) return;
+  boostActiveTimer = activeParams.boostDurationSec;
+  boostCooldown = activeParams.boostCooldownSec;
+
+  const hx = Math.cos(car.rot), hy = Math.sin(car.rot);
+  const impulse = CFG.controlType === "slingshot" ? Math.max(360, CFG.slingshotPower * 0.55) : Math.max(220, CFG.car.maxSpeed * activeParams.speedMultiplier * 0.45);
+  car.vx += hx * impulse;
+  car.vy += hy * impulse;
+  const maxSpd = (CFG.controlType === "slingshot" ? Math.max(CFG.slingshotPower * 1.6, 1800) : CFG.car.maxSpeed * activeParams.speedMultiplier * 1.38);
+  const spd = Math.hypot(car.vx, car.vy);
+  if (spd > maxSpd) {
+    car.vx = (car.vx / spd) * maxSpd;
+    car.vy = (car.vy / spd) * maxSpd;
+  }
+  updateHud(true);
+  emitMinimapState(true);
+}
+
+function fmtTime(t) {
+  const m = Math.floor(t / 60);
+  const s = Math.floor(t % 60);
+  const ds = Math.floor((t % 1) * 10);
+  return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s + "." + ds;
+}
+
+function updateHud(force) {
+  const curSpeedKmh = Math.round(Math.hypot(car.vx, car.vy) * 0.36);
+  const lapShown = Math.min(currentLap, targetLaps);
+  const txt = `Tour ${lapShown}/${targetLaps} • ${curSpeedKmh} km/h • Score ${Math.round(score)} • ${Math.ceil(timeLeft)}s`;
+  const actLbl = getActionLabel();
+  const isOver = Boolean(over);
+
+  if (!force && txt === lastStatTxt && actLbl === lastStatAction && isOver === lastStatOver) {
+    return;
+  }
+  lastStatTxt = txt;
+  lastStatAction = actLbl;
+  lastStatOver = isOver;
+
+  if (!isEmbedded && statEl) {
+    statEl.textContent = txt;
+  }
+  if (boostBtnEl) {
+    boostBtnEl.textContent = actLbl;
+    boostBtnEl.disabled = over || boostActiveTimer > 0 || boostCooldown > 0;
+  }
+  if (isEmbedded) {
+    postToParent({
+      type: "minigd_stats",
+      id: GAME_ID,
+      text: txt,
+      actionLabel: actLbl,
+      over: isOver
+    });
+  }
+}
+
+function emitMinimapState(force) {
+  const now = performance.now();
+  if (!force && (now - lastMmSentAt) < 33) return;
+  lastMmSentAt = now;
+  const cp = checkpoints[nextCpIdx];
+  const state = {
+    carX: car.x,
+    carY: car.y,
+    carRot: car.rot,
+    cpX: cp ? cp.pos.x : null,
+    cpY: cp ? cp.pos.y : null,
+    drifting: !!car.isDrifting,
+    boosting: boostActiveTimer > 0
+  };
+  if (isEmbedded) {
+    postToParent(Object.assign({ type: "minigd_minimap_state", id: GAME_ID }, state));
+  } else {
+    drawStandaloneMinimap(state);
+  }
+}
+
+function drawStandaloneMinimap(state) {
+  if (isEmbedded || !standaloneMinimapCanvas) return;
+  const rect = standaloneMinimapCanvas.getBoundingClientRect();
+  const mw = Math.max(80, Math.round(rect.width || 116));
+  const mh = Math.max(40, Math.round(rect.height || 64));
+  const mDpr = Math.min(2, window.devicePixelRatio || 1);
+  if (standaloneMinimapCanvas.width !== Math.round(mw * mDpr) || standaloneMinimapCanvas.height !== Math.round(mh * mDpr)) {
+    standaloneMinimapCanvas.width = Math.round(mw * mDpr);
+    standaloneMinimapCanvas.height = Math.round(mh * mDpr);
+  }
+  const mctx = standaloneMinimapCanvas.getContext("2d");
+  mctx.setTransform(mDpr, 0, 0, mDpr, 0, 0);
+  mctx.clearRect(0, 0, mw, mh);
+
+  if (centerLine.length >= 2) {
+    const b = trackContentBounds;
+    const bw = Math.max(1, b.maxX - b.minX);
+    const bh = Math.max(1, b.maxY - b.minY);
+    const pad = 7;
+    const sc = Math.min((mw - pad * 2) / bw, (mh - pad * 2) / bh);
+    const ox = (mw - bw * sc) * 0.5 - b.minX * sc;
+    const oy = (mh - bh * sc) * 0.5 - b.minY * sc;
+
+    mctx.strokeStyle = "rgba(148, 163, 184, 0.72)";
+    mctx.lineWidth = 3;
+    mctx.beginPath();
+    for (let i = 0; i <= centerLine.length; i++) {
+      const pt = centerLine[i % centerLine.length];
+      const x = ox + pt.x * sc, y = oy + pt.y * sc;
+      if (i === 0) mctx.moveTo(x, y); else mctx.lineTo(x, y);
+    }
+    mctx.stroke();
+
+    const p0 = centerLine[0];
+    mctx.fillStyle = "#4ade80";
+    mctx.beginPath();
+    mctx.arc(ox + p0.x * sc, oy + p0.y * sc, 2.8, 0, Math.PI * 2);
+    mctx.fill();
+
+    const cp = checkpoints[nextCpIdx];
+    if (cp) {
+      mctx.fillStyle = "#fde047";
+      mctx.beginPath();
+      mctx.arc(ox + cp.pos.x * sc, oy + cp.pos.y * sc, 2.8, 0, Math.PI * 2);
+      mctx.fill();
+    }
+
+    const cx = ox + car.x * sc, cy = oy + car.y * sc;
+    mctx.fillStyle = "#38d6ff";
+    mctx.beginPath();
+    mctx.arc(cx, cy, 3.6, 0, Math.PI * 2);
+    mctx.fill();
+    mctx.strokeStyle = "#ffffff";
+    mctx.lineWidth = 1;
+    mctx.stroke();
+    mctx.beginPath();
+    mctx.moveTo(cx, cy);
+    mctx.lineTo(cx + Math.cos(car.rot) * 6.5, cy + Math.sin(car.rot) * 6.5);
+    mctx.strokeStyle = "#fde047";
+    mctx.lineWidth = 1.6;
+    mctx.stroke();
+  }
+
+  const st = state || { drifting: car.isDrifting, boosting: boostActiveTimer > 0 };
+  if (standaloneMmDrift) standaloneMmDrift.style.display = st.drifting ? "inline-block" : "none";
+  if (standaloneMmTurbo) standaloneMmTurbo.style.display = st.boosting ? "inline-block" : "none";
+}
+
+function resetCar() {
+  const p0 = centerLine[0] || { x: 650, y: 320 };
+  const p1 = centerLine[1] || { x: p0.x + 1, y: p0.y };
+  car.x = p0.x;
+  car.y = p0.y;
+  car.rot = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+  car.vx = 0;
+  car.vy = 0;
+  car.steerInput = 0;
+  car.throttleInput = 0;
+  car.handbrakeInput = false;
+  car.targetHeadingAngle = null;
+  car.wheelAngle = 0;
+  car.isDrifting = false;
+  car.isOffroad = false;
+  car.skidMarks = [];
+  car.flameTrail = [];
+  slingshotTouchId = null;
+  slingshotPull = { x: 0, y: 0 };
+  slingshotSnapFlash = 0;
+}
+
+function rebuildTrack(pts, resetPosition) {
+  currentBasePoints = pts.map(p => ({ x: p.x, y: p.y }));
+  centerLine = catmullRom(currentBasePoints, 4);
+  outerBoundary = [];
+  innerBoundary = [];
+  checkpoints = [];
+  const halfW = CFG.trackWidth * 0.5;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+  for (let i = 0; i < centerLine.length; i++) {
+    const prev = centerLine[(i - 1 + centerLine.length) % centerLine.length];
+    const next = centerLine[(i + 1) % centerLine.length];
+    const dx = next.x - prev.x, dy = next.y - prev.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const pt = centerLine[i];
+    const ox = pt.x + nx * halfW, oy = pt.y + ny * halfW;
+    const ix = pt.x - nx * halfW, iy = pt.y - ny * halfW;
+    outerBoundary.push({ x: ox, y: oy });
+    innerBoundary.push({ x: ix, y: iy });
+    minX = Math.min(minX, ox, ix); maxX = Math.max(maxX, ox, ix);
+    minY = Math.min(minY, oy, iy); maxY = Math.max(maxY, oy, iy);
+    if (i % 8 === 0) {
+      checkpoints.push({ pos: pt, idx: checkpoints.length });
+    }
+  }
+  trackContentBounds = { minX, minY, maxX, maxY };
+  trackBounds = { minX: minX - 1200, minY: minY - 1200, maxX: maxX + 1200, maxY: maxY + 1200 };
+  if (resetPosition) {
+    resetCar();
+    nextCpIdx = checkpoints.length > 1 ? 1 : 0;
+  }
+  if (isEmbedded) {
+    postToParent(Object.assign({ type: "minigd_minimap_track", id: GAME_ID }, getMinimapTrackPayload()));
+  } else {
+    drawStandaloneMinimap();
+  }
+}
+
+function resetGame(cfg, applyDefaults) {
+  applyRuntimeConfig(cfg, Boolean(applyDefaults));
+  targetLaps = activeParams.targetLaps;
+  durationSec = activeParams.durationSec;
+
+  currentLap = 1;
+  lapTimer = 0;
+  bestLap = null;
+  timeLeft = durationSec;
+  score = 0;
+  driftScoreAcc = 0;
+  won = false;
+  over = false;
+  cpFlash = 0;
+  boostActiveTimer = 0;
+  boostCooldown = 0;
+  lastStatTxt = "";
+  lastStatAction = "";
+  lastStatOver = null;
+
+  clearTouchInputs();
+  resetCar();
+  nextCpIdx = checkpoints.length > 1 ? 1 : 0;
+  updateHud(true);
+  emitMinimapState(true);
+  render();
+  startLoopIfActive();
+}
+
+rebuildTrack(CLASSIC_POINTS, true);
+
+// Gestion des entrées tactiles & clavier
+const touches = {};
+let keys = {};
+let nWayTouchId = null, nWayOrigin = { x: 0, y: 0 }, nWayCurrent = { x: 0, y: 0 }, nWaySector = -1;
+
+function clearTouchInputs() {
+  for (const k of Object.keys(touches)) delete touches[k];
+  nWayTouchId = null; nWaySector = -1;
+  slingshotTouchId = null; slingshotPull = { x: 0, y: 0 };
+  extInput = { steer: 0, throttle: 0, handbrake: false, targetHeadingAngle: null, active: false };
+  car.steerInput = 0;
+  car.throttleInput = 0;
+  car.handbrakeInput = false;
+  car.targetHeadingAngle = null;
+  if (!isEmbedded) clearStandaloneExternalUI();
+}
+
+function canStartSlingshot() {
+  if (!CFG.slingshotStopToShoot) return true;
+  return Math.hypot(car.vx, car.vy) <= 18;
+}
+
+function getSlingshotTension() {
+  const pullLen = Math.hypot(slingshotPull.x, slingshotPull.y);
+  if (pullLen <= SLINGSHOT_DEADZONE) return 0;
+  const denom = Math.max(1, CFG.slingshotMaxPull - SLINGSHOT_DEADZONE);
+  return Math.max(0, Math.min(1, (pullLen - SLINGSHOT_DEADZONE) / denom));
+}
+
+function computeSlingshotLaunchSpeed(tension) {
+  const t = Math.max(0, Math.min(1, tension));
+  const massFactor = 1 / Math.sqrt(Math.max(CFG.car.mass, 0.25));
+  return Math.pow(t, CFG.slingshotTensionCurve) * CFG.slingshotPower * massFactor;
+}
+
+function getCameraState() {
+  const minDim = Math.min(W, H);
+  const camScale = Math.max(0.56, Math.min(0.95, minDim / 540));
+  const isAimingSlingshot = (CFG.controlType === "slingshot" && slingshotTouchId !== null);
+  const fwdRatio = Math.min(1.0, Math.hypot(car.vx, car.vy) / Math.max(1, CFG.car.maxSpeed));
+  const leadDist = isAimingSlingshot ? 0 : (80 * fwdRatio);
+  const camRot = CFG.cameraRotates ? (isAimingSlingshot ? slingshotAimCamRot : (-car.rot - Math.PI * 0.5)) : 0;
+  return {
+    camScale,
+    leadX: Math.cos(car.rot) * leadDist,
+    leadY: Math.sin(car.rot) * leadDist,
+    camRot
+  };
+}
+
+function worldToScreen(wx, wy, cam) {
+  const dx = wx - car.x - cam.leadX;
+  const dy = wy - car.y - cam.leadY;
+  const c = Math.cos(cam.camRot), s = Math.sin(cam.camRot);
+  return {
+    x: W * 0.5 + (dx * c - dy * s) * cam.camScale,
+    y: H * 0.5 + (dx * s + dy * c) * cam.camScale
+  };
+}
+
+function screenToWorld(sx, sy, cam) {
+  const rx = (sx - W * 0.5) / cam.camScale;
+  const ry = (sy - H * 0.5) / cam.camScale;
+  const c = Math.cos(cam.camRot), s = Math.sin(cam.camRot);
+  return {
+    x: car.x + cam.leadX + (rx * c + ry * s),
+    y: car.y + cam.leadY + (-rx * s + ry * c)
+  };
+}
+
+function getSlingshotWorldDir(cam) {
+  const d = Math.hypot(slingshotPull.x, slingshotPull.y);
+  if (d <= 0.001) return null;
+  const sx = slingshotPull.x / d, sy = slingshotPull.y / d;
+  const c = Math.cos(cam.camRot), s = Math.sin(cam.camRot);
+  return {
+    x: sx * c + sy * s,
+    y: -sx * s + sy * c
+  };
+}
+
+function getCarScreenPos() {
+  return worldToScreen(car.x, car.y, getCameraState());
+}
+
+function updateInputControls() {
+  if (isGameplayPaused() || over) {
+    car.steerInput = 0;
+    car.throttleInput = 0;
+    car.handbrakeInput = false;
+    return;
+  }
+
+  let s = 0, th = 0, hb = false;
+  let targetAng = null;
+
+  // Clavier
+  if (keys["ArrowLeft"] || keys["KeyA"] || keys["KeyQ"]) s -= 1;
+  if (keys["ArrowRight"] || keys["KeyD"]) s += 1;
+  if (keys["ArrowUp"] || keys["KeyW"] || keys["KeyZ"]) th += 1;
+  if (keys["ArrowDown"] || keys["KeyS"]) th -= 1;
+  if (keys["Space"]) hb = true;
+
+  const placement = getControlPlacement(CFG.controlType);
+
+  // Contrôles externes (hors cadre)
+  if (placement === "external" || placement === "hybrid") {
+    if (Math.abs(extInput.steer || 0) > 0.001) s = extInput.steer;
+    if (Math.abs(extInput.throttle || 0) > 0.001) th = extInput.throttle;
+    if (extInput.handbrake) hb = true;
+    if (extInput.targetHeadingAngle !== null && extInput.targetHeadingAngle !== undefined) {
+      targetAng = extInput.targetHeadingAngle;
+    }
+  }
+
+  // Contrôles sur le canvas (uniquement plein écran ou partie flottante de floating_n_way)
+  const touchList = Object.values(touches);
+  const cam = getCameraState();
+
+  if (CFG.controlType === "split_touch") {
+    th = 0.85;
+    let lDown = false, rDown = false;
+    for (const t of touchList) {
+      if (t.y > H * 0.8) th = -1.0;
+      else if (t.x < W * 0.5) lDown = true;
+      else rDown = true;
+    }
+    if (lDown && rDown) { hb = true; th = 0.2; }
+    else if (lDown) s = -1.0;
+    else if (rDown) s = 1.0;
+  } else if (CFG.controlType === "follow_finger") {
+    if (touchList.length > 0) {
+      const t = touchList[0];
+      const worldPt = screenToWorld(t.x, t.y, cam);
+      const toX = worldPt.x - car.x, toY = worldPt.y - car.y;
+      const d = Math.hypot(toX, toY);
+      if (d > 28) {
+        const tAng = Math.atan2(toY, toX);
+        let diff = tAng - car.rot;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        s = Math.max(-1, Math.min(1, diff * 1.6));
+        th = Math.min(1.0, d / 220);
+      }
+    }
+  } else if (CFG.controlType === "floating_n_way") {
+    const count = Math.max(2, CFG.nWayDirections || 4);
+    const stepAng = (Math.PI * 2) / count;
+    const offsetAng = CFG.nWayShiftedHalfStep ? (stepAng * 0.5) : 0.0;
+    const deadzone = 18;
+    for (const t of touchList) {
+      if (nWayTouchId === null) {
+        nWayTouchId = t.id;
+        nWayOrigin = { x: t.x, y: t.y };
+        nWayCurrent = { x: t.x, y: t.y };
+        nWaySector = -1;
+      }
+      if (t.id === nWayTouchId) {
+        nWayCurrent = { x: t.x, y: t.y };
+        const dx = t.x - nWayOrigin.x, dy = t.y - nWayOrigin.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist >= deadzone) {
+          const rawAng = Math.atan2(dy, dx);
+          const k = Math.round((rawAng - offsetAng) / stepAng);
+          nWaySector = ((k % count) + count) % count;
+          targetAng = k * stepAng + offsetAng;
+          if (CFG.nWayAutoAccel) {
+            if (CFG.nWayDistanceAffectsSpeed) {
+              const maxRad = 86;
+              const ratio = Math.max(0.15, Math.min(1.0, (dist - deadzone) / (maxRad - deadzone)));
+              th = Math.max(th, ratio);
+            } else {
+              th = Math.max(th, 1.0);
+            }
+          }
+        } else {
+          nWaySector = -1;
+        }
+      }
+    }
+  } else if (CFG.controlType === "slingshot") {
+    targetAng = null;
+    s = 0; th = 0; hb = false;
+  }
+
+  if (targetAng !== null && CFG.cameraRotates) {
+    targetAng -= cam.camRot;
+  }
+
+  car.targetHeadingAngle = targetAng;
+  car.steerInput = s;
+  car.throttleInput = th;
+  car.handbrakeInput = hb;
+}
+
+// --- Deck Contrôles Externes (mode autonome) ---
+const standaloneExtCleanups = [];
+function clearStandaloneExternalUI() {
+  for (const fn of standaloneExtCleanups) {
+    try { fn(); } catch (_e) {}
+  }
+  standaloneExtCleanups.length = 0;
+}
+
+function buildStandaloneExternalControls() {
+  if (isEmbedded || !standaloneExtControlsEl || !stageEl) return;
+  clearStandaloneExternalUI();
+  standaloneExtControlsEl.innerHTML = "";
+
+  const placement = getControlPlacement(CFG.controlType);
+  if (placement === "fullscreen") {
+    standaloneExtControlsEl.classList.remove("visible");
+    stageEl.classList.add("fullscreen-ctrl");
+    resize();
+    return;
+  }
+
+  stageEl.classList.remove("fullscreen-ctrl");
+  standaloneExtControlsEl.classList.add("visible");
+
+  let curSteer = 0, curThrottle = 0, curHandbrake = false, curTargetAng = null;
+  function syncExt() {
+    extInput = {
+      steer: curSteer,
+      throttle: curThrottle,
+      handbrake: curHandbrake,
+      targetHeadingAngle: curTargetAng,
+      active: Math.abs(curSteer) > 0.01 || Math.abs(curThrottle) > 0.01 || curHandbrake || curTargetAng !== null
+    };
+  }
+
+  function addTrackedListener(target, ev, fn, opts) {
+    target.addEventListener(ev, fn, opts);
+    standaloneExtCleanups.push(() => target.removeEventListener(ev, fn, opts));
+  }
+
+  function makePedalsBlock() {
+    const wrap = document.createElement("div");
+    wrap.className = "ext-ctrl-pedals";
+
+    const driftBtn = document.createElement("button");
+    driftBtn.type = "button";
+    driftBtn.className = "ext-pedal-btn drift";
+    driftBtn.textContent = "DRIFT";
+
+    const row = document.createElement("div");
+    row.className = "ext-ctrl-pedals-row";
+    const brakeBtn = document.createElement("button");
+    brakeBtn.type = "button";
+    brakeBtn.className = "ext-pedal-btn brake";
+    brakeBtn.textContent = "FREIN ⬇";
+    const gasBtn = document.createElement("button");
+    gasBtn.type = "button";
+    gasBtn.className = "ext-pedal-btn gas";
+    gasBtn.textContent = "GAZ ⬆";
+
+    const activeIds = { gas: null, brake: null, drift: null };
+    function recomputePedals() {
+      curThrottle = activeIds.gas !== null ? 1.0 : (activeIds.brake !== null ? -1.0 : 0.0);
+      curHandbrake = activeIds.drift !== null;
+      gasBtn.classList.toggle("active", activeIds.gas !== null);
+      brakeBtn.classList.toggle("active", activeIds.brake !== null);
+      driftBtn.classList.toggle("active", activeIds.drift !== null);
+      syncExt();
+    }
+
+    function bindHold(btn, key) {
+      addTrackedListener(btn, "pointerdown", (e) => {
+        e.preventDefault();
+        if (soundEnabled && audioCtx && audioCtx.state === "suspended") resumeAudioIfEnabled();
+        activeIds[key] = e.pointerId !== undefined ? e.pointerId : 1;
+        recomputePedals();
+      });
+      addTrackedListener(window, "pointerup", (e) => {
+        const pid = e.pointerId !== undefined ? e.pointerId : 1;
+        if (activeIds[key] === pid) { activeIds[key] = null; recomputePedals(); }
+      });
+      addTrackedListener(window, "pointercancel", (e) => {
+        const pid = e.pointerId !== undefined ? e.pointerId : 1;
+        if (activeIds[key] === pid) { activeIds[key] = null; recomputePedals(); }
+      });
+    }
+    bindHold(gasBtn, "gas");
+    bindHold(brakeBtn, "brake");
+    bindHold(driftBtn, "drift");
+
+    row.appendChild(brakeBtn);
+    row.appendChild(gasBtn);
+    wrap.appendChild(driftBtn);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  const leftBox = document.createElement("div");
+  leftBox.className = "ext-ctrl-left";
+  standaloneExtControlsEl.appendChild(leftBox);
+
+  if (CFG.controlType === "floating_n_way") {
+    leftBox.style.fontSize = "11.5px";
+    leftBox.style.color = "#8fb4d4";
+    leftBox.style.textAlign = "center";
+    leftBox.textContent = "Glissez sur le cadre pour orienter";
+    standaloneExtControlsEl.appendChild(makePedalsBlock());
+  } else if (CFG.controlType === "buttons_dpad") {
+    const row = document.createElement("div");
+    row.className = "ext-dpad-row";
+    const bL = document.createElement("button");
+    bL.type = "button"; bL.className = "ext-dpad-btn"; bL.textContent = "◀";
+    const bR = document.createElement("button");
+    bR.type = "button"; bR.className = "ext-dpad-btn"; bR.textContent = "▶";
+    let lId = null, rId = null;
+    function updDpad() {
+      curSteer = (lId !== null ? -1 : 0) + (rId !== null ? 1 : 0);
+      bL.classList.toggle("active", lId !== null);
+      bR.classList.toggle("active", rId !== null);
+      syncExt();
+    }
+    addTrackedListener(bL, "pointerdown", (e) => { e.preventDefault(); lId = e.pointerId ?? 1; updDpad(); });
+    addTrackedListener(bR, "pointerdown", (e) => { e.preventDefault(); rId = e.pointerId ?? 2; updDpad(); });
+    addTrackedListener(window, "pointerup", (e) => {
+      const pid = e.pointerId ?? 1;
+      if (lId === pid) { lId = null; updDpad(); }
+      if (rId === pid) { rId = null; updDpad(); }
+    });
+    addTrackedListener(window, "pointercancel", (e) => {
+      const pid = e.pointerId ?? 1;
+      if (lId === pid) { lId = null; updDpad(); }
+      if (rId === pid) { rId = null; updDpad(); }
+    });
+    row.appendChild(bL);
+    row.appendChild(bR);
+    leftBox.appendChild(row);
+    standaloneExtControlsEl.appendChild(makePedalsBlock());
+  } else if (CFG.controlType === "slider_tilt") {
+    const track = document.createElement("div");
+    track.className = "ext-slider-track";
+    const thumb = document.createElement("div");
+    thumb.className = "ext-slider-thumb";
+    track.appendChild(thumb);
+    let sId = null;
+    function updateSlider(clientX) {
+      const r = track.getBoundingClientRect();
+      const maxOff = Math.max(10, r.width * 0.5 - 20);
+      const off = Math.max(-maxOff, Math.min(maxOff, clientX - (r.left + r.width * 0.5)));
+      curSteer = off / maxOff;
+      thumb.style.left = `calc(50% + ${off.toFixed(1)}px)`;
+      syncExt();
+    }
+    addTrackedListener(track, "pointerdown", (e) => { e.preventDefault(); sId = e.pointerId ?? 1; updateSlider(e.clientX); });
+    addTrackedListener(window, "pointermove", (e) => { if (sId === (e.pointerId ?? 1)) updateSlider(e.clientX); });
+    const endSl = (e) => {
+      if (sId === (e.pointerId ?? 1)) { sId = null; curSteer = 0; thumb.style.left = "50%"; syncExt(); }
+    };
+    addTrackedListener(window, "pointerup", endSl);
+    addTrackedListener(window, "pointercancel", endSl);
+    leftBox.appendChild(track);
+    standaloneExtControlsEl.appendChild(makePedalsBlock());
+  } else if (CFG.controlType === "joystick" || CFG.controlType === "steering_wheel" || CFG.controlType === "fixed_bottom_n_way") {
+    const size = CFG.controlType === "fixed_bottom_n_way" ? 120 : 102;
+    const cv = document.createElement("canvas");
+    cv.className = "ext-ctrl-canvas";
+    cv.width = size;
+    cv.height = size;
+    cv.style.width = size + "px";
+    cv.style.height = size + "px";
+    leftBox.appendChild(cv);
+    if (CFG.controlType !== "fixed_bottom_n_way") {
+      standaloneExtControlsEl.appendChild(makePedalsBlock());
+    }
+
+    const cctx = cv.getContext("2d");
+    let pid = null;
+    let hx = 0, hy = 0, wAng = 0, nSector = -1;
+    const cx = size * 0.5, cy = size * 0.5;
+    const rad = size * 0.42;
+
+    function drawWidget() {
+      cctx.clearRect(0, 0, size, size);
+      if (CFG.controlType === "joystick") {
+        cctx.fillStyle = "rgba(10, 18, 32, 0.9)";
+        cctx.beginPath(); cctx.arc(cx, cy, rad, 0, Math.PI * 2); cctx.fill();
+        cctx.strokeStyle = "rgba(56, 214, 255, 0.55)"; cctx.lineWidth = 2; cctx.stroke();
+        cctx.fillStyle = "rgba(56, 214, 255, 0.9)";
+        cctx.beginPath(); cctx.arc(cx + hx, cy + hy, rad * 0.42, 0, Math.PI * 2); cctx.fill();
+        cctx.strokeStyle = "#e6f4ff"; cctx.lineWidth = 1.5; cctx.stroke();
+      } else if (CFG.controlType === "steering_wheel") {
+        cctx.save();
+        cctx.translate(cx, cy);
+        cctx.rotate(wAng);
+        cctx.strokeStyle = "rgba(56, 214, 255, 0.88)"; cctx.lineWidth = 10;
+        cctx.beginPath(); cctx.arc(0, 0, rad - 4, 0, Math.PI * 2); cctx.stroke();
+        cctx.lineWidth = 4;
+        cctx.beginPath();
+        cctx.moveTo(-(rad - 6), 0); cctx.lineTo(rad - 6, 0);
+        cctx.moveTo(0, 0); cctx.lineTo(0, rad - 6);
+        cctx.stroke();
+        cctx.fillStyle = "#f87171";
+        cctx.beginPath(); cctx.arc(0, -(rad - 4), 5, 0, Math.PI * 2); cctx.fill();
+        cctx.restore();
+      } else {
+        const count = Math.max(2, CFG.nWayDirections || 4);
+        const stepAng = (Math.PI * 2) / count;
+        const offsetAng = CFG.nWayShiftedHalfStep ? (stepAng * 0.5) : 0.0;
+        const dz = rad * 0.24;
+        cctx.fillStyle = "rgba(10, 18, 32, 0.92)";
+        cctx.beginPath(); cctx.arc(cx, cy, rad, 0, Math.PI * 2); cctx.fill();
+        if (nSector !== -1) {
+          const midAng = nSector * stepAng + offsetAng;
+          cctx.fillStyle = "rgba(74, 222, 128, 0.45)";
+          cctx.beginPath(); cctx.moveTo(cx, cy);
+          cctx.arc(cx, cy, rad, midAng - stepAng * 0.5, midAng + stepAng * 0.5);
+          cctx.closePath(); cctx.fill();
+        }
+        cctx.strokeStyle = "rgba(255,255,255,0.28)"; cctx.lineWidth = 1.5;
+        for (let i = 0; i < count; i++) {
+          const divAng = (i + 0.5) * stepAng + offsetAng;
+          cctx.beginPath();
+          cctx.moveTo(cx + Math.cos(divAng) * dz, cy + Math.sin(divAng) * dz);
+          cctx.lineTo(cx + Math.cos(divAng) * rad, cy + Math.sin(divAng) * rad);
+          cctx.stroke();
+        }
+        cctx.strokeStyle = "#38d6ff"; cctx.lineWidth = 2;
+        cctx.beginPath(); cctx.arc(cx, cy, rad, 0, Math.PI * 2); cctx.stroke();
+        cctx.fillStyle = "#38d6ff";
+        cctx.beginPath(); cctx.arc(cx + hx, cy + hy, 12, 0, Math.PI * 2); cctx.fill();
+        cctx.strokeStyle = "#e6f4ff"; cctx.lineWidth = 1.5; cctx.stroke();
+      }
+    }
+
+    function applyPointer(clientX, clientY) {
+      const r = cv.getBoundingClientRect();
+      const px = (clientX - r.left) * (size / Math.max(1, r.width));
+      const py = (clientY - r.top) * (size / Math.max(1, r.height));
+      const dx = px - cx, dy = py - cy;
+      const dist = Math.hypot(dx, dy);
+      if (CFG.controlType === "joystick") {
+        if (dist > 0.001) {
+          const cl = Math.min(dist, rad);
+          hx = (dx / dist) * cl; hy = (dy / dist) * cl;
+          curSteer = hx / rad;
+          if (Math.abs(hy) > 10) curThrottle = -hy / rad;
+        } else {
+          hx = 0; hy = 0; curSteer = 0;
+        }
+      } else if (CFG.controlType === "steering_wheel") {
+        const ang = Math.atan2(dy, dx) + Math.PI * 0.5;
+        wAng = Math.max(-2.0, Math.min(2.0, ang));
+        curSteer = wAng / 2.0;
+      } else {
+        const count = Math.max(2, CFG.nWayDirections || 4);
+        const stepAng = (Math.PI * 2) / count;
+        const offsetAng = CFG.nWayShiftedHalfStep ? (stepAng * 0.5) : 0.0;
+        const dz = rad * 0.24;
+        const cl = Math.min(dist, rad);
+        hx = dist > 0.001 ? (dx / dist) * cl : 0;
+        hy = dist > 0.001 ? (dy / dist) * cl : 0;
+        if (dist >= dz) {
+          const rawAng = Math.atan2(dy, dx);
+          const k = Math.round((rawAng - offsetAng) / stepAng);
+          nSector = ((k % count) + count) % count;
+          curTargetAng = k * stepAng + offsetAng;
+          curThrottle = CFG.nWayDistanceAffectsSpeed ? Math.max(0.2, Math.min(1.0, (dist - dz) / Math.max(1, rad - dz))) : 1.0;
+        } else {
+          nSector = -1; curTargetAng = null; curThrottle = 0;
+        }
+      }
+      drawWidget();
+      syncExt();
+    }
+
+    drawWidget();
+    addTrackedListener(cv, "pointerdown", (e) => {
+      e.preventDefault();
+      pid = e.pointerId ?? 1;
+      applyPointer(e.clientX, e.clientY);
+    });
+    addTrackedListener(window, "pointermove", (e) => {
+      if (pid === (e.pointerId ?? 1)) applyPointer(e.clientX, e.clientY);
+    });
+    const endW = (e) => {
+      if (pid === (e.pointerId ?? 1)) {
+        pid = null;
+        hx = 0; hy = 0; nSector = -1;
+        curSteer = 0; curTargetAng = null;
+        if (CFG.controlType === "fixed_bottom_n_way") curThrottle = 0;
+        drawWidget();
+        syncExt();
+      }
+    };
+    addTrackedListener(window, "pointerup", endW);
+    addTrackedListener(window, "pointercancel", endW);
+  }
+  resize();
+}
+
+// Événements Clavier & Pointer sur le canvas
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (optionsOpen) {
+      closeOptionsModal(true);
+    } else if (helpOpen) {
+      window.toggleSpawnHelp(false);
+    } else if (isEmbedded && !externalPaused) {
+      postToParent({ type: "minigd_exit", id: GAME_ID, won, score: Math.round(score || 0) });
+    }
+    return;
+  }
+  if (isGameplayPaused()) return;
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toUpperCase() : "";
+  if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
+    e.preventDefault();
+  }
+  if (soundEnabled && audioCtx && audioCtx.state === "suspended") {
+    resumeAudioIfEnabled();
+  }
+  const firstPress = !keys[e.code];
+  keys[e.code] = true;
+  if (firstPress && (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.code === "KeyE")) {
+    triggerBoost();
+  }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function onPointerDown(e) {
+  if (isGameplayPaused()) return;
+  if (soundEnabled && audioCtx && audioCtx.state === "suspended") {
+    resumeAudioIfEnabled();
+  }
+  if (over) {
+    if (isEmbedded) {
+      sendResultAndExit(won, score);
+    } else {
+      resetGame();
+    }
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const id = e.pointerId !== undefined ? e.pointerId : 99;
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  touches[id] = { id, x: px, y: py };
+
+  if (CFG.controlType === "slingshot" && slingshotTouchId === null && canStartSlingshot()) {
+    slingshotAimCamRot = CFG.cameraRotates ? (-car.rot - Math.PI * 0.5) : 0;
+    slingshotTouchId = id;
+    const cs = getCarScreenPos();
+    if (Math.hypot(px - cs.x, py - cs.y) <= 75) {
+      slingshotAnchor = { x: cs.x, y: cs.y };
+    } else {
+      slingshotAnchor = { x: px, y: py };
+    }
+    slingshotPull = { x: 0, y: 0 };
+  }
+}
+
+function onPointerMove(e) {
+  if (isGameplayPaused() || over) return;
+  const id = e.pointerId !== undefined ? e.pointerId : 99;
+  if (touches[id]) {
+    const rect = canvas.getBoundingClientRect();
+    touches[id].x = e.clientX - rect.left;
+    touches[id].y = e.clientY - rect.top;
+    if (CFG.controlType === "slingshot" && id === slingshotTouchId) {
+      let dx = slingshotAnchor.x - touches[id].x;
+      let dy = slingshotAnchor.y - touches[id].y;
+      const d = Math.hypot(dx, dy);
+      if (d > CFG.slingshotMaxPull && d > 0) {
+        dx = (dx / d) * CFG.slingshotMaxPull;
+        dy = (dy / d) * CFG.slingshotMaxPull;
+      }
+      slingshotPull = { x: dx, y: dy };
+    }
+  }
+}
+
+function onPointerUp(e) {
+  const id = e.pointerId !== undefined ? e.pointerId : 99;
+  delete touches[id];
+  if (id === nWayTouchId) { nWayTouchId = null; nWaySector = -1; }
+  if (id === slingshotTouchId) {
+    const t = getSlingshotTension();
+    const wDir = getSlingshotWorldDir(getCameraState());
+    if (t > 0 && wDir) {
+      const dirX = wDir.x;
+      const dirY = wDir.y;
+      const launchSpd = computeSlingshotLaunchSpeed(t);
+      car.vx = car.vx * 0.2 + dirX * launchSpd;
+      car.vy = car.vy * 0.2 + dirY * launchSpd;
+      const maxCap = Math.max(CFG.slingshotPower * 1.8, 2600);
+      const curSpd = Math.hypot(car.vx, car.vy);
+      if (curSpd > maxCap) {
+        car.vx = (car.vx / curSpd) * maxCap;
+        car.vy = (car.vy / curSpd) * maxCap;
+      }
+      car.rot = Math.atan2(dirY, dirX);
+      car.wheelAngle = 0;
+      slingshotSnapFlash = 1.0;
+      slingshotSnapPos = { x: car.x, y: car.y };
+    }
+    slingshotTouchId = null;
+    slingshotPull = { x: 0, y: 0 };
+  }
+}
+
+canvas.addEventListener("pointerdown", onPointerDown);
+window.addEventListener("pointermove", onPointerMove);
+window.addEventListener("pointerup", onPointerUp);
+window.addEventListener("pointercancel", onPointerUp);
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+// --- Modale Options Autonome (3 Onglets) + Sélecteurs rapides ---
+const optionsOverlay = document.getElementById("options-overlay");
+const optTabBtns = document.querySelectorAll(".opt-tab");
+const optPanes = document.querySelectorAll(".opt-pane");
+const quickSkinSelect = document.getElementById("quick-skin-select");
+const quickCtrlSelect = document.getElementById("quick-ctrl-select");
+
+function refreshQuickPickers() {
+  if (quickSkinSelect) {
+    populateSelect(quickSkinSelect, VEHICLE_PRESETS, p => p.id, p => p.name);
+    quickSkinSelect.value = CFG.car.id;
+  }
+  if (quickCtrlSelect) {
+    populateSelect(quickCtrlSelect, CONTROL_MODES, m => m.id, m => `🎮 ${m.label}`);
+    quickCtrlSelect.value = CFG.controlType;
+  }
+}
+
+function switchOptionsTab(tabName) {
+  optTabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === tabName));
+  optPanes.forEach(p => p.classList.toggle("active", p.dataset.pane === tabName));
+  if (tabName === "skin") refreshSkinTab();
+  if (tabName === "track") drawTrackPad();
+  if (tabName === "physics") refreshPhysicsTab();
+}
+optTabBtns.forEach(btn => btn.addEventListener("click", () => switchOptionsTab(btn.dataset.tab)));
+
+function openOptionsModal(tabName) {
+  if (destroyed || isEmbedded) return;
+  if (helpOpen) window.toggleSpawnHelp(false);
+  optionsOpen = true;
+  clearTouchInputs();
+  keys = {};
+  suspendAudio();
+  cancelLoop();
+  refreshSkinTab();
+  refreshPhysicsTab();
+  drawTrackPad();
+  if (tabName) switchOptionsTab(tabName);
+  optionsOverlay.classList.add("open");
+  render();
+}
+
+function closeOptionsModal(resumeIfPossible) {
+  optionsOpen = false;
+  if (optionsOverlay) optionsOverlay.classList.remove("open");
+  if (!isEmbedded) {
+    refreshQuickPickers();
+    buildStandaloneExternalControls();
+  }
+  if (resumeIfPossible && !isGameplayPaused()) {
+    resumeAudioIfEnabled();
+    startLoopIfActive();
+  }
+}
+
+function populateSelect(sel, items, getVal, getLabel) {
+  if (sel.children && sel.children.length === items.length) return;
+  sel.innerHTML = "";
+  items.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = getVal(item);
+    opt.textContent = getLabel(item);
+    sel.appendChild(opt);
+  });
+}
+
+const skinPresetSelect = document.getElementById("skin-preset-select");
+const skinBodyColor = document.getElementById("skin-body-color");
+const skinAccentColor = document.getElementById("skin-accent-color");
+const skinLiverySelect = document.getElementById("skin-livery-select");
+const skinApplyPhysics = document.getElementById("skin-apply-physics");
+
+function applyVehiclePreset(presetId, applyPhysics) {
+  const p = VEHICLE_PRESETS.find(item => item.id === presetId);
+  if (!p) return;
+  CFG.car.id = p.id;
+  CFG.car.name = p.name;
+  CFG.car.color = p.color;
+  CFG.car.accent = p.accent;
+  CFG.car.length = p.length;
+  CFG.car.width = p.width;
+  if (applyPhysics) {
+    CFG.car.maxSpeed = p.maxSpeed;
+    CFG.car.acceleration = p.acceleration;
+    CFG.car.braking = p.braking;
+    CFG.car.reverseSpeed = p.reverseSpeed;
+    CFG.car.turnSpeed = p.turnSpeed;
+    CFG.car.traction = p.traction;
+    CFG.car.driftFactor = p.driftFactor;
+    CFG.car.naturalFriction = p.naturalFriction;
+    CFG.car.mass = p.mass;
+  }
+}
+
+function refreshSkinTab() {
+  populateSelect(skinPresetSelect, VEHICLE_PRESETS, p => p.id, p => p.name);
+  skinPresetSelect.value = CFG.car.id;
+  skinBodyColor.value = CFG.car.color;
+  skinAccentColor.value = CFG.car.accent;
+  populateSelect(skinLiverySelect, LIVERIES, lv => lv.id, lv => lv.label);
+  skinLiverySelect.value = CFG.car.livery;
+}
+skinPresetSelect.addEventListener("change", (e) => {
+  applyVehiclePreset(e.target.value, skinApplyPhysics.checked);
+  skinBodyColor.value = CFG.car.color;
+  skinAccentColor.value = CFG.car.accent;
+  refreshQuickPickers();
+  render();
+});
+if (quickSkinSelect) {
+  quickSkinSelect.addEventListener("change", (e) => {
+    applyVehiclePreset(e.target.value, skinApplyPhysics.checked);
+    refreshSkinTab();
+    refreshPhysicsTab();
+    quickSkinSelect.blur();
+    render();
+  });
+}
+if (quickCtrlSelect) {
+  quickCtrlSelect.addEventListener("change", (e) => {
+    CFG.controlType = e.target.value;
+    clearTouchInputs();
+    refreshPhysicsTab();
+    buildStandaloneExternalControls();
+    quickCtrlSelect.blur();
+    render();
+  });
+}
+skinLiverySelect.addEventListener("change", (e) => { CFG.car.livery = e.target.value; render(); });
+skinBodyColor.addEventListener("input", (e) => { CFG.car.color = e.target.value; render(); });
+skinAccentColor.addEventListener("input", (e) => { CFG.car.accent = e.target.value; render(); });
+
+const ctrlCameraMode = document.getElementById("ctrl-camera-mode");
+const ctrlSlingshotOptsTop = document.getElementById("ctrl-slingshot-opts-top");
+const ctrlSlingshotSlidersTop = document.getElementById("ctrl-slingshot-sliders-top");
+const ctrlSlingshotOptsBottom = document.getElementById("ctrl-slingshot-opts-bottom");
+const ctrlSlingshotSlidersBottom = document.getElementById("ctrl-slingshot-sliders-bottom");
+const ctrlNwayCount = document.getElementById("ctrl-nway-count");
+const valNwayCount = document.getElementById("val-nway-count");
+const ctrlAlignTime = document.getElementById("ctrl-align-time");
+const valAlignTime = document.getElementById("val-align-time");
+const ctrlContAccel = document.getElementById("ctrl-cont-accel");
+const ctrlNwayAuto = document.getElementById("ctrl-nway-auto");
+const ctrlNwayDist = document.getElementById("ctrl-nway-dist");
+const ctrlNwayShift = document.getElementById("ctrl-nway-shift");
+
+const SLINGSHOT_PARAM_DEFS = [
+  { key: "slingshotPower", label: "Puissance Élastique", min: 300, max: 2200, step: 25, fmt: v => Math.round(v) },
+  { key: "slingshotMaxPull", label: "Allongement Max (px)", min: 80, max: 320, step: 10, fmt: v => Math.round(v) },
+  { key: "slingshotFriction", label: "Glisse / Roulement", min: 0.920, max: 0.996, step: 0.002, fmt: v => v.toFixed(3) },
+  { key: "slingshotBounce", label: "Rebond Barrières", min: 0.10, max: 1.00, step: 0.05, fmt: v => v.toFixed(2) },
+  { key: "slingshotTensionCurve", label: "Courbe de Tension", min: 0.5, max: 2.5, step: 0.1, fmt: v => v.toFixed(1) },
+  { key: "slingshotAimSlowmo", label: "Ralenti en Visée", min: 0.05, max: 1.00, step: 0.05, fmt: v => v.toFixed(2), isSlowmo: true }
+];
+
+function buildSlingshotControlsInto(container) {
+  container.innerHTML = "";
+  let slowmoRow = null;
+  SLINGSHOT_PARAM_DEFS.forEach(def => {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const head = document.createElement("div");
+    head.className = "param-head";
+    const lbl = document.createElement("span");
+    lbl.textContent = def.label;
+    const valSpan = document.createElement("span");
+    valSpan.textContent = String(def.fmt(CFG[def.key]));
+    head.appendChild(lbl);
+    head.appendChild(valSpan);
+    const inp = document.createElement("input");
+    inp.type = "range";
+    inp.min = def.min; inp.max = def.max; inp.step = def.step;
+    inp.value = CFG[def.key];
+    inp.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      CFG[def.key] = v;
+      valSpan.textContent = String(def.fmt(v));
+    });
+    row.appendChild(head);
+    row.appendChild(inp);
+    if (def.isSlowmo) {
+      slowmoRow = row;
+      row.style.display = CFG.slingshotStopToShoot ? "none" : "flex";
+    }
+    container.appendChild(row);
+  });
+
+  const lblStop = document.createElement("label");
+  lblStop.className = "ctrl-check";
+  const chkStop = document.createElement("input");
+  chkStop.type = "checkbox";
+  chkStop.checked = !!CFG.slingshotStopToShoot;
+  chkStop.addEventListener("change", (e) => {
+    CFG.slingshotStopToShoot = e.target.checked;
+    if (slowmoRow) slowmoRow.style.display = CFG.slingshotStopToShoot ? "none" : "flex";
+  });
+  const spStop = document.createElement("span");
+  spStop.textContent = "Tir uniquement à l'arrêt (Mode Billes pur)";
+  lblStop.appendChild(chkStop);
+  lblStop.appendChild(spStop);
+  container.appendChild(lblStop);
+
+  const lblTraj = document.createElement("label");
+  lblTraj.className = "ctrl-check";
+  const chkTraj = document.createElement("input");
+  chkTraj.type = "checkbox";
+  chkTraj.checked = !!CFG.slingshotShowTrajectory;
+  chkTraj.addEventListener("change", (e) => { CFG.slingshotShowTrajectory = e.target.checked; });
+  const spTraj = document.createElement("span");
+  spTraj.textContent = "Afficher la trajectoire prédictive";
+  lblTraj.appendChild(chkTraj);
+  lblTraj.appendChild(spTraj);
+  container.appendChild(lblTraj);
+}
+
+ctrlNwayCount.addEventListener("input", (e) => {
+  CFG.nWayDirections = parseInt(e.target.value, 10);
+  valNwayCount.textContent = String(CFG.nWayDirections);
+});
+ctrlAlignTime.addEventListener("input", (e) => {
+  CFG.alignTime = parseFloat(e.target.value);
+  valAlignTime.textContent = CFG.alignTime <= 0.001 ? "0 s" : CFG.alignTime.toFixed(2) + " s";
+});
+ctrlContAccel.addEventListener("change", (e) => { CFG.continuousAccel = e.target.checked; });
+ctrlNwayAuto.addEventListener("change", (e) => { CFG.nWayAutoAccel = e.target.checked; });
+ctrlNwayDist.addEventListener("change", (e) => { CFG.nWayDistanceAffectsSpeed = e.target.checked; });
+ctrlNwayShift.addEventListener("change", (e) => { CFG.nWayShiftedHalfStep = e.target.checked; });
+if (ctrlCameraMode) {
+  ctrlCameraMode.addEventListener("change", (e) => {
+    CFG.cameraRotates = (e.target.value === "camera");
+    render();
+  });
+}
+
+function generateProceduralTrack(style) {
+  if (style === "classic") return CLASSIC_POINTS.map(p => ({ x: p.x, y: p.y }));
+  const pts = [];
+  const cx = 1000, cy = 850;
+  const count = style === "oval" ? 12 : (style === "technical" ? 18 : 14);
+  for (let i = 0; i < count; i++) {
+    const a = (i / count) * Math.PI * 2;
+    let rx = 760, ry = 520;
+    if (style === "oval") {
+      rx = 820; ry = 420;
+    } else if (style === "technical") {
+      const wave = Math.sin(a * 4) * 190 + Math.cos(a * 3) * 120;
+      rx = 720 + wave; ry = 500 + wave * 0.75;
+    } else {
+      const rMod = 0.58 + Math.random() * 0.58;
+      rx = 780 * rMod; ry = 540 * rMod;
+    }
+    pts.push({ x: Math.round(cx + Math.cos(a) * rx), y: Math.round(cy + Math.sin(a) * ry) });
+  }
+  return pts;
+}
+
+const drawCanvas = document.getElementById("track-draw-canvas");
+const drawCtx = drawCanvas.getContext("2d");
+const drawHint = document.getElementById("track-draw-hint");
+let drawnPts = [];
+let isDrawingTrack = false;
+
+function drawTrackPad() {
+  const w = drawCanvas.width, h = drawCanvas.height;
+  drawCtx.fillStyle = "#08121f";
+  drawCtx.fillRect(0, 0, w, h);
+  drawCtx.strokeStyle = "rgba(56, 214, 255, 0.12)";
+  drawCtx.lineWidth = 1;
+  for (let x = 30; x < w; x += 30) { drawCtx.beginPath(); drawCtx.moveTo(x, 0); drawCtx.lineTo(x, h); drawCtx.stroke(); }
+  for (let y = 30; y < h; y += 30) { drawCtx.beginPath(); drawCtx.moveTo(0, y); drawCtx.lineTo(w, y); drawCtx.stroke(); }
+
+  if (drawnPts.length > 1) {
+    drawCtx.strokeStyle = "#334155";
+    drawCtx.lineWidth = 18;
+    drawCtx.lineCap = "round";
+    drawCtx.lineJoin = "round";
+    drawCtx.beginPath();
+    drawCtx.moveTo(drawnPts[0].x, drawnPts[0].y);
+    for (let i = 1; i < drawnPts.length; i++) drawCtx.lineTo(drawnPts[i].x, drawnPts[i].y);
+    if (!isDrawingTrack && drawnPts.length >= 6) drawCtx.closePath();
+    drawCtx.stroke();
+
+    drawCtx.strokeStyle = "#38d6ff";
+    drawCtx.lineWidth = 2;
+    drawCtx.setLineDash([4, 4]);
+    drawCtx.stroke();
+    drawCtx.setLineDash([]);
+
+    drawCtx.fillStyle = "#4ade80";
+    drawCtx.beginPath();
+    drawCtx.arc(drawnPts[0].x, drawnPts[0].y, 6, 0, Math.PI * 2);
+    drawCtx.fill();
+  }
+}
+
+function getPadPos(e) {
+  const r = drawCanvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left) * (drawCanvas.width / Math.max(1, r.width)),
+    y: (e.clientY - r.top) * (drawCanvas.height / Math.max(1, r.height))
+  };
+}
+
+drawCanvas.addEventListener("pointerdown", (e) => {
+  e.stopPropagation();
+  isDrawingTrack = true;
+  drawnPts = [getPadPos(e)];
+  drawHint.textContent = "Continuez de tracer votre boucle...";
+  drawHint.style.color = "#8fb4d4";
+  drawTrackPad();
+});
+drawCanvas.addEventListener("pointermove", (e) => {
+  e.stopPropagation();
+  if (!isDrawingTrack) return;
+  const p = getPadPos(e);
+  const last = drawnPts[drawnPts.length - 1];
+  if (Math.hypot(p.x - last.x, p.y - last.y) >= 14) {
+    drawnPts.push(p);
+    drawTrackPad();
+  }
+});
+function stopDrawingTrack(e) {
+  if (e) e.stopPropagation();
+  if (!isDrawingTrack) return;
+  isDrawingTrack = false;
+  drawTrackPad();
+}
+drawCanvas.addEventListener("pointerup", stopDrawingTrack);
+drawCanvas.addEventListener("pointercancel", stopDrawingTrack);
+
+document.getElementById("btn-track-clear").addEventListener("click", () => {
+  drawnPts = [];
+  drawHint.textContent = "Tracez une boucle continue avec le doigt ou la souris, puis validez.";
+  drawHint.style.color = "#8fb4d4";
+  drawTrackPad();
+});
+document.getElementById("btn-track-apply").addEventListener("click", () => {
+  if (drawnPts.length < 6) {
+    drawHint.textContent = "Tracé trop court : dessinez une boucle plus grande.";
+    drawHint.style.color = "#f87171";
+    return;
+  }
+  const targetCount = 14;
+  const sampled = [];
+  for (let i = 0; i < targetCount; i++) {
+    const idx = Math.floor((i / targetCount) * drawnPts.length);
+    const p = drawnPts[idx];
+    sampled.push({
+      x: Math.round(220 + (p.x / drawCanvas.width) * 1700),
+      y: Math.round(220 + (p.y / drawCanvas.height) * 1200)
+    });
+  }
+  rebuildTrack(sampled, true);
+  resetGame({ targetLaps, durationSec });
+  closeOptionsModal(true);
+});
+
+const trackPresetSelect = document.getElementById("track-preset-select");
+document.getElementById("btn-track-generate").addEventListener("click", () => {
+  rebuildTrack(generateProceduralTrack(trackPresetSelect.value || "classic"), true);
+  resetGame({ targetLaps, durationSec });
+  closeOptionsModal(true);
+});
+
+const PARAM_DEFS = [
+  { key: "maxSpeed", label: "Vitesse Max", min: 200, max: 850, step: 10, fmt: v => Math.round(v) },
+  { key: "acceleration", label: "Accélération", min: 150, max: 900, step: 10, fmt: v => Math.round(v) },
+  { key: "braking", label: "Freinage", min: 150, max: 1000, step: 10, fmt: v => Math.round(v) },
+  { key: "turnSpeed", label: "Vitesse Braquage", min: 1.5, max: 6.5, step: 0.1, fmt: v => v.toFixed(1) },
+  { key: "traction", label: "Adhérence Sol", min: 0.05, max: 1.0, step: 0.02, fmt: v => v.toFixed(2) },
+  { key: "driftFactor", label: "Facteur Drift", min: 0.2, max: 0.98, step: 0.02, fmt: v => v.toFixed(2) },
+  { key: "naturalFriction", label: "Friction Naturelle", min: 0.95, max: 0.998, step: 0.002, fmt: v => v.toFixed(3) },
+  { key: "mass", label: "Masse / Poids", min: 0.3, max: 3.0, step: 0.1, fmt: v => v.toFixed(1) },
+  { key: "trackWidth", label: "Largeur de Piste", min: 110, max: 280, step: 5, fmt: v => Math.round(v), isTrack: true }
+];
+const paramsSlidersList = document.getElementById("params-sliders-list");
+
+function refreshPhysicsTab() {
+  paramsSlidersList.innerHTML = "";
+  if (ctrlCameraMode) ctrlCameraMode.value = CFG.cameraRotates ? "camera" : "vehicle";
+  const isSling = (CFG.controlType === "slingshot");
+  if (ctrlSlingshotOptsTop && ctrlSlingshotSlidersTop && ctrlSlingshotOptsBottom && ctrlSlingshotSlidersBottom) {
+    ctrlSlingshotOptsTop.style.display = isSling ? "flex" : "none";
+    ctrlSlingshotOptsBottom.style.display = isSling ? "none" : "flex";
+    if (isSling) {
+      buildSlingshotControlsInto(ctrlSlingshotSlidersTop);
+      ctrlSlingshotSlidersBottom.innerHTML = "";
+    } else {
+      ctrlSlingshotSlidersTop.innerHTML = "";
+      buildSlingshotControlsInto(ctrlSlingshotSlidersBottom);
+    }
+  }
+  ctrlNwayCount.value = CFG.nWayDirections;
+  valNwayCount.textContent = String(CFG.nWayDirections);
+  ctrlAlignTime.value = CFG.alignTime;
+  valAlignTime.textContent = CFG.alignTime <= 0.001 ? "0 s" : CFG.alignTime.toFixed(2) + " s";
+  ctrlContAccel.checked = !!CFG.continuousAccel;
+  ctrlNwayAuto.checked = !!CFG.nWayAutoAccel;
+  ctrlNwayDist.checked = !!CFG.nWayDistanceAffectsSpeed;
+  ctrlNwayShift.checked = !!CFG.nWayShiftedHalfStep;
+
+  PARAM_DEFS.forEach(def => {
+    const row = document.createElement("div");
+    row.className = "param-row";
+    const head = document.createElement("div");
+    head.className = "param-head";
+    const lbl = document.createElement("span");
+    lbl.textContent = def.label;
+    const valSpan = document.createElement("span");
+    const curVal = def.isTrack ? CFG.trackWidth : CFG.car[def.key];
+    valSpan.textContent = String(def.fmt(curVal));
+    head.appendChild(lbl);
+    head.appendChild(valSpan);
+    const inp = document.createElement("input");
+    inp.type = "range";
+    inp.min = def.min;
+    inp.max = def.max;
+    inp.step = def.step;
+    inp.value = curVal;
+    inp.addEventListener("input", (e) => {
+      const v = parseFloat(e.target.value);
+      valSpan.textContent = String(def.fmt(v));
+      if (def.isTrack) {
+        CFG.trackWidth = v;
+        rebuildTrack(currentBasePoints, false);
+      } else {
+        CFG.car[def.key] = v;
+      }
+      render();
+    });
+    row.appendChild(head);
+    row.appendChild(inp);
+    paramsSlidersList.appendChild(row);
+  });
+}
+
+function resetPhysicsToDefault() {
+  const curLivery = CFG.car.livery;
+  Object.assign(CFG.car, JSON.parse(JSON.stringify(DEFAULT_CFG.car)));
+  CFG.car.livery = curLivery;
+  CFG.trackWidth = DEFAULT_CFG.trackWidth;
+  CFG.slingshotPower = DEFAULT_CFG.slingshotPower;
+  CFG.slingshotMaxPull = DEFAULT_CFG.slingshotMaxPull;
+  CFG.slingshotFriction = DEFAULT_CFG.slingshotFriction;
+  CFG.slingshotBounce = DEFAULT_CFG.slingshotBounce;
+  CFG.slingshotTensionCurve = DEFAULT_CFG.slingshotTensionCurve;
+  CFG.slingshotAimSlowmo = DEFAULT_CFG.slingshotAimSlowmo;
+  CFG.slingshotStopToShoot = DEFAULT_CFG.slingshotStopToShoot;
+  CFG.slingshotShowTrajectory = DEFAULT_CFG.slingshotShowTrajectory;
+  rebuildTrack(currentBasePoints, false);
+}
+
+document.getElementById("btn-params-reset").addEventListener("click", () => {
+  resetPhysicsToDefault();
+  refreshPhysicsTab();
+  render();
+});
+
+document.getElementById("btn-car-reposition").addEventListener("click", () => {
+  resetCar();
+  closeOptionsModal(true);
+});
+
+// Physique & Collisions
+function lerpAngle(a, b, t) {
+  let diff = b - a;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  return a + diff * Math.min(1, t);
+}
+
+function resolvePolylineBounces(radius, bounce) {
+  const loops = [outerBoundary, innerBoundary];
+  let bounced = false;
+  for (let pass = 0; pass < 2; pass++) {
+    for (const pts of loops) {
+      const n = pts.length;
+      for (let i = 0; i < n; i++) {
+        const a = pts[i];
+        const b = pts[(i + 1) % n];
+        const abx = b.x - a.x, aby = b.y - a.y;
+        const abLenSq = abx * abx + aby * aby;
+        if (abLenSq < 1e-6) continue;
+        let t = ((car.x - a.x) * abx + (car.y - a.y) * aby) / abLenSq;
+        t = Math.max(0, Math.min(1, t));
+        const cx = a.x + abx * t;
+        const cy = a.y + aby * t;
+        const dx = car.x - cx, dy = car.y - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist < radius && dist > 1e-5) {
+          const nx = dx / dist, ny = dy / dist;
+          car.x = cx + nx * radius;
+          car.y = cy + ny * radius;
+          const vn = car.vx * nx + car.vy * ny;
+          if (vn < 0) {
+            car.vx = (car.vx - 2 * vn * nx) * bounce;
+            car.vy = (car.vy - 2 * vn * ny) * bounce;
+            bounced = true;
+          }
+        }
+      }
+    }
+  }
+  return bounced;
+}
+
+function raycastBoundaries(p1x, p1y, p2x, p2y) {
+  const loops = [outerBoundary, innerBoundary];
+  let bestT = 2.0;
+  let bestHit = null;
+  const rdx = p2x - p1x, rdy = p2y - p1y;
+  for (const pts of loops) {
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % n];
+      const sdx = b.x - a.x, sdy = b.y - a.y;
+      const denom = rdx * sdy - rdy * sdx;
+      if (Math.abs(denom) < 1e-6) continue;
+      const qpx = a.x - p1x, qpy = a.y - p1y;
+      const t = (qpx * sdy - qpy * sdx) / denom;
+      const u = (qpx * rdy - qpy * rdx) / denom;
+      if (t >= 0 && t <= 1 && u >= 0 && u <= 1 && t < bestT) {
+        bestT = t;
+        const segLen = Math.hypot(sdx, sdy) || 1;
+        let nx = -sdy / segLen, ny = sdx / segLen;
+        if (rdx * nx + rdy * ny > 0) { nx = -nx; ny = -ny; }
+        bestHit = { x: p1x + rdx * t, y: p1y + rdy * t, nx, ny, t };
+      }
+    }
+  }
+  return bestHit;
+}
+
+function updatePhysics(dt) {
+  if (over || isGameplayPaused()) return;
+
+  lapTimer += dt;
+  timeLeft = Math.max(0, timeLeft - dt);
+  slingshotPulse += dt;
+  if (slingshotSnapFlash > 0) slingshotSnapFlash = Math.max(0, slingshotSnapFlash - dt * 4);
+  if (cpFlash > 0) cpFlash = Math.max(0, cpFlash - dt * 2.5);
+
+  if (boostActiveTimer > 0) {
+    boostActiveTimer = Math.max(0, boostActiveTimer - dt);
+  } else if (boostCooldown > 0) {
+    const rechargeRate = car.isDrifting ? 2.0 : 1.0;
+    boostCooldown = Math.max(0, boostCooldown - dt * rechargeRate);
+  }
+
+  let minD = 999999;
+  for (let i = 0; i < centerLine.length; i++) {
+    const d = Math.hypot(car.x - centerLine[i].x, car.y - centerLine[i].y);
+    if (d < minD) minD = d;
+  }
+  car.isOffroad = minD > (CFG.trackWidth * 0.52);
+
+  if (CFG.controlType === "slingshot") {
+    const isAiming = (slingshotTouchId !== null);
+    const effDt = dt * ((isAiming && !CFG.slingshotStopToShoot) ? CFG.slingshotAimSlowmo : 1.0);
+    const effFric = car.isOffroad ? Math.min(CFG.slingshotFriction, 0.945) : CFG.slingshotFriction;
+    const damp = Math.pow(effFric, effDt * 60);
+    car.vx *= damp;
+    car.vy *= damp;
+    if (Math.hypot(car.vx, car.vy) < 8) {
+      car.vx = 0; car.vy = 0;
+    }
+
+    car.x += car.vx * effDt;
+    car.y += car.vy * effDt;
+
+    const carRadius = Math.max(CFG.car.length, CFG.car.width) * 0.42;
+    const bounced = resolvePolylineBounces(carRadius, CFG.slingshotBounce);
+
+    const t = getSlingshotTension();
+    const spd = Math.hypot(car.vx, car.vy);
+    if (isAiming && t > 0.02) {
+      const wDir = getSlingshotWorldDir(getCameraState());
+      if (wDir) car.rot = lerpAngle(car.rot, Math.atan2(wDir.y, wDir.x), 18 * dt);
+      car.wheelAngle = 0;
+    } else if (spd > 15) {
+      car.rot = lerpAngle(car.rot, Math.atan2(car.vy, car.vx), 12 * effDt);
+      car.wheelAngle = 0;
+    }
+
+    car.isDrifting = false;
+    if (bounced && Math.hypot(car.vx, car.vy) > 120) {
+      car.skidMarks.push({ x: car.x, y: car.y, alpha: 0.65 });
+      if (car.skidMarks.length > 250) car.skidMarks.splice(0, 2);
+    }
+  } else {
+    const headingX = Math.cos(car.rot);
+    const headingY = Math.sin(car.rot);
+    const sideX = -headingY;
+    const sideY = headingX;
+
+    let fwdSpeed = car.vx * headingX + car.vy * headingY;
+    let latSpeed = car.vx * sideX + car.vy * sideY;
+
+    let speedRatio = Math.min(1.0, Math.abs(fwdSpeed) / 110);
+    if (CFG.car.id === "hovercraft" || CFG.car.id === "micro_rc") speedRatio = Math.max(speedRatio, 0.6);
+
+    if (car.targetHeadingAngle !== null && car.targetHeadingAngle !== undefined) {
+      let diff = car.targetHeadingAngle - car.rot;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+
+      const alignTime = (CFG.alignTime !== undefined) ? CFG.alignTime : 0.25;
+      if (alignTime <= 0.001) {
+        car.rot = car.targetHeadingAngle;
+        car.wheelAngle = 0;
+      } else {
+        const maxStep = Math.max(CFG.car.turnSpeed * 1.5 * dt, (Math.abs(diff) / alignTime) * dt);
+        if (Math.abs(diff) <= maxStep) {
+          car.rot += diff;
+        } else {
+          car.rot += Math.sign(diff) * maxStep;
+        }
+        car.wheelAngle = Math.max(-0.5, Math.min(0.5, diff));
+      }
+    } else {
+      let steerDir = car.steerInput;
+      if (fwdSpeed < -10 && CFG.car.id !== "hovercraft") steerDir = -steerDir;
+      car.rot += steerDir * CFG.car.turnSpeed * speedRatio * dt;
+      car.wheelAngle = car.steerInput * 0.5;
+    }
+
+    const boostMult = boostActiveTimer > 0 ? 1.38 : 1.0;
+    let curMax = CFG.car.maxSpeed * activeParams.speedMultiplier * boostMult;
+    if (car.isOffroad) curMax *= (boostActiveTimer > 0 ? 0.72 : 0.45);
+
+    if (car.throttleInput > 0 || boostActiveTimer > 0) {
+      const effTh = boostActiveTimer > 0 ? 1.0 : (CFG.continuousAccel ? 1.0 : car.throttleInput);
+      let acc = CFG.car.acceleration * activeParams.speedMultiplier * effTh * (boostActiveTimer > 0 ? 1.55 : 1.0);
+      if (car.isOffroad) acc *= 0.5;
+      fwdSpeed = Math.min(curMax, fwdSpeed + acc * dt);
+    } else if (car.throttleInput < 0) {
+      if (fwdSpeed > 20) {
+        fwdSpeed = Math.max(0, fwdSpeed - CFG.car.braking * Math.abs(car.throttleInput) * dt);
+      } else {
+        fwdSpeed = Math.max(-CFG.car.reverseSpeed, fwdSpeed - CFG.car.acceleration * 0.5 * Math.abs(car.throttleInput) * dt);
+      }
+    } else {
+      fwdSpeed *= Math.pow(CFG.car.naturalFriction, dt * 60);
+      if (Math.abs(fwdSpeed) < 2) fwdSpeed = 0;
+    }
+
+    let curTraction = CFG.car.traction;
+    if (car.handbrakeInput) curTraction *= 0.3;
+    if (car.isOffroad) curTraction *= 0.6;
+
+    latSpeed *= Math.max(0, 1.0 - curTraction * dt * 15.0);
+
+    const slip = Math.abs(latSpeed);
+    car.isDrifting = (slip > 80 && Math.abs(fwdSpeed) > 100) || (car.handbrakeInput && Math.abs(fwdSpeed) > 60);
+
+    const newHx = Math.cos(car.rot), newHy = Math.sin(car.rot);
+    const newSx = -newHy, newSy = newHx;
+    car.vx = newHx * fwdSpeed + newSx * latSpeed;
+    car.vy = newHy * fwdSpeed + newSy * latSpeed;
+
+    car.x += car.vx * dt;
+    car.y += car.vy * dt;
+
+    if (car.isDrifting) {
+      if (!car.isOffroad) {
+        driftScoreAcc += 20 * dt;
+        if (driftScoreAcc >= 1) {
+          const pts = Math.floor(driftScoreAcc);
+          score += pts;
+          driftScoreAcc -= pts;
+        }
+      }
+      const halfL = CFG.car.length * 0.35, halfW = CFG.car.width * 0.45;
+      car.skidMarks.push({
+        x: car.x - newHx * halfL - newSx * halfW,
+        y: car.y - newHy * halfL - newSy * halfW,
+        alpha: Math.min(0.8, slip / 200)
+      });
+      car.skidMarks.push({
+        x: car.x - newHx * halfL + newSx * halfW,
+        y: car.y - newHy * halfL + newSy * halfW,
+        alpha: Math.min(0.8, slip / 200)
+      });
+      if (car.skidMarks.length > 250) car.skidMarks.splice(0, 2);
+    }
+  }
+
+  car.x = Math.max(trackBounds.minX + 40, Math.min(trackBounds.maxX - 40, car.x));
+  car.y = Math.max(trackBounds.minY + 40, Math.min(trackBounds.maxY - 40, car.y));
+
+  if (boostActiveTimer > 0) {
+    const hx = Math.cos(car.rot), hy = Math.sin(car.rot);
+    const backX = car.x - hx * (CFG.car.length * 0.52);
+    const backY = car.y - hy * (CFG.car.length * 0.52);
+    car.flameTrail.push({
+      x: backX + (Math.random() - 0.5) * 8,
+      y: backY + (Math.random() - 0.5) * 8,
+      r: 4 + Math.random() * 5,
+      life: 0.28
+    });
+    if (car.flameTrail.length > 36) car.flameTrail.shift();
+  }
+  for (let i = car.flameTrail.length - 1; i >= 0; i--) {
+    car.flameTrail[i].life -= dt;
+    if (car.flameTrail[i].life <= 0) car.flameTrail.splice(i, 1);
+  }
+
+  const targetCp = checkpoints[nextCpIdx];
+  if (targetCp) {
+    const d = Math.hypot(car.x - targetCp.pos.x, car.y - targetCp.pos.y);
+    if (d < CFG.trackWidth * 0.78) {
+      score += 15;
+      cpFlash = 1.0;
+      nextCpIdx = (nextCpIdx + 1) % checkpoints.length;
+      if (nextCpIdx === 1) {
+        score += 150;
+        if (!bestLap || lapTimer < bestLap) {
+          bestLap = lapTimer;
+        }
+        if (currentLap >= targetLaps) {
+          won = true;
+          over = true;
+          score += Math.round(timeLeft * 25);
+          suspendAudio();
+        } else {
+          currentLap++;
+          lapTimer = 0;
+        }
+      }
+    }
+  }
+
+  if (!over && timeLeft <= 0) {
+    won = false;
+    over = true;
+    suspendAudio();
+  }
+
+  if (soundEnabled && engineOsc && audioCtx && !over) {
+    const curSpeedKmh = Math.round(Math.hypot(car.vx, car.vy) * 0.36);
+    const pitch = 70 + (curSpeedKmh * 1.8) + (boostActiveTimer > 0 ? 55 : 0);
+    engineOsc.frequency.setValueAtTime(pitch, audioCtx.currentTime);
+    if (skidGain) {
+      skidGain.gain.setValueAtTime(car.isDrifting ? 0.11 : 0.0, audioCtx.currentTime);
+    }
+  }
+
+  updateHud(false);
+  emitMinimapState(over);
+}
+
+function render() {
+  ctx.fillStyle = "#050a12";
+  ctx.fillRect(0, 0, W, H);
+
+  const cam = getCameraState();
+
+  ctx.save();
+  ctx.translate(W * 0.5, H * 0.5);
+  ctx.scale(cam.camScale, cam.camScale);
+  if (cam.camRot !== 0) ctx.rotate(cam.camRot);
+  ctx.translate(-car.x - cam.leadX, -car.y - cam.leadY);
+
+  // 1. Herbe
+  ctx.fillStyle = "#2b5b2a";
+  ctx.fillRect(trackBounds.minX, trackBounds.minY, trackBounds.maxX - trackBounds.minX, trackBounds.maxY - trackBounds.minY);
+
+  ctx.fillStyle = "#254f25";
+  for (let gy = trackBounds.minY; gy < trackBounds.maxY; gy += 60) {
+    ctx.fillRect(trackBounds.minX, gy, trackBounds.maxX - trackBounds.minX, 30);
+  }
+
+  // 2. Piste / Asphalte & Vibreurs
+  for (let i = 0; i < centerLine.length; i++) {
+    const nextI = (i + 1) % centerLine.length;
+    const o1 = outerBoundary[i], o2 = outerBoundary[nextI];
+    const in1 = innerBoundary[i], in2 = innerBoundary[nextI];
+
+    ctx.fillStyle = (Math.floor(i / 4) % 2 === 0) ? "#2b323d" : "#222832";
+    ctx.beginPath();
+    ctx.moveTo(o1.x, o1.y);
+    ctx.lineTo(o2.x, o2.y);
+    ctx.lineTo(in2.x, in2.y);
+    ctx.lineTo(in1.x, in1.y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = (Math.floor(i / 2) % 2 === 0) ? "#ef4444" : "#e2e8f0";
+    ctx.beginPath();
+    ctx.moveTo(o1.x, o1.y);
+    ctx.lineTo(o2.x, o2.y);
+    ctx.lineTo(o2.x + (o2.x - in2.x) * 0.08, o2.y + (o2.y - in2.y) * 0.08);
+    ctx.lineTo(o1.x + (o1.x - in1.x) * 0.08, o1.y + (o1.y - in1.y) * 0.08);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Lignes de bordure
+  ctx.strokeStyle = "rgba(226, 241, 255, 0.85)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  for (let i = 0; i <= outerBoundary.length; i++) {
+    const pt = outerBoundary[i % outerBoundary.length];
+    if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  ctx.beginPath();
+  for (let i = 0; i <= innerBoundary.length; i++) {
+    const pt = innerBoundary[i % innerBoundary.length];
+    if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+
+  // Ligne d'arrivée à damier
+  const o0 = outerBoundary[0], in0 = innerBoundary[0];
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 14;
+  ctx.setLineDash([12, 12]);
+  ctx.beginPath();
+  ctx.moveTo(o0.x, o0.y);
+  ctx.lineTo(in0.x, in0.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Indicateur du prochain checkpoint
+  const nextCp = checkpoints[nextCpIdx];
+  if (nextCp) {
+    const nextAfter = checkpoints[(nextCpIdx + 1) % checkpoints.length] || nextCp;
+    const cpAng = Math.atan2(nextAfter.pos.y - nextCp.pos.y, nextAfter.pos.x - nextCp.pos.x);
+    ctx.save();
+    ctx.translate(nextCp.pos.x, nextCp.pos.y);
+    ctx.rotate(cpAng);
+    ctx.strokeStyle = cpFlash > 0 ? "#4ade80" : "rgba(56, 214, 255, 0.55)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-12, -16);
+    ctx.lineTo(14, 0);
+    ctx.lineTo(-12, 16);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Traces de dérapage
+  ctx.fillStyle = "rgba(10, 15, 25, 0.42)";
+  for (const sm of car.skidMarks) {
+    ctx.beginPath();
+    ctx.arc(sm.x, sm.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Flammes Turbo
+  for (const fl of car.flameTrail) {
+    const a = Math.max(0, fl.life / 0.28);
+    ctx.fillStyle = a > 0.5 ? `rgba(56, 214, 255, ${a.toFixed(2)})` : `rgba(253, 224, 71, ${a.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(fl.x, fl.y, fl.r * a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 3. Voiture
+  ctx.save();
+  ctx.translate(car.x, car.y);
+  ctx.rotate(car.rot);
+
+  const hl = CFG.car.length * 0.5, hw = CFG.car.width * 0.5;
+
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(-hl + 3, -hw + 3, CFG.car.length, CFG.car.width);
+
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(-hl + 2, -hw - 2, hl * 0.45, 6);
+  ctx.fillRect(-hl + 2, hw - 4, hl * 0.45, 6);
+
+  ctx.save();
+  ctx.translate(hl * 0.6, -hw);
+  ctx.rotate(car.wheelAngle);
+  ctx.fillRect(-hl * 0.22, -2, hl * 0.45, 6);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(hl * 0.6, hw);
+  ctx.rotate(car.wheelAngle);
+  ctx.fillRect(-hl * 0.22, -4, hl * 0.45, 6);
+  ctx.restore();
+
+  ctx.fillStyle = CFG.car.color;
+  ctx.beginPath();
+  ctx.roundRect(-hl, -hw, CFG.car.length, CFG.car.width, 6);
+  ctx.fill();
+  ctx.strokeStyle = CFG.car.accent;
+  ctx.lineWidth = CFG.car.livery === "neon" ? 3 : 2;
+  if (CFG.car.livery === "neon") {
+    ctx.shadowColor = CFG.car.accent;
+    ctx.shadowBlur = 12;
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  if (CFG.car.livery === "stripes") {
+    ctx.fillStyle = CFG.car.accent;
+    ctx.fillRect(-hl + 3, -4, CFG.car.length - 6, 3);
+    ctx.fillRect(-hl + 3, 1, CFG.car.length - 6, 3);
+  } else if (CFG.car.livery === "chevron") {
+    ctx.fillStyle = CFG.car.accent;
+    ctx.beginPath();
+    ctx.moveTo(hl - 4, 0);
+    ctx.lineTo(0, -hw + 2);
+    ctx.lineTo(-hl * 0.4, -hw + 2);
+    ctx.lineTo(hl * 0.25, 0);
+    ctx.lineTo(-hl * 0.4, hw - 2);
+    ctx.lineTo(0, hw - 2);
+    ctx.closePath();
+    ctx.fill();
+  } else if (CFG.car.livery === "neon") {
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(-hl + 3, -hw + 3, CFG.car.length - 6, CFG.car.width - 6, 4);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+  ctx.beginPath();
+  ctx.roundRect(-hl * 0.2, -hw * 0.7, hl * 0.55, hw * 1.4, 3);
+  ctx.fill();
+
+  ctx.fillStyle = "#fef08a";
+  ctx.fillRect(hl - 3, -hw + 3, 3, 4);
+  ctx.fillRect(hl - 3, hw - 7, 3, 4);
+  ctx.fillStyle = car.throttleInput < 0 ? "#ef4444" : "#7f1d1d";
+  ctx.fillRect(-hl, -hw + 3, 3, 4);
+  ctx.fillRect(-hl, hw - 7, 3, 4);
+
+  ctx.restore(); // Fin voiture
+  ctx.restore(); // Fin caméra
+
+  // Contrôles plein-écran / flottant uniquement (tout le reste est hors du cadre !)
+  if (!over && !isGameplayPaused()) {
+    renderFullscreenTouchOverlay();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(5, 10, 18, 0.86)";
+    const bandH = 170;
+    const bandY = (H - bandH) * 0.5;
+    ctx.fillRect(0, bandY, W, bandH);
+    ctx.strokeStyle = "#38d6ff";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, bandY); ctx.lineTo(W, bandY);
+    ctx.moveTo(0, bandY + bandH); ctx.lineTo(W, bandY + bandH);
+    ctx.stroke();
+
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "800 24px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? activeTexts.victoryTitle : activeTexts.timeoutTitle, W * 0.5, bandY + 52);
+
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "600 14px system-ui, sans-serif";
+    const bestTxt = bestLap ? ` • Meilleur tour ${fmtTime(bestLap)}` : "";
+    ctx.fillText(`Tours ${Math.min(currentLap, targetLaps)}/${targetLaps} • Score ${Math.round(score)}${bestTxt}`, W * 0.5, bandY + 90);
+
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "600 13px system-ui, sans-serif";
+    ctx.fillText(isEmbedded ? activeTexts.endReturnHint : "Cliquez pour rejouer", W * 0.5, bandY + 130);
+  }
+}
+
+function renderFullscreenTouchOverlay() {
+  if (CFG.controlType === "split_touch") {
+    ctx.strokeStyle = "rgba(56, 214, 255, 0.22)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(W * 0.5, 0); ctx.lineTo(W * 0.5, H * 0.8); ctx.stroke();
+    ctx.fillStyle = "rgba(174, 240, 255, 0.45)";
+    ctx.font = "700 13px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("◀ GAUCHE", W * 0.25, H * 0.5);
+    ctx.fillText("DROITE ▶", W * 0.75, H * 0.5);
+    ctx.fillStyle = "rgba(248, 113, 113, 0.22)";
+    ctx.fillRect(0, H * 0.8, W, H * 0.2);
+    ctx.fillStyle = "rgba(254, 202, 202, 0.78)";
+    ctx.fillText("FREIN D'URGENCE", W * 0.5, H * 0.9);
+  } else if (CFG.controlType === "floating_n_way") {
+    const count = Math.max(2, CFG.nWayDirections || 4);
+    const stepAng = (Math.PI * 2) / count;
+    const offsetAng = CFG.nWayShiftedHalfStep ? (stepAng * 0.5) : 0.0;
+    const radius = 82;
+    const deadzone = 18;
+
+    if (nWayTouchId === null) {
+      const hintX = W * 0.5, hintY = H * 0.84;
+      ctx.fillStyle = "rgba(16, 25, 43, 0.56)";
+      ctx.beginPath(); ctx.roundRect(hintX - 88, hintY - 16, 176, 32, 16); ctx.fill();
+      ctx.strokeStyle = "rgba(56, 214, 255, 0.45)"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = "#aef0ff"; ctx.font = "700 11px system-ui, sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(`GLISSEZ ICI (${count} DIRECTIONS)`, hintX, hintY + 4);
+    } else {
+      ctx.fillStyle = "rgba(16, 25, 43, 0.72)";
+      ctx.beginPath(); ctx.arc(nWayOrigin.x, nWayOrigin.y, radius, 0, Math.PI * 2); ctx.fill();
+      if (nWaySector !== -1) {
+        const midAng = nWaySector * stepAng + offsetAng;
+        ctx.fillStyle = "rgba(56, 214, 255, 0.45)";
+        ctx.beginPath();
+        ctx.moveTo(nWayOrigin.x, nWayOrigin.y);
+        ctx.arc(nWayOrigin.x, nWayOrigin.y, radius, midAng - stepAng * 0.5, midAng + stepAng * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1.5;
+      for (let i = 0; i < count; i++) {
+        const divAng = (i + 0.5) * stepAng + offsetAng;
+        ctx.beginPath();
+        ctx.moveTo(nWayOrigin.x + Math.cos(divAng) * deadzone, nWayOrigin.y + Math.sin(divAng) * deadzone);
+        ctx.lineTo(nWayOrigin.x + Math.cos(divAng) * radius, nWayOrigin.y + Math.sin(divAng) * radius);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = "#38d6ff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(nWayOrigin.x, nWayOrigin.y, radius, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(10, 18, 32, 0.92)";
+      ctx.beginPath(); ctx.arc(nWayOrigin.x, nWayOrigin.y, deadzone, 0, Math.PI * 2); ctx.fill();
+
+      const curDx = nWayCurrent.x - nWayOrigin.x, curDy = nWayCurrent.y - nWayOrigin.y;
+      const curD = Math.hypot(curDx, curDy);
+      const clD = Math.min(curD, radius);
+      const hx = nWayOrigin.x + (curD > 0 ? (curDx / curD) * clD : 0);
+      const hy = nWayOrigin.y + (curD > 0 ? (curDy / curD) * clD : 0);
+      ctx.fillStyle = "#38d6ff";
+      ctx.beginPath(); ctx.arc(hx, hy, 20, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#e6f4ff"; ctx.lineWidth = 2; ctx.stroke();
+    }
+  } else if (CFG.controlType === "slingshot") {
+    const cam = getCameraState();
+    const cs = worldToScreen(car.x, car.y, cam);
+
+    if (slingshotSnapFlash > 0) {
+      const sp = worldToScreen(slingshotSnapPos.x, slingshotSnapPos.y, cam);
+      const waveR = 24 + (1 - slingshotSnapFlash) * 62;
+      ctx.strokeStyle = "rgba(56, 214, 255, " + (slingshotSnapFlash * 0.7).toFixed(2) + ")";
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, waveR, 0, Math.PI * 2); ctx.stroke();
+    }
+
+    if (slingshotTouchId === null) {
+      if (canStartSlingshot() && Math.hypot(car.vx, car.vy) < 30) {
+        const pulse = 0.5 + 0.5 * Math.sin(slingshotPulse * 4);
+        ctx.strokeStyle = "rgba(56, 214, 255, " + (0.35 + pulse * 0.35).toFixed(2) + ")";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cs.x, cs.y, 32 + pulse * 6, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = "#aef0ff";
+        ctx.font = "700 11.5px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("TIRER POUR LANCER", cs.x, cs.y - 44);
+      }
+      return;
+    }
+
+    const t = getSlingshotTension();
+    const hx = cs.x - slingshotPull.x;
+    const hy = cs.y - slingshotPull.y;
+
+    ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cs.x, cs.y, CFG.slingshotMaxPull, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = "rgba(56, 214, 255, 0.35)";
+    ctx.beginPath(); ctx.arc(cs.x, cs.y, SLINGSHOT_DEADZONE, 0, Math.PI * 2); ctx.stroke();
+
+    let r, g, b;
+    if (t < 0.5) {
+      const k = t * 2;
+      r = Math.round(56 + (253 - 56) * k);
+      g = Math.round(214 + (224 - 214) * k);
+      b = Math.round(255 + (71 - 255) * k);
+    } else {
+      const k = (t - 0.5) * 2;
+      r = Math.round(253 + (248 - 253) * k);
+      g = Math.round(224 + (113 - 224) * k);
+      b = Math.round(71 + (113 - 71) * k);
+    }
+    const bandRgb = r + "," + g + "," + b;
+
+    if (CFG.slingshotShowTrajectory && t > 0.02) {
+      const wDir = getSlingshotWorldDir(cam);
+      const dirX = wDir ? wDir.x : Math.cos(car.rot);
+      const dirY = wDir ? wDir.y : Math.sin(car.rot);
+      const launchSpd = computeSlingshotLaunchSpeed(t);
+      let simVx = car.vx * 0.2 + dirX * launchSpd;
+      let simVy = car.vy * 0.2 + dirY * launchSpd;
+      let simX = car.x, simY = car.y;
+      const dtStep = 0.045;
+      const dampStep = Math.pow(CFG.slingshotFriction, dtStep * 60);
+      for (let sIdx = 0; sIdx < 14; sIdx++) {
+        simVx *= dampStep;
+        simVy *= dampStep;
+        const nx = simX + simVx * dtStep;
+        const ny = simY + simVy * dtStep;
+        const hit = raycastBoundaries(simX, simY, nx, ny);
+        if (hit) {
+          const rem = Math.hypot(nx - hit.x, ny - hit.y);
+          const vn = simVx * hit.nx + simVy * hit.ny;
+          simVx = (simVx - 2 * vn * hit.nx) * CFG.slingshotBounce;
+          simVy = (simVy - 2 * vn * hit.ny) * CFG.slingshotBounce;
+          const bSpd = Math.hypot(simVx, simVy) || 1;
+          simX = hit.x + hit.nx * 2 + (simVx / bSpd) * rem;
+          simY = hit.y + hit.ny * 2 + (simVy / bSpd) * rem;
+        } else {
+          simX = nx; simY = ny;
+        }
+        const ptScr = worldToScreen(simX, simY, cam);
+        const frac = sIdx / 14;
+        const dotR = 5.2 - frac * 3.0;
+        const alpha = 0.85 - frac * 0.65;
+        ctx.fillStyle = "rgba(" + bandRgb + "," + alpha.toFixed(2) + ")";
+        ctx.beginPath(); ctx.arc(ptScr.x, ptScr.y, dotR, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    const pLen2 = Math.hypot(slingshotPull.x, slingshotPull.y);
+    const pdx = pLen2 > 0.001 ? slingshotPull.x / pLen2 : Math.cos(car.rot);
+    const pdy = pLen2 > 0.001 ? slingshotPull.y / pLen2 : Math.sin(car.rot);
+    const perpX = -pdy, perpY = pdx;
+    const halfW = CFG.car.width * 0.45 * cam.camScale;
+    const ax1 = cs.x + perpX * halfW, ay1 = cs.y + perpY * halfW;
+    const ax2 = cs.x - perpX * halfW, ay2 = cs.y - perpY * halfW;
+    const bandW = 7.0 - t * 3.5;
+
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "rgb(" + bandRgb + ")";
+    ctx.lineWidth = bandW;
+    ctx.beginPath(); ctx.moveTo(ax1, ay1); ctx.lineTo(hx, hy); ctx.moveTo(ax2, ay2); ctx.lineTo(hx, hy); ctx.stroke();
+
+    if (t > 0.02) {
+      const arrLen = 30 + t * 28;
+      const tipX = cs.x + pdx * arrLen, tipY = cs.y + pdy * arrLen;
+      ctx.strokeStyle = "rgb(" + bandRgb + ")";
+      ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(cs.x + pdx * 16, cs.y + pdy * 16); ctx.lineTo(tipX, tipY); ctx.stroke();
+      ctx.fillStyle = "#e6f4ff";
+      ctx.beginPath();
+      ctx.moveTo(tipX + pdx * 7, tipY + pdy * 7);
+      ctx.lineTo(tipX - pdx * 4 + perpX * 6, tipY - pdy * 4 + perpY * 6);
+      ctx.lineTo(tipX - pdx * 4 - perpX * 6, tipY - pdy * 4 - perpY * 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "rgba(" + bandRgb + ",0.92)";
+    ctx.beginPath(); ctx.arc(hx, hy, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#e6f4ff"; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "700 11.5px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(t > 0 ? (Math.round(t * 100) + "%") : "ANNULER", hx, hy + 28);
+  }
+}
+
+// Messagerie MiniGD Host <-> Iframe
+function emitControlsAndSettings() {
+  if (!isEmbedded) return;
+  postToParent({
+    type: "minigd_controls_state",
+    id: GAME_ID,
+    controlState: getControlStatePayload()
+  });
+  postToParent({
+    type: "minigd_settings_state",
+    id: GAME_ID,
+    settingsState: getSettingsStatePayload()
+  });
+}
+
+window.addEventListener("message", (e) => {
+  const d = e && e.data;
+  if (!d || typeof d !== "object") return;
+  if (d.type === "minigd_config" || d.type === "spawn_minigame_init" || d.type === "minigd_init") {
+    resetGame(d, true);
+    emitControlsAndSettings();
+    updateHud(true);
+    render();
+  } else if (d.type === "minigd_reset") {
+    resetGame(d, Boolean(d.applyDefaults));
+    emitControlsAndSettings();
+    updateHud(true);
+    render();
+  } else if (d.type === "minigd_action") {
+    if (d.action === "fire" || d.action === "primary" || d.action === "boost") {
+      triggerBoost();
+      updateHud(true);
+      render();
+    }
+  } else if (d.type === "minigd_toggle_audio") {
+    toggleAudio();
+  } else if (d.type === "minigd_external_input") {
+    extInput = {
+      steer: Number(d.steer) || 0,
+      throttle: Number(d.throttle) || 0,
+      handbrake: Boolean(d.handbrake),
+      targetHeadingAngle: (typeof d.targetHeadingAngle === "number" && Number.isFinite(d.targetHeadingAngle)) ? d.targetHeadingAngle : null,
+      active: Boolean(d.active)
+    };
+  } else if (d.type === "minigd_settings_update" && d.patch && typeof d.patch === "object") {
+    const p = d.patch;
+    const carKeys = ["color", "accent", "livery", "maxSpeed", "acceleration", "braking", "reverseSpeed", "turnSpeed", "traction", "driftFactor", "naturalFriction", "mass"];
+    for (const k of carKeys) {
+      if (p[k] !== undefined) CFG.car[k] = p[k];
+    }
+    const cfgKeys = ["controlType", "nWayDirections", "alignTime", "continuousAccel", "nWayAutoAccel", "nWayDistanceAffectsSpeed", "nWayShiftedHalfStep", "slingshotPower", "slingshotMaxPull", "slingshotFriction", "slingshotBounce", "slingshotTensionCurve", "slingshotAimSlowmo", "slingshotStopToShoot", "slingshotShowTrajectory", "cameraRotates", "trackWidth"];
+    let trackChanged = false;
+    let ctrlChanged = false;
+    for (const k of cfgKeys) {
+      if (p[k] !== undefined) {
+        if (k === "trackWidth" && CFG.trackWidth !== p[k]) trackChanged = true;
+        if ((k === "controlType" || k.startsWith("nWay")) && CFG[k] !== p[k]) ctrlChanged = true;
+        CFG[k] = (k === "cameraRotates") ? Boolean(p[k]) : p[k];
+      }
+    }
+    if (trackChanged) rebuildTrack(currentBasePoints, false);
+    if (ctrlChanged) clearTouchInputs();
+    render();
+    emitControlsAndSettings();
+  } else if (d.type === "minigd_settings_action") {
+    if (d.action === "select_preset") {
+      applyVehiclePreset(d.id, d.applyPhysics !== false);
+      render();
+      emitControlsAndSettings();
+    } else if (d.action === "generate_track") {
+      rebuildTrack(generateProceduralTrack(d.style || "classic"), true);
+      resetGame({ targetLaps, durationSec });
+      emitControlsAndSettings();
+    } else if (d.action === "apply_drawn_track" && Array.isArray(d.points) && d.points.length >= 6) {
+      rebuildTrack(d.points, true);
+      resetGame({ targetLaps, durationSec });
+      emitControlsAndSettings();
+    } else if (d.action === "reset_physics") {
+      resetPhysicsToDefault();
+      render();
+      emitControlsAndSettings();
+    } else if (d.action === "reposition_car") {
+      resetCar();
+      emitMinimapState(true);
+      render();
+    }
+  } else if (d.type === "minigd_pause") {
+    externalPaused = true;
+    closeOptionsModal(false);
+    clearTouchInputs();
+    keys = {};
+    suspendAudio();
+    cancelLoop();
+    render();
+  } else if (d.type === "minigd_start" || d.type === "minigd_resume") {
+    externalPaused = false;
+    lastTime = 0;
+    resumeAudioIfEnabled();
+    render();
+    startLoopIfActive();
+  } else if (d.type === "minigd_destroy") {
+    destroyed = true;
+    closeOptionsModal(false);
+    clearTouchInputs();
+    keys = {};
+    closeAudio();
+    cancelLoop();
+  }
+});
+
+// Boucle Principale
+function loop(now) {
+  if (isGameplayPaused() || over) {
+    rafId = null;
+    return;
+  }
+  if (!lastTime) lastTime = now;
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+
+  updateInputControls();
+  updatePhysics(dt);
+  render();
+
+  if (!isGameplayPaused() && !over) {
+    rafId = requestAnimationFrame(loop);
+  } else {
+    rafId = null;
+  }
+}
+
+if (!isEmbedded) {
+  refreshQuickPickers();
+  buildStandaloneExternalControls();
+}
+resize();
+resetGame();
+if (window.parent && window.parent !== window) {
+  postToParent({
+    type: "minigd_ready",
+    id: GAME_ID,
+    meta: readMeta(),
+    actionLabel: getActionLabel(),
+    capabilities: { minimap: true, audio: true, settings: true, externalControls: true },
+    controlState: getControlStatePayload(),
+    settingsState: getSettingsStatePayload(),
+    minimapTrack: getMinimapTrackPayload()
+  });
+}
+if (!isGameplayPaused()) {
+  startLoopIfActive();
+}
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    if (show && optionsOpen) closeOptionsModal(false);
+    ov.classList.toggle("open", show);
+    helpOpen = show;
+    if (helpOpen) {
+      keys = {};
+      clearTouchInputs();
+      suspendAudio();
+      cancelLoop();
+      render();
+    } else {
+      resumeAudioIfEnabled();
+      startLoopIfActive();
+    }
+  };
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>

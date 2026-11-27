@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Guide de Scénario (Étapes, Modales &amp; Toasts)</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "hudEnabled",
+      "label": "Afficher le bandeau d'objectif",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche en haut à gauche l'objectif en cours du scénario (cliquable pour ouvrir le journal)."
+    },
+    {
+      "key": "hudTitle",
+      "label": "Libellé du bandeau HUD",
+      "type": "text",
+      "default": "Objectif",
+      "placeholder": "Objectif"
+    },
+    {
+      "key": "journalTitle",
+      "label": "Titre du journal",
+      "type": "text",
+      "default": "Journal de mission",
+      "placeholder": "Journal de mission"
+    },
+    {
+      "key": "showStepCounter",
+      "label": "Afficher le compteur d'étapes",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche l'avancement (ex: 2/6) sur le bandeau HUD."
+    },
+    {
+      "key": "completionToast",
+      "label": "Toast de fin de scénario",
+      "type": "text",
+      "default": "🏆 Toutes les étapes du scénario sont terminées !",
+      "placeholder": "Laisser vide pour ne pas afficher de toast final"
+    },
+    {
+      "key": "allowRestart",
+      "label": "Bouton « Recommencer » dans le menu",
+      "type": "bool",
+      "default": true,
+      "hint": "Ajoute un bouton dans le journal de découverte pour recommencer le scénario depuis l'étape 1."
+    },
+    {
+      "key": "allowSkip",
+      "label": "Bouton « Passer » dans le menu",
+      "type": "bool",
+      "default": true,
+      "hint": "Ajoute un bouton dans le journal pour passer la découverte."
+    },
+    {
+      "key": "skipUnlocksAll",
+      "label": "Tout débloquer au Skip",
+      "type": "bool",
+      "default": true,
+      "hint": "Débloque immédiatement tous les biomes et extensions du scénario lorsque le joueur passe la découverte."
+    },
+    {
+      "key": "stepsJson",
+      "label": "Étapes du scénario (JSON)",
+      "type": "textarea",
+      "default": "[\n  {\n    \"id\": \"etape_1_deplacement\",\n    \"title\": \"Premiers pas\",\n    \"icon\": \"🚀\",\n    \"objective\": \"Explorez les environs sur 20 mètres.\",\n    \"hint\": \"Maintenez le clic ou utilisez le joystick pour déplacer votre alien.\",\n    \"startCondition\": { \"type\": \"always\" },\n    \"completeCondition\": { \"type\": \"distance_traveled\", \"count\": 20 },\n    \"onStart\": {\n      \"modal\": {\n        \"icon\": \"🌌\",\n        \"title\": \"Bienvenue\",\n        \"body\": \"Votre vaisseau vient d'atterrir. Suivez les objectifs en haut à gauche pour découvrir les fonctionnalités étape par étape.\",\n        \"subtext\": \"Cliquez sur le bandeau Objectif à tout moment pour consulter le journal.\"\n      }\n    },\n    \"onComplete\": {\n      \"toast\": \"✅ Bien joué ! Vous maîtrisez le déplacement.\"\n    }\n  },\n  {\n    \"id\": \"etape_2_recolte\",\n    \"title\": \"Première récolte\",\n    \"icon\": \"🪨\",\n    \"objective\": \"Récoltez 2 ressources différentes autour du vaisseau.\",\n    \"hint\": \"Approchez-vous des éléments au sol pour les collecter automatiquement.\",\n    \"completeCondition\": { \"type\": \"discovered_count\", \"count\": 2 },\n    \"onComplete\": {\n      \"toast\": \"🎉 Ressources collectées ! Retournez au vaisseau pour assembler.\"\n    }\n  }\n]",
+      "hint": "Tableau JSON d'étapes : id, title, icon, objective, hint, sequential (défaut true), startCondition, completeCondition, compassGuidance (anchors, revealAnchors, minDistanceM, replace, clearOnComplete, unlockCompass), onStart/onComplete (toast, modal, titleCard, unlockExtension, giveItems, compassPoint, compassClear). Utilise les mêmes types de conditions que les extensions."
+    }
+  ]
+}
+</script>
+<script>
+// Extension générique Assemblage : guide_scenario.html
+// Orchestre un scénario progressif (modales, toasts, cartons titres, objectifs HUD, journal de mission)
+// à partir d'une liste déclarative d'étapes dans ui.custom.stepsJson (ou ui.custom.steps).
+(() => {
+  const FILENAME = "guide_scenario.html";
+  const STYLE_ID = "assemblage-scenario-guide-style";
+  const HUD_ID = "assemblage-scenario-guide-hud";
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function toHtmlParagraphs(text) {
+    return escapeHtml(text).replaceAll("\n", "<br>");
+  }
+
+  function parseSteps(rawVal) {
+    if (Array.isArray(rawVal)) return rawVal;
+    if (rawVal && typeof rawVal === "object" && Array.isArray(rawVal.steps)) {
+      return rawVal.steps;
+    }
+    const txt = String(rawVal ?? "").trim();
+    if (!txt) return [];
+    try {
+      const parsed = JSON.parse(txt);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object" && Array.isArray(parsed.steps)) {
+        return parsed.steps;
+      }
+    } catch (err) {
+      console.warn("[guide_scenario] JSON d'étapes invalide :", err);
+    }
+    return [];
+  }
+
+  function normalizeStep(raw, idx) {
+    if (!raw || typeof raw !== "object") return null;
+    const id = String(raw.id || `step_${idx + 1}`).trim();
+    if (!id) return null;
+    return {
+      id,
+      title: String(raw.title || `Étape ${idx + 1}`).trim(),
+      icon: String(raw.icon || "🧭").trim() || "🧭",
+      objective: String(raw.objective || "").trim(),
+      hint: String(raw.hint || "").trim(),
+      sequential: raw.sequential !== false,
+      autoComplete: Boolean(raw.autoComplete),
+      startCondition: (raw.startCondition && typeof raw.startCondition === "object")
+        ? raw.startCondition
+        : { type: "always" },
+      completeCondition: (raw.completeCondition && typeof raw.completeCondition === "object")
+        ? raw.completeCondition
+        : null,
+      compassGuidance: (raw.compassGuidance && typeof raw.compassGuidance === "object")
+        ? raw.compassGuidance
+        : null,
+      onStart: (raw.onStart && typeof raw.onStart === "object") ? raw.onStart : null,
+      onComplete: (raw.onComplete && typeof raw.onComplete === "object") ? raw.onComplete : null,
+    };
+  }
+
+  // Fallback local si un export plus ancien n'expose pas encore host.game.evaluateCondition
+  function fallbackEvaluateCondition(host, cond, defaultType = "always") {
+    const c = (cond && typeof cond === "object") ? cond : {};
+    const ctype = String(c.type || defaultType);
+    const cnt = Math.max(0, Number(c.count || 0));
+    const g = host.game;
+    let primary = false;
+
+    if (ctype === "none") primary = false;
+    else if (ctype === "always") primary = true;
+    else if (ctype === "crafted_element") primary = Boolean(c.elementId) && Boolean(g.discovered && g.discovered.has(String(c.elementId)));
+    else if (ctype === "element_count") primary = Boolean(c.elementId) && Number(g.getQty(String(c.elementId)) || 0) >= Math.max(1, cnt);
+    else if (ctype === "element_count_below") primary = Boolean(c.elementId) && Number(g.getQty(String(c.elementId)) || 0) < Math.max(1, cnt);
+    else if (ctype === "discovered_count") primary = Number(g.discovered ? g.discovered.size : 0) >= Math.max(1, cnt);
+    else if (ctype === "distance_traveled") primary = Math.floor(Number(g.alien?.distance || 0) / 18) >= Math.max(1, cnt);
+    else if (ctype === "anchor_near") {
+      const d = g.getAnchorDistance(String(c.anchorId || ""));
+      primary = d !== null && d <= Math.max(1, cnt);
+    } else if (ctype === "anchor_far") {
+      const d = g.getAnchorDistance(String(c.anchorId || ""));
+      primary = d !== null && d >= Math.max(1, cnt);
+    } else if (ctype === "biome_visited") {
+      primary = Boolean(c.biomeId) && String(g.activeBiomeId || "") === String(c.biomeId);
+    } else if (ctype === "play_time") {
+      primary = Number(g.playTimeSec || 0) >= Math.max(1, cnt);
+    } else if (ctype === "extension_unlocked") {
+      primary = typeof g.isExtensionUnlocked === "function" ? g.isExtensionUnlocked(String(c.requiredExtension || "")) : false;
+    }
+
+    const extras = Array.isArray(c.extra) ? c.extra.filter((e) => e && typeof e === "object") : [];
+    if (!extras.length) return primary;
+    if (String(c.logic || "and") === "or") {
+      return primary || extras.some((e) => fallbackEvaluateCondition(host, e, "none"));
+    }
+    return primary && extras.every((e) => fallbackEvaluateCondition(host, e, "none"));
+  }
+
+  function evalCond(host, cond, defaultType = "always") {
+    if (host.game && typeof host.game.evaluateCondition === "function") {
+      return Boolean(host.game.evaluateCondition(cond, defaultType));
+    }
+    return fallbackEvaluateCondition(host, cond, defaultType);
+  }
+
+  function buildModalHtml(modalCfg) {
+    if (!modalCfg || typeof modalCfg !== "object") return "";
+    if (typeof modalCfg.html === "string" && modalCfg.html.trim()) {
+      return modalCfg.html;
+    }
+    const body = String(modalCfg.body || modalCfg.text || "").trim();
+    const subtext = String(modalCfg.subtext || "").trim();
+    let html = "";
+    if (body) {
+      html += `<p style="margin:0 0 10px 0;font-size:15px;line-height:1.5;color:#eefcff;">${toHtmlParagraphs(body)}</p>`;
+    }
+    if (subtext) {
+      html += `<p style="margin:0;font-size:12.5px;line-height:1.45;color:#9fc4dc;">${toHtmlParagraphs(subtext)}</p>`;
+    }
+    return html;
+  }
+
+  function injectStyles() {
+    const existing = document.getElementById(STYLE_ID);
+    if (existing) existing.remove();
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      #${HUD_ID} {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top, 12px));
+        left: max(12px, env(safe-area-inset-left, 12px));
+        z-index: 35;
+        max-width: min(320px, calc(100vw - 88px));
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        padding: 9px 12px;
+        border-radius: 13px;
+        background: rgba(11, 18, 32, 0.84);
+        border: 1px solid rgba(115, 250, 209, 0.38);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        color: #eefcff;
+        font-family: inherit;
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.16s ease, border-color 0.16s ease, opacity 0.18s ease;
+      }
+      #${HUD_ID}:hover {
+        border-color: rgba(115, 250, 209, 0.72);
+        transform: translateY(-1px);
+      }
+      #${HUD_ID}.hidden {
+        display: none !important;
+      }
+      #${HUD_ID} .sg-icon {
+        font-size: 20px;
+        line-height: 1.1;
+        flex: 0 0 auto;
+        margin-top: 1px;
+      }
+      #${HUD_ID} .sg-content {
+        min-width: 0;
+        flex: 1 1 auto;
+      }
+      #${HUD_ID} .sg-top {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 2px;
+      }
+      #${HUD_ID} .sg-kicker {
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #73fad1;
+      }
+      #${HUD_ID} .sg-counter {
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(115, 250, 209, 0.14);
+        color: #b5ffea;
+      }
+      #${HUD_ID} .sg-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #ffffff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #${HUD_ID} .sg-obj {
+        font-size: 12px;
+        line-height: 1.35;
+        color: #bdd6ea;
+        margin-top: 2px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      #${HUD_ID} .sg-hide {
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 0;
+        background: rgba(255, 255, 255, 0.08);
+        color: #9fb8cc;
+        font-size: 12px;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #${HUD_ID} .sg-hide:hover {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+      }
+      .sg-journal-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 58vh;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+      .sg-j-item {
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(130, 175, 215, 0.22);
+        background: rgba(15, 24, 42, 0.72);
+      }
+      .sg-j-item.active {
+        border-color: rgba(115, 250, 209, 0.65);
+        background: rgba(18, 42, 54, 0.85);
+      }
+      .sg-j-item.done {
+        opacity: 0.72;
+        border-color: rgba(115, 250, 209, 0.25);
+      }
+      .sg-j-item.locked {
+        opacity: 0.45;
+      }
+      .sg-j-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+        font-size: 14px;
+        color: #eefcff;
+      }
+      .sg-j-status {
+        margin-left: auto;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #b7d2e8;
+      }
+      .sg-j-item.active .sg-j-status {
+        background: rgba(115, 250, 209, 0.18);
+        color: #73fad1;
+      }
+      .sg-j-item.done .sg-j-status {
+        background: rgba(88, 224, 152, 0.16);
+        color: #82f5b4;
+      }
+      .sg-j-obj {
+        margin-top: 5px;
+        font-size: 13px;
+        line-height: 1.4;
+        color: #d6eaf8;
+      }
+      .sg-j-hint {
+        margin-top: 5px;
+        font-size: 12px;
+        line-height: 1.4;
+        color: #93bcd6;
+      }
+      .sg-journal-actions {
+        margin-top: 12px;
+        padding-top: 11px;
+        border-top: 1px solid rgba(130, 175, 215, 0.22);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .sg-act-btn {
+        flex: 1 1 140px;
+        padding: 9px 12px;
+        border-radius: 9px;
+        border: 1px solid rgba(130, 175, 215, 0.35);
+        background: rgba(20, 34, 58, 0.85);
+        color: #eefcff;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+      }
+      .sg-act-btn:hover {
+        background: rgba(30, 50, 82, 0.95);
+        border-color: rgba(160, 210, 245, 0.65);
+      }
+      .sg-act-btn:active {
+        transform: scale(0.98);
+      }
+      .sg-act-btn.skip {
+        border-color: rgba(255, 200, 92, 0.45);
+        background: rgba(62, 46, 18, 0.72);
+        color: #ffe29e;
+      }
+      .sg-act-btn.skip:hover {
+        background: rgba(84, 62, 22, 0.88);
+        border-color: rgba(255, 212, 118, 0.8);
+      }
+      .sg-act-btn.restart {
+        border-color: rgba(255, 118, 138, 0.45);
+        background: rgba(66, 22, 34, 0.72);
+        color: #ffc2cc;
+      }
+      .sg-act-btn.restart:hover {
+        background: rgba(90, 28, 44, 0.9);
+        border-color: rgba(255, 140, 158, 0.82);
+      }
+      .sg-confirm-box {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 188, 92, 0.45);
+        background: rgba(28, 22, 36, 0.92);
+        display: none;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .sg-confirm-box.open {
+        display: flex;
+      }
+      .sg-confirm-box.danger {
+        border-color: rgba(255, 118, 138, 0.55);
+      }
+      .sg-confirm-text {
+        font-size: 12.5px;
+        line-height: 1.45;
+        color: #f4f9ff;
+      }
+      .sg-confirm-row {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .sg-confirm-row .sg-act-btn {
+        flex: 0 0 auto;
+        padding: 7px 12px;
+      }
+      @media (max-width: 600px) {
+        #${HUD_ID} {
+          max-width: calc(100vw - 76px);
+          padding: 7px 10px;
+          gap: 7px;
+        }
+        #${HUD_ID} .sg-icon { font-size: 18px; }
+        #${HUD_ID} .sg-title { font-size: 12.5px; }
+        #${HUD_ID} .sg-obj { font-size: 11.5px; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, extDef) {
+      const cfg = host.ui.getAllConfig();
+      const hudEnabledDefault = cfg.hudEnabled !== false;
+      const hudTitle = String(cfg.hudTitle || "Objectif").trim() || "Objectif";
+      const journalTitle = String(cfg.journalTitle || "Journal de mission").trim() || "Journal de mission";
+      const showStepCounter = cfg.showStepCounter !== false;
+      const completionToast = String(cfg.completionToast ?? "🏆 Toutes les étapes du scénario sont terminées !").trim();
+      const allowRestart = cfg.allowRestart !== false;
+      const allowSkip = cfg.allowSkip !== false;
+      const skipUnlocksAll = cfg.skipUnlocksAll !== false;
+
+      const rawSteps = (cfg.steps !== undefined && cfg.steps !== null) ? cfg.steps : cfg.stepsJson;
+      const steps = parseSteps(rawSteps).map(normalizeStep).filter(Boolean);
+
+      const saved = host.state.get() || {};
+      const startedSet = new Set(Array.isArray(saved.started) ? saved.started.map(String) : []);
+      const completedSet = new Set(Array.isArray(saved.completed) ? saved.completed.map(String) : []);
+      let hudVisible = (saved.hudVisible !== undefined) ? Boolean(saved.hudVisible) : hudEnabledDefault;
+      let finishedNotified = Boolean(saved.finishedNotified);
+      let skipped = Boolean(saved.skipped);
+
+      const modalQueue = [];
+      const appliedGuidanceByStep = new Map();
+      let compassUnlockRequested = false;
+      let hudEl = null;
+      let settingToggleInput = null;
+      let pollTimer = null;
+
+      function normalizeAnchorIdList(rawVal) {
+        const arr = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
+        return Array.from(new Set(arr.map((x) => String(x || "").trim()).filter(Boolean)));
+      }
+
+      function getBoussoleBisService() {
+        if (!host.services || typeof host.services.get !== "function") return null;
+        return host.services.get("boussole_bis");
+      }
+
+      function syncCompassGuidance() {
+        const activeSteps = getCurrentActiveSteps();
+        if (!activeSteps.length) return;
+
+        for (const step of activeSteps) {
+          const g = step.compassGuidance;
+          if (!g || typeof g !== "object") continue;
+
+          const targetIds = normalizeAnchorIdList(g.anchors);
+          const revealIds = normalizeAnchorIdList(g.revealAnchors);
+          if (!targetIds.length && !revealIds.length) continue;
+
+          const svc = getBoussoleBisService();
+          if (!svc) {
+            if (g.unlockCompass !== false && !compassUnlockRequested) {
+              compassUnlockRequested = true;
+              host.unlockExtension("boussole_bis.html", false);
+            }
+            return;
+          }
+
+          const bid = String(host.game.activeBiomeId || "").trim();
+          if (!bid) continue;
+          let doneBiomes = appliedGuidanceByStep.get(step.id);
+          if (doneBiomes && doneBiomes.has(bid)) continue;
+
+          if (revealIds.length > 0 && typeof svc.revealAnchors === "function") {
+            svc.revealAnchors(revealIds, bid);
+          }
+
+          let applied = true;
+          if (targetIds.length > 0 && typeof svc.pointAnchors === "function") {
+            const minDistM = Number.isFinite(Number(g.minDistanceM)) ? Number(g.minDistanceM) : 16;
+            const res = svc.pointAnchors(targetIds, {
+              biomeId: bid,
+              minDistanceM: minDistM,
+              replace: g.replace !== false,
+              reveal: true,
+              markFlag: false,
+            });
+            applied = Boolean(res && res.applied);
+          }
+
+          if (applied) {
+            if (!doneBiomes) {
+              doneBiomes = new Set();
+              appliedGuidanceByStep.set(step.id, doneBiomes);
+            }
+            doneBiomes.add(bid);
+          }
+        }
+      }
+
+      function persistState() {
+        host.state.set({
+          started: Array.from(startedSet),
+          completed: Array.from(completedSet),
+          hudVisible,
+          finishedNotified,
+          skipped,
+        }, true);
+      }
+
+      function isModalCurrentlyOpen() {
+        const el = document.getElementById("ext-modal-overlay");
+        return Boolean(el && el.classList.contains("open"));
+      }
+
+      function flushModalQueue() {
+        if (!modalQueue.length) return;
+        if (host.ui.isTitleCardOpen() || isModalCurrentlyOpen()) return;
+        const next = modalQueue.shift();
+        if (!next) return;
+        host.ui.showModal(next);
+      }
+
+      function enqueueModal(modalCfg, fallbackIcon, fallbackTitle) {
+        const html = buildModalHtml(modalCfg);
+        if (!html) return;
+        modalQueue.push({
+          icon: String(modalCfg.icon || fallbackIcon || extDef.icon || "🧭"),
+          title: String(modalCfg.title || fallbackTitle || extDef.name || "Scénario"),
+          html,
+        });
+        flushModalQueue();
+      }
+
+      function executeAction(action, step, silent = false) {
+        if (!action || typeof action !== "object") return;
+
+        // Déblocage d'extension(s)
+        if (action.unlockExtension) {
+          const targets = Array.isArray(action.unlockExtension)
+            ? action.unlockExtension
+            : [action.unlockExtension];
+          for (const target of targets) {
+            const fname = String(target || "").trim();
+            if (fname) host.unlockExtension(fname, !silent);
+          }
+        }
+
+        // Don d'éléments éventuel
+        if (Array.isArray(action.giveItems)) {
+          for (const item of action.giveItems) {
+            if (!item || !item.id) continue;
+            const qty = Math.max(1, Number(item.qty || item.count || 1));
+            host.game.addItem(String(item.id), qty);
+          }
+        }
+
+        // Flags / Stats de campagne (Host v2)
+        if (action.setFlag && host.progress && typeof host.progress.setFlag === "function") {
+          if (typeof action.setFlag === "string") host.progress.setFlag(action.setFlag, true, true);
+          else if (typeof action.setFlag === "object") {
+            for (const [fk, fv] of Object.entries(action.setFlag)) host.progress.setFlag(fk, fv, true);
+          }
+        }
+        if (action.incStat && host.progress && typeof host.progress.incStat === "function") {
+          if (typeof action.incStat === "string") host.progress.incStat(action.incStat, 1, true);
+          else if (typeof action.incStat === "object") {
+            for (const [sk, sv] of Object.entries(action.incStat)) host.progress.incStat(sk, Number(sv || 1), true);
+          }
+        }
+
+        // Recharge à chaud optionnelle (ex: "refreshRemote": true ou { "silent": true, "deferChunkRefresh": true })
+        if (action.refreshRemote && host.game && typeof host.game.refreshRemote === "function") {
+          const rOpts = (typeof action.refreshRemote === "object") ? action.refreshRemote : { silent: true, deferChunkRefresh: true };
+          host.game.refreshRemote(rOpts);
+        }
+
+        // Pilotage optionnel de la Boussole Bis dans onStart / onComplete
+        if (action.compassClear) {
+          const svc = getBoussoleBisService();
+          if (svc && typeof svc.clearAnchors === "function") {
+            svc.clearAnchors(action.compassClear === true ? null : action.compassClear);
+          }
+        }
+        if (action.compassPoint) {
+          const svc = getBoussoleBisService();
+          if (svc && typeof svc.pointAnchors === "function") {
+            if (typeof action.compassPoint === "object" && !Array.isArray(action.compassPoint)) {
+              const cp = action.compassPoint;
+              svc.pointAnchors(cp.anchors || [], {
+                minDistanceM: Number.isFinite(Number(cp.minDistanceM)) ? Number(cp.minDistanceM) : 0,
+                replace: cp.replace !== false,
+                reveal: cp.reveal !== false,
+                markFlag: false,
+              });
+            } else {
+              svc.pointAnchors(action.compassPoint, { replace: false, reveal: true, markFlag: false });
+            }
+          }
+        }
+
+        if (silent) return;
+
+        if (action.toast && String(action.toast).trim()) {
+          host.ui.showToast(String(action.toast).trim());
+        }
+        if (action.titleCard && typeof action.titleCard === "object") {
+          const tc = action.titleCard;
+          host.ui.showTitleCard({
+            badge: String(tc.badge || "ÉTAPE DU SCÉNARIO"),
+            icon: String(tc.icon || step.icon || "🧭"),
+            title: String(tc.title || step.title),
+            description: String(tc.description || step.objective || ""),
+            accentColor: String(tc.accentColor || extDef.accentColor || "#73fad1"),
+            buttonText: String(tc.buttonText || ""),
+            durationMs: Number.isFinite(Number(tc.durationMs)) ? Number(tc.durationMs) : 6500,
+          });
+        }
+        if (action.modal && typeof action.modal === "object") {
+          enqueueModal(action.modal, step.icon, step.title);
+        }
+      }
+
+      function getCurrentActiveSteps() {
+        return steps.filter((s) => startedSet.has(s.id) && !completedSet.has(s.id));
+      }
+
+      function performSkipDiscovery() {
+        modalQueue.length = 0;
+        appliedGuidanceByStep.clear();
+        for (const s of steps) {
+          startedSet.add(s.id);
+          completedSet.add(s.id);
+        }
+        skipped = true;
+        finishedNotified = true;
+        hudVisible = false;
+        if (settingToggleInput) settingToggleInput.checked = false;
+        persistState();
+        updateHud();
+
+        if (skipUnlocksAll && host.game) {
+          if (typeof host.game.unlockAllBiomes === "function") {
+            host.game.unlockAllBiomes(true);
+          } else if (host.progress && typeof host.progress.grantRewards === "function" && typeof host.game.getBiomes === "function") {
+            for (const b of host.game.getBiomes()) {
+              if (b && b.id && b.locked) host.progress.grantRewards({ unlockBiome: b.id });
+            }
+          }
+          if (typeof host.game.unlockAllExtensions === "function") {
+            host.game.unlockAllExtensions(true);
+          }
+        }
+
+        if (typeof host.ui.closeModal === "function") host.ui.closeModal();
+        host.ui.showToast(
+          skipUnlocksAll
+            ? "⏭️ Découverte passée — tous les biomes et extensions sont débloqués !"
+            : "⏭️ Découverte passée."
+        );
+      }
+
+      function performRestartDiscovery() {
+        modalQueue.length = 0;
+        appliedGuidanceByStep.clear();
+        compassUnlockRequested = false;
+        if (host.game && typeof host.game.restartGame === "function") {
+          host.game.restartGame();
+          return;
+        }
+        // Fallback si l'export ne fournit pas encore host.game.restartGame
+        startedSet.clear();
+        completedSet.clear();
+        skipped = false;
+        finishedNotified = false;
+        hudVisible = hudEnabledDefault;
+        if (settingToggleInput) settingToggleInput.checked = hudVisible;
+        persistState();
+        if (typeof host.ui.closeModal === "function") host.ui.closeModal();
+        updateHud();
+        evaluateSteps(false);
+        host.ui.showToast("🔄 Découverte réinitialisée !");
+      }
+
+      function openJournalModal() {
+        const total = steps.length;
+        const doneCount = steps.filter((s) => completedSet.has(s.id)).length;
+        const allDone = total > 0 && doneCount >= total;
+        const itemsHtml = steps.map((s, idx) => {
+          const isDone = completedSet.has(s.id);
+          const isActive = startedSet.has(s.id) && !isDone;
+          const cls = isDone ? "done" : (isActive ? "active" : "locked");
+          const badge = isDone ? (skipped ? "Passé" : "Terminé") : (isActive ? "En cours" : "À découvrir");
+          const titleTxt = (isDone || isActive) ? escapeHtml(s.title) : `Étape ${idx + 1} — Verrouillée`;
+          const iconTxt = (isDone || isActive) ? escapeHtml(s.icon) : "🔒";
+          const objHtml = (isDone || isActive) && s.objective
+            ? `<div class="sg-j-obj">${toHtmlParagraphs(s.objective)}</div>`
+            : "";
+          const hintHtml = isActive && s.hint
+            ? `<div class="sg-j-hint">💡 ${toHtmlParagraphs(s.hint)}</div>`
+            : "";
+          return `<div class="sg-j-item ${cls}">
+            <div class="sg-j-head">
+              <span>${iconTxt}</span>
+              <span>${titleTxt}</span>
+              <span class="sg-j-status">${badge}</span>
+            </div>
+            ${objHtml}
+            ${hintHtml}
+          </div>`;
+        }).join("");
+
+        const summaryText = skipped
+          ? `Découverte passée (<strong style="color:#ffe29e;">${doneCount} / ${total}</strong>). Vous pouvez recommencer à tout moment.`
+          : `Progression : <strong style="color:#73fad1;">${doneCount} / ${total}</strong> étape(s) accomplie(s).`;
+        const summaryHtml = total > 0
+          ? `<p style="margin:0 0 10px 0;font-size:12.5px;color:#9fc4dc;">${summaryText}</p>`
+          : `<p style="margin:0;font-size:13px;color:#9fc4dc;">Aucune étape configurée dans ce scénario.</p>`;
+
+        const showSkipBtn = allowSkip && total > 0 && !allDone;
+        const showRestartBtn = allowRestart && total > 0;
+        const actionsHtml = (showSkipBtn || showRestartBtn)
+          ? `<div class="sg-journal-actions">
+              ${showSkipBtn ? `<button type="button" class="sg-act-btn skip" data-sg-action="skip">⏭️ Passer la découverte</button>` : ""}
+              ${showRestartBtn ? `<button type="button" class="sg-act-btn restart" data-sg-action="restart">🔄 Recommencer</button>` : ""}
+            </div>
+            <div class="sg-confirm-box" data-sg-confirm>
+              <div class="sg-confirm-text" data-sg-confirm-text></div>
+              <div class="sg-confirm-row">
+                <button type="button" class="sg-act-btn" data-sg-confirm-cancel>Annuler</button>
+                <button type="button" class="sg-act-btn" data-sg-confirm-ok>Confirmer</button>
+              </div>
+            </div>`
+          : "";
+
+        host.ui.showModal({
+          icon: extDef.icon || "🧭",
+          title: journalTitle,
+          html: `${summaryHtml}<div class="sg-journal-list">${itemsHtml}</div>${actionsHtml}`,
+          onMount(bodyEl) {
+            const confirmBox = bodyEl.querySelector("[data-sg-confirm]");
+            const confirmText = bodyEl.querySelector("[data-sg-confirm-text]");
+            const confirmCancel = bodyEl.querySelector("[data-sg-confirm-cancel]");
+            const confirmOk = bodyEl.querySelector("[data-sg-confirm-ok]");
+            let pendingAction = null;
+
+            function openConfirm(kind) {
+              if (!confirmBox || !confirmText || !confirmOk) return;
+              pendingAction = kind;
+              confirmBox.classList.add("open");
+              if (kind === "skip") {
+                confirmBox.classList.remove("danger");
+                confirmOk.className = "sg-act-btn skip";
+                confirmOk.textContent = "Passer";
+                confirmText.textContent = skipUnlocksAll
+                  ? "⏭️ Passer la découverte marquera toutes les étapes comme terminées et débloquera immédiatement tous les biomes et extensions du scénario. Continuer ?"
+                  : "⏭️ Passer la découverte marquera toutes les étapes du guide comme terminées. Continuer ?";
+              } else {
+                confirmBox.classList.add("danger");
+                confirmOk.className = "sg-act-btn restart";
+                confirmOk.textContent = "Recommencer";
+                confirmText.textContent = "⚠️ Toute la progression de la partie actuelle sera effacée pour recommencer la découverte depuis l'étape 1. Continuer ?";
+              }
+              try { confirmBox.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (_e) {}
+            }
+
+            const skipBtn = bodyEl.querySelector('[data-sg-action="skip"]');
+            const restartBtn = bodyEl.querySelector('[data-sg-action="restart"]');
+            if (skipBtn) skipBtn.addEventListener("click", () => openConfirm("skip"));
+            if (restartBtn) restartBtn.addEventListener("click", () => openConfirm("restart"));
+            if (confirmCancel) {
+              confirmCancel.addEventListener("click", () => {
+                pendingAction = null;
+                if (confirmBox) confirmBox.classList.remove("open");
+              });
+            }
+            if (confirmOk) {
+              confirmOk.addEventListener("click", () => {
+                const act = pendingAction;
+                pendingAction = null;
+                if (act === "skip") performSkipDiscovery();
+                else if (act === "restart") performRestartDiscovery();
+              });
+            }
+          },
+        });
+      }
+
+      function updateHud() {
+        if (!hudEl) return;
+        const activeSteps = getCurrentActiveSteps();
+        const total = steps.length;
+        const doneCount = steps.filter((s) => completedSet.has(s.id)).length;
+
+        if (!hudVisible || total === 0) {
+          hudEl.classList.add("hidden");
+          return;
+        }
+        hudEl.classList.remove("hidden");
+
+        const iconEl = hudEl.querySelector(".sg-icon");
+        const kickerEl = hudEl.querySelector(".sg-kicker");
+        const counterEl = hudEl.querySelector(".sg-counter");
+        const titleEl = hudEl.querySelector(".sg-title");
+        const objEl = hudEl.querySelector(".sg-obj");
+
+        if (activeSteps.length > 0) {
+          const cur = activeSteps[0];
+          iconEl.textContent = cur.icon;
+          kickerEl.textContent = hudTitle;
+          if (showStepCounter) {
+            counterEl.style.display = "";
+            counterEl.textContent = `${Math.min(doneCount + 1, total)}/${total}`;
+          } else {
+            counterEl.style.display = "none";
+          }
+          titleEl.textContent = cur.title;
+          objEl.textContent = cur.objective || cur.hint || "Ouvrir le journal pour les détails.";
+        } else if (doneCount >= total) {
+          iconEl.textContent = skipped ? "⏭️" : "🏆";
+          kickerEl.textContent = hudTitle;
+          if (showStepCounter) {
+            counterEl.style.display = "";
+            counterEl.textContent = `${total}/${total}`;
+          } else {
+            counterEl.style.display = "none";
+          }
+          titleEl.textContent = skipped ? "Découverte passée" : "Scénario terminé";
+          objEl.textContent = "Cliquez pour ouvrir le journal ou recommencer.";
+        } else {
+          hudEl.classList.add("hidden");
+        }
+      }
+
+      function evaluateSteps(silentRestore = false) {
+        if (!steps.length) {
+          updateHud();
+          return;
+        }
+
+        let changed = false;
+        let previousSequentialComplete = true;
+
+        for (const step of steps) {
+          const isCompleted = completedSet.has(step.id);
+          if (isCompleted) {
+            continue;
+          }
+
+          const canStart = step.sequential ? previousSequentialComplete : true;
+
+          if (!startedSet.has(step.id)) {
+            if (canStart && evalCond(host, step.startCondition, "always")) {
+              startedSet.add(step.id);
+              changed = true;
+              executeAction(step.onStart, step, silentRestore);
+            }
+          }
+
+          if (startedSet.has(step.id) && !completedSet.has(step.id)) {
+            const hasCompleteCond = Boolean(step.completeCondition && step.completeCondition.type && step.completeCondition.type !== "none");
+            const shouldComplete = hasCompleteCond
+              ? evalCond(host, step.completeCondition, "none")
+              : step.autoComplete;
+
+            if (shouldComplete) {
+              completedSet.add(step.id);
+              changed = true;
+              if (step.compassGuidance && step.compassGuidance.clearOnComplete !== false) {
+                const svc = getBoussoleBisService();
+                const targetIds = normalizeAnchorIdList(step.compassGuidance.anchors);
+                if (svc && typeof svc.clearAnchors === "function" && targetIds.length) {
+                  svc.clearAnchors(targetIds);
+                }
+                appliedGuidanceByStep.delete(step.id);
+              }
+              executeAction(step.onComplete, step, silentRestore);
+            }
+          }
+
+          if (step.sequential && !completedSet.has(step.id)) {
+            previousSequentialComplete = false;
+          }
+        }
+
+        const allDone = steps.length > 0 && steps.every((s) => completedSet.has(s.id));
+        if (allDone && !finishedNotified) {
+          finishedNotified = true;
+          changed = true;
+          if (!silentRestore && completionToast) {
+            host.ui.showToast(completionToast);
+          }
+        }
+
+        if (changed) {
+          persistState();
+          updateHud();
+        }
+        syncCompassGuidance();
+        flushModalQueue();
+      }
+
+      // Injection styles + HUD
+      const removeStyles = injectStyles();
+      host.registerCleanup(removeStyles);
+
+      const oldHud = document.getElementById(HUD_ID);
+      if (oldHud) oldHud.remove();
+
+      hudEl = document.createElement("div");
+      hudEl.id = HUD_ID;
+      hudEl.setAttribute("role", "button");
+      hudEl.setAttribute("tabindex", "0");
+      hudEl.setAttribute("aria-label", journalTitle);
+      hudEl.innerHTML = `
+        <span class="sg-icon">🧭</span>
+        <div class="sg-content">
+          <div class="sg-top">
+            <span class="sg-kicker"></span>
+            <span class="sg-counter"></span>
+          </div>
+          <div class="sg-title"></div>
+          <div class="sg-obj"></div>
+        </div>
+        <button type="button" class="sg-hide" title="Masquer le bandeau" aria-label="Masquer le bandeau">✕</button>
+      `;
+
+      const hideBtn = hudEl.querySelector(".sg-hide");
+      hideBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        hudVisible = false;
+        if (settingToggleInput) settingToggleInput.checked = false;
+        persistState();
+        updateHud();
+      });
+      hudEl.addEventListener("click", () => openJournalModal());
+      hudEl.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openJournalModal();
+        }
+      });
+
+      if (host.ui && typeof host.ui.mountHudSlot === "function") {
+        hudEl.style.position = "relative";
+        hudEl.style.top = "auto";
+        hudEl.style.left = "auto";
+        host.ui.mountHudSlot("top-left", hudEl);
+      } else {
+        document.body.appendChild(hudEl);
+      }
+      host.registerCleanup(() => {
+        if (hudEl) hudEl.remove();
+        hudEl = null;
+      });
+
+      // Paramètres : toggle du bandeau + bouton Journal
+      settingToggleInput = host.ui.addSettingToggle({
+        id: "guide_scenario_hud",
+        label: `Bandeau « ${hudTitle} »`,
+        desc: "Affiche ou masque l'objectif en cours en haut à gauche.",
+        checked: hudVisible,
+        onChange(checked) {
+          hudVisible = Boolean(checked);
+          persistState();
+          updateHud();
+        },
+      });
+
+      host.ui.addSettingButton({
+        id: "guide_scenario_journal",
+        label: journalTitle,
+        desc: "Consulter les étapes accomplies et l'objectif actuel du scénario.",
+        buttonText: "Ouvrir",
+        onClick: openJournalModal,
+      });
+
+      // Réactivité dès qu'un carton titre se ferme
+      host.ui.onTitleCardClosed(() => {
+        setTimeout(flushModalQueue, 80);
+      }, { filename: "" });
+
+      // Évaluation initiale + suivi régulier (fonctionne aussi dans le vaisseau / menu craft)
+      updateHud();
+      evaluateSteps(false);
+      pollTimer = setInterval(() => evaluateSteps(false), 250);
+      host.registerCleanup(() => {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+      });
+    },
+
+    onDeactivate() {},
+  };
+})();
+</script>
+</body>
+</html>

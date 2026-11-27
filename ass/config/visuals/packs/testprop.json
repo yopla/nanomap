@@ -1,0 +1,100 @@
+{
+	"id": "testprop",
+	"name": "testprop",
+	"symbols": {},
+	"version": 1,
+	"visuals": {
+		"portail_extension": {
+			"category": "extensions",
+			"layers": [
+				{
+					"alpha": 0.9,
+					"fill": "#1b1464",
+					"name": "Anneau Externe",
+					"rot": 0.0,
+					"rx": 48.0,
+					"ry": 48.0,
+					"stroke": "#9980fa",
+					"strokeW": 5.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.85,
+					"fill": "#5758bb",
+					"name": "Vortex Intérieur",
+					"rot": 0.0,
+					"rx": 34.0,
+					"ry": 34.0,
+					"stroke": "#7ed6df",
+					"strokeW": 3.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#dff9fb",
+					"name": "Cœur Lumineux",
+					"pts": [
+						[
+							0.0,
+							-20.0
+						],
+						[
+							8.0,
+							-6.0
+						],
+						[
+							20.0,
+							0.0
+						],
+						[
+							8.0,
+							6.0
+						],
+						[
+							0.0,
+							20.0
+						],
+						[
+							-8.0,
+							6.0
+						],
+						[
+							-20.0,
+							0.0
+						],
+						[
+							-8.0,
+							-6.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#70a1ff",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				}
+			],
+			"name": "Portail Extension",
+			"tags": [
+				"portail",
+				"extension",
+				"ancre"
+			]
+		}
+	}
+}

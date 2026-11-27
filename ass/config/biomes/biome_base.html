@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Générateur de Biome : biome_base</title>
+</head>
+<body>
+<script>
+// Générateur de terrain Assemblage : biome_base (config/biomes/biome_base.html)
+// Méthode de génération procédurale de base (bruit FBM, cratères/bassins, rochers, cristaux, flore et ressources).
+(function () {
+  const GENERATOR_ID = "biome_base";
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // Smooth deterministic 2D value noise + FBM
+  function hash2(ix, iy, seed) {
+    let n = Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + Math.imul(seed, 1442695041);
+    n = (n ^ (n >>> 13)) >>> 0;
+    n = Math.imul(n, 1274126177) >>> 0;
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296 * 2 - 1;
+  }
+
+  function valueNoise2D(x, y, seed) {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const fx = x - ix;
+    const fy = y - iy;
+    const ux = fx * fx * (3 - 2 * fx);
+    const uy = fy * fy * (3 - 2 * fy);
+    const a = hash2(ix, iy, seed);
+    const b = hash2(ix + 1, iy, seed);
+    const c = hash2(ix, iy + 1, seed);
+    const d = hash2(ix + 1, iy + 1, seed);
+    return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+  }
+
+  function fbm(x, y, seed, octaves) {
+    let val = 0, amp = 0.5, freq = 1, norm = 0;
+    for (let i = 0; i < octaves; i++) {
+      val += valueNoise2D(x * freq, y * freq, seed + i * 31) * amp;
+      norm += amp;
+      amp *= 0.5;
+      freq *= 2.02;
+    }
+    return val / norm;
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function mixRGB(c1, c2, t) {
+    return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+  }
+  function shadeRGB(c, amount) {
+    if (amount >= 0) {
+      return [lerp(c[0], 255, amount), lerp(c[1], 255, amount), lerp(c[2], 255, amount)];
+    }
+    const f = 1 + amount;
+    return [c[0] * f, c[1] * f, c[2] * f];
+  }
+  function rgbStr(c, a = 1) {
+    return `rgba(${Math.round(clamp(c[0], 0, 255))},${Math.round(clamp(c[1], 0, 255))},${Math.round(clamp(c[2], 0, 255))},${a})`;
+  }
+
+  function sampleBiome(wx, wy, env) {
+    const scale = env.biomeScale || 1.0;
+    const seed = env.worldSeed || 0;
+    return fbm(wx * (0.0007 / scale), wy * (0.0007 / scale), seed + 101, 2);
+  }
+
+  function sampleElev(wx, wy, env) {
+    const scale = env.biomeScale || 1.0;
+    const seed = env.worldSeed || 0;
+    return fbm(wx * (0.0018 / scale), wy * (0.0018 / scale), seed, 3);
+  }
+
+  function sampleDetail(wx, wy, env) {
+    const seed = env.worldSeed || 0;
+    return valueNoise2D(wx * 0.01, wy * 0.01, seed + 202);
+  }
+
+  function sampleGroundColor(wx, wy, env) {
+    const elev = sampleElev(wx, wy, env);
+    const biome = sampleBiome(wx, wy, env);
+    const detail = sampleDetail(wx, wy, env);
+
+    let col = biome < 0
+      ? mixRGB(env.groundColA, env.groundColB, clamp(-biome * 1.4, 0, 1))
+      : mixRGB(env.groundColA, env.groundColC, clamp(biome * 1.4, 0, 1));
+
+    col = shadeRGB(col, elev * 0.14 + detail * 0.05);
+
+    const dist = Math.hypot(wx, wy);
+    if (dist < env.LANDING_CLEAR_RADIUS) {
+      const t = clamp(1 - dist / env.LANDING_CLEAR_RADIUS, 0, 1);
+      const theme = env.theme || "astral";
+      const padRgb = theme === "volcanic"
+        ? [61, 46, 46]
+        : (theme === "glacial"
+          ? [46, 64, 87]
+          : (theme === "fungal" ? [46, 61, 56] : [51, 54, 69]));
+      col = mixRGB(col, padRgb, t * 0.75);
+    }
+    return rgbStr(col);
+  }
+
+  function generateChunk(cx, cy, env) {
+    const CHUNK_SIZE = env.CHUNK_SIZE;
+    const TILE_COUNT = env.TILE_COUNT;
+    const TILE_SIZE = env.TILE_SIZE;
+    const LANDING_CLEAR_RADIUS = env.LANDING_CLEAR_RADIUS;
+    const WORLD_SEED = env.worldSeed;
+    const ROCK_DENSITY = env.rockDensity;
+    const CRYSTAL_DENSITY = env.crystalDensity;
+    const activeBiomeTheme = env.theme || "astral";
+    const activeBiomeId = env.biomeId;
+    const accentRgb = env.accentRgb;
+    const activeLevel1Elements = Array.isArray(env.spawnableElements) ? env.spawnableElements : [];
+
+    const ox = cx * CHUNK_SIZE;
+    const oy = cy * CHUNK_SIZE;
+    const tiles = [];
+    for (let ty = 0; ty < TILE_COUNT; ty++) {
+      for (let tx = 0; tx < TILE_COUNT; tx++) {
+        const wx = ox + (tx + 0.5) * TILE_SIZE;
+        const wy = oy + (ty + 0.5) * TILE_SIZE;
+        tiles.push(sampleGroundColor(wx, wy, env));
+      }
+    }
+
+    const h = ((WORLD_SEED * 73856093) ^ (cx * 19349663) ^ (cy * 83492791)) >>> 0;
+    const rng = mulberry32(h);
+    const randRange = (a, b) => a + rng() * (b - a);
+    const randInt = (a, b) => Math.floor(a + rng() * (b - a + 1));
+
+    const craters = [];
+    const rocks = [];
+    const crystals = [];
+    const flora = [];
+    const pickups = [];
+    const colliders = [];
+
+    const craterCount = randInt(1, 3);
+    for (let i = 0; i < craterCount; i++) {
+      const lx = randRange(48, CHUNK_SIZE - 48);
+      const ly = randRange(48, CHUNK_SIZE - 48);
+      if (Math.hypot(ox + lx, oy + ly) < LANDING_CLEAR_RADIUS) continue;
+      craters.push({ x: ox + lx, y: oy + ly, r: randRange(20, 52) });
+    }
+
+    const rockCount = Math.round(randInt(3, 7) * ROCK_DENSITY);
+    for (let i = 0; i < rockCount; i++) {
+      const lx = randRange(28, CHUNK_SIZE - 28);
+      const ly = randRange(28, CHUNK_SIZE - 28);
+      const wx = ox + lx, wy = oy + ly;
+      if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS) continue;
+      const radius = randRange(8, 22);
+      const sides = randInt(5, 8);
+      const pts = [];
+      for (let s = 0; s < sides; s++) {
+        const a = (Math.PI * 2 * s) / sides + randRange(-0.2, 0.2);
+        const r = radius * randRange(0.75, 1.1);
+        pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+      }
+      const b = sampleBiome(wx, wy, env);
+      const isVolc = activeBiomeTheme === "volcanic";
+      const isGlac = activeBiomeTheme === "glacial";
+      const isFung = activeBiomeTheme === "fungal";
+      const base = shadeRGB(
+        isVolc ? (b > 0 ? [36, 31, 41] : [61, 36, 33]) : (isGlac ? (b > 0 ? [107, 143, 179] : [82, 112, 148]) : (isFung ? (b > 0 ? [51, 77, 66] : [71, 51, 87]) : (b > 0 ? [71, 61, 87] : [97, 74, 66]))),
+        randRange(-0.08, 0.1)
+      );
+      rocks.push({
+        x: wx, y: wy, pts,
+        col: rgbStr(base),
+        hi: rgbStr(isVolc ? mixRGB(base, [242, 92, 36], 0.28) : (isGlac ? mixRGB(base, [219, 245, 255], 0.48) : (isFung ? mixRGB(base, [158, 250, 117], 0.32) : shadeRGB(base, 0.18))))
+      });
+      if (radius >= 15) {
+        colliders.push({ x: wx, y: wy, r: radius * 0.78 });
+      }
+    }
+
+    const crystalCount = Math.round(randInt(1, 3) * CRYSTAL_DENSITY);
+    for (let i = 0; i < crystalCount; i++) {
+      const lx = randRange(32, CHUNK_SIZE - 32);
+      const ly = randRange(32, CHUNK_SIZE - 32);
+      const wx = ox + lx, wy = oy + ly;
+      if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS) continue;
+      const b = sampleBiome(wx, wy, env);
+      const rgb = activeBiomeTheme === "volcanic"
+        ? (b > 0.15 ? [255, 122, 41] : (b < -0.15 ? [250, 61, 56] : [255, 199, 61]))
+        : (activeBiomeTheme === "glacial"
+          ? (b > 0.15 ? [140, 235, 255] : (b < -0.15 ? [199, 230, 255] : [107, 214, 245]))
+          : (activeBiomeTheme === "fungal"
+            ? (b > 0.15 ? [189, 112, 255] : (b < -0.15 ? [255, 102, 199] : [173, 250, 92]))
+            : (b > 0.15 ? [56, 224, 209] : (b < -0.15 ? [214, 89, 235] : [115, 242, 140]))));
+      const sc = randRange(0.75, 1.35);
+      const rot = randRange(0, Math.PI * 2);
+      crystals.push({ x: wx, y: wy, rgb, sc, rot });
+      if (sc >= 1.1) {
+        colliders.push({ x: wx, y: wy, r: 11 * sc });
+      }
+    }
+
+    const floraCount = randInt(3, 8);
+    for (let i = 0; i < floraCount; i++) {
+      const lx = randRange(20, CHUNK_SIZE - 20);
+      const ly = randRange(20, CHUNK_SIZE - 20);
+      const wx = ox + lx, wy = oy + ly;
+      if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS - 30) continue;
+      if (sampleElev(wx, wy, env) < -0.15) continue;
+      const rgb = activeBiomeTheme === "volcanic"
+        ? (rng() > 0.4 ? [255, 107, 31] : [255, 199, 56])
+        : (activeBiomeTheme === "glacial"
+          ? (rng() > 0.4 ? [158, 240, 255] : [128, 245, 217])
+          : (activeBiomeTheme === "fungal"
+            ? (rng() > 0.45 ? [214, 107, 255] : [158, 250, 97])
+            : (rng() > 0.4 ? [82, 199, 148] : [235, 173, 82])));
+      flora.push({
+        x: wx, y: wy, r: randRange(4, 9),
+        rgb,
+        dark: rgbStr(shadeRGB(rgb, -0.25)),
+        light: rgbStr(shadeRGB(rgb, 0.2))
+      });
+    }
+
+    if (activeLevel1Elements.length > 0) {
+      let totalWeight = 0;
+      for (const elW of activeLevel1Elements) {
+        totalWeight += Math.max(0, Number(elW.spawnWeight ?? 100));
+      }
+      const pickupCount = randInt(3, 5);
+      const chunkMask = typeof env.getChunkMask === "function" ? env.getChunkMask(activeBiomeId, cx, cy) : 0;
+      for (let i = 0; i < pickupCount; i++) {
+        const lx = randRange(40, CHUNK_SIZE - 40);
+        const ly = randRange(40, CHUNK_SIZE - 40);
+        const wx = ox + lx, wy = oy + ly;
+        if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS - 35) continue;
+        let elIdx = 0;
+        if (totalWeight > 0) {
+          const roll = rng() * totalWeight;
+          let acc = 0;
+          elIdx = activeLevel1Elements.length - 1;
+          for (let j = 0; j < activeLevel1Elements.length; j++) {
+            acc += Math.max(0, Number(activeLevel1Elements[j].spawnWeight ?? 100));
+            if (roll <= acc) { elIdx = j; break; }
+          }
+        } else {
+          elIdx = randInt(0, activeLevel1Elements.length - 1);
+        }
+        const el = activeLevel1Elements[elIdx];
+        if ((chunkMask & (1 << i)) !== 0) continue;
+        pickups.push({
+          index: i,
+          x: wx, y: wy,
+          elementId: el.id,
+          icon: el.icon || "",
+          color: el.color || "#66d9ff",
+          collected: false
+        });
+      }
+    }
+
+    return {
+      cx, cy, ox, oy,
+      generator: GENERATOR_ID,
+      theme: activeBiomeTheme,
+      accent: accentRgb,
+      tiles, craters, rocks, crystals, flora, pickups, colliders
+    };
+  }
+
+  function drawChunk(ctx, ch, env) {
+    const CHUNK_SIZE = env.CHUNK_SIZE;
+    const TILE_COUNT = env.TILE_COUNT;
+    const TILE_SIZE = env.TILE_SIZE;
+    const LANDING_CLEAR_RADIUS = env.LANDING_CLEAR_RADIUS;
+
+    // Tiles
+    for (let ty = 0; ty < TILE_COUNT; ty++) {
+      for (let tx = 0; tx < TILE_COUNT; tx++) {
+        ctx.fillStyle = ch.tiles[ty * TILE_COUNT + tx];
+        ctx.fillRect(ch.ox + tx * TILE_SIZE, ch.oy + ty * TILE_SIZE, TILE_SIZE + 1, TILE_SIZE + 1);
+      }
+    }
+
+    // Landing markings if chunk overlaps origin
+    if (ch.ox <= LANDING_CLEAR_RADIUS && ch.ox + CHUNK_SIZE >= -LANDING_CLEAR_RADIUS &&
+        ch.oy <= LANDING_CLEAR_RADIUS && ch.oy + CHUNK_SIZE >= -LANDING_CLEAR_RADIUS) {
+      const acc = ch.accent || env.accentRgb;
+      ctx.beginPath();
+      ctx.arc(0, 0, 165, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbStr(acc, 0.22);
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 130, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbStr(acc, 0.14);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // Craters / Magma pools / Frozen lakes
+    for (const c of ch.craters) {
+      if (ch.theme === "volcanic") {
+        ctx.fillStyle = "rgba(20, 10, 10, 0.55)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.08, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(242, 71, 20, 0.62)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 0.76, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(255, 189, 46, 0.72)";
+        ctx.beginPath(); ctx.arc(c.x - c.r * 0.1, c.y - c.r * 0.08, c.r * 0.44, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(255, 115, 36, 0.28)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.stroke();
+      } else if (ch.theme === "glacial") {
+        ctx.fillStyle = "rgba(173, 230, 255, 0.24)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.04, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(82, 173, 230, 0.46)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 0.86, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(219, 247, 255, 0.34)";
+        ctx.beginPath(); ctx.arc(c.x - c.r * 0.16, c.y - c.r * 0.14, c.r * 0.42, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(209, 245, 255, 0.35)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.stroke();
+      } else if (ch.theme === "fungal") {
+        ctx.fillStyle = "rgba(20, 36, 26, 0.50)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 1.06, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(107, 219, 87, 0.44)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r * 0.80, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(194, 122, 255, 0.42)";
+        ctx.beginPath(); ctx.arc(c.x - c.r * 0.14, c.y - c.r * 0.10, c.r * 0.40, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(168, 250, 107, 0.26)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.stroke();
+      } else {
+        ctx.fillStyle = "rgba(15, 13, 25, 0.28)";
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(10, 8, 20, 0.22)";
+        ctx.beginPath(); ctx.arc(c.x + c.r * 0.08, c.y + c.r * 0.08, c.r * 0.78, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(217, 209, 242, 0.12)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(c.x, c.y, c.r, -Math.PI * 0.85, -Math.PI * 0.15); ctx.stroke();
+      }
+    }
+
+    // Flora / Ember fumaroles / Frost tufts
+    for (const f of ch.flora) {
+      if (ch.theme === "volcanic") {
+        ctx.fillStyle = rgbStr(f.rgb || [255, 107, 31], 0.18);
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 1.45, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(26, 15, 15, 0.75)";
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 0.95, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = f.light;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 0.48, 0, Math.PI * 2); ctx.fill();
+      } else if (ch.theme === "glacial") {
+        ctx.fillStyle = rgbStr(f.rgb || [158, 240, 255], 0.16);
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 1.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = f.dark;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(235, 250, 255, 0.9)";
+        ctx.beginPath(); ctx.arc(f.x - f.r * 0.15, f.y - f.r * 0.15, f.r * 0.52, 0, Math.PI * 2); ctx.fill();
+      } else if (ch.theme === "fungal") {
+        ctx.fillStyle = rgbStr(f.rgb || [214, 107, 255], 0.16);
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 1.6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "rgba(5, 10, 8, 0.30)";
+        ctx.beginPath(); ctx.arc(f.x + 2, f.y + 3, f.r * 1.15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = f.dark;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r * 1.12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = f.light;
+        ctx.beginPath(); ctx.arc(f.x - f.r * 0.28, f.y - f.r * 0.22, f.r * 0.32, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(f.x + f.r * 0.32, f.y + f.r * 0.12, f.r * 0.22, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = "rgba(0,0,0,0.22)";
+        ctx.beginPath(); ctx.arc(f.x + 2, f.y + 3, f.r * 1.1, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = f.dark;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = f.light;
+        ctx.beginPath(); ctx.arc(f.x - f.r * 0.2, f.y - f.r * 0.2, f.r * 0.55, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    // Rocks
+    for (const r of ch.rocks) {
+      ctx.fillStyle = "rgba(5, 5, 13, 0.35)";
+      ctx.beginPath();
+      r.pts.forEach((p, idx) => idx ? ctx.lineTo(r.x + p[0] + 4, r.y + p[1] + 5) : ctx.moveTo(r.x + p[0] + 4, r.y + p[1] + 5));
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = r.col;
+      ctx.beginPath();
+      r.pts.forEach((p, idx) => idx ? ctx.lineTo(r.x + p[0], r.y + p[1]) : ctx.moveTo(r.x + p[0], r.y + p[1]));
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = r.hi;
+      ctx.beginPath();
+      r.pts.forEach((p, idx) => idx ? ctx.lineTo(r.x + p[0] * 0.55 - 2, r.y + p[1] * 0.55 - 2) : ctx.moveTo(r.x + p[0] * 0.55 - 2, r.y + p[1] * 0.55 - 2));
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Crystals
+    for (const cr of ch.crystals) {
+      ctx.fillStyle = rgbStr(cr.rgb, 0.14);
+      ctx.beginPath(); ctx.arc(cr.x, cr.y, 20 * cr.sc, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 3; i++) {
+        const a = cr.rot + i * 2.1;
+        const len = (14 - i * 2.5) * cr.sc;
+        const wid = 4.5 * cr.sc;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        const px = -dy, py = dx;
+        ctx.fillStyle = rgbStr(shadeRGB(cr.rgb, -0.15 * i));
+        ctx.beginPath();
+        ctx.moveTo(cr.x - dx * 3 * cr.sc, cr.y - dy * 3 * cr.sc);
+        ctx.lineTo(cr.x + px * wid, cr.y + py * wid);
+        ctx.lineTo(cr.x + dx * len, cr.y + dy * len);
+        ctx.lineTo(cr.x - px * wid, cr.y - py * wid);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = rgbStr(shadeRGB(cr.rgb, 0.5));
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cr.x, cr.y);
+        ctx.lineTo(cr.x + dx * len * 0.85, cr.y + dy * len * 0.85);
+        ctx.stroke();
+      }
+    }
+
+    // Collectible resources
+    if (typeof env.drawPickups === "function") {
+      env.drawPickups(ctx, ch);
+    } else if (ch.pickups) {
+      for (const p of ch.pickups) {
+        if (p.collected) continue;
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 21, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.88;
+        ctx.fillStyle = "#141c30";
+        ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.82;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 15.5, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (p.icon) {
+          ctx.font = '17px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(p.icon, p.x, p.y + 1);
+        } else {
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y - 6.5);
+          ctx.lineTo(p.x + 5.5, p.y);
+          ctx.lineTo(p.x, p.y + 6.5);
+          ctx.lineTo(p.x - 5.5, p.y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.85)";
+          ctx.beginPath(); ctx.arc(p.x - 1.5, p.y - 2, 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+  }
+
+  window.AssemblageBiomeGenerators = window.AssemblageBiomeGenerators || {};
+  window.AssemblageBiomeGenerators[GENERATOR_ID] = {
+    id: GENERATOR_ID,
+    name: "Biome Base",
+    description: "Génération procédurale de base (bruit FBM, cratères, rochers, cristaux, flore et ressources).",
+    sampleBiome,
+    sampleElev,
+    sampleDetail,
+    sampleGroundColor,
+    generateChunk,
+    drawChunk,
+  };
+})();
+</script>
+</body>
+</html>

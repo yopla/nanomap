@@ -1,0 +1,226 @@
+{
+	"id": "plaine_astrale",
+	"name": "🌿 Plaines Astrales",
+	"symbols": {
+		"plante_ondule": {
+			"category": "biomes",
+			"duration": 60.0,
+			"fps": 60.0,
+			"layers": [
+				{
+					"fill": "#1e3a4c",
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "hold",
+							"f": 0.0,
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": 46.0
+						}
+					],
+					"name": "Base Bulbe",
+					"rx": 24.0,
+					"ry": 12.0,
+					"stroke": "#4cd1a8",
+					"strokeW": 2.5,
+					"type": "ellipse",
+					"visible": true
+				},
+				{
+					"fill": "$tint",
+					"h": 110.0,
+					"keys": [
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 0.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									14.0,
+									-2.0
+								],
+								"p3": [
+									-20.0,
+									4.0
+								]
+							},
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "easeInOut",
+							"f": 30.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									-14.0,
+									-2.0
+								],
+								"p3": [
+									20.0,
+									4.0
+								]
+							},
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -4.0
+						},
+						{
+							"alpha": 1.0,
+							"ease": "linear",
+							"f": 60.0,
+							"pins": {
+								"p1": [
+									0.0,
+									0.0
+								],
+								"p2": [
+									14.0,
+									-2.0
+								],
+								"p3": [
+									-20.0,
+									4.0
+								]
+							},
+							"rot": 0.0,
+							"sx": 1.0,
+							"sy": 1.0,
+							"x": 0.0,
+							"y": -4.0
+						}
+					],
+					"name": "Tige Marionnette",
+					"pinSoftness": 38.0,
+					"pins": [
+						{
+							"id": "p1",
+							"rx": 0.0,
+							"ry": 44.0
+						},
+						{
+							"id": "p2",
+							"rx": 0.0,
+							"ry": 0.0
+						},
+						{
+							"id": "p3",
+							"rx": 0.0,
+							"ry": -46.0
+						}
+					],
+					"rx": 11.0,
+					"stroke": "#16353a",
+					"strokeW": 3.0,
+					"type": "rect",
+					"visible": true,
+					"w": 22.0
+				}
+			],
+			"name": "Plante Ondulante (Marionnette)"
+		}
+	},
+	"version": 1,
+	"visuals": {
+		"plante_tentacule": {
+			"category": "biomes",
+			"layers": [
+				{
+					"alpha": 1.0,
+					"fill": "#1e3a4c",
+					"name": "Base Bulbe",
+					"rot": 0.0,
+					"rx": 24.0,
+					"ry": 12.0,
+					"stroke": "#4cd1a8",
+					"strokeW": 2.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 46.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "$tint",
+					"h": 110.0,
+					"name": "Tige Souple",
+					"pinSoftness": 38.0,
+					"pins": [
+						{
+							"dx": 0.0,
+							"dy": 0.0,
+							"id": "p1",
+							"rx": 0.0,
+							"ry": 44.0
+						},
+						{
+							"dx": 16.0,
+							"dy": -2.0,
+							"id": "p2",
+							"rx": 0.0,
+							"ry": 0.0
+						},
+						{
+							"dx": -18.0,
+							"dy": 4.0,
+							"id": "p3",
+							"rx": 0.0,
+							"ry": -46.0
+						}
+					],
+					"rot": 0.0,
+					"rx": 12.0,
+					"stroke": "#16353a",
+					"strokeW": 3.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 24.0,
+					"x": 0.0,
+					"y": -4.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ff9ff3",
+					"name": "Bourgeon Lumineux",
+					"rot": 0.0,
+					"rx": 11.0,
+					"ry": 11.0,
+					"stroke": "#ffffff",
+					"strokeW": 2.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -18.0,
+					"y": -50.0
+				}
+			],
+			"name": "Plante Tentacule (Marionnette)",
+			"tags": [
+				"flore",
+				"biome",
+				"marionnette"
+			]
+		}
+	}
+}

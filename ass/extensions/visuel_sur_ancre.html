@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Visuel sur Ancre (Proximité)</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "anchorId",
+      "label": "ID de l'ancre cible",
+      "type": "anchor",
+      "default": "ancre_2",
+      "hint": "L'ancre sur laquelle afficher le visuel (ex: ancre_2)."
+    },
+    {
+      "key": "visualId",
+      "label": "ID du visuel (Dessin)",
+      "type": "visual",
+      "default": "portail_extension",
+      "hint": "ID d'un dessin dans l'éditeur 🎨 Visuels (ex: portail_extension, cristal_astral)."
+    },
+    {
+      "key": "animationId",
+      "label": "ID d'animation (optionnel)",
+      "type": "animation",
+      "default": "",
+      "hint": "Si renseigné, joue cette animation (onglet 🎬 Animations) au lieu du dessin statique."
+    },
+    {
+      "key": "scale",
+      "label": "Échelle",
+      "type": "number",
+      "default": 1.15,
+      "min": 0.2,
+      "max": 4.0,
+      "step": 0.05
+    },
+    {
+      "key": "tint",
+      "label": "Couleur $tint",
+      "type": "color",
+      "default": "#6be5b8"
+    },
+    {
+      "key": "projectionMode",
+      "label": "Orientation en mode 2.5D",
+      "type": "select",
+      "default": "billboard",
+      "options": [
+        { "id": "billboard", "label": "Vertical face caméra (billboard 2.5D)" },
+        { "id": "ground", "label": "À plat sur le sol (suit l'inclinaison)" }
+      ],
+      "hint": "Détermine si le visuel reste couché sur le sol ou se redresse face à la caméra quand la parallaxe 2.5D est activée."
+    },
+    {
+      "key": "heightZ",
+      "label": "Hauteur 2.5D (si vertical)",
+      "type": "number",
+      "default": 24,
+      "min": -40,
+      "max": 180,
+      "step": 2,
+      "hint": "Élévation au-dessus du sol en mode vertical face caméra."
+    }
+  ]
+}
+</script>
+<script>
+(() => {
+  const FILENAME = "visuel_sur_ancre.html";
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, extDef) {
+      const fallbackAnchor = (extDef && extDef.condition && extDef.condition.anchorId) ? extDef.condition.anchorId : "ancre_2";
+      const anchorId = String(host.ui.getConfig("anchorId", fallbackAnchor) || fallbackAnchor).trim();
+      const visualId = String(host.ui.getConfig("visualId", "portail_extension") || "portail_extension").trim();
+      const animationId = String(host.ui.getConfig("animationId", "") || "").trim();
+      const baseScale = Math.max(0.2, Math.min(4.0, Number(host.ui.getConfig("scale", 1.15)) || 1.15));
+      const tint = String(host.ui.getConfig("tint", "#6be5b8") || "#6be5b8");
+      const rawMode = String(host.ui.getConfig("projectionMode", "billboard") || "billboard").trim().toLowerCase();
+      const projectionMode = rawMode === "ground" ? "ground" : "billboard";
+      const heightZ = Number(host.ui.getConfig("heightZ", 24));
+      const billboardZ = Number.isFinite(heightZ) ? heightZ : 24;
+
+      const av = window.AssemblageVisuals;
+      if (av) {
+        if (animationId) av.ensureAnimation(animationId);
+        else if (visualId) av.ensureVisual(visualId);
+      }
+
+      let appearT = 0;
+
+      function drawAnchoredVisual(ctx, x, y, scale, alpha, timeSec) {
+        if (animationId) {
+          window.AssemblageVisuals.drawAnimation(ctx, animationId, x, y, timeSec || 0, {
+            scale,
+            tint,
+            alpha,
+          });
+        } else if (visualId) {
+          window.AssemblageVisuals.drawVisual(ctx, visualId, x, y, {
+            scale,
+            tint,
+            alpha,
+          });
+        }
+      }
+
+      // Enregistrement pour le tri en profondeur Y (mode vertical face caméra en 2.5D)
+      if (projectionMode === "billboard") {
+        const sourceKey = `${host.instanceId || FILENAME}:${anchorId}:${visualId || animationId}`;
+        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+        window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+          if (!window.AssemblageVisuals) return;
+          const anchor = host.game.getAnchor(anchorId);
+          if (!anchor) return;
+          pushBillboard(anchor.y, (ctx, projectPoint, _blend, timeSec) => {
+            const eased = 1 - Math.pow(1 - appearT, 3);
+            const popScale = baseScale * (0.65 + 0.35 * eased);
+            const bob = Math.sin((timeSec || 0) * 2.4) * 3.5;
+            const pt = projectPoint(anchor.x, anchor.y, billboardZ - bob);
+            drawAnchoredVisual(ctx, pt.x, pt.y, popScale * pt.scale, eased, timeSec);
+          }, anchor.x);
+        });
+        host.registerCleanup(() => {
+          if (window.Assemblage25DBillboardSources) {
+            window.Assemblage25DBillboardSources.delete(sourceKey);
+          }
+        });
+      }
+
+      host.hooks.after("update", (_, dt) => {
+        if (appearT < 1) {
+          appearT = Math.min(1, appearT + Math.max(0, dt || 0) * 3.2);
+        }
+      });
+
+      host.hooks.after("drawWorldAfter", (_, timeSec) => {
+        if (projectionMode === "billboard" && window.Assemblage25DActive) return;
+        const ctx = host.game.ctx;
+        if (!ctx || !window.AssemblageVisuals) return;
+        const anchor = host.game.getAnchor(anchorId);
+        if (!anchor) return;
+
+        // Apparition douce (ease-out back léger)
+        const eased = 1 - Math.pow(1 - appearT, 3);
+        const popScale = baseScale * (0.65 + 0.35 * eased);
+        const bobY = Math.sin((timeSec || 0) * 2.4) * 3.5;
+        drawAnchoredVisual(ctx, anchor.x, anchor.y + bobY, popScale, eased, timeSec);
+      });
+    },
+
+    onDeactivate() {
+      // Les hooks drawWorldAfter et update sont automatiquement retirés par AssemblageHost :
+      // le graphisme disparaît immédiatement quand le joueur s'éloigne de l'ancre.
+    },
+  };
+})();
+</script>
+</body>
+</html>

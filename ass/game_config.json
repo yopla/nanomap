@@ -7,6 +7,7 @@
 			"biomeScale": 1.0,
 			"crystalDensity": 1.0,
 			"description": "Plaines violettes et moussues parsemées de cratères et de spores bioluminescentes.",
+			"generator": "biome_base",
 			"groundColorA": "#2b243d",
 			"groundColorB": "#47352e",
 			"groundColorC": "#213838",
@@ -15,8 +16,14 @@
 			"locked": false,
 			"name": "Plaines Astrales",
 			"rockDensity": 1.0,
+			"tags": [],
 			"theme": "astral",
-			"worldSeed": 708424
+			"weatherCycleSec": 45.0,
+			"weatherEnabled": false,
+			"weatherIntensity": 0.75,
+			"weatherMode": "generative",
+			"weatherWind": 1.0,
+			"worldSeed": 197358.0
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -31,7 +38,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 363566
+			"worldSeed": 498187.0
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -46,7 +53,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 838166
+			"worldSeed": 36445.0
 		},
 		{
 			"accentColor": "#b66dff",
@@ -61,7 +68,7 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 589464
+			"worldSeed": 871501.0
 		},
 		{
 			"accentColor": "#ffd24c",
@@ -77,7 +84,66 @@
 			"name": "Désert Ionique",
 			"rockDensity": 1.15,
 			"theme": "astral",
-			"worldSeed": 663992
+			"worldSeed": 173548.0
+		},
+		{
+			"accentColor": "#48e5c2",
+			"biomeScale": 1.0,
+			"crystalDensity": 1.15,
+			"description": "Archipel d'îles tropicales reliées par des ponts de bois et animé par une météo générative.",
+			"generator": "biome_archipel",
+			"groundColorA": "#2d6a4f",
+			"groundColorB": "#d8c390",
+			"groundColorC": "#1a759f",
+			"icon": "🏝️",
+			"id": "archipel_corallien",
+			"locked": false,
+			"name": "Archipel Corallien",
+			"rockDensity": 0.85,
+			"theme": "archipel",
+			"weatherCycleSec": 45.0,
+			"weatherEnabled": true,
+			"weatherIntensity": 0.75,
+			"weatherMode": "generative",
+			"weatherWind": 1.0,
+			"worldSeed": 958206.0
+		},
+		{
+			"accentColor": "#9be564",
+			"biomeScale": 1.0,
+			"crystalDensity": 1.0,
+			"description": "Marais vivants peuplés de tentacules cracheurs d'yeux, poulpes marcheurs, puyos, lianes et zones molles interactives.",
+			"generator": "marais/biome_marais",
+			"groundColorA": "#223326",
+			"groundColorB": "#3b3a26",
+			"groundColorC": "#162b29",
+			"icon": "🪷",
+			"id": "marais",
+			"locked": false,
+			"maraisEyeSpitRate": 1.0,
+			"maraisHeterogeneity": 1.0,
+			"maraisMelonDensity": 1.0,
+			"maraisMinSeparation": 56.0,
+			"maraisMistIntensity": 0.45,
+			"maraisOctopusDensity": 1.0,
+			"maraisOctopusHp": 60.0,
+			"maraisPuddleDensity": 1.0,
+			"maraisPuyoDensity": 1.0,
+			"maraisTentacleDensity": 1.0,
+			"maraisTentacleWriggle": 1.2,
+			"maraisVineDensity": 1.0,
+			"maraisWindStrength": 1.0,
+			"maraisZoneScale": 2.0,
+			"name": "Les Marais",
+			"rockDensity": 0.9,
+			"tags": [],
+			"theme": "marais",
+			"weatherCycleSec": 45.0,
+			"weatherEnabled": false,
+			"weatherIntensity": 0.75,
+			"weatherMode": "generative",
+			"weatherWind": 1.0,
+			"worldSeed": 314159.0
 		}
 	],
 	"cameraSmoothing": 6.5,
@@ -85,11 +151,11 @@
 	"crystalDensity": 1.0,
 	"deadzonePx": 14.0,
 	"exitButtonText": "Sortir",
-	"maxCollectedChunks": 1000,
+	"maxCollectedChunks": 1000.0,
 	"moveSpeed": 240.0,
 	"rockDensity": 1.0,
 	"shipSubtitle": "Systèmes nominaux • Base (0, 0)",
 	"shipTitle": "VAISSEAU",
 	"showCompass": true,
-	"worldSeed": 708424
+	"worldSeed": 197358.0
 }

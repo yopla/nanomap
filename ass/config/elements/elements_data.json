@@ -24,7 +24,8 @@
 			"id": "silice",
 			"level": 1,
 			"name": "Silice Stellaire",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "caldeira_magma",
@@ -44,7 +45,8 @@
 			"id": "cristal",
 			"level": 1,
 			"name": "Cristal Luminescent",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "plaine_astrale",
@@ -64,7 +66,8 @@
 			"id": "spore",
 			"level": 1,
 			"name": "Spore Bioluminescente",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "caldeira_magma",
@@ -84,7 +87,8 @@
 			"id": "ferrite",
 			"level": 1,
 			"name": "Minerai de Ferrite",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "caldeira_magma",
@@ -104,7 +108,8 @@
 			"id": "plasma_brut",
 			"level": 1,
 			"name": "Goutte de Plasma",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "plaine_astrale",
@@ -124,7 +129,8 @@
 			"id": "gel_astral",
 			"level": 1,
 			"name": "Gel Astral",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "toundra_glaciaire",
@@ -144,7 +150,8 @@
 			"id": "glace_eternelle",
 			"level": 1,
 			"name": "Glace Éternelle",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "toundra_glaciaire",
@@ -164,7 +171,8 @@
 			"id": "neige_stellaire",
 			"level": 1,
 			"name": "Neige Stellaire",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "toundra_glaciaire",
@@ -184,7 +192,8 @@
 			"id": "azote_solide",
 			"level": 1,
 			"name": "Azote Solide",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "toundra_glaciaire",
@@ -204,7 +213,8 @@
 			"id": "lichen_givre",
 			"level": 1,
 			"name": "Lichen de Givre",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "jungle_fongique",
@@ -224,7 +234,8 @@
 			"id": "mycelium_brut",
 			"level": 1,
 			"name": "Mycélium Brut",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "jungle_fongique",
@@ -244,7 +255,8 @@
 			"id": "resine_lumineuse",
 			"level": 1,
 			"name": "Résine Lumineuse",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "jungle_fongique",
@@ -264,7 +276,8 @@
 			"id": "pollen_toxique",
 			"level": 1,
 			"name": "Pollen Toxique",
-			"recipe": []
+			"recipe": [],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -279,7 +292,8 @@
 			"recipe": [
 				"silice",
 				"plasma_brut"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -294,7 +308,8 @@
 			"recipe": [
 				"ferrite",
 				"plasma_brut"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -309,7 +324,8 @@
 			"recipe": [
 				"cristal",
 				"ferrite"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -324,7 +340,8 @@
 			"recipe": [
 				"cristal",
 				"silice"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -339,7 +356,8 @@
 			"recipe": [
 				"spore",
 				"gel_astral"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -354,7 +372,8 @@
 			"recipe": [
 				"spore",
 				"cristal"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -369,7 +388,8 @@
 			"recipe": [
 				"gel_astral",
 				"ferrite"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -384,7 +404,8 @@
 			"recipe": [
 				"plasma_brut",
 				"gel_astral"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -399,7 +420,8 @@
 			"recipe": [
 				"cristal",
 				"cristal"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -414,7 +436,8 @@
 			"recipe": [
 				"spore",
 				"silice"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -429,7 +452,8 @@
 			"recipe": [
 				"ferrite",
 				"silice"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -444,7 +468,8 @@
 			"recipe": [
 				"glace_eternelle",
 				"neige_stellaire"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -459,7 +484,8 @@
 			"recipe": [
 				"azote_solide",
 				"gel_astral"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -474,7 +500,8 @@
 			"recipe": [
 				"glace_eternelle",
 				"ferrite"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -489,7 +516,8 @@
 			"recipe": [
 				"lichen_givre",
 				"spore"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -504,7 +532,8 @@
 			"recipe": [
 				"mycelium_brut",
 				"resine_lumineuse"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -519,7 +548,8 @@
 			"recipe": [
 				"pollen_toxique",
 				"gel_astral"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -534,7 +564,8 @@
 			"recipe": [
 				"resine_lumineuse",
 				"silice"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -549,7 +580,8 @@
 			"recipe": [
 				"mycelium_brut",
 				"glace_eternelle"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -564,7 +596,8 @@
 			"recipe": [
 				"verre_solaire",
 				"prisme_optique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -579,7 +612,8 @@
 			"recipe": [
 				"alliage_forge",
 				"cryo_plaque"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -594,7 +628,8 @@
 			"recipe": [
 				"condensateur_brut",
 				"plasma_brut"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -609,7 +644,8 @@
 			"recipe": [
 				"bio_serum",
 				"terreau_xeno"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -624,7 +660,8 @@
 			"recipe": [
 				"coeur_quartz",
 				"condensateur_brut"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -639,7 +676,8 @@
 			"recipe": [
 				"vapeur_ionisee",
 				"alliage_forge"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -654,7 +692,8 @@
 			"recipe": [
 				"prisme_optique",
 				"coeur_quartz"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -669,7 +708,8 @@
 			"recipe": [
 				"mycelium_solaire",
 				"verre_solaire"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -684,7 +724,8 @@
 			"recipe": [
 				"ceramique_spatiale",
 				"cryo_plaque"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -699,7 +740,8 @@
 			"recipe": [
 				"bio_serum",
 				"mycelium_solaire"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -714,7 +756,8 @@
 			"recipe": [
 				"fluide_cryo",
 				"acier_polaire"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -729,7 +772,8 @@
 			"recipe": [
 				"extrait_antigel",
 				"lentille_glace"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -744,7 +788,8 @@
 			"recipe": [
 				"fibre_fongique",
 				"bio_serum"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -759,7 +804,8 @@
 			"recipe": [
 				"venin_alchimique",
 				"condensateur_brut"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -774,7 +820,8 @@
 			"recipe": [
 				"ambre_stellaire",
 				"champignon_givre"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -789,7 +836,8 @@
 			"recipe": [
 				"cellule_plasma",
 				"tuyere_ionique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -804,7 +852,8 @@
 			"recipe": [
 				"processeur_quantique",
 				"scanner_orbital"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -819,7 +868,8 @@
 			"recipe": [
 				"coque_thermique",
 				"bouclier_rentree"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -834,7 +884,8 @@
 			"recipe": [
 				"jardin_hydroponique",
 				"symbiote_medical"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -849,7 +900,8 @@
 			"recipe": [
 				"capteur_photovoltaique",
 				"cellule_plasma"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -864,7 +916,8 @@
 			"recipe": [
 				"lampe_biolumin",
 				"processeur_quantique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -879,7 +932,8 @@
 			"recipe": [
 				"supraconducteur",
 				"coque_thermique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -894,7 +948,8 @@
 			"recipe": [
 				"membrane_vivante",
 				"coque_thermique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -909,7 +964,8 @@
 			"recipe": [
 				"moteur_subluminique",
 				"reacteur_solaire"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -924,7 +980,8 @@
 			"recipe": [
 				"chassis_interstellaire",
 				"module_survie"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -939,7 +996,8 @@
 			"recipe": [
 				"ia_navigation",
 				"projecteur_holographique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -954,7 +1012,8 @@
 			"recipe": [
 				"capsule_stase",
 				"module_survie"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -969,7 +1028,8 @@
 			"recipe": [
 				"exosquelette_symbiotique",
 				"module_survie"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -984,7 +1044,8 @@
 			"recipe": [
 				"tuyere_ionique",
 				"atlas_galactique"
-			]
+			],
+			"tags": []
 		},
 		{
 			"biome": "",
@@ -999,8 +1060,10 @@
 			"recipe": [
 				"jardin_hydroponique",
 				"meteorite"
-			]
+			],
+			"tags": []
 		}
 	],
+	"spriteSheet": "elements_cel",
 	"version": 1
 }

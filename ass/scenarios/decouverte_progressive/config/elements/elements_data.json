@@ -1,0 +1,1069 @@
+{
+	"elements": [
+		{
+			"biome": "plaine_astrale",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				},
+				{
+					"biome": "desert_ionique",
+					"showInBiomeMenu": true,
+					"weight": 20.1
+				}
+			],
+			"biomes": [
+				"plaine_astrale",
+				"desert_ionique"
+			],
+			"color": "#9ea8c2",
+			"description": "Minéral granuleux récolté autour des cratères rocheux. Riche en silicates purs.",
+			"icon": "🪨",
+			"id": "silice",
+			"level": 1,
+			"name": "Silice Stellaire",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "caldeira_magma",
+			"biomeSpawns": [
+				{
+					"biome": "caldeira_magma",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"caldeira_magma"
+			],
+			"color": "#38e8d8",
+			"description": "Éclat énergétique vibrant extrait des formations cristallines des zones volcaniques.",
+			"icon": "💎",
+			"id": "cristal",
+			"level": 1,
+			"name": "Cristal Luminescent",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "plaine_astrale",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"plaine_astrale"
+			],
+			"color": "#52e585",
+			"description": "Organisme vivant cueilli dans la flore phosphorescente alien.",
+			"icon": "🌿",
+			"id": "spore",
+			"level": 1,
+			"name": "Spore Bioluminescente",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "caldeira_magma",
+			"biomeSpawns": [
+				{
+					"biome": "caldeira_magma",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"caldeira_magma"
+			],
+			"color": "#c98b63",
+			"description": "Métal brut dense et magnétique affleurant dans le basalte volcanique.",
+			"icon": "⚙️",
+			"id": "ferrite",
+			"level": 1,
+			"name": "Minerai de Ferrite",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "caldeira_magma",
+			"biomeSpawns": [
+				{
+					"biome": "caldeira_magma",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"caldeira_magma"
+			],
+			"color": "#ff7a45",
+			"description": "Résidu thermique instable qui suinte des micro-failles volcaniques.",
+			"icon": "🔥",
+			"id": "plasma_brut",
+			"level": 1,
+			"name": "Goutte de Plasma",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "plaine_astrale",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"plaine_astrale"
+			],
+			"color": "#5cb8ff",
+			"description": "Fluide cryogénique et visqueux condensé dans les zones moussues.",
+			"icon": "💧",
+			"id": "gel_astral",
+			"level": 1,
+			"name": "Gel Astral",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
+			"color": "#9ee7ff",
+			"description": "Glace cosmique ultra-dense formée sous des températures proches du zéro absolu.",
+			"icon": "🧊",
+			"id": "glace_eternelle",
+			"level": 1,
+			"name": "Glace Éternelle",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
+			"color": "#dff6ff",
+			"description": "Poudre cristalline légère qui scintille à la surface des étendues gelées.",
+			"icon": "🌨️",
+			"id": "neige_stellaire",
+			"level": 1,
+			"name": "Neige Stellaire",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
+			"color": "#6bc5ff",
+			"description": "Gaz cryogénique condensé en blocs translucides au fond des crevasses glaciaires.",
+			"icon": "🫧",
+			"id": "azote_solide",
+			"level": 1,
+			"name": "Azote Solide",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "toundra_glaciaire",
+			"biomeSpawns": [
+				{
+					"biome": "toundra_glaciaire",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"toundra_glaciaire"
+			],
+			"color": "#7ef5d8",
+			"description": "Organisme extrêmophile prospérant sur la banquise alien malgré le froid extrême.",
+			"icon": "🪸",
+			"id": "lichen_givre",
+			"level": 1,
+			"name": "Lichen de Givre",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "jungle_fongique",
+			"biomeSpawns": [
+				{
+					"biome": "jungle_fongique",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"jungle_fongique"
+			],
+			"color": "#d977ff",
+			"description": "Réseau filamenteux vivant récolté sous les chapeaux géants de la jungle fongique.",
+			"icon": "🍄",
+			"id": "mycelium_brut",
+			"level": 1,
+			"name": "Mycélium Brut",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "jungle_fongique",
+			"biomeSpawns": [
+				{
+					"biome": "jungle_fongique",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"jungle_fongique"
+			],
+			"color": "#c2ff52",
+			"description": "Sève épaisse et phosphorescente qui perle le long des troncs fongiques.",
+			"icon": "🍯",
+			"id": "resine_lumineuse",
+			"level": 1,
+			"name": "Résine Lumineuse",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "jungle_fongique",
+			"biomeSpawns": [
+				{
+					"biome": "jungle_fongique",
+					"showInBiomeMenu": true,
+					"weight": 100.0
+				}
+			],
+			"biomes": [
+				"jungle_fongique"
+			],
+			"color": "#ff6ec7",
+			"description": "Nuage de micro-spores mutagènes très réactives au contact d'autres composés.",
+			"icon": "🦠",
+			"id": "pollen_toxique",
+			"level": 1,
+			"name": "Pollen Toxique",
+			"recipe": [],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ffd966",
+			"description": "Silice vitrifiée par le plasma en une plaque optique ultra-résistante.",
+			"icon": "🪟",
+			"id": "verre_solaire",
+			"level": 2,
+			"name": "Verre Solaire",
+			"recipe": [
+				"silice",
+				"plasma_brut"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#d9a577",
+			"description": "Ferrite purifiée à haute température, idéale pour la charpente spatiale.",
+			"icon": "🔩",
+			"id": "alliage_forge",
+			"level": 2,
+			"name": "Alliage Forgé",
+			"recipe": [
+				"ferrite",
+				"plasma_brut"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#45f0b8",
+			"description": "Noyau métallique dopé au cristal capable de stocker une charge énergétique.",
+			"icon": "🔋",
+			"id": "condensateur_brut",
+			"level": 2,
+			"name": "Condensateur Brut",
+			"recipe": [
+				"cristal",
+				"ferrite"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#8be9fd",
+			"description": "Lentille cristalline taillée dans la silice pour focaliser la lumière.",
+			"icon": "🔮",
+			"id": "prisme_optique",
+			"level": 2,
+			"name": "Prisme Optique",
+			"recipe": [
+				"cristal",
+				"silice"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#5ef2a8",
+			"description": "Culture organique stabilisée dans un gel nutritif cryogénique.",
+			"icon": "🧪",
+			"id": "bio_serum",
+			"level": 2,
+			"name": "Bio-Sérum",
+			"recipe": [
+				"spore",
+				"gel_astral"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#a3f77b",
+			"description": "Organisme symbiotique convertissant la résonance cristalline en lumière douce.",
+			"icon": "✨",
+			"id": "mycelium_solaire",
+			"level": 2,
+			"name": "Mycélium Solaire",
+			"recipe": [
+				"spore",
+				"cristal"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#7fd4ff",
+			"description": "Plaque de ferrite parcourue de micro-canaux de gel refroidissant.",
+			"icon": "❄️",
+			"id": "cryo_plaque",
+			"level": 2,
+			"name": "Cryo-Plaque",
+			"recipe": [
+				"gel_astral",
+				"ferrite"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#c9a8ff",
+			"description": "Choc thermique entre plasma et gel produisant un gaz ionisé sous pression.",
+			"icon": "☁️",
+			"id": "vapeur_ionisee",
+			"level": 2,
+			"name": "Vapeur Ionisée",
+			"recipe": [
+				"plasma_brut",
+				"gel_astral"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#52fff2",
+			"description": "Double résonance cristalline amplifiant les ondes et signaux quantiques.",
+			"icon": "💠",
+			"id": "coeur_quartz",
+			"level": 2,
+			"name": "Cœur de Quartz",
+			"recipe": [
+				"cristal",
+				"cristal"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#82c46c",
+			"description": "Substrat minéral enrichi de spores alien, prêt pour la culture embarquée.",
+			"icon": "🪴",
+			"id": "terreau_xeno",
+			"level": 2,
+			"name": "Terreau Xéno",
+			"recipe": [
+				"spore",
+				"silice"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#b8b0c8",
+			"description": "Composite minéral-métallique léger résistant aux micrométéorites.",
+			"icon": "🧱",
+			"id": "ceramique_spatiale",
+			"level": 2,
+			"name": "Céramique Spatiale",
+			"recipe": [
+				"ferrite",
+				"silice"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#b5f0ff",
+			"description": "Bloc de glace poli par la neige stellaire offrant une pureté optique exceptionnelle.",
+			"icon": "🔍",
+			"id": "lentille_glace",
+			"level": 2,
+			"name": "Lentille de Glace",
+			"recipe": [
+				"glace_eternelle",
+				"neige_stellaire"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#52d1ff",
+			"description": "Liquide supraconducteur ultra-froid circulant dans les circuits de refroidissement.",
+			"icon": "⚗️",
+			"id": "fluide_cryo",
+			"level": 2,
+			"name": "Fluide Cryogénique",
+			"recipe": [
+				"azote_solide",
+				"gel_astral"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#a6d4f2",
+			"description": "Ferrite trempée dans la glace éternelle, insensible aux chocs thermiques.",
+			"icon": "🪩",
+			"id": "acier_polaire",
+			"level": 2,
+			"name": "Acier Polaire",
+			"recipe": [
+				"glace_eternelle",
+				"ferrite"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#6df7c9",
+			"description": "Molécule organique protégeant les cellules vivantes lors de la stase cryogénique.",
+			"icon": "🧴",
+			"id": "extrait_antigel",
+			"level": 2,
+			"name": "Extrait Antigel",
+			"recipe": [
+				"lichen_givre",
+				"spore"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#b580ff",
+			"description": "Tissu organique souple et auto-réparateur tissé à partir de mycélium résineux.",
+			"icon": "🧵",
+			"id": "fibre_fongique",
+			"level": 2,
+			"name": "Fibre Fongique",
+			"recipe": [
+				"mycelium_brut",
+				"resine_lumineuse"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ff5ea8",
+			"description": "Catalyseur bio-chimique capable de dissoudre les alliages ou stimuler des mutations.",
+			"icon": "☠️",
+			"id": "venin_alchimique",
+			"level": 2,
+			"name": "Venin Alchimique",
+			"recipe": [
+				"pollen_toxique",
+				"gel_astral"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ffd15c",
+			"description": "Résine fossilisée instantanément dans la silice, piégeant une lueur dorée durable.",
+			"icon": "🟠",
+			"id": "ambre_stellaire",
+			"level": 2,
+			"name": "Ambre Stellaire",
+			"recipe": [
+				"resine_lumineuse",
+				"silice"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#8ce6ff",
+			"description": "Hybride cryogénique né de la rencontre entre mycélium fongique et glace éternelle.",
+			"icon": "🪻",
+			"id": "champignon_givre",
+			"level": 2,
+			"name": "Champignon de Givre",
+			"recipe": [
+				"mycelium_brut",
+				"glace_eternelle"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ffe066",
+			"description": "Panneau optique de précision transformant le rayonnement stellaire en énergie.",
+			"icon": "☀️",
+			"id": "capteur_photovoltaique",
+			"level": 3,
+			"name": "Capteur Photovoltaïque",
+			"recipe": [
+				"verre_solaire",
+				"prisme_optique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#80b8d9",
+			"description": "Segment de blindage régulé supportant les températures extrêmes du vide.",
+			"icon": "🛡️",
+			"id": "coque_thermique",
+			"level": 3,
+			"name": "Coque Thermique",
+			"recipe": [
+				"alliage_forge",
+				"cryo_plaque"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ff9e44",
+			"description": "Batterie haute densité alimentant les systèmes critiques du vaisseau.",
+			"icon": "⚡",
+			"id": "cellule_plasma",
+			"level": 3,
+			"name": "Cellule à Plasma",
+			"recipe": [
+				"condensateur_brut",
+				"plasma_brut"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#4ce07a",
+			"description": "Écosystème autonome produisant oxygène et nutriments à bord.",
+			"icon": "🌱",
+			"id": "jardin_hydroponique",
+			"level": 3,
+			"name": "Jardin Hydroponique",
+			"recipe": [
+				"bio_serum",
+				"terreau_xeno"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#6be8ff",
+			"description": "Puce de calcul exploitant la résonance d'un cœur de quartz alimenté.",
+			"icon": "🖥️",
+			"id": "processeur_quantique",
+			"level": 3,
+			"name": "Processeur Quantique",
+			"recipe": [
+				"coeur_quartz",
+				"condensateur_brut"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#b48cff",
+			"description": "Propulseur compact éjectant un flux continu de vapeur ionisée.",
+			"icon": "🚀",
+			"id": "tuyere_ionique",
+			"level": 3,
+			"name": "Tuyère Ionique",
+			"recipe": [
+				"vapeur_ionisee",
+				"alliage_forge"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#5ce1e6",
+			"description": "Instrument optique à longue portée cartographiant les gisements planétaires.",
+			"icon": "📡",
+			"id": "scanner_orbital",
+			"level": 3,
+			"name": "Scanner Orbital",
+			"recipe": [
+				"prisme_optique",
+				"coeur_quartz"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#d4ff70",
+			"description": "Éclairage vivant encapsulé sous verre solaire, sans consommation électrique.",
+			"icon": "💡",
+			"id": "lampe_biolumin",
+			"level": 3,
+			"name": "Lampe Bio-Lumin",
+			"recipe": [
+				"mycelium_solaire",
+				"verre_solaire"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#9ec5e6",
+			"description": "Bouclier ablatif refroidi permettant de traverser les atmosphères denses.",
+			"icon": "☄️",
+			"id": "bouclier_rentree",
+			"level": 3,
+			"name": "Bouclier de Rentrée",
+			"recipe": [
+				"ceramique_spatiale",
+				"cryo_plaque"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#64f5c8",
+			"description": "Organisme régénérateur capable de réparer les tissus de l'explorateur.",
+			"icon": "🧬",
+			"id": "symbiote_medical",
+			"level": 3,
+			"name": "Symbiote Médical",
+			"recipe": [
+				"bio_serum",
+				"mycelium_solaire"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#5ce1ff",
+			"description": "Bobine refroidie à l'azote permettant un transfert d'énergie sans aucune perte.",
+			"icon": "🧲",
+			"id": "supraconducteur",
+			"level": 3,
+			"name": "Bobine Supraconductrice",
+			"recipe": [
+				"fluide_cryo",
+				"acier_polaire"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#7cf2e6",
+			"description": "Caisson biologique suspendant le vieillissement de l'équipage pour les longs trajets.",
+			"icon": "⏳",
+			"id": "capsule_stase",
+			"level": 3,
+			"name": "Capsule de Stase",
+			"recipe": [
+				"extrait_antigel",
+				"lentille_glace"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#9b72ff",
+			"description": "Paroi organique semi-perméable filtrant l'air et colmatant automatiquement les brèches.",
+			"icon": "🕸️",
+			"id": "membrane_vivante",
+			"level": 3,
+			"name": "Membrane Vivante",
+			"recipe": [
+				"fibre_fongique",
+				"bio_serum"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#b8ff4d",
+			"description": "Cellule énergétique convertissant la fermentation toxique en courant continu.",
+			"icon": "☣️",
+			"id": "reacteur_biochimique",
+			"level": 3,
+			"name": "Réacteur Biochimique",
+			"recipe": [
+				"venin_alchimique",
+				"condensateur_brut"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ff9ee0",
+			"description": "Balise bioluminescente froide guidant les explorateurs dans les brumes épaisses.",
+			"icon": "🏮",
+			"id": "lanterne_spores",
+			"level": 3,
+			"name": "Lanterne à Spores",
+			"recipe": [
+				"ambre_stellaire",
+				"champignon_givre"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ff884d",
+			"description": "Propulseur principal capable d'arracher le vaisseau à l'attraction planétaire.",
+			"icon": "🔥",
+			"id": "moteur_subluminique",
+			"level": 4,
+			"name": "Moteur Sub-Luminique",
+			"recipe": [
+				"cellule_plasma",
+				"tuyere_ionique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#66d9ff",
+			"description": "Ordinateur de bord autonome calculant les trajectoires interstellaires.",
+			"icon": "🤖",
+			"id": "ia_navigation",
+			"level": 4,
+			"name": "IA de Navigation",
+			"recipe": [
+				"processeur_quantique",
+				"scanner_orbital"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#a8c6e8",
+			"description": "Structure complète renforcée et isolée pour les longs voyages spatiaux.",
+			"icon": "🛸",
+			"id": "chassis_interstellaire",
+			"level": 4,
+			"name": "Châssis Interstellaire",
+			"recipe": [
+				"coque_thermique",
+				"bouclier_rentree"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#5ef2b5",
+			"description": "Quartier d'habitation autonome combinant culture vivrière et soins biologiques.",
+			"icon": "🏥",
+			"id": "module_survie",
+			"level": 4,
+			"name": "Module de Survie",
+			"recipe": [
+				"jardin_hydroponique",
+				"symbiote_medical"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ffd24d",
+			"description": "Générateur à haut rendement fournissant une énergie quasi illimitée au vaisseau.",
+			"icon": "⚛️",
+			"id": "reacteur_solaire",
+			"level": 4,
+			"name": "Réacteur Solaire",
+			"recipe": [
+				"capteur_photovoltaique",
+				"cellule_plasma"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#c792ea",
+			"description": "Interface lumineuse 3D projetant cartes stellaires et schémas d'assemblage.",
+			"icon": "🌌",
+			"id": "projecteur_holographique",
+			"level": 4,
+			"name": "Projecteur Holographique",
+			"recipe": [
+				"lampe_biolumin",
+				"processeur_quantique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#75c8ff",
+			"description": "Champ de force électromagnétique déviant radiations stellaires et débris spatiaux.",
+			"icon": "🌐",
+			"id": "bouclier_magnetique",
+			"level": 4,
+			"name": "Bouclier Magnétique",
+			"recipe": [
+				"supraconducteur",
+				"coque_thermique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#c084fc",
+			"description": "Armure vivante fusionnant blindage thermique et fibres fongiques adaptatives.",
+			"icon": "🦾",
+			"id": "exosquelette_symbiotique",
+			"level": 4,
+			"name": "Exosquelette Symbiotique",
+			"recipe": [
+				"membrane_vivante",
+				"coque_thermique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#ffb84d",
+			"description": "Système de propulsion ultime capable de plier l'espace-temps entre deux étoiles.",
+			"icon": "🌠",
+			"id": "propulseur_hyperespace",
+			"level": 5,
+			"name": "Propulseur Hyperespace",
+			"recipe": [
+				"moteur_subluminique",
+				"reacteur_solaire"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#6ee7b7",
+			"description": "Vaisseau-mère autosuffisant conçu pour explorer et peupler de nouveaux mondes.",
+			"icon": "🌍",
+			"id": "arche_planetaire",
+			"level": 5,
+			"name": "Arche Planétaire",
+			"recipe": [
+				"chassis_interstellaire",
+				"module_survie"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#a5b4fc",
+			"description": "Cartographie holographique consciente répertoriant toute la galaxie connue.",
+			"icon": "🧭",
+			"id": "atlas_galactique",
+			"level": 5,
+			"name": "Atlas Galactique",
+			"recipe": [
+				"ia_navigation",
+				"projecteur_holographique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#a8f0ff",
+			"description": "Quartier cryogénique complet permettant à l'équipage de traverser des siècles entre les étoiles.",
+			"icon": "❄️",
+			"id": "chambre_cryostase",
+			"level": 5,
+			"name": "Chambre de Cryostase",
+			"recipe": [
+				"capsule_stase",
+				"module_survie"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#5ef29b",
+			"description": "Dôme écologique complet où flore fongique et systèmes vitaux s'équilibrent indéfiniment.",
+			"icon": "🌳",
+			"id": "biosphere_autonome",
+			"level": 5,
+			"name": "Biosphère Autonome",
+			"recipe": [
+				"exosquelette_symbiotique",
+				"module_survie"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#66d9ff",
+			"description": "",
+			"icon": "☄️",
+			"id": "meteorite",
+			"level": 6,
+			"name": "méteorite",
+			"recipe": [
+				"tuyere_ionique",
+				"atlas_galactique"
+			],
+			"tags": []
+		},
+		{
+			"biome": "",
+			"biomeSpawns": [],
+			"biomes": [],
+			"color": "#66d9ff",
+			"description": "",
+			"icon": "🌍",
+			"id": "terre",
+			"level": 7,
+			"name": "terre",
+			"recipe": [
+				"jardin_hydroponique",
+				"meteorite"
+			],
+			"tags": []
+		}
+	],
+	"spriteSheet": "elements_cel",
+	"version": 1
+}

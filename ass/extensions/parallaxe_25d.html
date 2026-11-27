@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Parallaxe 2.5D Multiplan</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "toggleLabel",
+      "label": "Libellé interrupteur",
+      "type": "text",
+      "default": "Parallaxe 2.5D (Don't Starve)",
+      "hint": "Affiché dans le menu Paramètres."
+    },
+    {
+      "key": "toggleDesc",
+      "label": "Description interrupteur",
+      "type": "text",
+      "default": "Active la vue 2.5D en plans 2D multiplan qui suivent la caméra (0 impact FPS si désactivée).",
+      "hint": "Variables disponibles : {filename}, {name}"
+    },
+    {
+      "key": "tiltPitch",
+      "label": "Inclinaison du sol (pitch 2.5D)",
+      "type": "number",
+      "default": 0.62,
+      "min": 0.45,
+      "max": 0.85,
+      "step": 0.02,
+      "hint": "0.55 = très incliné façon Don't Starve, 0.85 = presque vue de dessus."
+    },
+    {
+      "key": "parallaxStrength",
+      "label": "Intensité de la parallaxe multiplan",
+      "type": "number",
+      "default": 1.0,
+      "min": 0.2,
+      "max": 2.0,
+      "step": 0.1,
+      "hint": "Amplitude du décalage des plans selon la hauteur et la caméra."
+    },
+    {
+      "key": "showForegroundLayer",
+      "label": "Plans de particules avant-plan",
+      "type": "bool",
+      "default": true,
+      "hint": "Ajoute 2 plans d'ambiance devant la caméra pour accentuer la profondeur."
+    },
+    {
+      "key": "showDepthFog",
+      "label": "Brume de profondeur à l'horizon",
+      "type": "bool",
+      "default": true,
+      "hint": "Ajoute un léger dégradé atmosphérique en haut de l'écran."
+    },
+    {
+      "key": "transitionDurationMs",
+      "label": "Durée de transition (ms)",
+      "type": "number",
+      "default": 750,
+      "min": 150,
+      "max": 2500,
+      "step": 50,
+      "hint": "Durée de l'animation vue de dessus ↔ 2.5D à la fermeture du menu Paramètres."
+    },
+    {
+      "key": "toastOn",
+      "label": "Toast activation",
+      "type": "text",
+      "default": "🏔️ Mode 2.5D multiplan activé"
+    },
+    {
+      "key": "toastOff",
+      "label": "Toast désactivation",
+      "type": "text",
+      "default": "🗺️ Vue 2D classique restaurée (0 impact FPS)"
+    }
+  ]
+}
+</script>
+<script>
+// Extension Assemblage : parallaxe_25d.html
+// Passe le jeu en 2.5D multiplan façon Don't Starve via un interrupteur dans Paramètres.
+// Lorsqu'elle est OFF, aucun hook de rendu ou de projection n'est enregistré (0 impact FPS).
+(function () {
+  const FILENAME = "parallaxe_25d.html";
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
+  function rgbStr(c, a = 1) {
+    if (!c) return `rgba(115,242,217,${a})`;
+    return `rgba(${Math.round(clamp(c[0], 0, 255))},${Math.round(clamp(c[1], 0, 255))},${Math.round(clamp(c[2], 0, 255))},${a})`;
+  }
+
+  function shadeRGB(c, amount) {
+    if (amount >= 0) {
+      return [
+        c[0] + (255 - c[0]) * amount,
+        c[1] + (255 - c[1]) * amount,
+        c[2] + (255 - c[2]) * amount,
+      ];
+    }
+    const f = 1 + amount;
+    return [c[0] * f, c[1] * f, c[2] * f];
+  }
+
+  function getCustomText(ext, key, fallback) {
+    const fname = (ext && ext.filename) || FILENAME;
+    const name = (ext && ext.name) || fname;
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    const raw = (custom && Object.prototype.hasOwnProperty.call(custom, key) && custom[key] !== undefined && custom[key] !== null)
+      ? String(custom[key])
+      : fallback;
+    return raw.replaceAll("{filename}", fname).replaceAll("{name}", name);
+  }
+
+  // Particules d'avant-plan déterministes (2 plans multiplan devant la caméra)
+  function createForegroundMotes() {
+    const motes = [];
+    let s = 133742;
+    const rand = () => {
+      s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+    for (let i = 0; i < 20; i++) {
+      const layer = i < 12 ? 0 : 1;
+      motes.push({
+        x: rand() * 2000,
+        y: rand() * 1400,
+        r: layer === 0 ? (1.6 + rand() * 1.6) : (2.6 + rand() * 2.2),
+        alpha: layer === 0 ? (0.14 + rand() * 0.14) : (0.10 + rand() * 0.12),
+        parallax: layer === 0 ? 1.20 : 1.38,
+        vx: (rand() - 0.5) * 14 + 6,
+        vy: -5 - rand() * 10,
+        phase: rand() * Math.PI * 2,
+      });
+    }
+    return motes;
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const savedState = host.state.get() || {};
+      let enabled25D = Boolean(savedState.enabled25D);
+
+      const toggleLabel = getCustomText(ext, "toggleLabel", "Parallaxe 2.5D (Don't Starve)");
+      const toggleDesc = getCustomText(ext, "toggleDesc", "Active la vue 2.5D en plans 2D multiplan qui suivent la caméra (0 impact FPS si désactivée).");
+      const toastOn = getCustomText(ext, "toastOn", "🏔️ Mode 2.5D multiplan activé");
+      const toastOff = getCustomText(ext, "toastOff", "🗺️ Vue 2D classique restaurée (0 impact FPS)");
+
+      const pitch = clamp(Number(host.ui.getConfig("tiltPitch", 0.62)) || 0.62, 0.45, 0.85);
+      const pStrength = clamp(Number(host.ui.getConfig("parallaxStrength", 1.0)) || 1.0, 0.2, 2.0);
+      const showForegroundLayer = host.ui.getConfig("showForegroundLayer", true) !== false;
+      const showDepthFog = host.ui.getConfig("showDepthFog", true) !== false;
+      const transitionDurationSec = clamp(Number(host.ui.getConfig("transitionDurationMs", 750)) || 750, 150, 2500) / 1000;
+
+      let unhookWorld = null;
+      let unhookScreenToWorld = null;
+      let blend = enabled25D ? 1 : 0;
+      let targetBlend = blend;
+      let lastAnimTs = null;
+
+      // Tableaux réutilisés entre frames pour éviter les allocations GC
+      const visibleChunks = [];
+      const billboards = [];
+      const fgMotes = createForegroundMotes();
+      const pickupSpriteCache = new Map();
+      let cachedFogKey = "";
+      let cachedFogGrad = null;
+      const CRYSTAL_SPIRES = [
+        { dx: -4.5, dy: -2.0, h: 24, w: 4.5, shade: -0.22 },
+        { dx: 4.8, dy: -0.8, h: 21, w: 4.2, shade: -0.10 },
+        { dx: 0.2, dy: 2.0, h: 31, w: 5.8, shade: 0.05 },
+      ];
+      let moteOffsetX = 0;
+      let moteOffsetY = 0;
+      let prevCamX = null;
+      let prevCamY = null;
+      let prevCamAngle = null;
+
+      // Contexte de projection courant pour une frame
+      const proj = {
+        cx: 0,
+        cy: 0,
+        refHalfX: 195,
+        refHalfY: 360,
+        camX: 0,
+        camY: 0,
+        camAngle: 0,
+        cosA: 1,
+        sinA: 0,
+        zoom: 1,
+        blend,
+        pitch: enabled25D ? pitch : 1,
+        pStrength: enabled25D ? pStrength : 0,
+        zLift: 1 - (enabled25D ? pitch : 1) * 0.22,
+      };
+
+      function projectPoint(wx, wy, z) {
+        const rawDx = wx - proj.camX;
+        const rawDy = wy - proj.camY;
+        const dx = (rawDx * proj.cosA - rawDy * proj.sinA) * proj.zoom;
+        const dy = (rawDx * proj.sinA + rawDy * proj.cosA) * proj.zoom;
+        const ez = z * proj.blend;
+        if (ez === 0) {
+          return {
+            x: proj.cx + dx,
+            y: proj.cy + dy * proj.pitch,
+            scale: proj.zoom,
+          };
+        }
+        const pFactor = (ez / 260) * proj.pStrength;
+        const nx = clamp(dx / proj.refHalfX, -1.35, 1.35);
+        const ny = clamp((dy * proj.pitch) / proj.refHalfY, -1.35, 1.35);
+        return {
+          x: proj.cx + dx + nx * 195 * pFactor * proj.zoom,
+          y: proj.cy + dy * proj.pitch + ny * 260 * pFactor * proj.zoom - ez * proj.zoom * proj.zLift,
+          scale: proj.zoom * (1 + pFactor * 0.16),
+        };
+      }
+
+      function depthOf(wx, wy) {
+        return (wx - proj.camX) * proj.sinA + (wy - proj.camY) * proj.cosA;
+      }
+
+      function drawCrater25D(g, c, theme) {
+        if (theme === "volcanic") {
+          g.fillStyle = "rgba(20, 10, 10, 0.55)";
+          g.beginPath(); g.arc(c.x, c.y, c.r * 1.08, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(242, 71, 20, 0.62)";
+          g.beginPath(); g.arc(c.x, c.y, c.r * 0.76, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(255, 189, 46, 0.72)";
+          g.beginPath(); g.arc(c.x - c.r * 0.1, c.y - c.r * 0.08, c.r * 0.44, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = "rgba(255, 115, 36, 0.28)";
+          g.lineWidth = 2;
+          g.beginPath(); g.arc(c.x, c.y, c.r, 0, Math.PI * 2); g.stroke();
+        } else if (theme === "glacial") {
+          g.fillStyle = "rgba(173, 230, 255, 0.24)";
+          g.beginPath(); g.arc(c.x, c.y, c.r * 1.04, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(82, 173, 230, 0.46)";
+          g.beginPath(); g.arc(c.x, c.y, c.r * 0.86, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(219, 247, 255, 0.34)";
+          g.beginPath(); g.arc(c.x - c.r * 0.16, c.y - c.r * 0.14, c.r * 0.42, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = "rgba(209, 245, 255, 0.35)";
+          g.lineWidth = 2;
+          g.beginPath(); g.arc(c.x, c.y, c.r, 0, Math.PI * 2); g.stroke();
+        } else if (theme === "fungal") {
+          g.fillStyle = "rgba(20, 36, 26, 0.50)";
+          g.beginPath(); g.arc(c.x, c.y, c.r * 1.06, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(107, 219, 87, 0.44)";
+          g.beginPath(); g.arc(c.x, c.y, c.r * 0.80, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(194, 122, 255, 0.42)";
+          g.beginPath(); g.arc(c.x - c.r * 0.14, c.y - c.r * 0.10, c.r * 0.40, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = "rgba(168, 250, 107, 0.26)";
+          g.lineWidth = 2;
+          g.beginPath(); g.arc(c.x, c.y, c.r, 0, Math.PI * 2); g.stroke();
+        } else {
+          g.fillStyle = "rgba(15, 13, 25, 0.28)";
+          g.beginPath(); g.arc(c.x, c.y, c.r, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "rgba(10, 8, 20, 0.22)";
+          g.beginPath(); g.arc(c.x + c.r * 0.08, c.y + c.r * 0.08, c.r * 0.78, 0, Math.PI * 2); g.fill();
+          g.strokeStyle = "rgba(217, 209, 242, 0.12)";
+          g.lineWidth = 2;
+          g.beginPath(); g.arc(c.x, c.y, c.r, -Math.PI * 0.85, -Math.PI * 0.15); g.stroke();
+        }
+      }
+
+      function ensureChunkGroundCanvas(ch, env) {
+        const CHUNK_SIZE = env.CHUNK_SIZE;
+        const cacheTag = (ch.theme || "") + "|" + CHUNK_SIZE;
+        if (ch._ground25DCanvas && ch._ground25DTag === cacheTag) {
+          return ch._ground25DCanvas;
+        }
+        if (typeof document === "undefined") return null;
+
+        const c = document.createElement("canvas");
+        c.width = CHUNK_SIZE;
+        c.height = CHUNK_SIZE;
+        const g = c.getContext("2d");
+        if (!g) return null;
+
+        if (ch.subCount && ch.subSize) {
+          const subCount = ch.subCount;
+          const subSize = ch.subSize;
+          for (let ty = 0; ty < subCount; ty++) {
+            for (let tx = 0; tx < subCount; tx++) {
+              g.fillStyle = ch.tiles[ty * subCount + tx];
+              g.fillRect(tx * subSize, ty * subSize, subSize + 1, subSize + 1);
+            }
+          }
+        } else {
+          const TILE_COUNT = env.TILE_COUNT;
+          const TILE_SIZE = env.TILE_SIZE;
+          for (let ty = 0; ty < TILE_COUNT; ty++) {
+            for (let tx = 0; tx < TILE_COUNT; tx++) {
+              g.fillStyle = ch.tiles[ty * TILE_COUNT + tx];
+              g.fillRect(tx * TILE_SIZE, ty * TILE_SIZE, TILE_SIZE + 1, TILE_SIZE + 1);
+            }
+          }
+        }
+
+        // Marques d'atterrissage autour de (0, 0)
+        const LANDING_CLEAR_RADIUS = env.LANDING_CLEAR_RADIUS;
+        g.save();
+        g.translate(-ch.ox, -ch.oy);
+        if (ch.ox <= LANDING_CLEAR_RADIUS && ch.ox + CHUNK_SIZE >= -LANDING_CLEAR_RADIUS &&
+            ch.oy <= LANDING_CLEAR_RADIUS && ch.oy + CHUNK_SIZE >= -LANDING_CLEAR_RADIUS) {
+          const acc = ch.accent || env.accentRgb;
+          g.beginPath();
+          g.arc(0, 0, 165, 0, Math.PI * 2);
+          g.strokeStyle = rgbStr(acc, 0.24);
+          g.lineWidth = 2.5;
+          g.stroke();
+
+          g.beginPath();
+          g.arc(0, 0, 130, 0, Math.PI * 2);
+          g.strokeStyle = rgbStr(acc, 0.15);
+          g.lineWidth = 1.5;
+          g.stroke();
+        }
+
+        // Cratères entièrement contenus dans le chunk pré-rendus dans le cache
+        const borderCraters = [];
+        if (ch.craters) {
+          for (const cr of ch.craters) {
+            const pad = cr.r * 1.15 + 3;
+            if (cr.x - pad >= ch.ox && cr.x + pad <= ch.ox + CHUNK_SIZE &&
+                cr.y - pad >= ch.oy && cr.y + pad <= ch.oy + CHUNK_SIZE) {
+              drawCrater25D(g, cr, ch.theme);
+            } else {
+              borderCraters.push(cr);
+            }
+          }
+        }
+        g.restore();
+
+        ch._ground25DCanvas = c;
+        ch._ground25DTag = cacheTag;
+        ch._borderCraters25D = borderCraters;
+        return c;
+      }
+
+      // --- Passe 1 : Rendu du sol d'un chunk (sans les objets verticaux) ---
+      function drawChunkGround(ctx, ch, env, timeSec) {
+        const CHUNK_SIZE = env.CHUNK_SIZE;
+        const cached = ensureChunkGroundCanvas(ch, env);
+        if (cached) {
+          ctx.drawImage(cached, ch.ox, ch.oy, CHUNK_SIZE + 1, CHUNK_SIZE + 1);
+          if (ch._borderCraters25D && ch._borderCraters25D.length > 0) {
+            for (const cr of ch._borderCraters25D) {
+              drawCrater25D(ctx, cr, ch.theme);
+            }
+          }
+        } else {
+          if (ch.subCount && ch.subSize) {
+            const subCount = ch.subCount;
+            const subSize = ch.subSize;
+            for (let ty = 0; ty < subCount; ty++) {
+              for (let tx = 0; tx < subCount; tx++) {
+                ctx.fillStyle = ch.tiles[ty * subCount + tx];
+                ctx.fillRect(ch.ox + tx * subSize, ch.oy + ty * subSize, subSize + 1, subSize + 1);
+              }
+            }
+          } else {
+            const TILE_COUNT = env.TILE_COUNT;
+            const TILE_SIZE = env.TILE_SIZE;
+            for (let ty = 0; ty < TILE_COUNT; ty++) {
+              for (let tx = 0; tx < TILE_COUNT; tx++) {
+                ctx.fillStyle = ch.tiles[ty * TILE_COUNT + tx];
+                ctx.fillRect(ch.ox + tx * TILE_SIZE, ch.oy + ty * TILE_SIZE, TILE_SIZE + 1, TILE_SIZE + 1);
+              }
+            }
+          }
+          if (ch.craters) {
+            for (const cr of ch.craters) {
+              drawCrater25D(ctx, cr, ch.theme);
+            }
+          }
+        }
+
+        // Écume animée (archipel) batchée en un seul chemin
+        if (ch.foamDots && ch.foamDots.length > 0) {
+          const pulse = 0.14 + 0.08 * Math.sin(timeSec * 2.1 + ch.cx * 0.7 + ch.cy * 0.5);
+          ctx.fillStyle = `rgba(218, 250, 255, ${pulse.toFixed(3)})`;
+          ctx.beginPath();
+          for (const fd of ch.foamDots) {
+            ctx.moveTo(fd.x + fd.r, fd.y);
+            ctx.arc(fd.x, fd.y, fd.r, 0, Math.PI * 2);
+          }
+          ctx.fill();
+        }
+
+        // Ponts de bois (archipel)
+        if (ch.bridges && ch.bridges.length > 0) {
+          for (const br of ch.bridges) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(6, 20, 34, 0.36)";
+            ctx.lineWidth = br.halfW * 2 + 6;
+            ctx.lineCap = "butt";
+            ctx.beginPath();
+            ctx.moveTo(br.x1 + 4, br.y1 + 6);
+            ctx.lineTo(br.x2 + 4, br.y2 + 6);
+            ctx.stroke();
+
+            ctx.strokeStyle = "#5c3a21";
+            ctx.lineWidth = br.halfW * 2;
+            ctx.beginPath();
+            ctx.moveTo(br.x1, br.y1);
+            ctx.lineTo(br.x2, br.y2);
+            ctx.stroke();
+
+            const plankSpacing = 12;
+            const count = Math.max(2, Math.floor(br.len / plankSpacing));
+            for (let i = 0; i <= count; i++) {
+              const t = i / count;
+              const bx = br.x1 + br.ux * br.len * t;
+              const by = br.y1 + br.uy * br.len * t;
+              const hw = br.halfW - 2;
+              ctx.strokeStyle = (i % 2 === 0) ? "#9c6b3f" : "#875933";
+              ctx.lineWidth = 7.5;
+              ctx.beginPath();
+              ctx.moveTo(bx - br.px * hw, by - br.py * hw);
+              ctx.lineTo(bx + br.px * hw, by + br.py * hw);
+              ctx.stroke();
+            }
+
+            const railOff = br.halfW - 1;
+            ctx.strokeStyle = "#d9b07e";
+            ctx.lineWidth = 3;
+            for (const side of [-1, 1]) {
+              ctx.beginPath();
+              ctx.moveTo(br.x1 + br.px * railOff * side, br.y1 + br.py * railOff * side);
+              ctx.lineTo(br.x2 + br.px * railOff * side, br.y2 + br.py * railOff * side);
+              ctx.stroke();
+            }
+
+            const postSpacing = 54;
+            const postCount = Math.max(2, Math.round(br.len / postSpacing));
+            ctx.fillStyle = "#4a2c16";
+            for (let i = 0; i <= postCount; i++) {
+              const t = i / postCount;
+              const bx = br.x1 + br.ux * br.len * t;
+              const by = br.y1 + br.uy * br.len * t;
+              for (const side of [-1, 1]) {
+                ctx.beginPath();
+                ctx.arc(bx + br.px * (railOff + 1) * side, by + br.py * (railOff + 1) * side, 4.2, 0, Math.PI * 2);
+                ctx.fill();
+              }
+            }
+            ctx.restore();
+          }
+        }
+      }
+
+      // --- Plans 2D verticaux triés en Y ---
+      function drawFloraBillboard(ctx, f, theme, timeSec) {
+        const base = projectPoint(f.x, f.y, 0);
+        const sc = base.scale;
+        const sway = Math.sin(timeSec * 2.2 + f.x * 0.03 + f.y * 0.02) * 2.4;
+        const swayX = sway * proj.cosA;
+        const swayY = -sway * proj.sinA;
+
+        // Palmier / fougère (archipel : possède f.fronds)
+        if (f.fronds) {
+          const trunkH = 22 + f.r * 1.45;
+          const top = projectPoint(f.x + swayX * 1.2, f.y + swayY * 1.2, trunkH);
+          const crown = projectPoint(f.x + swayX * 1.6, f.y + swayY * 1.6, trunkH + 6);
+
+          // Ombre au sol
+          ctx.fillStyle = "rgba(6, 18, 14, 0.28)";
+          ctx.beginPath();
+          ctx.ellipse(base.x + 4 * sc, base.y + 2 * sc, f.r * 1.2 * sc, f.r * 0.55 * sc, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Tronc reliant base (z=0) -> sommet (z=trunkH)
+          if (proj.blend > 0.02) {
+            ctx.strokeStyle = "#5c3f24";
+            ctx.lineWidth = Math.max(2, 4.2 * sc);
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            ctx.moveTo(base.x, base.y);
+            ctx.quadraticCurveTo((base.x + top.x) * 0.5 + 3 * proj.blend * sc, (base.y + top.y) * 0.5, top.x, top.y);
+            ctx.stroke();
+          }
+
+          // Couronne multiplan (palmes arrières + palmes avant)
+          const fronds = f.fronds || 6;
+          for (let i = 0; i < fronds; i++) {
+            const a = (f.rot || 0) + proj.camAngle + (Math.PI * 2 * i) / fronds;
+            const target = i % 2 === 0 ? top : crown;
+            const tsc = target.scale;
+            const fx = target.x + Math.cos(a) * f.r * (1.0 + 0.45 * proj.blend) * tsc + sway * 0.6 * tsc;
+            const fy = target.y + Math.sin(a) * f.r * (1.0 - 0.15 * proj.blend) * tsc + 3 * proj.blend * tsc;
+            ctx.strokeStyle = i % 2 === 0 ? f.dark : f.light;
+            ctx.lineWidth = Math.max(1.5, 3.6 * tsc);
+            ctx.beginPath();
+            ctx.moveTo(target.x, target.y);
+            ctx.quadraticCurveTo((target.x + fx) * 0.5, target.y - 4 * proj.blend * tsc, fx, fy);
+            ctx.stroke();
+          }
+          ctx.fillStyle = "#6e4e2e";
+          ctx.beginPath();
+          ctx.arc(crown.x, crown.y, 2.8 * crown.scale, 0, Math.PI * 2);
+          ctx.fill();
+          return;
+        }
+
+        if (theme === "volcanic") {
+          const rim = projectPoint(f.x, f.y, 13);
+          const puffZ = 18 + ((timeSec * 14 + Math.abs(f.x)) % 18);
+          const puff = projectPoint(f.x + swayX * 1.5, f.y + swayY * 1.5, puffZ);
+
+          ctx.fillStyle = rgbStr(f.rgb || [255, 107, 31], 0.18);
+          ctx.beginPath();
+          ctx.ellipse(base.x, base.y, f.r * 1.5 * sc, f.r * 0.9 * sc, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Cône de cheminée
+          ctx.fillStyle = "#1c1111";
+          ctx.beginPath();
+          ctx.moveTo(base.x - f.r * sc, base.y);
+          ctx.lineTo(rim.x - f.r * 0.55 * rim.scale, rim.y);
+          ctx.lineTo(rim.x + f.r * 0.55 * rim.scale, rim.y);
+          ctx.lineTo(base.x + f.r * sc, base.y);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = f.light;
+          ctx.beginPath();
+          ctx.ellipse(rim.x, rim.y, f.r * 0.52 * rim.scale, f.r * 0.28 * rim.scale, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          const puffAlpha = clamp(1 - (puffZ - 18) / 18, 0, 0.75);
+          ctx.fillStyle = rgbStr(f.rgb || [255, 130, 40], puffAlpha);
+          ctx.beginPath();
+          ctx.arc(puff.x, puff.y, f.r * 0.38 * puff.scale, 0, Math.PI * 2);
+          ctx.fill();
+          return;
+        }
+
+        if (theme === "fungal") {
+          const stemTop = projectPoint(f.x + swayX * 0.5, f.y + swayY * 0.5, 14 + f.r * 0.8);
+          const capTop = projectPoint(f.x + swayX * 0.7, f.y + swayY * 0.7, 18 + f.r * 1.1);
+
+          ctx.fillStyle = rgbStr(f.rgb || [214, 107, 255], 0.14);
+          ctx.beginPath();
+          ctx.ellipse(base.x, base.y, f.r * 1.6 * sc, f.r * 0.9 * sc, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = "#d9d0e8";
+          ctx.lineWidth = Math.max(1.5, f.r * 0.45 * sc);
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(base.x, base.y);
+          ctx.lineTo(stemTop.x, stemTop.y);
+          ctx.stroke();
+
+          // Chapeau vertical
+          const csc = capTop.scale;
+          ctx.fillStyle = f.dark;
+          ctx.beginPath();
+          ctx.ellipse(capTop.x, capTop.y, f.r * 1.25 * csc, f.r * 0.85 * csc, 0, Math.PI, Math.PI * 2);
+          ctx.lineTo(capTop.x + f.r * 1.25 * csc, capTop.y + 2 * csc);
+          ctx.ellipse(capTop.x, capTop.y + 2 * csc, f.r * 1.25 * csc, f.r * 0.35 * csc, 0, 0, Math.PI);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = f.light;
+          ctx.beginPath();
+          ctx.arc(capTop.x - f.r * 0.4 * csc, capTop.y - f.r * 0.3 * csc, f.r * 0.25 * csc, 0, Math.PI * 2);
+          ctx.arc(capTop.x + f.r * 0.45 * csc, capTop.y - f.r * 0.15 * csc, f.r * 0.18 * csc, 0, Math.PI * 2);
+          ctx.fill();
+          return;
+        }
+
+        if (theme === "glacial") {
+          const tip = projectPoint(f.x + swayX * 0.35, f.y + swayY * 0.35, 12 + f.r * 1.1);
+          ctx.fillStyle = rgbStr(f.rgb || [158, 240, 255], 0.18);
+          ctx.beginPath();
+          ctx.ellipse(base.x, base.y, f.r * 1.3 * sc, f.r * 0.7 * sc, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          for (const off of [-0.55, 0, 0.55]) {
+            ctx.fillStyle = off === 0 ? "rgba(235, 250, 255, 0.9)" : f.dark;
+            ctx.beginPath();
+            ctx.moveTo(base.x + (off - 0.22) * f.r * sc, base.y);
+            ctx.lineTo(tip.x + off * f.r * 0.65 * tip.scale, tip.y + Math.abs(off) * 4 * tip.scale);
+            ctx.lineTo(base.x + (off + 0.22) * f.r * sc, base.y);
+            ctx.closePath();
+            ctx.fill();
+          }
+          return;
+        }
+
+        if (theme === "marais") {
+          if (f.kind === "pad") {
+            ctx.fillStyle = "rgba(6, 16, 12, 0.25)";
+            ctx.beginPath();
+            ctx.ellipse(base.x + 2 * sc, base.y + 2 * sc, f.r * sc, f.r * sc * proj.pitch, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = f.dark;
+            ctx.beginPath();
+            ctx.moveTo(base.x, base.y);
+            ctx.ellipse(base.x, base.y, f.r * sc, f.r * sc * proj.pitch, 0, f.rot + 0.28, f.rot + Math.PI * 2 - 0.28);
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            const blades = f.blades || 5;
+            ctx.strokeStyle = f.light;
+            ctx.lineWidth = Math.max(1.4, 2.2 * sc);
+            ctx.lineCap = "round";
+            for (let i = 0; i < blades; i++) {
+              const a = (f.rot || 0) + (Math.PI * 2 * i) / blades;
+              const tip = projectPoint(f.x + Math.cos(a) * f.r * 0.65 + swayX * 0.45, f.y + Math.sin(a) * f.r * 0.65 + swayY * 0.45, 11 + f.r * 0.9);
+              ctx.beginPath();
+              ctx.moveTo(base.x, base.y);
+              ctx.lineTo(tip.x, tip.y);
+              ctx.stroke();
+            }
+          }
+          return;
+        }
+
+        // Astral / défaut : buisson dressé en 2 plans
+        const mid = projectPoint(f.x + swayX * 0.5, f.y + swayY * 0.5, 8 + f.r * 0.5);
+        const top = projectPoint(f.x + swayX * 0.8, f.y + swayY * 0.8, 13 + f.r * 0.8);
+
+        ctx.fillStyle = "rgba(0,0,0,0.24)";
+        ctx.beginPath();
+        ctx.ellipse(base.x + 2 * sc, base.y + 2 * sc, f.r * 1.1 * sc, f.r * 0.6 * sc, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = f.dark;
+        ctx.beginPath();
+        ctx.arc(mid.x, mid.y, f.r * 0.95 * mid.scale, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = f.light;
+        ctx.beginPath();
+        ctx.arc(top.x - f.r * 0.18 * top.scale, top.y, f.r * 0.62 * top.scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawRockBillboard(ctx, r) {
+        const base = projectPoint(r.x, r.y, 0);
+        const mid = projectPoint(r.x, r.y, 10);
+        const top = projectPoint(r.x, r.y, 18);
+
+        // Ombre projetée au sol
+        ctx.fillStyle = "rgba(5, 5, 13, 0.36)";
+        ctx.beginPath();
+        for (let i = 0; i < r.pts.length; i++) {
+          const p = r.pts[i];
+          const rpx = p[0] * proj.cosA - p[1] * proj.sinA;
+          const rpy = p[0] * proj.sinA + p[1] * proj.cosA;
+          const px = base.x + (rpx + 5) * base.scale;
+          const py = base.y + (rpy * proj.pitch + 3) * base.scale;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Couche 1 : Base sombre (z = 0)
+        ctx.fillStyle = r.col;
+        ctx.beginPath();
+        for (let i = 0; i < r.pts.length; i++) {
+          const p = r.pts[i];
+          const rpx = p[0] * proj.cosA - p[1] * proj.sinA;
+          const rpy = p[0] * proj.sinA + p[1] * proj.cosA;
+          const px = base.x + rpx * base.scale;
+          const py = base.y + rpy * proj.pitch * base.scale;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Couche 2 : Corps intermédiaire décalé en parallaxe (z = 10)
+        ctx.fillStyle = r.col;
+        ctx.beginPath();
+        for (let i = 0; i < r.pts.length; i++) {
+          const p = r.pts[i];
+          const rpx = p[0] * proj.cosA - p[1] * proj.sinA;
+          const rpy = p[0] * proj.sinA + p[1] * proj.cosA;
+          const px = mid.x + rpx * 0.88 * mid.scale;
+          const py = mid.y + rpy * proj.pitch * 0.88 * mid.scale;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Contour subtil entre plans pour lire le volume 2.5D
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.22)";
+        ctx.lineWidth = Math.max(1, 1.3 * mid.scale);
+        ctx.stroke();
+
+        // Couche 3 : Crête lumineuse supérieure (z = 18)
+        ctx.fillStyle = r.hi;
+        ctx.beginPath();
+        for (let i = 0; i < r.pts.length; i++) {
+          const p = r.pts[i];
+          const rpx = p[0] * proj.cosA - p[1] * proj.sinA;
+          const rpy = p[0] * proj.sinA + p[1] * proj.cosA;
+          const px = top.x + (rpx * 0.56 - 2) * top.scale;
+          const py = top.y + (rpy * proj.pitch * 0.56 - 1.5) * top.scale;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawCrystalBillboard(ctx, cr) {
+        const base = projectPoint(cr.x, cr.y, 0);
+        const sc = base.scale;
+
+        // Halo au sol
+        ctx.fillStyle = rgbStr(cr.rgb, 0.16);
+        ctx.beginPath();
+        ctx.ellipse(base.x, base.y, 20 * cr.sc * sc, 20 * cr.sc * proj.pitch * sc, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3 aiguilles dressées en 2.5D (interpolées depuis les aiguilles plates au sol quand blend=0)
+        for (let i = 0; i < CRYSTAL_SPIRES.length; i++) {
+          const sp = CRYSTAL_SPIRES[i];
+          const spH = sp.h * cr.sc;
+          const spW = sp.w * cr.sc;
+          const a = cr.rot + i * 2.1;
+          const flatLen = (14 - i * 2.5) * cr.sc;
+          const flatTipX = cr.x + Math.cos(a) * flatLen;
+          const flatTipY = cr.y + Math.sin(a) * flatLen;
+          const tiltX = Math.cos(cr.rot) * 4 * cr.sc;
+          const upTipX = cr.x + (sp.dx + tiltX) * cr.sc;
+          const upTipY = cr.y + sp.dy * cr.sc;
+
+          const bPt = projectPoint(cr.x + sp.dx * cr.sc * proj.blend, cr.y + sp.dy * cr.sc * proj.blend, 0);
+          const tPt = projectPoint(
+            flatTipX + (upTipX - flatTipX) * proj.blend,
+            flatTipY + (upTipY - flatTipY) * proj.blend,
+            spH
+          );
+          const w = spW * bPt.scale;
+          const aScr = a + proj.camAngle;
+          const flatPerpAng = aScr + Math.PI * 0.5;
+          let dAng = (-flatPerpAng + Math.PI) % (Math.PI * 2) - Math.PI;
+          if (dAng < -Math.PI) dAng += Math.PI * 2;
+          const pAng = flatPerpAng + dAng * proj.blend;
+          const perpX = Math.cos(pAng) * w;
+          const perpY = Math.sin(pAng) * proj.pitch * w;
+
+          ctx.fillStyle = rgbStr(shadeRGB(cr.rgb, sp.shade));
+          ctx.beginPath();
+          ctx.moveTo(bPt.x - perpX, bPt.y - perpY);
+          ctx.lineTo(tPt.x, tPt.y);
+          ctx.lineTo(bPt.x + perpX, bPt.y + perpY);
+          ctx.lineTo(bPt.x - Math.cos(aScr) * 3 * cr.sc * (1 - proj.blend) * bPt.scale, bPt.y - Math.sin(aScr) * 3 * cr.sc * (1 - proj.blend) * bPt.scale + 3 * proj.blend * bPt.scale);
+          ctx.closePath();
+          ctx.fill();
+
+          // Arête brillante
+          ctx.strokeStyle = rgbStr(shadeRGB(cr.rgb, 0.55), 0.9);
+          ctx.lineWidth = Math.max(1, 1.5 * tPt.scale);
+          ctx.beginPath();
+          ctx.moveTo(bPt.x - perpX * 0.2, bPt.y - perpY * 0.2);
+          ctx.lineTo(tPt.x, tPt.y);
+          ctx.stroke();
+        }
+      }
+
+      function getPickupSprite(color, icon, elementId) {
+        const sprInfo = (elementId && host.game && typeof host.game.getElementSpriteInfo === "function")
+          ? host.game.getElementSpriteInfo(elementId)
+          : (elementId && window.AssemblageElements && typeof window.AssemblageElements.getSpriteInfo === "function"
+            ? window.AssemblageElements.getSpriteInfo(elementId)
+            : null);
+        const key = sprInfo
+          ? ("spr:" + sprInfo.sheetId + "|" + sprInfo.frameId + "|" + String(color || "#73f2d9"))
+          : (String(color || "#73f2d9") + "|" + String(icon || ""));
+        const hit = pickupSpriteCache.get(key);
+        if (hit) return hit;
+        if (typeof document === "undefined") return null;
+
+        const size = 64;
+        const half = size * 0.5;
+        const s = size / 44;
+        const c = document.createElement("canvas");
+        c.width = size;
+        c.height = size;
+        const g = c.getContext("2d");
+        if (!g) return null;
+
+        g.globalAlpha = 0.22;
+        g.fillStyle = color;
+        g.beginPath(); g.arc(half, half, 20 * s, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 0.92;
+        g.fillStyle = "#141c30";
+        g.beginPath(); g.arc(half, half, 14.5 * s, 0, Math.PI * 2); g.fill();
+        g.globalAlpha = 0.88;
+        g.strokeStyle = color;
+        g.lineWidth = 2 * s;
+        g.beginPath(); g.arc(half, half, 15 * s, 0, Math.PI * 2); g.stroke();
+        g.globalAlpha = 1;
+        if (sprInfo && window.AssemblageVisuals && typeof window.AssemblageVisuals.drawSpriteSheet === "function") {
+          const fw = Math.max(1, Number((sprInfo.frame && sprInfo.frame.w) || 1));
+          const fh = Math.max(1, Number((sprInfo.frame && sprInfo.frame.h) || 1));
+          const sc = (26 * s) / Math.max(fw, fh);
+          window.AssemblageVisuals.drawSpriteSheet(g, sprInfo.sheetId, half, half, {
+            frameId: sprInfo.frameId,
+            scale: sc,
+            pixelated: Boolean(sprInfo.isPixel),
+          });
+        } else if (icon) {
+          g.font = `${Math.round(16 * s)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+          g.textAlign = "center";
+          g.textBaseline = "middle";
+          g.fillStyle = "#ffffff";
+          g.fillText(icon, half, half + 1 * s);
+        } else {
+          g.fillStyle = color;
+          g.beginPath();
+          g.moveTo(half, half - 6.5 * s);
+          g.lineTo(half + 5.5 * s, half);
+          g.lineTo(half, half + 6.5 * s);
+          g.lineTo(half - 5.5 * s, half);
+          g.closePath();
+          g.fill();
+        }
+
+        if (pickupSpriteCache.size >= 192) {
+          pickupSpriteCache.clear();
+        }
+        pickupSpriteCache.set(key, c);
+        return c;
+      }
+
+      function drawPickupBillboard(ctx, p, timeSec) {
+        const bob = Math.sin(timeSec * 3.4 + p.x * 0.05 + p.y * 0.05) * 3.8;
+        const z = 18 + bob;
+        const ground = projectPoint(p.x, p.y, 0);
+        const air = projectPoint(p.x, p.y, z);
+        const sc = air.scale;
+        const shadowScale = 1 - clamp((bob + 4) / 16, 0, 0.25);
+
+        // Ombre portée au sol
+        ctx.fillStyle = "rgba(0, 0, 0, 0.30)";
+        ctx.beginPath();
+        ctx.ellipse(ground.x, ground.y, 13 * ground.scale * shadowScale, 7.5 * ground.scale * shadowScale, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Médaillon vertical pré-rendu en cache (sans fillText par frame)
+        const sprite = getPickupSprite(p.color, p.icon, p.elementId);
+        if (sprite) {
+          const halfDraw = 22 * sc;
+          ctx.drawImage(sprite, air.x - halfDraw, air.y - halfDraw, halfDraw * 2, halfDraw * 2);
+          return;
+        }
+
+        ctx.save();
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = p.color;
+        ctx.beginPath(); ctx.arc(air.x, air.y, 20 * sc, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.92;
+        ctx.fillStyle = "#141c30";
+        ctx.beginPath(); ctx.arc(air.x, air.y, 14.5 * sc, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 0.88;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2 * sc;
+        ctx.beginPath(); ctx.arc(air.x, air.y, 15 * sc, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawAnchorBillboard(ctx, a, timeSec) {
+        const pulse = 0.5 + 0.5 * Math.sin(timeSec * 2.6);
+        const ground = projectPoint(a.x, a.y, 0);
+        const top = projectPoint(a.x, a.y, 30 + Math.sin(timeSec * 2.2) * 2.5);
+        const gsc = ground.scale;
+        const tsc = top.scale;
+
+        // Anneau pulsant au sol
+        ctx.fillStyle = `rgba(250, 194, 76, ${(0.14 + pulse * 0.08).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(ground.x, ground.y, (26 + pulse * 5) * gsc, (26 + pulse * 5) * proj.pitch * gsc, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "rgba(250, 199, 87, 0.44)";
+        ctx.lineWidth = 1.5 * gsc;
+        ctx.beginPath();
+        ctx.ellipse(ground.x, ground.y, (23 + pulse * 4) * gsc, (23 + pulse * 4) * proj.pitch * gsc, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Mât vertical reliant le sol au badge
+        ctx.strokeStyle = "rgba(250, 194, 82, 0.65)";
+        ctx.lineWidth = 2.6 * gsc;
+        ctx.beginPath();
+        ctx.moveTo(ground.x, ground.y);
+        ctx.lineTo(top.x, top.y);
+        ctx.stroke();
+
+        // Badge vertical
+        ctx.fillStyle = "rgba(23, 28, 46, 0.94)";
+        ctx.beginPath();
+        ctx.arc(top.x, top.y, 17.5 * tsc, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(250, 194, 82, 0.94)";
+        ctx.lineWidth = 2.2 * tsc;
+        ctx.beginPath();
+        ctx.arc(top.x, top.y, 18 * tsc, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.font = `${Math.round(19 * tsc)}px system-ui, -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(a.emoji || "⚓", top.x, top.y + 1 * tsc);
+
+        if (a.id) {
+          ctx.font = `600 ${Math.max(9, Math.round(11 * tsc))}px system-ui, -apple-system, sans-serif`;
+          const tw = ctx.measureText(a.id).width;
+          const pw = tw + 12 * tsc;
+          const ph = 16 * tsc;
+          ctx.fillStyle = "rgba(15, 20, 36, 0.84)";
+          ctx.strokeStyle = "rgba(250, 194, 82, 0.48)";
+          ctx.lineWidth = 1;
+          ctx.fillRect(top.x - pw * 0.5, top.y + 21 * tsc, pw, ph);
+          ctx.strokeRect(top.x - pw * 0.5, top.y + 21 * tsc, pw, ph);
+          ctx.fillStyle = "rgba(255, 235, 184, 0.95)";
+          ctx.fillText(a.id, top.x, top.y + 29.5 * tsc);
+        }
+      }
+
+      // Vaisseau en 3 plans (z=0 base/rampe/pieds, z=18 coque, z=36 cockpit/aileron)
+      function drawSpaceship25D(ctx, timeSec) {
+        const pulse = 0.5 + 0.5 * Math.sin(timeSec * 3);
+        const p0 = projectPoint(0, 0, 0);
+        const p1 = projectPoint(0, 0, 18);
+        const p2 = projectPoint(0, 0, 36);
+        const s0 = p0.scale;
+        const s1 = p1.scale;
+        const s2 = p2.scale;
+        const py = proj.pitch;
+
+        // Plan 0 (sol z=0) : Ombre, halo, rampe et pieds
+        ctx.fillStyle = "rgba(0,0,0,0.40)";
+        ctx.beginPath();
+        ctx.ellipse(p0.x + 8 * s0, p0.y + 8 * s0, 76 * s0, 76 * py * s0, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const haloAlpha = host.game.isHoveredShip ? (0.30 + 0.16 * pulse) : (0.11 + 0.08 * pulse);
+        ctx.strokeStyle = `rgba(89, 230, 255, ${haloAlpha})`;
+        ctx.lineWidth = 3 * s0;
+        ctx.beginPath();
+        ctx.ellipse(p0.x, p0.y, (84 + pulse * 3) * s0, (84 + pulse * 3) * py * s0, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        const rotX = (lx, ly) => lx * proj.cosA - ly * proj.sinA;
+        const rotY = (lx, ly) => lx * proj.sinA + ly * proj.cosA;
+
+        // Pieds d'atterrissage (du sol vers la coque)
+        for (const deg of [-150, -30]) {
+          const a = deg * Math.PI / 180 + proj.camAngle;
+          const dx = Math.cos(a), dy = Math.sin(a);
+          const fx = p0.x + dx * 82 * s0;
+          const fy = p0.y + dy * 82 * py * s0;
+          const bx = p1.x + dx * 45 * s1;
+          const by = p1.y + dy * 45 * py * s1;
+          ctx.strokeStyle = "#424d61";
+          ctx.lineWidth = 10 * s0;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(fx, fy);
+          ctx.stroke();
+          ctx.fillStyle = "#66758f";
+          ctx.beginPath();
+          ctx.ellipse(fx, fy, 8 * s0, 8 * py * s0, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Rampe inclinée de la coque vers le sol
+        ctx.fillStyle = "#4d5970";
+        ctx.beginPath();
+        ctx.moveTo(p1.x + rotX(-18, 42) * s1, p1.y + rotY(-18, 42) * py * s1);
+        ctx.lineTo(p1.x + rotX(18, 42) * s1, p1.y + rotY(18, 42) * py * s1);
+        ctx.lineTo(p0.x + rotX(24, 88) * s0, p0.y + rotY(24, 88) * py * s0);
+        ctx.lineTo(p0.x + rotX(-24, 88) * s0, p0.y + rotY(-24, 88) * py * s0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "#8ca6c7";
+        ctx.lineWidth = 2 * s0;
+        ctx.stroke();
+
+        // Plan 1 (z=18) : Épaisseur métallique + Coque principale
+        if (proj.blend > 0.02) {
+          ctx.fillStyle = "#4e5b73";
+          ctx.beginPath();
+          ctx.ellipse(p1.x, p1.y + 7 * proj.blend * s1, 68 * s1, 68 * py * s1, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = "#8a99b3";
+        ctx.beginPath();
+        ctx.ellipse(p1.x, p1.y, 68 * s1, 68 * py * s1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#adbdd1";
+        ctx.beginPath();
+        ctx.ellipse(p1.x, p1.y, 62 * s1, 62 * py * s1, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#3d475c";
+        ctx.lineWidth = 2.5 * s1;
+        ctx.beginPath();
+        ctx.ellipse(p1.x, p1.y, 68 * s1, 68 * py * s1, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = "#61708a";
+        ctx.lineWidth = 2 * s1;
+        ctx.beginPath();
+        ctx.ellipse(p1.x, p1.y, 47 * s1, 47 * py * s1, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Feux périphériques
+        ctx.fillStyle = `rgba(71, 242, 224, ${0.65 + 0.35 * pulse})`;
+        for (let i = 0; i < 8; i++) {
+          const a = i * Math.PI / 4 + proj.camAngle;
+          ctx.beginPath();
+          ctx.arc(p1.x + Math.cos(a) * 55 * s1, p1.y + Math.sin(a) * 55 * py * s1, 4.2 * s1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Plan 2 (z=36) : Aileron + Dôme cockpit en parallaxe
+        ctx.fillStyle = "#525e75";
+        ctx.beginPath();
+        ctx.moveTo(p1.x + rotX(-16, -48) * s1, p1.y + rotY(-16, -48) * py * s1);
+        ctx.lineTo(p1.x + rotX(16, -48) * s1, p1.y + rotY(16, -48) * py * s1);
+        ctx.lineTo(p2.x + rotX(10, -62) * s2, p2.y + rotY(10, -62) * py * s2);
+        ctx.lineTo(p2.x + rotX(-10, -62) * s2, p2.y + rotY(-10, -62) * py * s2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(89, 217, 255, 0.80)";
+        ctx.beginPath();
+        ctx.arc(p2.x + rotX(0, -56) * s2, p2.y + rotY(0, -56) * py * s2, (6 + pulse * 1.5) * s2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#29384d";
+        ctx.beginPath();
+        ctx.ellipse(p2.x, p2.y + 4 * proj.blend * s2, 30 * s2, (30 - 6 * proj.blend) * s2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#2eadcf";
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, (25 - 1 * proj.blend) * s2, Math.PI, Math.PI * 2);
+        ctx.ellipse(p2.x, p2.y, (25 - 1 * proj.blend) * s2, (25 - 9 * proj.blend) * s2, 0, 0, Math.PI);
+        ctx.fill();
+        ctx.fillStyle = "rgba(166, 245, 255, 0.65)";
+        ctx.beginPath();
+        ctx.arc(p2.x - 7 * s2, p2.y - 7 * s2, 10 * s2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255, 255, 255, 0.88)";
+        ctx.beginPath();
+        ctx.arc(p2.x - 10 * s2, p2.y - 10 * s2, 4.2 * s2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Alien en plan 2D vertical façon Don't Starve (compatible avec alien_noir_et_blanc via runHook("drawAlien"))
+      function drawAlien25D(timeSec) {
+        const ctx = host.game.ctx;
+        const al = host.game.alien;
+        if (!ctx || !al) return;
+
+        const stride = Math.sin(al.walkCycle) * 5.2;
+        const bob = Math.abs(Math.cos(al.walkCycle)) * 2.2;
+        const screenFacing = al.facing + proj.camAngle;
+        const fx = Math.cos(screenFacing);
+        const fy = Math.sin(screenFacing);
+        const rx = -fy;
+
+        const pGround = projectPoint(al.x, al.y, 0);
+        const pTorso = projectPoint(al.x, al.y, 14 + bob);
+        const pHead = projectPoint(al.x, al.y, 28 + bob * 1.25);
+        const sg = pGround.scale;
+        const st = pTorso.scale;
+        const sh = pHead.scale;
+
+        ctx.save();
+
+        // Ombre portée au sol (z = 0)
+        ctx.fillStyle = "rgba(0,0,0,0.34)";
+        ctx.beginPath();
+        ctx.ellipse(pGround.x + 3 * sg, pGround.y + 3 * sg, 17 * sg, 10 * sg, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Flèche de direction si déplacement actif
+        if ((host.game.hasTarget || (host.game.useJoystick && host.game.joyActive && host.game.joyMag > 0)) && !host.game.isAnyUIOpen()) {
+          const ax = pGround.x + fx * 30 * sg;
+          const ay = pGround.y + fy * 30 * proj.pitch * sg;
+          ctx.fillStyle = "rgba(115, 242, 217, 0.65)";
+          ctx.beginPath();
+          ctx.arc(ax, ay, 4 * sg, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Pieds animés (z = 2)
+        ctx.fillStyle = "#2e3857";
+        ctx.beginPath();
+        ctx.ellipse(pGround.x - 6.5 * sg + fx * stride * sg, pGround.y + fy * stride * proj.pitch * sg - 2 * sg, 5.2 * sg, 3.8 * sg, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(pGround.x + 6.5 * sg - fx * stride * sg, pGround.y - fy * stride * proj.pitch * sg - 2 * sg, 5.2 * sg, 3.8 * sg, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sac à dos (derrière ou devant selon l'orientation)
+        if (fy >= -0.25) {
+          ctx.fillStyle = "#3d5c85";
+          ctx.beginPath();
+          ctx.ellipse(pTorso.x - fx * 6 * st, pTorso.y - 1 * st, 9.5 * st, 10.5 * st, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Torse / combinaison verticale
+        ctx.fillStyle = "#527aa8";
+        ctx.beginPath();
+        ctx.ellipse(pTorso.x, pTorso.y, 13 * st, 14.5 * st, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#293d5c";
+        ctx.lineWidth = 1.8 * st;
+        ctx.stroke();
+
+        // Bras
+        ctx.fillStyle = "#6bdb6b";
+        ctx.beginPath();
+        ctx.arc(pTorso.x - 13 * st - fx * stride * 0.45 * st, pTorso.y + 1 * st + fy * stride * 0.35 * st, 4.4 * st, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(pTorso.x + 13 * st + fx * stride * 0.45 * st, pTorso.y + 1 * st - fy * stride * 0.35 * st, 4.4 * st, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (fy < -0.25) {
+          ctx.fillStyle = "#3d5c85";
+          ctx.beginPath();
+          ctx.ellipse(pTorso.x - fx * 5 * st, pTorso.y + 1 * st, 9.5 * st, 10.5 * st, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Tête (plan supérieur z = 28)
+        const hx = pHead.x + fx * 2 * sh;
+        const hy = pHead.y;
+        ctx.fillStyle = "#5cd661";
+        ctx.beginPath();
+        ctx.arc(hx, hy, 12.2 * sh, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(128, 240, 122, 0.75)";
+        ctx.beginPath();
+        ctx.arc(hx - 2 * sh, hy - 2 * sh, 8.2 * sh, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Antennes oscillantes
+        const sway = Math.sin(timeSec * 4.5 + al.walkCycle * 0.5) * 2.2;
+        for (const side of [-1, 1]) {
+          const bx = hx + side * 5.5 * sh;
+          const by = hy - 9 * sh;
+          const tx = bx + side * 4.5 * sh + sway * sh;
+          const ty = by - 9 * sh;
+          ctx.strokeStyle = "#47b852";
+          ctx.lineWidth = 2.2 * sh;
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+          ctx.fillStyle = "#d1ff6b";
+          ctx.beginPath();
+          ctx.arc(tx, ty, 3.2 * sh, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Yeux orientés (visibles quand l'alien ne tourne pas complètement le dos)
+        if (fy > -0.65) {
+          const eyeShiftX = fx * 4.5 * sh;
+          const eyeShiftY = fy * 2.5 * sh;
+          const lex = hx + eyeShiftX - 4.2 * sh + rx * 0.5 * sh;
+          const ley = hy + eyeShiftY + 1 * sh;
+          const rex = hx + eyeShiftX + 4.2 * sh - rx * 0.5 * sh;
+          const rey = hy + eyeShiftY + 1 * sh;
+          ctx.fillStyle = "#0f1424";
+          ctx.beginPath(); ctx.arc(lex, ley, 3.3 * sh, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(rex, rey, 3.3 * sh, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.9)";
+          ctx.beginPath(); ctx.arc(lex + fx * sh - 0.8 * sh, ley - 0.8 * sh, 1.1 * sh, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(rex + fx * sh - 0.8 * sh, rey - 0.8 * sh, 1.1 * sh, 0, Math.PI * 2); ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      // --- Rendu principal 2.5D ---
+      function renderWorld25D(origDrawWorld, timeSec) {
+        const ctx = host.game.ctx;
+        const cam = host.game.cam;
+        const alien = host.game.alien;
+        const chunks = host.game.chunks;
+        const viewW = host.game.viewW;
+        const viewH = host.game.viewH;
+        const zoom = host.game.currentZoom;
+        const CHUNK_SIZE = host.game.CHUNK_SIZE;
+        if (!ctx || !cam || !chunks) {
+          return origDrawWorld(timeSec);
+        }
+
+        const uiOpen = host.game.isAnyUIOpen();
+        if (uiOpen) {
+          // Attendre la fermeture du menu Paramètres pour lancer la transition
+          lastAnimTs = null;
+          if (blend <= 0.0001) {
+            return origDrawWorld(timeSec);
+          }
+        } else if (blend !== targetBlend) {
+          const nowMs = (typeof performance !== "undefined" && typeof performance.now === "function")
+            ? performance.now()
+            : Date.now();
+          const dt = lastAnimTs === null
+            ? (1 / 60)
+            : Math.max(0.001, Math.min((nowMs - lastAnimTs) / 1000, 0.05));
+          lastAnimTs = nowMs;
+          const step = dt / transitionDurationSec;
+          if (blend < targetBlend) blend = Math.min(targetBlend, blend + step);
+          else blend = Math.max(targetBlend, blend - step);
+        } else {
+          lastAnimTs = null;
+        }
+
+        if (blend <= 0.0001 && targetBlend === 0) {
+          blend = 0;
+          lastAnimTs = null;
+          window.Assemblage25DActive = false;
+          queueMicrotask(() => {
+            if (blend === 0 && targetBlend === 0) detachHooks();
+          });
+          return origDrawWorld(timeSec);
+        }
+
+        window.Assemblage25DActive = true;
+        const eased = easeInOutCubic(clamp(blend, 0, 1));
+        proj.blend = eased;
+        proj.pitch = 1 + (pitch - 1) * eased;
+        proj.pStrength = pStrength * eased;
+        proj.cx = viewW * 0.5;
+        proj.cy = viewH * (0.50 + 0.04 * eased);
+        proj.refHalfX = Math.max(195, viewW * 0.5);
+        proj.refHalfY = Math.max(320, viewH * 0.5);
+        proj.camX = cam.x;
+        proj.camY = cam.y;
+        proj.camAngle = Number(cam.angle) || 0;
+        proj.cosA = Math.cos(proj.camAngle);
+        proj.sinA = Math.sin(proj.camAngle);
+        proj.zoom = zoom;
+        proj.zLift = 1 - proj.pitch * 0.22;
+
+        const env = host.game.getBiomeGeneratorEnv(timeSec);
+        const rawHW = (viewW * 0.5) / zoom;
+        const rawHH = (viewH * 0.54) / (zoom * proj.pitch);
+        const ac = Math.abs(proj.cosA);
+        const as = Math.abs(proj.sinA);
+        const rotHW = rawHW * ac + rawHH * as;
+        const rotHH = rawHW * as + rawHH * ac;
+        const halfW = rotHW + CHUNK_SIZE * 0.45;
+        const halfH = rotHH + CHUNK_SIZE * 0.52;
+
+        visibleChunks.length = 0;
+        for (const ch of chunks.values()) {
+          if (ch.ox + CHUNK_SIZE < cam.x - halfW || ch.ox > cam.x + halfW ||
+              ch.oy + CHUNK_SIZE < cam.y - halfH || ch.oy > cam.y + halfH) {
+            continue;
+          }
+          visibleChunks.push(ch);
+        }
+
+        // PASSE 1 : Sol incliné (z = 0)
+        ctx.save();
+        ctx.translate(proj.cx, proj.cy);
+        ctx.scale(zoom, zoom * proj.pitch);
+        if (proj.camAngle) ctx.rotate(proj.camAngle);
+        ctx.translate(-cam.x, -cam.y);
+
+        for (let i = 0; i < visibleChunks.length; i++) {
+          drawChunkGround(ctx, visibleChunks[i], env, timeSec);
+        }
+
+        const activeGen25D = host.game.getActiveBiomeGenerator();
+        if (activeGen25D && typeof activeGen25D.drawWorldBefore === "function") {
+          activeGen25D.drawWorldBefore(ctx, timeSec, env);
+        }
+
+        // Marqueur de destination au sol
+        if (host.game.hasTarget && !uiOpen && alien) {
+          const tx = host.game.targetWorldX;
+          const ty = host.game.targetWorldY;
+          if (Math.hypot(tx - alien.x, ty - alien.y) > 22) {
+            const pulse = 0.5 + 0.5 * Math.sin(timeSec * 6);
+            ctx.strokeStyle = "rgba(107, 240, 224, 0.55)";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(tx, ty, 9 + pulse * 4, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = "rgba(107, 240, 224, 0.72)";
+            ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+        ctx.restore();
+
+        // PASSE 2 : Collecte des plans 2D verticaux et tri en Y (Painter's Algorithm)
+        billboards.length = 0;
+        const minVisX = cam.x - (rotHW + 160);
+        const maxVisX = cam.x + (rotHW + 160);
+        const minVisY = cam.y - (rotHH + 210);
+        const maxVisY = cam.y + (rotHH + 210);
+
+        for (let i = 0; i < visibleChunks.length; i++) {
+          const ch = visibleChunks[i];
+          const theme = ch.theme || env.theme || "astral";
+
+          if (ch.flora) {
+            for (const f of ch.flora) {
+              if (f.x < minVisX || f.x > maxVisX || f.y < minVisY || f.y > maxVisY) continue;
+              billboards.push({ y: depthOf(f.x, f.y), kind: 0, data: f, theme });
+            }
+          }
+          if (ch.rocks) {
+            for (const r of ch.rocks) {
+              if (r.x < minVisX || r.x > maxVisX || r.y < minVisY || r.y > maxVisY) continue;
+              billboards.push({ y: depthOf(r.x, r.y), kind: 1, data: r, theme });
+            }
+          }
+          if (ch.crystals) {
+            for (const cr of ch.crystals) {
+              if (cr.x < minVisX || cr.x > maxVisX || cr.y < minVisY || cr.y > maxVisY) continue;
+              billboards.push({ y: depthOf(cr.x, cr.y), kind: 2, data: cr, theme });
+            }
+          }
+          if (ch.pickups) {
+            for (const p of ch.pickups) {
+              if (p.collected) continue;
+              if (p.x < minVisX || p.x > maxVisX || p.y < minVisY || p.y > maxVisY) continue;
+              billboards.push({ y: depthOf(p.x, p.y), kind: 3, data: p, theme });
+            }
+          }
+        }
+
+        const anchors = host.game.anchors;
+        if (anchors && anchors.length > 0) {
+          for (const a of anchors) {
+            if (!a.showOnMap) continue;
+            if (a.x < minVisX || a.x > maxVisX || a.y < minVisY || a.y > maxVisY) continue;
+            billboards.push({ y: depthOf(a.x, a.y), kind: 4, data: a });
+          }
+        }
+
+        if (Math.abs(cam.x) < halfW + 140 && Math.abs(cam.y) < halfH + 140) {
+          billboards.push({ y: depthOf(0, 0), kind: 5 });
+        }
+
+        if (alien) {
+          billboards.push({ y: depthOf(alien.x, alien.y), kind: 6 });
+        }
+
+        const customSources = window.Assemblage25DBillboardSources;
+        if (customSources && customSources.size > 0) {
+          const pushCustom = (yPos, drawFn, xPos) => {
+            if (typeof drawFn === "function") {
+              const wy = Number(yPos) || 0;
+              const wx = (xPos !== undefined && xPos !== null) ? (Number(xPos) || 0) : cam.x;
+              billboards.push({ y: depthOf(wx, wy), kind: 7, draw: drawFn });
+            }
+          };
+          for (const collectFn of customSources.values()) {
+            try { collectFn(pushCustom); } catch (_) {}
+          }
+        }
+
+        billboards.sort((a, b) => a.y - b.y);
+
+        for (let i = 0; i < billboards.length; i++) {
+          const item = billboards[i];
+          switch (item.kind) {
+            case 0:
+              drawFloraBillboard(ctx, item.data, item.theme, timeSec);
+              break;
+            case 1:
+              drawRockBillboard(ctx, item.data);
+              break;
+            case 2:
+              drawCrystalBillboard(ctx, item.data);
+              break;
+            case 3:
+              drawPickupBillboard(ctx, item.data, timeSec);
+              break;
+            case 4:
+              drawAnchorBillboard(ctx, item.data, timeSec);
+              break;
+            case 5:
+              drawSpaceship25D(ctx, timeSec);
+              break;
+            case 6:
+              host.game.runHook("drawAlien", drawAlien25D, timeSec);
+              break;
+            case 7:
+              item.draw(ctx, projectPoint, eased, timeSec);
+              break;
+          }
+        }
+
+        // PASSE 3 : Extensions drawWorldAfter (tirs, visuels d'ancre) sur le plan du sol
+        ctx.save();
+        ctx.translate(proj.cx, proj.cy);
+        ctx.scale(zoom, zoom * proj.pitch);
+        if (proj.camAngle) ctx.rotate(proj.camAngle);
+        ctx.translate(-cam.x, -cam.y);
+        host.game.runHook("drawWorldAfter", () => {}, timeSec);
+        ctx.restore();
+
+        // Brume atmosphérique de profondeur en haut de l'écran (gradient mis en cache)
+        if (showDepthFog && eased > 0.01) {
+          const fogH = Math.round(Math.max(70, viewH * 0.18));
+          const theme = env.theme || "astral";
+          const fogKey = theme + "|" + fogH;
+          if (!cachedFogGrad || cachedFogKey !== fogKey) {
+            const fogCol = theme === "volcanic"
+              ? "36, 16, 16"
+              : (theme === "glacial"
+                ? "24, 48, 72"
+                : (theme === "fungal"
+                  ? "18, 34, 28"
+                  : (theme === "marais"
+                    ? "20, 38, 28"
+                    : (theme === "archipel" ? "16, 52, 74" : "20, 18, 38"))));
+            cachedFogGrad = ctx.createLinearGradient(0, 0, 0, fogH);
+            cachedFogGrad.addColorStop(0, `rgba(${fogCol}, 0.42)`);
+            cachedFogGrad.addColorStop(1, `rgba(${fogCol}, 0)`);
+            cachedFogKey = fogKey;
+          }
+          const prevAlpha = ctx.globalAlpha;
+          ctx.globalAlpha = prevAlpha * eased;
+          ctx.fillStyle = cachedFogGrad;
+          ctx.fillRect(0, 0, viewW, fogH);
+          ctx.globalAlpha = prevAlpha;
+        }
+
+        // Plans d'avant-plan en parallaxe rapide (1.20x et 1.38x)
+        if (showForegroundLayer && eased > 0.01) {
+          if (prevCamX === null) {
+            prevCamX = cam.x;
+            prevCamY = cam.y;
+            prevCamAngle = proj.camAngle;
+          } else {
+            const dCamX = cam.x - prevCamX;
+            const dCamY = cam.y - prevCamY;
+            const dAng = proj.camAngle - prevCamAngle;
+            let normDAng = (dAng + Math.PI) % (Math.PI * 2) - Math.PI;
+            if (normDAng < -Math.PI) normDAng += Math.PI * 2;
+            moteOffsetX -= (dCamX * proj.cosA - dCamY * proj.sinA) * zoom + normDAng * 220;
+            moteOffsetY -= (dCamX * proj.sinA + dCamY * proj.cosA) * zoom * proj.pitch;
+            prevCamX = cam.x;
+            prevCamY = cam.y;
+            prevCamAngle = proj.camAngle;
+          }
+          const spanW = viewW + 160;
+          const spanH = viewH + 160;
+          const acc = env.accentRgb || [115, 242, 217];
+          const moteRgb = `${Math.round(acc[0])},${Math.round(acc[1])},${Math.round(acc[2])}`;
+          ctx.save();
+          for (let i = 0; i < fgMotes.length; i++) {
+            const m = fgMotes[i];
+            const wx = m.x + timeSec * m.vx + moteOffsetX * m.parallax;
+            const wy = m.y + timeSec * m.vy + moteOffsetY * m.parallax;
+            const sx = (((wx % spanW) + spanW) % spanW) - 80;
+            const sy = (((wy % spanH) + spanH) % spanH) - 80;
+            const pulse = 0.65 + 0.35 * Math.sin(timeSec * 2.1 + m.phase);
+            ctx.fillStyle = `rgba(${moteRgb},${(m.alpha * pulse * eased).toFixed(3)})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, m.r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function attachHooks() {
+        if (!unhookWorld) {
+          unhookWorld = host.hooks.wrap("drawWorld", renderWorld25D);
+        }
+        if (!unhookScreenToWorld) {
+          unhookScreenToWorld = host.hooks.wrap("screenToWorld", (_, sx, sy) => {
+            const cam = host.game.cam;
+            const zoom = host.game.currentZoom || 1;
+            const eased = easeInOutCubic(clamp(blend, 0, 1));
+            const curPitch = 1 + (pitch - 1) * eased;
+            const cx = host.game.viewW * 0.5;
+            const cy = host.game.viewH * (0.50 + 0.04 * eased);
+            const rx = (sx - cx) / zoom;
+            const ry = (sy - cy) / (zoom * curPitch);
+            const ang = Number(cam.angle) || 0;
+            if (!ang) {
+              return { x: cam.x + rx, y: cam.y + ry };
+            }
+            const c = Math.cos(ang);
+            const s = Math.sin(ang);
+            return {
+              x: cam.x + rx * c + ry * s,
+              y: cam.y - rx * s + ry * c,
+            };
+          });
+        }
+      }
+
+      function detachHooks() {
+        window.Assemblage25DActive = false;
+        prevCamX = null;
+        prevCamY = null;
+        prevCamAngle = null;
+        if (unhookWorld) {
+          unhookWorld();
+          unhookWorld = null;
+        }
+        if (unhookScreenToWorld) {
+          unhookScreenToWorld();
+          unhookScreenToWorld = null;
+        }
+      }
+
+      host.registerCleanup(detachHooks);
+
+      if (enabled25D) {
+        attachHooks();
+      }
+
+      host.ui.addSettingToggle({
+        id: "parallaxe_25d",
+        label: toggleLabel,
+        desc: toggleDesc,
+        checked: enabled25D,
+        onChange(checked) {
+          enabled25D = Boolean(checked);
+          host.state.set({ enabled25D }, true);
+          targetBlend = enabled25D ? 1 : 0;
+          lastAnimTs = null;
+          if (targetBlend !== blend) {
+            attachHooks();
+          } else if (targetBlend === 0) {
+            detachHooks();
+          }
+          const msg = enabled25D ? toastOn : toastOff;
+          if (msg.trim()) host.ui.showToast(msg);
+        },
+      });
+    },
+
+    onDeactivate() {
+      // Les hooks sont retirés automatiquement par registerCleanup(detachHooks)
+    },
+  };
+})();
+</script>
+</body>
+</html>

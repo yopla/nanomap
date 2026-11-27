@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Générateur de Biome : biome_archipel</title>
+</head>
+<body>
+<script>
+// Générateur de terrain Assemblage : biome_archipel (config/biomes/biome_archipel.html)
+// Archipel procédural composé d'îles organiques reliées par des ponts de bois,
+// collisions côtières fluides et moteur de météo générative dynamique.
+(function () {
+  const GENERATOR_ID = "biome_archipel";
+
+  // --- Utilitaires déterministes ---
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash2(ix, iy, seed) {
+    let n = Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + Math.imul(seed, 1442695041);
+    n = (n ^ (n >>> 13)) >>> 0;
+    n = Math.imul(n, 1274126177) >>> 0;
+    return ((n ^ (n >>> 16)) >>> 0) / 4294967296 * 2 - 1;
+  }
+
+  function hash2u(ix, iy, seed) {
+    return (hash2(ix, iy, seed) + 1) * 0.5;
+  }
+
+  function valueNoise2D(x, y, seed) {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const fx = x - ix;
+    const fy = y - iy;
+    const ux = fx * fx * (3 - 2 * fx);
+    const uy = fy * fy * (3 - 2 * fy);
+    const a = hash2(ix, iy, seed);
+    const b = hash2(ix + 1, iy, seed);
+    const c = hash2(ix, iy + 1, seed);
+    const d = hash2(ix + 1, iy + 1, seed);
+    return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+  }
+
+  function fbm(x, y, seed, octaves) {
+    let val = 0, amp = 0.5, freq = 1, norm = 0;
+    for (let i = 0; i < octaves; i++) {
+      val += valueNoise2D(x * freq, y * freq, seed + i * 31) * amp;
+      norm += amp;
+      amp *= 0.5;
+      freq *= 2.02;
+    }
+    return val / norm;
+  }
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function smoothstep(edge0, edge1, x) {
+    const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+    return t * t * (3 - 2 * t);
+  }
+  function mixRGB(c1, c2, t) {
+    return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+  }
+  function shadeRGB(c, amount) {
+    if (amount >= 0) {
+      return [lerp(c[0], 255, amount), lerp(c[1], 255, amount), lerp(c[2], 255, amount)];
+    }
+    const f = 1 + amount;
+    return [c[0] * f, c[1] * f, c[2] * f];
+  }
+  function rgbStr(c, a = 1) {
+    return `rgba(${Math.round(clamp(c[0], 0, 255))},${Math.round(clamp(c[1], 0, 255))},${Math.round(clamp(c[2], 0, 255))},${a})`;
+  }
+
+  // --- Architecture de l'archipel : cellules d'îles + ponts ---
+  const BASE_CELL_SIZE = 740;
+  const BRIDGE_HALF_WIDTH = 28;
+  const LAND_THRESHOLD = 0.04;
+
+  function getCellSize(env) {
+    const sc = clamp(Number(env && env.biomeScale) || 1.0, 0.5, 2.2);
+    return BASE_CELL_SIZE * (0.72 + sc * 0.28);
+  }
+
+  function getIslandForCell(gx, gy, env) {
+    const seed = (env && env.worldSeed) || 482913;
+    const cellSize = getCellSize(env);
+    if (gx === 0 && gy === 0) {
+      return {
+        gx: 0,
+        gy: 0,
+        x: 0,
+        y: 0,
+        r: Math.max(275, cellSize * 0.37),
+        phase: 0.7,
+        lobes: 3,
+        exists: true,
+      };
+    }
+    const existsRoll = hash2u(gx, gy, seed + 17);
+    // ~86% des cellules contiennent une île pour un archipel riche et navigable
+    const exists = existsRoll > 0.14;
+    const jx = (hash2u(gx, gy, seed + 31) - 0.5) * cellSize * 0.34;
+    const jy = (hash2u(gx, gy, seed + 53) - 0.5) * cellSize * 0.34;
+    const r = cellSize * (0.21 + hash2u(gx, gy, seed + 79) * 0.14);
+    const phase = hash2u(gx, gy, seed + 107) * Math.PI * 2;
+    const lobes = 2 + Math.floor(hash2u(gx, gy, seed + 131) * 4);
+    return {
+      gx,
+      gy,
+      x: gx * cellSize + jx,
+      y: gy * cellSize + jy,
+      r,
+      phase,
+      lobes,
+      exists,
+    };
+  }
+
+  function hasBridgeBetween(ax, ay, bx, by, env) {
+    const seed = (env && env.worldSeed) || 482913;
+    const islA = getIslandForCell(ax, ay, env);
+    const islB = getIslandForCell(bx, by, env);
+    if (!islA.exists || !islB.exists) return false;
+    // Garantit les 4 ponts autour de l'île d'atterrissage (0,0) si les îles voisines existent
+    if ((ax === 0 && ay === 0) || (bx === 0 && by === 0)) return true;
+    const keyX = Math.min(ax, bx) * 3 + (ax !== bx ? 1 : 2);
+    const keyY = Math.min(ay, by) * 3 + (ay !== by ? 1 : 2);
+    return hash2u(keyX, keyY, seed + 409) > 0.24;
+  }
+
+  function getBridgesInBounds(minX, minY, maxX, maxY, env) {
+    const cellSize = getCellSize(env);
+    const gx0 = Math.floor((minX - cellSize) / cellSize);
+    const gx1 = Math.floor((maxX + cellSize) / cellSize);
+    const gy0 = Math.floor((minY - cellSize) / cellSize);
+    const gy1 = Math.floor((maxY + cellSize) / cellSize);
+    const bridges = [];
+
+    for (let gy = gy0; gy <= gy1; gy++) {
+      for (let gx = gx0; gx <= gx1; gx++) {
+        const a = getIslandForCell(gx, gy, env);
+        if (!a.exists) continue;
+
+        // Pont vers l'est (gx + 1, gy)
+        if (hasBridgeBetween(gx, gy, gx + 1, gy, env)) {
+          const b = getIslandForCell(gx + 1, gy, env);
+          const br = buildBridgeSegment(a, b);
+          if (br && segmentIntersectsRect(br, minX - 48, minY - 48, maxX + 48, maxY + 48)) {
+            bridges.push(br);
+          }
+        }
+        // Pont vers le sud (gx, gy + 1)
+        if (hasBridgeBetween(gx, gy, gx, gy + 1, env)) {
+          const b = getIslandForCell(gx, gy + 1, env);
+          const br = buildBridgeSegment(a, b);
+          if (br && segmentIntersectsRect(br, minX - 48, minY - 48, maxX + 48, maxY + 48)) {
+            bridges.push(br);
+          }
+        }
+      }
+    }
+    return bridges;
+  }
+
+  function buildBridgeSegment(a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 10) return null;
+    const ux = dx / dist;
+    const uy = dy / dist;
+    // Le pont s'ancre légèrement à l'intérieur des plages des deux îles
+    const startOff = Math.max(40, a.r * 0.68);
+    const endOff = Math.max(40, b.r * 0.68);
+    if (startOff + endOff >= dist - 20) return null;
+    const x1 = a.x + ux * startOff;
+    const y1 = a.y + uy * startOff;
+    const x2 = b.x - ux * endOff;
+    const y2 = b.y - uy * endOff;
+    return {
+      x1, y1, x2, y2,
+      ux, uy,
+      px: -uy, py: ux,
+      len: Math.hypot(x2 - x1, y2 - y1),
+      halfW: BRIDGE_HALF_WIDTH,
+    };
+  }
+
+  function segmentIntersectsRect(br, minX, minY, maxX, maxY) {
+    const bx0 = Math.min(br.x1, br.x2) - br.halfW;
+    const bx1 = Math.max(br.x1, br.x2) + br.halfW;
+    const by0 = Math.min(br.y1, br.y2) - br.halfW;
+    const by1 = Math.max(br.y1, br.y2) + br.halfW;
+    return !(bx1 < minX || bx0 > maxX || by1 < minY || by0 > maxY);
+  }
+
+  function pointOnBridge(wx, wy, env, extraPad = 0) {
+    const bridges = getBridgesInBounds(wx - 40, wy - 40, wx + 40, wy + 40, env);
+    for (const br of bridges) {
+      const rx = wx - br.x1;
+      const ry = wy - br.y1;
+      const proj = rx * br.ux + ry * br.uy;
+      if (proj < -12 || proj > br.len + 12) continue;
+      const perp = Math.abs(rx * br.px + ry * br.py);
+      if (perp <= br.halfW + extraPad) return true;
+    }
+    return false;
+  }
+
+  function sampleIslandHeight(wx, wy, env) {
+    const seed = (env && env.worldSeed) || 482913;
+    const cellSize = getCellSize(env);
+    const gx0 = Math.floor(wx / cellSize);
+    const gy0 = Math.floor(wy / cellSize);
+    let maxH = -1.0;
+
+    const coastNoise = fbm(wx * 0.0042, wy * 0.0042, seed + 223, 3);
+
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const isl = getIslandForCell(gx0 + dx, gy0 + dy, env);
+        if (!isl.exists) continue;
+        const rx = wx - isl.x;
+        const ry = wy - isl.y;
+        const d = Math.hypot(rx, ry);
+        const angle = Math.atan2(ry, rx);
+        const organicR = isl.r * (1.0 + 0.12 * Math.sin(angle * isl.lobes + isl.phase) + 0.16 * coastNoise);
+        const h = 1.0 - d / Math.max(60, organicR);
+        if (h > maxH) maxH = h;
+      }
+    }
+    return maxH;
+  }
+
+  function sampleBiome(wx, wy, env) {
+    const scale = (env && env.biomeScale) || 1.0;
+    const seed = (env && env.worldSeed) || 482913;
+    return fbm(wx * (0.0009 / scale), wy * (0.0009 / scale), seed + 101, 2);
+  }
+
+  function sampleElev(wx, wy, env) {
+    return sampleIslandHeight(wx, wy, env);
+  }
+
+  function sampleDetail(wx, wy, env) {
+    const seed = (env && env.worldSeed) || 482913;
+    return valueNoise2D(wx * 0.012, wy * 0.012, seed + 202);
+  }
+
+  function isWalkable(wx, wy, env) {
+    if (sampleIslandHeight(wx, wy, env) >= LAND_THRESHOLD - 0.03) return true;
+    return pointOnBridge(wx, wy, env, 4);
+  }
+
+  function resolveTerrainConstraint(alien, prevX, prevY, env) {
+    if (!alien) return;
+    if (isWalkable(alien.x, alien.y, env)) return;
+    // Glissement fluide le long des côtes ou des rambardes de pont
+    if (isWalkable(alien.x, prevY, env)) {
+      alien.y = prevY;
+      alien.vy *= 0.25;
+      return;
+    }
+    if (isWalkable(prevX, alien.y, env)) {
+      alien.x = prevX;
+      alien.vx *= 0.25;
+      return;
+    }
+    if (isWalkable(prevX, prevY, env)) {
+      alien.x = prevX;
+      alien.y = prevY;
+      alien.vx *= 0.2;
+      alien.vy *= 0.2;
+    }
+  }
+
+  function sampleGroundColor(wx, wy, env) {
+    const h = sampleIslandHeight(wx, wy, env);
+    const detail = sampleDetail(wx, wy, env);
+    const lushCol = (env && env.groundColA) || [45, 106, 79];
+    const sandCol = (env && env.groundColB) || [216, 195, 144];
+    const waterCol = (env && env.groundColC) || [26, 117, 159];
+    const deepWater = shadeRGB(waterCol, -0.46);
+    const shallowWater = mixRGB(waterCol, [72, 229, 194], 0.42);
+
+    let col;
+    if (h < -0.22) {
+      const t = smoothstep(-0.75, -0.22, h);
+      col = mixRGB(deepWater, waterCol, t);
+    } else if (h < 0.0) {
+      const t = smoothstep(-0.22, 0.0, h);
+      col = mixRGB(waterCol, shallowWater, t);
+    } else if (h < 0.14) {
+      // Plage de sable humide -> sable doré
+      const t = smoothstep(0.0, 0.14, h);
+      col = mixRGB(shadeRGB(sandCol, -0.10), sandCol, t);
+    } else if (h < 0.26) {
+      // Transition sable -> végétation côtière
+      const t = smoothstep(0.14, 0.26, h);
+      col = mixRGB(sandCol, lushCol, t);
+    } else {
+      // Intérieur verdoyant de l'île
+      const t = smoothstep(0.26, 0.78, h);
+      col = mixRGB(lushCol, shadeRGB(lushCol, 0.16), t);
+    }
+
+    col = shadeRGB(col, detail * 0.045);
+
+    const dist = Math.hypot(wx, wy);
+    if (dist < env.LANDING_CLEAR_RADIUS) {
+      const t = clamp(1 - dist / env.LANDING_CLEAR_RADIUS, 0, 1);
+      col = mixRGB(col, [78, 92, 98], t * 0.52);
+    }
+    return rgbStr(col);
+  }
+
+  // --- Génération d'un chunk ---
+  function generateChunk(cx, cy, env) {
+    const CHUNK_SIZE = env.CHUNK_SIZE;
+    const TILE_COUNT = env.TILE_COUNT;
+    const TILE_SIZE = env.TILE_SIZE;
+    const LANDING_CLEAR_RADIUS = env.LANDING_CLEAR_RADIUS;
+    const WORLD_SEED = env.worldSeed;
+    const ROCK_DENSITY = env.rockDensity;
+    const CRYSTAL_DENSITY = env.crystalDensity;
+    const activeBiomeTheme = env.theme || "archipel";
+    const activeBiomeId = env.biomeId;
+    const accentRgb = env.accentRgb || [72, 229, 194];
+    const activeLevel1Elements = Array.isArray(env.spawnableElements) ? env.spawnableElements : [];
+
+    const ox = cx * CHUNK_SIZE;
+    const oy = cy * CHUNK_SIZE;
+    const tiles = [];
+    const foamDots = [];
+
+    // Résolution 2x plus fine sur les tuiles (16x16) pour des côtes organiques nettes
+    const subCount = TILE_COUNT * 2;
+    const subSize = CHUNK_SIZE / subCount;
+    for (let ty = 0; ty < subCount; ty++) {
+      for (let tx = 0; tx < subCount; tx++) {
+        const wx = ox + (tx + 0.5) * subSize;
+        const wy = oy + (ty + 0.5) * subSize;
+        tiles.push(sampleGroundColor(wx, wy, env));
+        const h = sampleIslandHeight(wx, wy, env);
+        if (h > -0.045 && h < 0.025) {
+          foamDots.push({ x: wx, y: wy, r: subSize * 0.56 });
+        }
+      }
+    }
+
+    const bridges = getBridgesInBounds(ox, oy, ox + CHUNK_SIZE, oy + CHUNK_SIZE, env);
+
+    const hSeed = ((WORLD_SEED * 73856093) ^ (cx * 19349663) ^ (cy * 83492791)) >>> 0;
+    const rng = mulberry32(hSeed);
+    const randRange = (a, b) => a + rng() * (b - a);
+    const randInt = (a, b) => Math.floor(a + rng() * (b - a + 1));
+
+    const rocks = [];
+    const crystals = [];
+    const flora = [];
+    const pickups = [];
+    const colliders = [];
+
+    // Rochers côtiers & coralliens (uniquement sur les îles et hors ponts)
+    const rockCount = Math.round(randInt(3, 7) * ROCK_DENSITY);
+    for (let i = 0; i < rockCount; i++) {
+      const wx = ox + randRange(28, CHUNK_SIZE - 28);
+      const wy = oy + randRange(28, CHUNK_SIZE - 28);
+      if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS) continue;
+      const elev = sampleIslandHeight(wx, wy, env);
+      if (elev < 0.08 || pointOnBridge(wx, wy, env, 22)) continue;
+      const radius = randRange(8, 20);
+      const sides = randInt(5, 8);
+      const pts = [];
+      for (let s = 0; s < sides; s++) {
+        const a = (Math.PI * 2 * s) / sides + randRange(-0.2, 0.2);
+        const r = radius * randRange(0.76, 1.08);
+        pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+      }
+      const base = shadeRGB(elev < 0.22 ? [148, 142, 128] : [92, 108, 114], randRange(-0.08, 0.1));
+      rocks.push({
+        x: wx, y: wy, pts,
+        col: rgbStr(base),
+        hi: rgbStr(mixRGB(base, [235, 245, 232], 0.34)),
+      });
+      if (radius >= 14) {
+        colliders.push({ x: wx, y: wy, r: radius * 0.78 });
+      }
+    }
+
+    // Cristaux marins / coraux bioluminescents
+    const crystalCount = Math.round(randInt(1, 3) * CRYSTAL_DENSITY);
+    for (let i = 0; i < crystalCount; i++) {
+      const wx = ox + randRange(32, CHUNK_SIZE - 32);
+      const wy = oy + randRange(32, CHUNK_SIZE - 32);
+      if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS) continue;
+      const elev = sampleIslandHeight(wx, wy, env);
+      if (elev < 0.12 || pointOnBridge(wx, wy, env, 22)) continue;
+      const rgb = rng() > 0.45 ? [72, 235, 208] : [255, 138, 112];
+      const sc = randRange(0.75, 1.3);
+      const rot = randRange(0, Math.PI * 2);
+      crystals.push({ x: wx, y: wy, rgb, sc, rot });
+      if (sc >= 1.1) {
+        colliders.push({ x: wx, y: wy, r: 10.5 * sc });
+      }
+    }
+
+    // Palmiers / fougères tropicales sur les îles
+    const floraCount = randInt(5, 11);
+    for (let i = 0; i < floraCount; i++) {
+      const wx = ox + randRange(22, CHUNK_SIZE - 22);
+      const wy = oy + randRange(22, CHUNK_SIZE - 22);
+      if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS - 25) continue;
+      const elev = sampleIslandHeight(wx, wy, env);
+      if (elev < 0.16 || pointOnBridge(wx, wy, env, 18)) continue;
+      const rgb = rng() > 0.3 ? [58, 168, 108] : [102, 204, 128];
+      flora.push({
+        x: wx, y: wy,
+        r: randRange(7, 13),
+        fronds: randInt(5, 7),
+        rot: randRange(0, Math.PI * 2),
+        dark: rgbStr(shadeRGB(rgb, -0.25)),
+        light: rgbStr(shadeRGB(rgb, 0.22)),
+      });
+    }
+
+    // Ressources récoltables (uniquement sur les îles)
+    if (activeLevel1Elements.length > 0) {
+      let totalWeight = 0;
+      for (const elW of activeLevel1Elements) {
+        totalWeight += Math.max(0, Number(elW.spawnWeight ?? 100));
+      }
+      const pickupTarget = randInt(3, 5);
+      const chunkMask = typeof env.getChunkMask === "function" ? env.getChunkMask(activeBiomeId, cx, cy) : 0;
+      let placed = 0;
+      for (let attempt = 0; attempt < pickupTarget * 6 && placed < pickupTarget; attempt++) {
+        const wx = ox + randRange(40, CHUNK_SIZE - 40);
+        const wy = oy + randRange(40, CHUNK_SIZE - 40);
+        if (Math.hypot(wx, wy) < LANDING_CLEAR_RADIUS - 35) continue;
+        if (sampleIslandHeight(wx, wy, env) < 0.08) continue;
+        const idx = placed;
+        placed++;
+        let elIdx = 0;
+        if (totalWeight > 0) {
+          const roll = rng() * totalWeight;
+          let acc = 0;
+          elIdx = activeLevel1Elements.length - 1;
+          for (let j = 0; j < activeLevel1Elements.length; j++) {
+            acc += Math.max(0, Number(activeLevel1Elements[j].spawnWeight ?? 100));
+            if (roll <= acc) { elIdx = j; break; }
+          }
+        } else {
+          elIdx = randInt(0, activeLevel1Elements.length - 1);
+        }
+        const el = activeLevel1Elements[elIdx];
+        if ((chunkMask & (1 << idx)) !== 0) continue;
+        pickups.push({
+          index: idx,
+          x: wx, y: wy,
+          elementId: el.id,
+          icon: el.icon || "",
+          color: el.color || "#48e5c2",
+          collected: false,
+        });
+      }
+    }
+
+    return {
+      cx, cy, ox, oy,
+      generator: GENERATOR_ID,
+      theme: activeBiomeTheme,
+      accent: accentRgb,
+      subCount,
+      subSize,
+      tiles,
+      foamDots,
+      bridges,
+      craters: [],
+      rocks,
+      crystals,
+      flora,
+      pickups,
+      colliders,
+    };
+  }
+
+  // --- Rendu d'un chunk (mer, écume, ponts, îles, décors) ---
+  function drawBridge(ctx, br) {
+    ctx.save();
+    // Ombre sur l'eau
+    ctx.strokeStyle = "rgba(6, 20, 34, 0.36)";
+    ctx.lineWidth = br.halfW * 2 + 6;
+    ctx.lineCap = "butt";
+    ctx.beginPath();
+    ctx.moveTo(br.x1 + 4, br.y1 + 6);
+    ctx.lineTo(br.x2 + 4, br.y2 + 6);
+    ctx.stroke();
+
+    // Poutres longitudinales
+    ctx.strokeStyle = "#5c3a21";
+    ctx.lineWidth = br.halfW * 2;
+    ctx.beginPath();
+    ctx.moveTo(br.x1, br.y1);
+    ctx.lineTo(br.x2, br.y2);
+    ctx.stroke();
+
+    // Planches de bois transversales
+    const plankSpacing = 12;
+    const count = Math.max(2, Math.floor(br.len / plankSpacing));
+    for (let i = 0; i <= count; i++) {
+      const t = i / count;
+      const cx = br.x1 + br.ux * br.len * t;
+      const cy = br.y1 + br.uy * br.len * t;
+      const hw = br.halfW - 2;
+      ctx.strokeStyle = (i % 2 === 0) ? "#9c6b3f" : "#875933";
+      ctx.lineWidth = 7.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - br.px * hw, cy - br.py * hw);
+      ctx.lineTo(cx + br.px * hw, cy + br.py * hw);
+      ctx.stroke();
+    }
+
+    // Cordages / rambardes latérales + poteaux
+    const railOff = br.halfW - 1;
+    ctx.strokeStyle = "#d9b07e";
+    ctx.lineWidth = 3;
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(br.x1 + br.px * railOff * side, br.y1 + br.py * railOff * side);
+      ctx.lineTo(br.x2 + br.px * railOff * side, br.y2 + br.py * railOff * side);
+      ctx.stroke();
+    }
+
+    const postSpacing = 54;
+    const postCount = Math.max(2, Math.round(br.len / postSpacing));
+    ctx.fillStyle = "#4a2c16";
+    for (let i = 0; i <= postCount; i++) {
+      const t = i / postCount;
+      const cx = br.x1 + br.ux * br.len * t;
+      const cy = br.y1 + br.uy * br.len * t;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(cx + br.px * (railOff + 1) * side, cy + br.py * (railOff + 1) * side, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawChunk(ctx, ch, env) {
+    const CHUNK_SIZE = env.CHUNK_SIZE;
+    const LANDING_CLEAR_RADIUS = env.LANDING_CLEAR_RADIUS;
+    const subCount = ch.subCount || env.TILE_COUNT;
+    const subSize = ch.subSize || env.TILE_SIZE;
+    const timeSec = Number(env.timeSec) || 0;
+
+    // 1. Tuiles sol / eau
+    for (let ty = 0; ty < subCount; ty++) {
+      for (let tx = 0; tx < subCount; tx++) {
+        ctx.fillStyle = ch.tiles[ty * subCount + tx];
+        ctx.fillRect(ch.ox + tx * subSize, ch.oy + ty * subSize, subSize + 1, subSize + 1);
+      }
+    }
+
+    // 2. Écume animée sur les rivages
+    if (ch.foamDots && ch.foamDots.length > 0) {
+      const pulse = 0.14 + 0.08 * Math.sin(timeSec * 2.1 + ch.cx * 0.7 + ch.cy * 0.5);
+      ctx.fillStyle = `rgba(218, 250, 255, ${pulse.toFixed(3)})`;
+      for (const fd of ch.foamDots) {
+        ctx.beginPath();
+        ctx.arc(fd.x, fd.y, fd.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 3. Zone d'atterrissage autour de (0, 0)
+    if (ch.ox <= LANDING_CLEAR_RADIUS && ch.ox + CHUNK_SIZE >= -LANDING_CLEAR_RADIUS &&
+        ch.oy <= LANDING_CLEAR_RADIUS && ch.oy + CHUNK_SIZE >= -LANDING_CLEAR_RADIUS) {
+      const acc = ch.accent || env.accentRgb || [72, 229, 194];
+      ctx.beginPath();
+      ctx.arc(0, 0, 165, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbStr(acc, 0.25);
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 130, 0, Math.PI * 2);
+      ctx.strokeStyle = rgbStr(acc, 0.16);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // 4. Ponts de bois
+    if (ch.bridges && ch.bridges.length > 0) {
+      for (const br of ch.bridges) {
+        drawBridge(ctx, br);
+      }
+    }
+
+    // 5. Palmiers / fougères tropicales
+    const windSway = Math.sin(timeSec * 2.3 + ch.cx) * 1.4;
+    for (const f of ch.flora) {
+      ctx.fillStyle = "rgba(8, 24, 18, 0.24)";
+      ctx.beginPath();
+      ctx.arc(f.x + 3, f.y + 4, f.r * 1.05, 0, Math.PI * 2);
+      ctx.fill();
+
+      const fronds = f.fronds || 6;
+      for (let i = 0; i < fronds; i++) {
+        const a = f.rot + (Math.PI * 2 * i) / fronds;
+        const fx = f.x + Math.cos(a) * f.r + windSway * 0.4;
+        const fy = f.y + Math.sin(a) * f.r;
+        ctx.strokeStyle = i % 2 === 0 ? f.dark : f.light;
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(f.x, f.y);
+        ctx.lineTo(fx, fy);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#5c4328";
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 6. Rochers côtiers
+    for (const r of ch.rocks) {
+      ctx.fillStyle = "rgba(5, 12, 18, 0.30)";
+      ctx.beginPath();
+      r.pts.forEach((p, idx) => idx ? ctx.lineTo(r.x + p[0] + 4, r.y + p[1] + 5) : ctx.moveTo(r.x + p[0] + 4, r.y + p[1] + 5));
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = r.col;
+      ctx.beginPath();
+      r.pts.forEach((p, idx) => idx ? ctx.lineTo(r.x + p[0], r.y + p[1]) : ctx.moveTo(r.x + p[0], r.y + p[1]));
+      ctx.closePath(); ctx.fill();
+
+      ctx.fillStyle = r.hi;
+      ctx.beginPath();
+      r.pts.forEach((p, idx) => idx ? ctx.lineTo(r.x + p[0] * 0.55 - 2, r.y + p[1] * 0.55 - 2) : ctx.moveTo(r.x + p[0] * 0.55 - 2, r.y + p[1] * 0.55 - 2));
+      ctx.closePath(); ctx.fill();
+    }
+
+    // 7. Cristaux / coraux
+    for (const cr of ch.crystals) {
+      ctx.fillStyle = rgbStr(cr.rgb, 0.16);
+      ctx.beginPath(); ctx.arc(cr.x, cr.y, 19 * cr.sc, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 3; i++) {
+        const a = cr.rot + i * 2.1;
+        const len = (13 - i * 2.2) * cr.sc;
+        const wid = 4.2 * cr.sc;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        const px = -dy, py = dx;
+        ctx.fillStyle = rgbStr(shadeRGB(cr.rgb, -0.14 * i));
+        ctx.beginPath();
+        ctx.moveTo(cr.x - dx * 3 * cr.sc, cr.y - dy * 3 * cr.sc);
+        ctx.lineTo(cr.x + px * wid, cr.y + py * wid);
+        ctx.lineTo(cr.x + dx * len, cr.y + dy * len);
+        ctx.lineTo(cr.x - px * wid, cr.y - py * wid);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // 8. Ressources récoltables
+    if (typeof env.drawPickups === "function") {
+      env.drawPickups(ctx, ch);
+    }
+  }
+
+  // --- Moteur de Météo Générative (optimisé) ---
+  const WEATHER_STATES = [
+    { id: "clear",  icon: "☀️",  label: "Soleil tropical",  rain: 0.0,  mist: 0.0,  tint: [255, 232, 170, 0.04], storm: 0.0 },
+    { id: "breeze", icon: "🌬️", label: "Brise marine",     rain: 0.08, mist: 0.14, tint: [170, 235, 255, 0.05], storm: 0.0 },
+    { id: "mist",   icon: "🌫️", label: "Brume côtière",    rain: 0.12, mist: 0.55, tint: [185, 220, 235, 0.12], storm: 0.0 },
+    { id: "rain",   icon: "🌧️", label: "Averse tropicale", rain: 0.72, mist: 0.25, tint: [40, 72, 110, 0.16],   storm: 0.0 },
+    { id: "storm",  icon: "⛈️", label: "Orage océanique",  rain: 1.0,  mist: 0.35, tint: [22, 34, 64, 0.26],    storm: 1.0 },
+  ];
+
+  const WEATHER_STATE_BY_ID = Object.create(null);
+  for (let i = 0; i < WEATHER_STATES.length; i++) {
+    WEATHER_STATE_BY_ID[WEATHER_STATES[i].id] = WEATHER_STATES[i];
+  }
+
+  const RAIN_DROP_COUNT = 110;
+  const MIST_BAND_COUNT = 5;
+
+  const weatherRuntime = {
+    initialized: false,
+    dropX: new Float32Array(RAIN_DROP_COUNT),
+    dropY: new Float32Array(RAIN_DROP_COUNT),
+    dropLen: new Float32Array(RAIN_DROP_COUNT),
+    dropSpd: new Float32Array(RAIN_DROP_COUNT),
+    mistBands: [],
+    mistSprite: null,
+    badgeCanvas: null,
+    badgeKey: "",
+    badgeW: 0,
+    badgeH: 0,
+    lightningAlpha: 0,
+    nextLightningAt: 4,
+    currentLabel: "☀️ Soleil tropical",
+    // Profil réutilisé sans allocation et mis en cache pour la frame courante
+    profile: {
+      icon: "☀️",
+      label: "Soleil tropical",
+      rain: 0,
+      mist: 0,
+      storm: 0,
+      tint: [0, 0, 0, 0],
+      wind: 1,
+    },
+    cacheTimeSec: -1,
+    cacheEnabled: false,
+    cacheMode: "",
+    cacheIntensity: -1,
+    cacheCycleSec: -1,
+    cacheWind: -1,
+    cacheSeed: -1,
+    lastTintKey: "",
+    lastTintStyle: "",
+    lastRainAlphaQ: -1,
+    lastRainStyle: "",
+  };
+
+  function pickWeatherState(stepIdx, seed) {
+    const r = hash2u(stepIdx, 7, seed + 881);
+    if (r < 0.28) return WEATHER_STATES[0]; // clear
+    if (r < 0.48) return WEATHER_STATES[1]; // breeze
+    if (r < 0.65) return WEATHER_STATES[2]; // mist
+    if (r < 0.85) return WEATHER_STATES[3]; // rain
+    return WEATHER_STATES[4];               // storm
+  }
+
+  function ensureWeatherParticles() {
+    if (!weatherRuntime.initialized) {
+      const rng = mulberry32(90210);
+      for (let i = 0; i < RAIN_DROP_COUNT; i++) {
+        weatherRuntime.dropX[i] = rng();
+        weatherRuntime.dropY[i] = rng();
+        weatherRuntime.dropLen[i] = 10 + rng() * 16;
+        weatherRuntime.dropSpd[i] = 0.55 + rng() * 0.65;
+      }
+      weatherRuntime.mistBands.length = 0;
+      for (let i = 0; i < MIST_BAND_COUNT; i++) {
+        weatherRuntime.mistBands.push({
+          x: rng(),
+          y: 0.08 + (i / MIST_BAND_COUNT) * 0.85,
+          w: 0.36 + rng() * 0.34,
+          h: 0.14 + rng() * 0.12,
+          spd: 0.012 + rng() * 0.018,
+        });
+      }
+      weatherRuntime.initialized = true;
+    }
+    // Pré-rendu unique du dégradé radial de brume (évite createRadialGradient à chaque frame)
+    if (!weatherRuntime.mistSprite && typeof document !== "undefined") {
+      const size = 128;
+      const cv = document.createElement("canvas");
+      cv.width = size;
+      cv.height = size;
+      const g = cv.getContext("2d");
+      if (g) {
+        const c = size * 0.5;
+        const grad = g.createRadialGradient(c, c, c * 0.08, c, c, c);
+        grad.addColorStop(0, "rgba(215, 240, 250, 1)");
+        grad.addColorStop(1, "rgba(215, 240, 250, 0)");
+        g.fillStyle = grad;
+        g.fillRect(0, 0, size, size);
+      }
+      weatherRuntime.mistSprite = cv;
+    }
+  }
+
+  function getCachedBadge(badgeText) {
+    if (typeof document === "undefined") return null;
+    const dpr = Math.min(2, Math.max(1, Number(window.devicePixelRatio) || 1));
+    const key = `${badgeText}|${dpr}`;
+    if (weatherRuntime.badgeCanvas && weatherRuntime.badgeKey === key) {
+      return weatherRuntime.badgeCanvas;
+    }
+    const cv = weatherRuntime.badgeCanvas || document.createElement("canvas");
+    const g = cv.getContext("2d");
+    if (!g) return null;
+
+    const font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    g.font = font;
+    const textW = Math.ceil(g.measureText(badgeText).width);
+    const bw = textW + 22;
+    const bh = 28;
+    const pad = 2;
+    cv.width = Math.ceil((bw + pad * 2) * dpr);
+    cv.height = Math.ceil((bh + pad * 2) * dpr);
+
+    g.setTransform(dpr, 0, 0, dpr, pad * dpr, pad * dpr);
+    g.fillStyle = "rgba(10, 20, 34, 0.68)";
+    g.strokeStyle = "rgba(110, 235, 210, 0.45)";
+    g.lineWidth = 1;
+    g.beginPath();
+    if (typeof g.roundRect === "function") {
+      g.roundRect(0, 0, bw, bh, 14);
+    } else {
+      g.rect(0, 0, bw, bh);
+    }
+    g.fill();
+    g.stroke();
+
+    g.font = font;
+    g.fillStyle = "#dff9ff";
+    g.textAlign = "left";
+    g.textBaseline = "middle";
+    g.fillText(badgeText, 11, bh * 0.5 + 0.5);
+
+    weatherRuntime.badgeCanvas = cv;
+    weatherRuntime.badgeKey = key;
+    weatherRuntime.badgeW = bw + pad * 2;
+    weatherRuntime.badgeH = bh + pad * 2;
+    return cv;
+  }
+
+  function resolveWeatherProfile(timeSec, env) {
+    const b = (env && env.biome) || {};
+    const enabled = b.weatherEnabled !== undefined ? Boolean(b.weatherEnabled) : true;
+    if (!enabled) {
+      weatherRuntime.cacheEnabled = false;
+      weatherRuntime.cacheTimeSec = timeSec;
+      return null;
+    }
+
+    const mode = String(b.weatherMode || "generative").toLowerCase();
+    const intensity = clamp(Number(b.weatherIntensity ?? 0.75), 0, 1);
+    const cycleSec = clamp(Number(b.weatherCycleSec ?? 45), 10, 300);
+    const wind = clamp(Number(b.weatherWind ?? 1.0), 0, 2.5);
+    const seed = (env && env.worldSeed) || 482913;
+
+    if (
+      weatherRuntime.cacheEnabled &&
+      weatherRuntime.cacheTimeSec === timeSec &&
+      weatherRuntime.cacheMode === mode &&
+      weatherRuntime.cacheIntensity === intensity &&
+      weatherRuntime.cacheCycleSec === cycleSec &&
+      weatherRuntime.cacheWind === wind &&
+      weatherRuntime.cacheSeed === seed
+    ) {
+      return weatherRuntime.profile;
+    }
+
+    weatherRuntime.cacheEnabled = true;
+    weatherRuntime.cacheTimeSec = timeSec;
+    weatherRuntime.cacheMode = mode;
+    weatherRuntime.cacheIntensity = intensity;
+    weatherRuntime.cacheCycleSec = cycleSec;
+    weatherRuntime.cacheWind = wind;
+    weatherRuntime.cacheSeed = seed;
+
+    const prof = weatherRuntime.profile;
+    const tintMul = 0.4 + 0.6 * intensity;
+
+    if (mode !== "generative") {
+      const fixed = WEATHER_STATE_BY_ID[mode] || WEATHER_STATES[0];
+      prof.icon = fixed.icon;
+      prof.label = fixed.label;
+      prof.rain = fixed.rain * intensity;
+      prof.mist = fixed.mist * intensity;
+      prof.storm = fixed.storm * intensity;
+      prof.tint[0] = fixed.tint[0];
+      prof.tint[1] = fixed.tint[1];
+      prof.tint[2] = fixed.tint[2];
+      prof.tint[3] = fixed.tint[3] * tintMul;
+      prof.wind = wind;
+      return prof;
+    }
+
+    // Météo générative : séquence déterministe par graine avec transitions douces
+    const phaseFloat = Math.max(0, timeSec) / cycleSec;
+    const idx0 = Math.floor(phaseFloat);
+    const frac = phaseFloat - idx0;
+    const blend = smoothstep(0.72, 1.0, frac);
+
+    const s0 = pickWeatherState(idx0, seed);
+    const s1 = pickWeatherState(idx0 + 1, seed);
+    const active = blend > 0.5 ? s1 : s0;
+
+    prof.icon = active.icon;
+    prof.label = active.label;
+    prof.rain = lerp(s0.rain, s1.rain, blend) * intensity;
+    prof.mist = lerp(s0.mist, s1.mist, blend) * intensity;
+    prof.storm = lerp(s0.storm, s1.storm, blend) * intensity;
+    prof.tint[0] = lerp(s0.tint[0], s1.tint[0], blend);
+    prof.tint[1] = lerp(s0.tint[1], s1.tint[1], blend);
+    prof.tint[2] = lerp(s0.tint[2], s1.tint[2], blend);
+    prof.tint[3] = lerp(s0.tint[3], s1.tint[3], blend) * tintMul;
+    prof.wind = wind;
+    return prof;
+  }
+
+  function update(dt, timeSec, env) {
+    const prof = resolveWeatherProfile(timeSec, env);
+    if (!prof) {
+      weatherRuntime.lightningAlpha = 0;
+      return;
+    }
+    ensureWeatherParticles();
+    weatherRuntime.currentLabel = `${prof.icon} ${prof.label}`;
+
+    // Mise à jour uniquement des gouttes visibles
+    if (prof.rain > 0.03) {
+      const visibleCount = Math.floor(RAIN_DROP_COUNT * clamp(prof.rain, 0.1, 1));
+      const windDx = 0.14 * prof.wind;
+      const yFactor = dt * (0.85 + prof.rain * 0.75);
+      const xFactor = dt * windDx;
+      const dxArr = weatherRuntime.dropX;
+      const dyArr = weatherRuntime.dropY;
+      const spdArr = weatherRuntime.dropSpd;
+      for (let i = 0; i < visibleCount; i++) {
+        const spd = spdArr[i];
+        let y = dyArr[i] + yFactor * spd;
+        let x = dxArr[i] - xFactor * spd;
+        if (y > 1.05) {
+          y -= 1.1;
+          x = (x + 1.37) % 1;
+        }
+        if (x < -0.05) {
+          x += 1.1;
+        }
+        dxArr[i] = x;
+        dyArr[i] = y;
+      }
+    }
+
+    // Mise à jour de la brume
+    if (prof.mist > 0.03) {
+      const mFactor = dt * (0.5 + prof.wind * 0.6);
+      const bands = weatherRuntime.mistBands;
+      for (let i = 0; i < bands.length; i++) {
+        const m = bands[i];
+        m.x += mFactor * m.spd;
+        if (m.x > 1.35) m.x = -0.35;
+      }
+    }
+
+    // Éclairs d'orage
+    if (weatherRuntime.lightningAlpha > 0) {
+      weatherRuntime.lightningAlpha = Math.max(0, weatherRuntime.lightningAlpha - dt * 2.8);
+    }
+    if (prof.storm > 0.25 && timeSec >= weatherRuntime.nextLightningAt) {
+      weatherRuntime.lightningAlpha = 0.35 + prof.storm * 0.35;
+      const interval = lerp(7.5, 2.4, clamp(prof.storm, 0, 1));
+      weatherRuntime.nextLightningAt = timeSec + interval * (0.65 + Math.random() * 0.7);
+    }
+  }
+
+  function drawOverlay(ctx, viewW, viewH, timeSec, env) {
+    const prof = resolveWeatherProfile(timeSec, env);
+    if (!prof) return;
+    ensureWeatherParticles();
+
+    ctx.save();
+
+    // 1. Teinte atmosphérique + flash d'éclair combinés en un seul fillRect plein écran
+    const tintA = prof.tint[3] > 0.008 ? prof.tint[3] : 0;
+    const flashA = weatherRuntime.lightningAlpha > 0.01 ? weatherRuntime.lightningAlpha : 0;
+    if (tintA > 0 || flashA > 0) {
+      let r, g, b, a;
+      if (flashA > 0 && tintA > 0) {
+        const invF = 1 - flashA;
+        a = flashA + tintA * invF;
+        const invA = 1 / a;
+        r = (235 * flashA + prof.tint[0] * tintA * invF) * invA;
+        g = (245 * flashA + prof.tint[1] * tintA * invF) * invA;
+        b = (255 * flashA + prof.tint[2] * tintA * invF) * invA;
+      } else if (flashA > 0) {
+        r = 235; g = 245; b = 255; a = flashA;
+      } else {
+        r = prof.tint[0]; g = prof.tint[1]; b = prof.tint[2]; a = tintA;
+      }
+      const rq = Math.round(r);
+      const gq = Math.round(g);
+      const bq = Math.round(b);
+      const aq = Math.round(a * 200);
+      const tintKey = `${rq},${gq},${bq},${aq}`;
+      if (weatherRuntime.lastTintKey !== tintKey) {
+        weatherRuntime.lastTintKey = tintKey;
+        weatherRuntime.lastTintStyle = `rgba(${rq},${gq},${bq},${(aq / 200).toFixed(3)})`;
+      }
+      ctx.fillStyle = weatherRuntime.lastTintStyle;
+      ctx.fillRect(0, 0, viewW, viewH);
+    }
+
+    // 2. Nappes de brume dérivantes (sprite pré-rendu + culling hors écran)
+    if (prof.mist > 0.03) {
+      const a = clamp(prof.mist * 0.24, 0, 0.26);
+      const bands = weatherRuntime.mistBands;
+      const sprite = weatherRuntime.mistSprite;
+      if (sprite) {
+        ctx.globalAlpha = a;
+        for (let i = 0; i < bands.length; i++) {
+          const m = bands[i];
+          const cx = m.x * viewW;
+          const cy = m.y * viewH;
+          const rx = m.w * viewW * 0.5;
+          const ry = m.h * viewH * 0.5;
+          if (cx + rx < 0 || cx - rx > viewW || cy + ry < 0 || cy - ry > viewH) continue;
+          ctx.drawImage(sprite, cx - rx, cy - ry, rx * 2, ry * 2);
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.fillStyle = `rgba(215, 240, 250, ${(a * 0.45).toFixed(3)})`;
+        for (let i = 0; i < bands.length; i++) {
+          const m = bands[i];
+          const cx = m.x * viewW;
+          const cy = m.y * viewH;
+          const rx = m.w * viewW * 0.5;
+          const ry = m.h * viewH * 0.5;
+          if (cx + rx < 0 || cx - rx > viewW || cy + ry < 0 || cy - ry > viewH) continue;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // 3. Pluie inclinée par le vent (lot unique, coordonnées entières)
+    if (prof.rain > 0.03) {
+      const visibleCount = Math.floor(RAIN_DROP_COUNT * clamp(prof.rain, 0.1, 1));
+      const slantX = -6 * prof.wind;
+      const rainAlphaQ = Math.round((0.18 + prof.rain * 0.34) * 100);
+      if (weatherRuntime.lastRainAlphaQ !== rainAlphaQ) {
+        weatherRuntime.lastRainAlphaQ = rainAlphaQ;
+        weatherRuntime.lastRainStyle = `rgba(195, 232, 255, ${(rainAlphaQ / 100).toFixed(2)})`;
+      }
+      ctx.strokeStyle = weatherRuntime.lastRainStyle;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      const dxArr = weatherRuntime.dropX;
+      const dyArr = weatherRuntime.dropY;
+      const lenArr = weatherRuntime.dropLen;
+      for (let i = 0; i < visibleCount; i++) {
+        const x = (dxArr[i] * viewW) | 0;
+        const y = (dyArr[i] * viewH) | 0;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + slantX, y + lenArr[i]);
+      }
+      ctx.stroke();
+    }
+
+    // 4. Pastille météo pré-rendue en cache (évite measureText / emoji à chaque frame)
+    const badgeText = `${prof.icon} ${prof.label}`;
+    const badgeCanvas = getCachedBadge(badgeText);
+    if (badgeCanvas) {
+      ctx.drawImage(badgeCanvas, 12, 12, weatherRuntime.badgeW, weatherRuntime.badgeH);
+    }
+
+    ctx.restore();
+  }
+
+  window.AssemblageBiomeGenerators = window.AssemblageBiomeGenerators || {};
+  window.AssemblageBiomeGenerators[GENERATOR_ID] = {
+    id: GENERATOR_ID,
+    name: "Archipel (Îles, Ponts & Météo)",
+    description: "Archipel d'îles organiques reliées par des ponts de bois, collisions côtières et météo générative.",
+    sampleBiome,
+    sampleElev,
+    sampleDetail,
+    sampleGroundColor,
+    isWalkable,
+    resolveTerrainConstraint,
+    generateChunk,
+    drawChunk,
+    update,
+    drawOverlay,
+  };
+})();
+</script>
+</body>
+</html>

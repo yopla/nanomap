@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — Fumée Thermique &amp; Curl-Noise 3D (Curl Smoke)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #060914;
+    color: #e6f4ff;
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  }
+  canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #060914;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .bar {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 25, 43, 0.90);
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    padding: 6px 9px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; min-width: 0; }
+  .bar-btns { display: flex; gap: 5px; flex-shrink: 0; }
+  button {
+    background: #1a3350;
+    color: #aef0ff;
+    border: 1px solid #38d6ff;
+    border-radius: 7px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    transition: background 0.12s, transform 0.08s;
+  }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  .hint {
+    position: fixed;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    z-index: 9;
+    pointer-events: none;
+    font-size: 11px;
+    color: #8fb4d4;
+    text-align: center;
+    line-height: 1.35;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  }
+  .hint b { color: #bae6fd; }
+  @media (max-width: 440px) {
+    .bar { padding: 5px 7px; font-size: 11.5px; }
+    .bar-title { display: none; }
+    button { padding: 4px 7px; font-size: 11.5px; }
+    .hint { font-size: 10.5px; }
+  }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "curl_smoke",
+  "name": "Fumée Thermique & Curl-Noise 3D (Curl Smoke)",
+  "family": "core",
+  "icon": "🌫️",
+  "layout": "framed",
+  "ownExit": false,
+  "accentColor": "#38d6ff",
+  "controls": "Déplacer / glisser le curseur pour souffler la fumée et activer le sillage d'aspiration retardé • Clic ou Espace pour régénérer le champ curl-noise • ZQSD déplace le curseur",
+  "description": "Adapté de Smoke.as (Curl-noise 3D sans divergence) : panaches de fumée et braises ascendantes soumis à la double interaction du curseur — souffle radial répulsif immédiat et sillage d'aspiration retardé (vacuumPos).",
+  "goal": "Guider 35 braises dorées dans les 2 cheminées vertes en moins de 65 secondes tout en évitant 12 surchauffes sur les capteurs rouges.",
+  "fields": [
+    { "key": "targetEmbers", "label": "Braises à capturer", "type": "number", "default": 35, "min": 5, "max": 150, "step": 1, "group": "Objectif" },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 65, "min": 15, "max": 300, "step": 5, "group": "Objectif" },
+    { "key": "maxAlerts", "label": "Alertes max (surchauffes)", "type": "number", "default": 12, "min": 1, "max": 50, "step": 1, "group": "Objectif" },
+    { "key": "emberCount", "label": "Nb de braises actives", "type": "number", "default": 18, "min": 4, "max": 60, "step": 1, "group": "Gameplay" },
+    { "key": "toxicRatio", "label": "Proportion de suie toxique", "type": "number", "default": 0.34, "min": 0.0, "max": 0.85, "step": 0.02, "group": "Gameplay" },
+    { "key": "smokeDensity", "label": "Particules de fumée", "type": "number", "default": 420, "min": 80, "max": 900, "step": 20, "group": "Simulation" },
+    { "key": "curlStrength", "label": "Force des tourbillons Curl", "type": "number", "default": 1.0, "min": 0.2, "max": 3.0, "step": 0.1, "group": "Simulation" },
+    { "key": "riseSpeed", "label": "Vitesse d'ascension", "type": "number", "default": 1.55, "min": 0.4, "max": 4.0, "step": 0.05, "group": "Simulation" },
+    { "key": "dragRange", "label": "Rayon souffle répulsif (px)", "type": "number", "default": 64, "min": 24, "max": 160, "step": 4, "group": "Curseur" },
+    { "key": "vacuumRange", "label": "Rayon sillage aspirant (px)", "type": "number", "default": 84, "min": 24, "max": 180, "step": 4, "group": "Curseur" },
+    { "key": "emberColor", "label": "Couleur braises dorées", "type": "color", "default": "#facc15", "group": "Visuel" },
+    { "key": "toxicColor", "label": "Couleur suie toxique", "type": "color", "default": "#fb7185", "group": "Visuel" },
+    { "key": "bgColor", "label": "Couleur de fond", "type": "color", "default": "#060914", "group": "Visuel" }
+  ],
+  "texts": [
+    { "key": "actionLabel", "label": "Bouton d'action externe", "type": "text", "default": "🌀 CURL-NOISE", "hint": "Texte affiché sur le gros bouton d'action sous le cadre." },
+    { "key": "chimneyLabel", "label": "Libellé des cheminées", "type": "text", "default": "CHEMINÉE" },
+    { "key": "sensorLabel", "label": "Libellé des capteurs", "type": "text", "default": "CAPTEUR" },
+    { "key": "victoryTitle", "label": "Titre de victoire", "type": "text", "default": "PANACHE CANALISÉ !" },
+    { "key": "defeatTitle", "label": "Titre défaite capteurs", "type": "text", "default": "CAPTEURS SATURÉS !" },
+    { "key": "timeoutTitle", "label": "Titre temps écoulé", "type": "text", "default": "CHRONO ÉCOULÉ" },
+    { "key": "endReturnHint", "label": "Indice de fin de partie", "type": "text", "default": "Cliquez pour revenir au jeu principal" }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">🌫️ Curl Smoke</span>
+  <span id="stat">Braises 0/35 • Alertes 0/12 • 65s</span>
+  <div class="bar-btns">
+    <button id="btn-curl" onclick="regenerateCurl()" title="Nouveau champ Curl-Noise (Espace)">🌀 Curl</button>
+    <button id="btn-reset" onclick="resetGame()" title="Recommencer">🔄</button>
+    <button id="btn-exit" onclick="sendResultAndExit(won, score)" title="Revenir au jeu principal">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Déplacer / Glisser</b> : souffle répulsif + sillage aspirant retardé • <b>Clic / Espace</b> : nouveau champ curl-noise 🌀
+</div>
+
+<script>
+const GAME_ID = "curl_smoke";
+const DEFAULT_PARAMS = {
+  targetEmbers: 35,
+  durationSec: 65,
+  maxAlerts: 12,
+  emberCount: 18,
+  toxicRatio: 0.34,
+  smokeDensity: 420,
+  curlStrength: 1.0,
+  riseSpeed: 1.55,
+  dragRange: 64,
+  vacuumRange: 84,
+  emberColor: "#facc15",
+  toxicColor: "#fb7185",
+  bgColor: "#060914"
+};
+const DEFAULT_TEXTS = {
+  actionLabel: "🌀 CURL-NOISE",
+  chimneyLabel: "CHEMINÉE",
+  sensorLabel: "CAPTEUR",
+  victoryTitle: "PANACHE CANALISÉ !",
+  defeatTitle: "CAPTEURS SATURÉS !",
+  timeoutTitle: "CHRONO ÉCOULÉ",
+  endReturnHint: "Cliquez pour revenir au jeu principal"
+};
+let activeParams = Object.assign({}, DEFAULT_PARAMS);
+let activeTexts = Object.assign({}, DEFAULT_TEXTS);
+const SIZE = 512;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+
+const params = new URLSearchParams(window.location.search);
+let externalPaused = params.get("minigd_paused") === "1";
+const isEmbedded = params.get("minigd_embedded") === "1";
+if (isEmbedded) {
+  const barEl = document.querySelector(".bar");
+  if (barEl) barEl.style.display = "none";
+  const hintEl = document.querySelector(".hint");
+  if (hintEl) hintEl.style.display = "none";
+  const exitBtn = document.getElementById("btn-exit");
+  if (exitBtn) exitBtn.style.display = "none";
+}
+
+let destroyed = false;
+let rafId = null;
+let lastT = 0;
+
+const CHIMNEYS = [
+  { x: 112, y: 26, w: 92, h: 24 },
+  { x: 308, y: 26, w: 92, h: 24 }
+];
+const SENSORS = [
+  { x: 256, y: 120, r: 22 },
+  { x: 140, y: 240, r: 20 },
+  { x: 372, y: 240, r: 20 }
+];
+
+let targetEmbers = 35, durationSec = 65, maxAlerts = 12;
+let curlPhase = 0;
+let smokePts = [], embers = [], ripples = [];
+let ptr = { x: 256, y: 340, px: 256, py: 340, down: false };
+let vac = { x: 256, y: 340, speed: 0 };
+let keys = {};
+let captured = 0, alerts = 0, timeLeft = 65, score = 0, won = false, over = false;
+let yOffset = 0;
+
+function readMeta() {
+  const el = document.querySelector("script[data-spawn-minigame]");
+  if (!el) return {};
+  try { return JSON.parse(el.textContent || "{}") || {}; } catch (_e) { return {}; }
+}
+
+function clampNum(val, lo, hi, fallback) {
+  const n = Number(val);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
+}
+
+function applyRuntimeConfig(initData) {
+  if (!initData || typeof initData !== "object") return;
+  const p = (initData.params && typeof initData.params === "object")
+    ? initData.params
+    : ((initData.custom && typeof initData.custom === "object" && initData.custom.params)
+      ? initData.custom.params
+      : ((initData.custom && typeof initData.custom === "object") ? initData.custom : initData));
+  if (p && typeof p === "object") {
+    activeParams.targetEmbers = Math.round(clampNum(p.targetEmbers ?? activeParams.targetEmbers, 5, 150, DEFAULT_PARAMS.targetEmbers));
+    activeParams.durationSec = Math.round(clampNum(p.durationSec ?? activeParams.durationSec, 15, 300, DEFAULT_PARAMS.durationSec));
+    activeParams.maxAlerts = Math.round(clampNum(p.maxAlerts ?? activeParams.maxAlerts, 1, 50, DEFAULT_PARAMS.maxAlerts));
+    activeParams.emberCount = Math.round(clampNum(p.emberCount ?? activeParams.emberCount, 4, 60, DEFAULT_PARAMS.emberCount));
+    activeParams.toxicRatio = clampNum(p.toxicRatio ?? activeParams.toxicRatio, 0.0, 0.85, DEFAULT_PARAMS.toxicRatio);
+    activeParams.smokeDensity = Math.round(clampNum(p.smokeDensity ?? activeParams.smokeDensity, 80, 900, DEFAULT_PARAMS.smokeDensity));
+    activeParams.curlStrength = clampNum(p.curlStrength ?? activeParams.curlStrength, 0.2, 3.0, DEFAULT_PARAMS.curlStrength);
+    activeParams.riseSpeed = clampNum(p.riseSpeed ?? activeParams.riseSpeed, 0.4, 4.0, DEFAULT_PARAMS.riseSpeed);
+    activeParams.dragRange = Math.round(clampNum(p.dragRange ?? activeParams.dragRange, 24, 160, DEFAULT_PARAMS.dragRange));
+    activeParams.vacuumRange = Math.round(clampNum(p.vacuumRange ?? activeParams.vacuumRange, 24, 180, DEFAULT_PARAMS.vacuumRange));
+    if (typeof p.emberColor === "string" && p.emberColor.trim()) activeParams.emberColor = p.emberColor.trim();
+    if (typeof p.toxicColor === "string" && p.toxicColor.trim()) activeParams.toxicColor = p.toxicColor.trim();
+    if (typeof p.bgColor === "string" && p.bgColor.trim()) activeParams.bgColor = p.bgColor.trim();
+  }
+  const t = (initData.texts && typeof initData.texts === "object")
+    ? initData.texts
+    : ((initData.custom && typeof initData.custom === "object" && initData.custom.texts) ? initData.custom.texts : null);
+  if (t && typeof t === "object") {
+    for (const k of Object.keys(DEFAULT_TEXTS)) {
+      if (typeof t[k] === "string" && t[k].trim()) {
+        activeTexts[k] = t[k].trim();
+      }
+    }
+  }
+  document.documentElement.style.background = activeParams.bgColor;
+  document.body.style.background = activeParams.bgColor;
+  cv.style.background = activeParams.bgColor;
+}
+
+function isGameplayPaused() {
+  return externalPaused || destroyed;
+}
+
+function cancelLoop() {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  lastT = 0;
+}
+
+function startLoopIfActive() {
+  if (isGameplayPaused()) return;
+  if (rafId === null) {
+    lastT = 0;
+    rafId = requestAnimationFrame(loop);
+  }
+}
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+
+window.addEventListener("message", (e) => {
+  const d = e && e.data;
+  if (!d || typeof d !== "object") return;
+  if (d.type === "minigd_config" || d.type === "spawn_minigame_init" || d.type === "minigd_init" || d.type === "minigd_reset") {
+    resetGame(d);
+    draw();
+  } else if (d.type === "minigd_action") {
+    if (d.action === "fire" || d.action === "primary" || d.action === "curl") {
+      regenerateCurl();
+      draw();
+    }
+  } else if (d.type === "minigd_pause") {
+    externalPaused = true;
+    keys = {};
+    ptr.down = false;
+    cancelLoop();
+    draw();
+  } else if (d.type === "minigd_start" || d.type === "minigd_resume") {
+    externalPaused = false;
+    lastT = 0;
+    draw();
+    startLoopIfActive();
+  } else if (d.type === "minigd_destroy") {
+    destroyed = true;
+    keys = {};
+    ptr.down = false;
+    cancelLoop();
+  }
+});
+
+// Analytic divergence-free 2D/3D curl velocity field
+function curlVel(x, y, z, t) {
+  const s = 0.017;
+  const p = curlPhase;
+  const vx = Math.cos((y + t * 28) * s + p) * 1.4 - Math.sin((z + x * 0.5) * s - p) * 0.9;
+  const vy = Math.sin((x - t * 18) * s - p) * 1.1 + Math.cos((z - y * 0.4) * s + p) * 0.7;
+  return { vx: vx * activeParams.curlStrength, vy: vy * activeParams.curlStrength };
+}
+
+function regenerateCurl() {
+  if (over || isGameplayPaused()) return;
+  curlPhase += 1.7 + Math.random() * 2.0;
+  ripples.push({ x: ptr.x, y: ptr.y, r: 10, life: 1, col: "#38d6ff" });
+}
+
+function spawnEmber() {
+  embers.push({
+    x: 60 + Math.random() * (SIZE - 120),
+    y: SIZE - 20,
+    z: Math.random() * 200,
+    toxic: Math.random() < activeParams.toxicRatio,
+    age: 0
+  });
+}
+
+function resetGame(cfg) {
+  applyRuntimeConfig(cfg);
+  targetEmbers = activeParams.targetEmbers;
+  durationSec = activeParams.durationSec;
+  maxAlerts = activeParams.maxAlerts;
+
+  curlPhase = Math.random() * 6.28;
+  smokePts = [];
+  for (let i = 0; i < activeParams.smokeDensity; i++) {
+    smokePts.push({
+      x: Math.random() * SIZE,
+      y: Math.random() * SIZE,
+      z: Math.random() * 200,
+      life: Math.random() * 80
+    });
+  }
+  embers = [];
+  for (let i = 0; i < activeParams.emberCount; i++) spawnEmber();
+  ripples = [];
+  ptr = { x: 256, y: 340, px: 256, py: 340, down: false };
+  vac = { x: 256, y: 340, speed: 0 };
+  captured = 0;
+  alerts = 0;
+  timeLeft = durationSec;
+  score = 0;
+  won = false;
+  over = false;
+  yOffset = 0;
+  updateHud();
+  draw();
+}
+
+function updateHud() {
+  const txt = `Braises ${captured}/${targetEmbers} • Alertes ${alerts}/${maxAlerts} • ${Math.ceil(timeLeft)}s`;
+  const statEl = document.getElementById("stat");
+  if (statEl) statEl.textContent = txt;
+  if (isEmbedded && window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "minigd_stats",
+      id: GAME_ID,
+      text: txt,
+      actionLabel: activeTexts.actionLabel,
+      over: Boolean(over)
+    }, "*");
+  }
+}
+
+function getPos(e) {
+  const r = cv.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(SIZE, (e.clientX - r.left) * (SIZE / r.width))),
+    y: Math.max(0, Math.min(SIZE, (e.clientY - r.top) * (SIZE / r.height)))
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (isGameplayPaused()) return;
+  if (over) { sendResultAndExit(won, score); return; }
+  const p = getPos(e);
+  ptr.x = ptr.px = p.x; ptr.y = ptr.py = p.y;
+  ptr.down = true;
+  regenerateCurl();
+});
+cv.addEventListener("pointermove", (e) => {
+  if (isGameplayPaused()) return;
+  const p = getPos(e);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+  ptr.x = p.x; ptr.y = p.y;
+});
+window.addEventListener("pointerup", () => { ptr.down = false; });
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (isEmbedded && !externalPaused && window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "minigd_exit", id: GAME_ID, won, score: Math.round(score || 0) }, "*");
+    }
+    return;
+  }
+  if (isGameplayPaused()) return;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
+  if (e.code === "Space" && !e.repeat) regenerateCurl();
+  keys[e.code] = true;
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function applyCursorVacuum(p, dragSpeed) {
+  // Repulsive burst near pointer (DRAG_FORCE)
+  let dx = p.x - ptr.x, dy = p.y - ptr.y;
+  let d = Math.max(6, Math.hypot(dx, dy));
+  const dragRange = activeParams.dragRange;
+  if (d < dragRange) {
+    const s = dragSpeed * 0.55 * (dragRange - d) / d;
+    p.x += dx * s;
+    p.y += dy * s;
+  }
+  // Delayed vacuum trail attraction (VACUUM_FORCE)
+  dx = vac.x - p.x; dy = vac.y - p.y;
+  d = Math.max(6, Math.hypot(dx, dy));
+  const vacRange = activeParams.vacuumRange;
+  if (d < vacRange) {
+    const s = vac.speed * 0.34 * (vacRange - d) / d;
+    p.x += dx * s;
+    p.y += dy * s;
+  }
+}
+
+function step(dt) {
+  if (over || isGameplayPaused()) return;
+  timeLeft = Math.max(0, timeLeft - dt);
+  yOffset += dt;
+  let kx = 0, ky = 0;
+  if (keys.ArrowLeft || keys.KeyA || keys.KeyQ) kx -= 1;
+  if (keys.ArrowRight || keys.KeyD) kx += 1;
+  if (keys.ArrowUp || keys.KeyW || keys.KeyZ) ky -= 1;
+  if (keys.ArrowDown || keys.KeyS) ky += 1;
+  if (kx || ky) {
+    ptr.px = ptr.x; ptr.py = ptr.y;
+    ptr.x = Math.max(12, Math.min(SIZE - 12, ptr.x + kx * 280 * dt));
+    ptr.y = Math.max(12, Math.min(SIZE - 12, ptr.y + ky * 280 * dt));
+  }
+
+  const moveDist = Math.hypot(ptr.x - ptr.px, ptr.y - ptr.py);
+  const dragSpeed = Math.min(1, moveDist / 12 + (ptr.down ? 0.35 : 0.15));
+  const lerp = Math.min(1, 5.0 * dt);
+  vac.x = vac.x * (1 - lerp) + ptr.x * lerp;
+  vac.y = vac.y * (1 - lerp) + ptr.y * lerp;
+  vac.speed = dragSpeed * lerp + vac.speed * (1 - lerp);
+  ptr.px = ptr.x; ptr.py = ptr.y;
+
+  const smokeRise = activeParams.riseSpeed + 0.1;
+  const emberRise = activeParams.riseSpeed;
+
+  for (const p of smokePts) {
+    p.life -= 1;
+    if (p.life <= 0 || p.y < 0) {
+      p.x = Math.random() * SIZE;
+      p.y = SIZE - Math.random() * 20;
+      p.z = Math.random() * 200;
+      p.life = 60 + Math.random() * 50;
+    } else {
+      const c = curlVel(p.x, p.y, p.z, yOffset);
+      p.x += c.vx * 1.4;
+      p.y += c.vy * 0.9 - smokeRise;
+      applyCursorVacuum(p, dragSpeed);
+      if (p.x < 0) p.x += SIZE;
+      if (p.x >= SIZE) p.x -= SIZE;
+    }
+  }
+
+  for (let i = embers.length - 1; i >= 0; i--) {
+    const e = embers[i];
+    const c = curlVel(e.x, e.y, e.z, yOffset);
+    e.x += c.vx * 1.3;
+    e.y += c.vy * 0.8 - emberRise;
+    applyCursorVacuum(e, dragSpeed);
+    if (e.x < 8) e.x += SIZE - 16;
+    if (e.x > SIZE - 8) e.x -= SIZE - 16;
+
+    // Sensors
+    let hitSensor = false;
+    for (const s of SENSORS) {
+      if (Math.hypot(e.x - s.x, e.y - s.y) < s.r + 4) {
+        if (e.toxic) {
+          alerts++;
+          score = Math.max(0, score - 50);
+          ripples.push({ x: s.x, y: s.y, r: 8, life: 1, col: "#f87171" });
+          hitSensor = true;
+          break;
+        }
+      }
+    }
+    if (hitSensor) { embers.splice(i, 1); spawnEmber(); continue; }
+
+    // Chimneys
+    let inChim = false;
+    for (const ch of CHIMNEYS) {
+      if (e.x >= ch.x && e.x <= ch.x + ch.w && e.y <= ch.y + ch.h) {
+        if (!e.toxic) {
+          captured++;
+          score += 110;
+          ripples.push({ x: e.x, y: ch.y + 12, r: 6, life: 1, col: "#4ade80" });
+        } else {
+          score = Math.max(0, score - 25);
+        }
+        inChim = true;
+        break;
+      }
+    }
+    if (inChim || e.y < 6) {
+      embers.splice(i, 1);
+      spawnEmber();
+    }
+  }
+
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    ripples[i].r += 65 * dt;
+    ripples[i].life -= 2.4 * dt;
+    if (ripples[i].life <= 0) ripples.splice(i, 1);
+  }
+
+  if (captured >= targetEmbers) {
+    won = true; over = true;
+    score += Math.round(timeLeft * 25);
+  } else if (alerts >= maxAlerts || timeLeft <= 0) {
+    won = false; over = true;
+  }
+  updateHud();
+}
+
+function draw() {
+  ctx.fillStyle = activeParams.bgColor;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Subtle smoke curl field
+  ctx.fillStyle = "rgba(226, 232, 240, 0.55)";
+  for (const p of smokePts) {
+    ctx.fillRect(p.x, p.y, 1.8, 1.8);
+  }
+
+  // Chimneys (green targets)
+  for (const ch of CHIMNEYS) {
+    ctx.fillStyle = "rgba(74,222,128,0.22)";
+    ctx.strokeStyle = "#4ade80";
+    ctx.lineWidth = 2;
+    ctx.fillRect(ch.x, ch.y, ch.w, ch.h);
+    ctx.strokeRect(ch.x, ch.y, ch.w, ch.h);
+    ctx.fillStyle = "#dcfce7";
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(activeTexts.chimneyLabel, ch.x + ch.w / 2, ch.y + 16);
+  }
+
+  // Sensors (avoid toxic smoke hitting them)
+  for (const s of SENSORS) {
+    ctx.fillStyle = "rgba(248,113,113,0.18)";
+    ctx.strokeStyle = "#f87171";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fecaca";
+    ctx.font = "bold 10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(activeTexts.sensorLabel, s.x, s.y + 3);
+  }
+
+  // Embers & toxic soot
+  for (const e of embers) {
+    ctx.fillStyle = e.toxic ? activeParams.toxicColor : activeParams.emberColor;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.toxic ? 4.5 : 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  for (const rp of ripples) {
+    ctx.strokeStyle = rp.col;
+    ctx.globalAlpha = Math.max(0, rp.life);
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  if (!over) {
+    ctx.strokeStyle = "rgba(56,214,255,0.45)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(vac.x, vac.y, 18, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = activeParams.emberColor;
+    ctx.beginPath(); ctx.arc(ptr.x, ptr.y, 11, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  if (over) {
+    ctx.fillStyle = "rgba(6, 10, 20, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 28px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? activeTexts.victoryTitle : (alerts >= maxAlerts ? activeTexts.defeatTitle : activeTexts.timeoutTitle), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Braises ${captured}/${targetEmbers} • Score ${score}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText(activeTexts.endReturnHint, 256, 300);
+  }
+}
+
+function loop(now) {
+  if (isGameplayPaused()) {
+    rafId = null;
+    return;
+  }
+  if (!lastT) lastT = now;
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+  step(dt);
+  draw();
+  if (!isGameplayPaused()) {
+    rafId = requestAnimationFrame(loop);
+  } else {
+    rafId = null;
+  }
+}
+
+resetGame();
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({
+    type: "minigd_ready",
+    id: GAME_ID,
+    meta: readMeta(),
+    actionLabel: activeTexts.actionLabel
+  }, "*");
+}
+if (!isGameplayPaused()) {
+  startLoopIfActive();
+}
+</script>
+</body>
+</html>

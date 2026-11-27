@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>StratPick / StratGlide / StratTour / Pathfind</title>
+<link rel="stylesheet" href="stratpick.css" />
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "stratpick",
+  "name": "StratPick / StratGlide / StratTour / Pathfind",
+  "family": "stratpick",
+  "icon": "🤏",
+  "layout": "fullframe",
+  "ownExit": false,
+  "accentColor": "#33b8ff",
+  "showSummaryMode": "inherit",
+  "description": "Jeu tactique en arène (4 modes : StratPick Aspirer & Lâcher, StratGlide Pause & Flèches, StratTour Tour par Tour sur grille avec murs, et Pathfind groupes d'unités nombreuses parmi des roches irrégulières) avec 5 objectifs contre une IA configurable.",
+  "goal": "Dominez l'arène en temps réel, éliminez l'escouade adverse en tour par tour, ou manœuvrez vos groupes en pathfinding !",
+  "controls": "PICK : aspirez et lâchez vos bleus • GLIDE : mettez en pause et tracez des flèches • TOUR : déplacez et tirez selon les % et PA • PATHFIND : encadrez un groupe (ou G1/G2/G3) et touchez le terrain pour déplacer.",
+  "fields": [
+    {
+      "key": "game_mode",
+      "label": "Mode de jeu par défaut",
+      "type": "select",
+      "default": "pick",
+      "group": "Mode & Objectif",
+      "options": [
+        { "id": "pick", "label": "🤏 StratPick (Aspirer & Lâcher)" },
+        { "id": "glide", "label": "🏹 StratGlide (Pause & Flèches)" },
+        { "id": "turn", "label": "♟ StratTour (Tour par Tour)" },
+        { "id": "pathfind", "label": "🧭 Pathfind (Groupes & Roches)" }
+      ]
+    },
+    {
+      "key": "objective",
+      "label": "Objectif de partie",
+      "type": "select",
+      "default": "koth",
+      "group": "Mode & Objectif",
+      "options": [
+        { "id": "koth", "label": "👑 Roi de la Colline" },
+        { "id": "elimination", "label": "💥 Élimination" },
+        { "id": "domination", "label": "🚩 3 Zones (Domination)" },
+        { "id": "escort", "label": "🚚 Escorte du Convoi" },
+        { "id": "coin_rush", "label": "⭐ Chasse aux Étoiles" }
+      ]
+    },
+    { "key": "match_duration", "label": "Durée de partie (s)", "type": "number", "default": 45, "min": 15, "max": 180, "step": 5, "group": "Partie & Main" },
+    { "key": "hand_capacity", "label": "Capacité de la main (Pick)", "type": "number", "default": 6, "min": 1, "max": 15, "step": 1, "group": "Partie & Main" },
+    { "key": "player_units", "label": "Bonhommes Joueur", "type": "number", "default": 10, "min": 2, "max": 30, "step": 1, "group": "Partie & Main" },
+    { "key": "ai_units", "label": "Bonhommes IA", "type": "number", "default": 10, "min": 2, "max": 30, "step": 1, "group": "Partie & Main" },
+    { "key": "respawn_enabled", "label": "Réapparition (Respawn)", "type": "bool", "default": true, "group": "Partie & Main" },
+    { "key": "respawn_delay", "label": "Délai respawn (s)", "type": "number", "default": 4.0, "min": 1.0, "max": 12.0, "step": 0.5, "group": "Partie & Main" },
+    {
+      "key": "ai_difficulty",
+      "label": "Difficulté IA",
+      "type": "select",
+      "default": "normal",
+      "group": "IA Adverse",
+      "options": [
+        { "id": "easy", "label": "Facile" },
+        { "id": "normal", "label": "Normal" },
+        { "id": "hard", "label": "Difficile" },
+        { "id": "expert", "label": "Expert" }
+      ]
+    },
+    {
+      "key": "ai_style",
+      "label": "Comportement IA",
+      "type": "select",
+      "default": "balanced",
+      "group": "IA Adverse",
+      "options": [
+        { "id": "balanced", "label": "Équilibré" },
+        { "id": "aggressive", "label": "Agressif" },
+        { "id": "objective", "label": "Objectif" }
+      ]
+    },
+    { "key": "unit_hp", "label": "PV des bonhommes", "type": "number", "default": 100, "min": 30, "max": 300, "step": 10, "group": "Combat & Unités" },
+    { "key": "fire_rate", "label": "Cadence de tir (/s)", "type": "number", "default": 1.6, "min": 0.4, "max": 4.0, "step": 0.2, "group": "Combat & Unités" },
+    { "key": "unit_speed", "label": "Vitesse déplacement", "type": "number", "default": 62, "min": 25, "max": 140, "step": 5, "group": "Combat & Unités" },
+    { "key": "shoot_range", "label": "Portée de tir (px)", "type": "number", "default": 165, "min": 80, "max": 320, "step": 5, "group": "Combat & Unités" },
+    { "key": "bullet_damage", "label": "Dégâts par tir", "type": "number", "default": 18, "min": 5, "max": 60, "step": 1, "group": "Combat & Unités" },
+    { "key": "pickup_radius", "label": "Rayon d'aspiration (px, Pick)", "type": "number", "default": 60, "min": 30, "max": 120, "step": 5, "group": "Contrôles" },
+    { "key": "drop_interval", "label": "Intervalle de lâcher (s, Pick)", "type": "number", "default": 0.13, "min": 0.05, "max": 0.40, "step": 0.01, "group": "Contrôles" },
+    { "key": "sound_enabled", "label": "Effets sonores au démarrage", "type": "bool", "default": true, "group": "Audio & Interface" },
+    { "key": "allow_mode_switch", "label": "Afficher le sélecteur de mode en jeu", "type": "bool", "default": true, "group": "Audio & Interface" },
+    { "key": "player_color", "label": "Couleur équipe Joueur", "type": "color", "default": "#33b8ff", "group": "Visuel" },
+    { "key": "ai_color", "label": "Couleur équipe IA", "type": "color", "default": "#ff5761", "group": "Visuel" },
+    { "key": "arena_bg_color", "label": "Couleur de fond de l'arène", "type": "color", "default": "#1f293b", "group": "Visuel" },
+    { "key": "walls_enabled", "label": "Activer les murs tactiques", "type": "bool", "default": true, "group": "Murs & Carte" },
+    {
+      "key": "wall_pattern",
+      "label": "Type de construction de map",
+      "type": "select",
+      "default": "symmetrical",
+      "group": "Murs & Carte",
+      "options": [
+        { "id": "symmetrical", "label": "⚖️ Symétrique (couvertures en miroir)" },
+        { "id": "bunkers", "label": "🛡️ Bunkers & Couloirs (abris en U/L)" },
+        { "id": "pillars", "label": "🏛️ Piliers & Colonnes (quinconce)" },
+        { "id": "maze", "label": "🧩 Labyrinthe ouvert (couloirs tactiques)" },
+        { "id": "fortress", "label": "🏰 Forteresses (remparts de base)" },
+        { "id": "chokepoints", "label": "🚪 Goulets (barrières percées)" },
+        { "id": "random", "label": "🎲 Aléatoire (style varié)" }
+      ]
+    },
+    { "key": "wall_density", "label": "Densité des murs (%)", "type": "number", "default": 50, "min": 15, "max": 100, "step": 5, "group": "Murs & Carte" },
+    { "key": "wall_blocks_bullets", "label": "Les murs bloquent les tirs", "type": "bool", "default": true, "group": "Murs & Carte" },
+    { "key": "wall_destructible", "label": "Murs destructibles", "type": "bool", "default": false, "group": "Murs & Carte" },
+    { "key": "wall_hp", "label": "Solidité des murs (PV)", "type": "number", "default": 160, "min": 40, "max": 400, "step": 20, "group": "Murs & Carte" },
+    { "key": "wall_seed", "label": "Graine de carte (0 = aléatoire)", "type": "number", "default": 0, "min": 0, "max": 99999, "step": 1, "group": "Murs & Carte" },
+    { "key": "wall_color", "label": "Couleur des murs", "type": "color", "default": "#4a607a", "group": "Murs & Carte" },
+    { "key": "tb_unit_hp", "label": "PV des unités (Tour/Tour)", "type": "number", "default": 100, "min": 40, "max": 250, "step": 10, "group": "Tour par Tour" },
+    {
+      "key": "tb_map_layout",
+      "label": "Grille & Murs (Tour/Tour)",
+      "type": "select",
+      "default": "bunker",
+      "group": "Tour par Tour",
+      "options": [
+        { "id": "bunker", "label": "Bunkers tactiques" },
+        { "id": "corridors", "label": "Couloirs & Flancs" },
+        { "id": "arena", "label": "Piliers d'Arène" },
+        { "id": "random", "label": "Aléatoire symétrique" }
+      ]
+    },
+    {
+      "key": "tb_ap_mode",
+      "label": "Gestion des PA",
+      "type": "select",
+      "default": "pool",
+      "group": "Tour par Tour",
+      "options": [
+        { "id": "pool", "label": "Pool d'équipe partagé" },
+        { "id": "per_unit", "label": "PA par unité" }
+      ]
+    },
+    { "key": "tb_ap_pool", "label": "PA par tour (Pool)", "type": "number", "default": 6, "min": 3, "max": 12, "step": 1, "group": "Tour par Tour" },
+    { "key": "tb_ap_per_unit", "label": "PA par unité / tour", "type": "number", "default": 3, "min": 2, "max": 6, "step": 1, "group": "Tour par Tour" },
+    { "key": "tb_ap_carryover", "label": "Report max de PA", "type": "number", "default": 0, "min": 0, "max": 4, "step": 1, "group": "Tour par Tour" },
+    { "key": "tb_move_cost", "label": "Coût déplacement (PA)", "type": "number", "default": 1, "min": 1, "max": 3, "step": 1, "group": "Tour par Tour" },
+    { "key": "tb_shoot_cost", "label": "Coût tir global (PA)", "type": "number", "default": 2, "min": 1, "max": 4, "step": 1, "group": "Tour par Tour" },
+    { "key": "tb_weapon_custom_cost", "label": "Coût de tir par arme", "type": "bool", "default": true, "group": "Tour par Tour" },
+    { "key": "tb_auto_end_turn", "label": "Fin de tour automatique", "type": "bool", "default": true, "group": "Tour par Tour" },
+    { "key": "tb_diag_limit_one", "label": "Max 1 diagonale / tour par perso", "type": "bool", "default": true, "group": "Tour par Tour" },
+    {
+      "key": "tb_accuracy_curve",
+      "label": "Courbe précision / distance",
+      "type": "select",
+      "default": "linear",
+      "group": "Tour par Tour",
+      "options": [
+        { "id": "linear", "label": "Linéaire (chute régulière)" },
+        { "id": "steep", "label": "Chute rapide longue portée" },
+        { "id": "optimal_band", "label": "Zone optimale (malus près/loin)" },
+        { "id": "soft", "label": "Atténuation douce (racine)" }
+      ]
+    },
+    { "key": "tb_dist_falloff_mult", "label": "Multiplicateur chute distance", "type": "number", "default": 1.0, "min": 0.2, "max": 2.0, "step": 0.1, "group": "Tour par Tour" },
+    { "key": "tb_min_hit_chance", "label": "Probabilité min (%)", "type": "number", "default": 10, "min": 5, "max": 40, "step": 5, "group": "Tour par Tour" },
+    { "key": "tb_max_hit_chance", "label": "Probabilité max (%)", "type": "number", "default": 95, "min": 75, "max": 100, "step": 5, "group": "Tour par Tour" },
+    { "key": "tb_ai_speed", "label": "Vitesse actions IA", "type": "number", "default": 1.0, "min": 0.5, "max": 2.0, "step": 0.25, "group": "Tour par Tour" },
+    { "key": "pf_player_units", "label": "Unités Joueur (Pathfind)", "type": "number", "default": 28, "min": 10, "max": 60, "step": 2, "group": "Pathfind" },
+    { "key": "pf_ai_units", "label": "Unités IA (Pathfind)", "type": "number", "default": 28, "min": 10, "max": 60, "step": 2, "group": "Pathfind" },
+    {
+      "key": "pf_rock_style",
+      "label": "Style de roches irrégulières",
+      "type": "select",
+      "default": "canyon",
+      "group": "Pathfind",
+      "options": [
+        { "id": "canyon", "label": "Canyon sinueux" },
+        { "id": "archipelago", "label": "Archipel rocheux" },
+        { "id": "craters", "label": "Anneaux de cratères" },
+        { "id": "scattered", "label": "Éboulis dispersés" },
+        { "id": "random", "label": "Aléatoire" }
+      ]
+    },
+    { "key": "pf_rock_density", "label": "Densité des roches (%)", "type": "number", "default": 50, "min": 15, "max": 100, "step": 5, "group": "Pathfind" },
+    { "key": "pf_rock_seed", "label": "Graine roches (0 = aléatoire)", "type": "number", "default": 0, "min": 0, "max": 999999, "step": 1, "group": "Pathfind" },
+    { "key": "pf_rocks_block_bullets", "label": "Les roches bloquent les tirs", "type": "bool", "default": true, "group": "Pathfind" },
+    { "key": "pf_unit_hp", "label": "PV des unités (Pathfind)", "type": "number", "default": 80, "min": 30, "max": 220, "step": 10, "group": "Pathfind" },
+    { "key": "pf_unit_speed", "label": "Vitesse des unités (Pathfind)", "type": "number", "default": 78, "min": 35, "max": 150, "step": 5, "group": "Pathfind" },
+    { "key": "pf_shoot_range", "label": "Portée de tir (Pathfind)", "type": "number", "default": 135, "min": 60, "max": 240, "step": 5, "group": "Pathfind" },
+    { "key": "pf_respawn_enabled", "label": "Réapparition (Pathfind)", "type": "bool", "default": false, "group": "Pathfind" }
+  ],
+  "texts": [
+    { "key": "modePickLabel", "label": "Bouton mode PICK", "type": "text", "default": "🤏 PICK" },
+    { "key": "modeGlideLabel", "label": "Bouton mode GLIDE", "type": "text", "default": "🏹 GLIDE" },
+    { "key": "modeTurnLabel", "label": "Bouton mode TOUR", "type": "text", "default": "♟ TOUR" },
+    { "key": "modePathfindLabel", "label": "Bouton mode PATHFIND", "type": "text", "default": "🧭 PATHFIND" },
+    { "key": "glidePlayButtonLabel", "label": "Bouton PLAY (Glide)", "type": "text", "default": "▶ PLAY" },
+    { "key": "victoryTitle", "label": "Titre de victoire", "type": "text", "default": "VICTOIRE !" },
+    { "key": "defeatTitle", "label": "Titre de défaite", "type": "text", "default": "DÉFAITE !" },
+    { "key": "drawTitle", "label": "Titre d'égalité", "type": "text", "default": "ÉGALITÉ !" },
+    { "key": "timeoutTitle", "label": "Raison temps écoulé", "type": "text", "default": "Temps écoulé !" },
+    { "key": "replayButtonLabel", "label": "Bouton rejouer", "type": "text", "default": "↻ REJOUER" },
+    { "key": "returnButtonLabel", "label": "Bouton retour au jeu", "type": "text", "default": "← RETOUR AU JEU" },
+    { "key": "endReturnHint", "label": "Indice fin de partie", "type": "text", "default": "Cliquez pour revenir au jeu principal" }
+  ]
+}
+</script>
+
+<div id="app">
+  <div class="top-bar is-top-chrome" id="topBar">
+    <div class="score-pill player" id="pScore">0</div>
+    <div class="center-hud">
+      <div class="timer" id="timer">0:45</div>
+      <div class="obj-badge" id="objBadge">Roi de la Colline</div>
+    </div>
+    <div class="score-pill ai" id="aScore">0</div>
+    <button class="icon-btn" id="btnSound" title="Son">🔊</button>
+    <button class="icon-btn" id="btnExitTop" title="Revenir au jeu principal">✕</button>
+  </div>
+
+  <div class="arena-wrap">
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <!-- Bottom HUD: Pick & Glide -->
+  <div class="bot-bar" id="botBar">
+    <div class="hand-col">
+      <div class="hand-top">
+        <div class="hand-lbl" id="handLbl">MAIN 0 / 6</div>
+        <div class="pips" id="handPips"></div>
+      </div>
+      <div class="hint" id="hintLbl">Touchez un bonhomme bleu et glissez pour aspirer</div>
+    </div>
+    <button class="glide-play-btn hidden" id="btnGlidePlay" title="Relancer la simulation">▶ PLAY</button>
+    <button class="icon-btn hidden" id="btnPickPause" title="Pause / Reprendre">⏸</button>
+    <button class="icon-btn" id="btnGameMenu" title="Mode de jeu &amp; Objectif">⚙️</button>
+    <button class="icon-btn" id="btnRestart" title="Recommencer">↻</button>
+  </div>
+
+  <!-- Bottom HUD: Turn-Based -->
+  <div class="turn-bar hidden" id="turnBar">
+    <div class="turn-top-row">
+      <button class="turn-tgt-btn" id="btnTbPrevTgt" title="Cible précédente">◀ 🎯</button>
+      <div class="turn-unit-center">
+        <button class="turn-step-btn" id="btnTbPrevUnit" title="Unité précédente">◀</button>
+        <div class="turn-sel-lbl" id="tbUnitLbl">U1 FUSIL</div>
+        <button class="turn-step-btn" id="btnTbNextUnit" title="Unité suivante">▶</button>
+      </div>
+      <button class="turn-tgt-btn" id="btnTbNextTgt" title="Cible suivante">🎯 ▶</button>
+    </div>
+    <div class="turn-dpad-wrap">
+      <div class="dpad">
+        <button class="dpad-btn diag" id="btnTbUpLeft">↖</button>
+        <button class="dpad-btn" id="btnTbUp">▲</button>
+        <button class="dpad-btn diag" id="btnTbUpRight">↗</button>
+        <button class="dpad-btn" id="btnTbLeft">◀</button>
+        <div class="dpad-mid" id="tbMoveCostLbl">1 PA</div>
+        <button class="dpad-btn" id="btnTbRight">▶</button>
+        <button class="dpad-btn diag" id="btnTbDownLeft">↙</button>
+        <button class="dpad-btn" id="btnTbDown">▼</button>
+        <button class="dpad-btn diag" id="btnTbDownRight">↘</button>
+      </div>
+    </div>
+    <button class="fire-btn" id="btnTbFire">🎯 TIRER (0%)</button>
+    <div class="turn-end-row">
+      <button class="icon-btn" id="btnTbMenu" title="Paramètres &amp; Modes">⚙️</button>
+      <button class="end-turn-btn" id="btnTbEndTurn">⏭ FIN TOUR</button>
+      <button class="icon-btn" id="btnTbRestart" title="Recommencer">↻</button>
+    </div>
+  </div>
+
+  <!-- Bottom HUD: Pathfind -->
+  <div class="pf-bar hidden" id="pfBar">
+    <div class="pf-top-row">
+      <div class="pf-sel-badge" id="pfSelLbl">0 / 28 sél.</div>
+      <button class="pf-grp-btn" id="btnPfAll" title="Sélectionner toutes vos unités">✦ Tous</button>
+      <button class="pf-grp-btn" id="btnPfG1" title="Groupe 1">G1</button>
+      <button class="pf-grp-btn" id="btnPfG2" title="Groupe 2">G2</button>
+      <button class="pf-grp-btn" id="btnPfG3" title="Groupe 3">G3</button>
+      <button class="pf-save-btn" id="btnPfSaveGrp" title="Enregistrer la sélection dans G1/G2/G3">💾</button>
+    </div>
+    <div class="pf-bot-row">
+      <div class="pf-hint" id="pfHintLbl">Touchez le terrain pour déplacer la sélection</div>
+      <button class="pf-act-btn" id="btnPfStop" title="Arrêter la sélection">✋</button>
+      <button class="pf-act-btn" id="btnPfClear" title="Désélectionner">✕</button>
+      <button class="icon-btn" id="btnPfMenu" title="Paramètres &amp; Modes">⚙️</button>
+      <button class="icon-btn" id="btnPfRestart" title="Recommencer">↻</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="overlay hidden" id="menuOverlay">
+    <div class="card">
+      <h1 style="font-size: 20px;">⚙️ PARAMÈTRES TACTIQUES</h1>
+      <div class="menu-tabs">
+        <button class="menu-tab-btn active" id="tabMenuGame">🎮 Partie</button>
+        <button class="menu-tab-btn" id="tabMenuWalls">🧱 Murs</button>
+        <button class="menu-tab-btn" id="tabMenuTurn">♟ Tour</button>
+        <button class="menu-tab-btn" id="tabMenuPathfind">🧭 Path</button>
+      </div>
+
+      <div class="menu-pane" id="paneMenuGame">
+        <div class="menu-section-lbl">Mode de jeu</div>
+        <div class="menu-mode-row">
+          <button class="mode-btn active" id="btnMenuPick">🤏 PICK</button>
+          <button class="mode-btn" id="btnMenuGlide">🏹 GLIDE</button>
+          <button class="mode-btn" id="btnMenuTurn">♟ TOUR</button>
+          <button class="mode-btn" id="btnMenuPathfind">🧭 PATHFIND</button>
+        </div>
+        <div id="menuObjSection">
+          <div class="menu-section-lbl">Objectif</div>
+          <div class="obj-grid" id="menuObjGrid">
+            <button class="obj-choice-btn" data-obj="koth">👑 Colline</button>
+            <button class="obj-choice-btn" data-obj="elimination">💥 Élimination</button>
+            <button class="obj-choice-btn" data-obj="domination">🚩 3 Zones</button>
+            <button class="obj-choice-btn" data-obj="escort">🚚 Convoi</button>
+            <button class="obj-choice-btn" data-obj="coin_rush">⭐ Étoiles</button>
+          </div>
+          <div class="menu-obj-desc" id="menuObjDesc"></div>
+        </div>
+        <div id="menuTurnSummaryBox" class="hidden">
+          <div class="menu-obj-desc" style="margin: 10px 0 6px;">
+            <b>Mode Tour par Tour (4 vs 4)</b> : déplacez vos 4 unités sur une grille à murs, dépensez vos Points d'Action (PA) et visez selon la probabilité liée à la distance.
+          </div>
+          <button type="button" class="menu-turn-jump" id="btnJumpTurnTab">♟ Configurer PV, PA, Distance &amp; Armes →</button>
+        </div>
+        <div id="menuPfSummaryBox" class="hidden">
+          <div class="menu-obj-desc" style="margin: 8px 0 6px;">
+            <b>Mode Pathfind</b> : encadrez des unités ou choisissez un groupe (G1–G3) et touchez le sol pour les diriger en pathfinding optimisé autour des roches irrégulières.
+          </div>
+          <button type="button" class="menu-turn-jump" id="btnJumpPfTab">🧭 Configurer Unités Nombreuses &amp; Roches →</button>
+        </div>
+      </div>
+
+      <div class="menu-pane hidden" id="paneMenuWalls">
+        <label class="menu-toggle-row" style="margin-top: 8px;">
+          <span>🧱 Activer les murs tactiques</span>
+          <input type="checkbox" id="chkMenuWallsEnabled" checked />
+        </label>
+        <div class="menu-walls-body" id="menuWallsBody">
+          <div class="menu-section-lbl">Style de map générative</div>
+          <div class="wall-pattern-grid" id="menuWallPatGrid">
+            <button class="wall-pat-btn" data-pat="symmetrical">⚖️ Symétrique</button>
+            <button class="wall-pat-btn" data-pat="bunkers">🛡️ Bunkers</button>
+            <button class="wall-pat-btn" data-pat="pillars">🏛️ Piliers</button>
+            <button class="wall-pat-btn" data-pat="maze">🧩 Labyrinthe</button>
+            <button class="wall-pat-btn" data-pat="fortress">🏰 Forteresses</button>
+            <button class="wall-pat-btn" data-pat="chokepoints">🚪 Goulets</button>
+            <button class="wall-pat-btn" data-pat="random">🎲 Style aléatoire</button>
+          </div>
+          <div class="menu-obj-desc" id="menuWallDesc" style="margin: 8px 0 0; min-height: 36px;"></div>
+          <div class="wall-slider-row">
+            <span>Densité</span>
+            <input type="range" id="rngMenuWallDensity" min="15" max="100" step="5" value="50" />
+            <span id="lblMenuWallDensity">50%</span>
+          </div>
+          <div class="menu-toggle-pair">
+            <label class="menu-toggle-row">
+              <span>🛡️ Bloque tirs</span>
+              <input type="checkbox" id="chkMenuWallBlocks" checked />
+            </label>
+            <label class="menu-toggle-row">
+              <span>💥 Destructibles</span>
+              <input type="checkbox" id="chkMenuWallDestruct" />
+            </label>
+          </div>
+          <div class="wall-preview-row">
+            <canvas id="wallPreviewCanvas" width="260" height="140"></canvas>
+            <div class="wall-preview-side">
+              <button type="button" class="wall-roll-btn" id="btnMenuRollMap">🎲 Nouvelle map</button>
+              <div class="wall-seed-badge" id="lblMenuWallSeed">Graine #0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-pane hidden tb-menu-scroll" id="paneMenuTurn">
+        <div class="menu-section-lbl">Unités, Carte &amp; IA</div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>PV des unités (4 vs 4)</span><span id="lblTbHp">100 PV</span></div>
+          <input type="range" id="rngTbHp" min="40" max="250" step="10" value="100" />
+        </div>
+        <select class="tb-select" id="selTbMap">
+          <option value="bunker">Carte : Bunkers tactiques</option>
+          <option value="corridors">Carte : Couloirs &amp; Flancs</option>
+          <option value="arena">Carte : Piliers d'Arène</option>
+          <option value="random">Carte : Aléatoire symétrique</option>
+        </select>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Vitesse actions IA</span><span id="lblTbAiSpd">1.0x</span></div>
+          <input type="range" id="rngTbAiSpd" min="0.5" max="2.0" step="0.25" value="1.0" />
+        </div>
+
+        <div class="menu-section-lbl">Points d'Action (PA) &amp; Coûts</div>
+        <select class="tb-select" id="selTbApMode">
+          <option value="pool">PA : Pool d'équipe partagé</option>
+          <option value="per_unit">PA : Par unité</option>
+        </select>
+        <div class="tb-slider-row" id="rowTbApPool">
+          <div class="tb-slider-top"><span>PA par tour (Pool d'équipe)</span><span id="lblTbApPool">6 PA</span></div>
+          <input type="range" id="rngTbApPool" min="3" max="12" step="1" value="6" />
+        </div>
+        <div class="tb-slider-row hidden" id="rowTbApUnit">
+          <div class="tb-slider-top"><span>PA par unité / tour</span><span id="lblTbApUnit">3 PA</span></div>
+          <input type="range" id="rngTbApUnit" min="2" max="6" step="1" value="3" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Report max de PA au tour suivant</span><span id="lblTbCarry">0 PA</span></div>
+          <input type="range" id="rngTbCarry" min="0" max="4" step="1" value="0" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Coût déplacement (1 case)</span><span id="lblTbMoveCost">1 PA</span></div>
+          <input type="range" id="rngTbMoveCost" min="1" max="3" step="1" value="1" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Coût tir global (si uniforme)</span><span id="lblTbShootCost">2 PA</span></div>
+          <input type="range" id="rngTbShootCost" min="1" max="4" step="1" value="2" />
+        </div>
+        <div class="menu-toggle-pair" style="margin-bottom: 6px;">
+          <label class="menu-toggle-row">
+            <span>Coût par arme</span>
+            <input type="checkbox" id="chkTbCustomCost" checked />
+          </label>
+          <label class="menu-toggle-row">
+            <span>Fin tour auto</span>
+            <input type="checkbox" id="chkTbAutoEnd" checked />
+          </label>
+        </div>
+        <label class="menu-toggle-row" style="margin-bottom: 6px;">
+          <span>↗ Max 1 diagonale / tour par perso</span>
+          <input type="checkbox" id="chkTbDiagLimit" checked />
+        </label>
+
+        <div class="menu-section-lbl">Probabilité de tir &amp; Distance</div>
+        <select class="tb-select" id="selTbCurve">
+          <option value="linear">Courbe : Linéaire (chute régulière)</option>
+          <option value="steep">Courbe : Chute rapide longue distance</option>
+          <option value="optimal_band">Courbe : Zone optimale (malus près/loin)</option>
+          <option value="soft">Courbe : Atténuation douce (racine)</option>
+        </select>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Multiplicateur chute / distance</span><span id="lblTbFallMult">1.0x</span></div>
+          <input type="range" id="rngTbFallMult" min="0.2" max="2.0" step="0.1" value="1.0" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Probabilité minimale</span><span id="lblTbMinHit">10%</span></div>
+          <input type="range" id="rngTbMinHit" min="5" max="40" step="5" value="10" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Probabilité maximale</span><span id="lblTbMaxHit">95%</span></div>
+          <input type="range" id="rngTbMaxHit" min="75" max="100" step="5" value="95" />
+        </div>
+
+        <div class="menu-section-lbl">Éditeur d'Armes (4 unités)</div>
+        <select class="tb-select" id="selTbWeapon"></select>
+        <div class="tb-preview-box" id="lblTbWeaponPreview">Aperçu</div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Dégâts de l'arme</span><span id="lblTbWDmg">35 PV</span></div>
+          <input type="range" id="rngTbWDmg" min="10" max="100" step="5" value="35" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Portée max</span><span id="lblTbWRng">6 c</span></div>
+          <input type="range" id="rngTbWRng" min="2" max="10" step="1" value="6" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Portée optimale</span><span id="lblTbWOpt">3 c</span></div>
+          <input type="range" id="rngTbWOpt" min="1" max="8" step="1" value="3" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Précision de base (opt.)</span><span id="lblTbWAcc">88%</span></div>
+          <input type="range" id="rngTbWAcc" min="50" max="100" step="2" value="88" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Chute par case (&gt; opt.)</span><span id="lblTbWFall">9%</span></div>
+          <input type="range" id="rngTbWFall" min="0" max="30" step="1" value="9" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Malus courte portée (&lt; opt.)</span><span id="lblTbWClose">0%</span></div>
+          <input type="range" id="rngTbWClose" min="0" max="30" step="2" value="0" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Coût tir de cette arme</span><span id="lblTbWCost">2 PA</span></div>
+          <input type="range" id="rngTbWCost" min="1" max="4" step="1" value="2" />
+        </div>
+      </div>
+
+      <div class="menu-pane hidden tb-menu-scroll" id="paneMenuPathfind">
+        <div class="menu-section-lbl">Armées &amp; Groupes</div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Unités Joueur</span><span id="lblPfPUnits">28 u</span></div>
+          <input type="range" id="rngPfPUnits" min="10" max="60" step="2" value="28" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Unités IA</span><span id="lblPfAUnits">28 u</span></div>
+          <input type="range" id="rngPfAUnits" min="10" max="60" step="2" value="28" />
+        </div>
+
+        <div class="menu-section-lbl">Roches irrégulières</div>
+        <select class="tb-select" id="selPfRockStyle">
+          <option value="canyon">Roches : Canyon sinueux</option>
+          <option value="archipelago">Roches : Archipel rocheux</option>
+          <option value="craters">Roches : Anneaux de cratères</option>
+          <option value="scattered">Roches : Éboulis dispersés</option>
+          <option value="random">Roches : Aléatoire</option>
+        </select>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Densité des roches</span><span id="lblPfRockDens">50%</span></div>
+          <input type="range" id="rngPfRockDens" min="15" max="100" step="5" value="50" />
+        </div>
+        <div class="wall-preview-row">
+          <canvas id="pfRockPreviewCanvas" width="260" height="140"></canvas>
+          <div class="wall-preview-side">
+            <button type="button" class="wall-roll-btn" id="btnPfRollRocks">🎲 Nouvelles roches</button>
+            <div class="wall-seed-badge" id="lblPfRockSeed">Graine #2026</div>
+          </div>
+        </div>
+
+        <div class="menu-section-lbl">Stats &amp; Règles Pathfind</div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>PV des unités</span><span id="lblPfHp">80 PV</span></div>
+          <input type="range" id="rngPfHp" min="30" max="220" step="10" value="80" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Vitesse de déplacement</span><span id="lblPfSpeed">78 px/s</span></div>
+          <input type="range" id="rngPfSpeed" min="35" max="150" step="5" value="78" />
+        </div>
+        <div class="tb-slider-row">
+          <div class="tb-slider-top"><span>Portée de tir</span><span id="lblPfRange">135 px</span></div>
+          <input type="range" id="rngPfRange" min="60" max="240" step="5" value="135" />
+        </div>
+        <div class="menu-toggle-pair">
+          <label class="menu-toggle-row">
+            <span>🪨 Roches bloquent tirs</span>
+            <input type="checkbox" id="chkPfRockBlocks" checked />
+          </label>
+          <label class="menu-toggle-row">
+            <span>♻️ Respawn actif</span>
+            <input type="checkbox" id="chkPfRespawn" />
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btnMenuApply">✓ APPLIQUER</button>
+      <button class="btn-secondary" id="btnMenuClose">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Start Overlay -->
+  <div class="overlay" id="startOverlay">
+    <div class="card">
+      <h1 id="startTitle">STRATPICK</h1>
+      <div class="start-mode-row" id="startModeRow">
+        <button class="mode-btn active" id="btnStartPick">🤏 PICK</button>
+        <button class="mode-btn" id="btnStartGlide">🏹 GLIDE</button>
+        <button class="mode-btn" id="btnStartTurn">♟ TOUR</button>
+        <button class="mode-btn" id="btnStartPathfind">🧭 PATHFIND</button>
+      </div>
+      <div class="obj-title" id="startObj"></div>
+      <div class="obj-desc" id="startDesc"></div>
+      <div class="how" id="startHow"></div>
+      <button class="btn-primary" id="btnPlay">▶ JOUER</button>
+    </div>
+  </div>
+
+  <!-- End Overlay -->
+  <div class="overlay hidden" id="endOverlay">
+    <div class="card end">
+      <h1 id="endTitle">VICTOIRE !</h1>
+      <div class="end-reason" id="endReason"></div>
+      <div class="end-stats" id="endStats"></div>
+      <button class="btn-primary" id="btnReplay">↻ REJOUER</button>
+      <button class="btn-secondary hidden" id="btnEndReturn">← RETOUR AU JEU</button>
+      <div class="end-hint hidden" id="endHint"></div>
+    </div>
+  </div>
+</div>
+
+<script src="core/config.js"></script>
+<script src="core/audio.js"></script>
+<script src="core/walls.js"></script>
+<script src="core/arena_shared.js"></script>
+<script src="modes/mode_pick.js"></script>
+<script src="modes/mode_glide.js"></script>
+<script src="modes/mode_turn.js"></script>
+<script src="modes/mode_pathfind.js"></script>
+<script src="core/menu.js"></script>
+<script src="core/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+{
+	"anchors": [
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre Vectorielle — Portail Vectoriel (apparaît à l'approche et disparaît à l'éloignement).",
+			"emoji": "🌀",
+			"id": "ancre_2",
+			"maxAngle": 40.0,
+			"maxDistance": 55.0,
+			"minAngle": 0.0,
+			"minDistance": 38.0,
+			"minSeparation": 35.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre MiniGD — Course 2D Top-Down (drift, turbo, 7 véhicules et 9 modes tactiles).",
+			"emoji": "🏎️",
+			"id": "ancre_3",
+			"maxAngle": 352.0,
+			"maxDistance": 145.0,
+			"minAngle": 312.0,
+			"minDistance": 110.0,
+			"minSeparation": 48.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre MiniGD — StratPick 4 Modes (Pick, Glide, Tour par Tour, Pathfind).",
+			"emoji": "🤏",
+			"id": "ancre_4",
+			"maxAngle": 144.0,
+			"maxDistance": 150.0,
+			"minAngle": 104.0,
+			"minDistance": 115.0,
+			"minSeparation": 48.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre MiniGD — Curl Smoke 3D (fumée thermique et curl-noise 3D).",
+			"emoji": "🌫️",
+			"id": "ancre_5",
+			"maxAngle": 248.0,
+			"maxDistance": 150.0,
+			"minAngle": 208.0,
+			"minDistance": 115.0,
+			"minSeparation": 48.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre Allié — JCLCN (apparaît à l'approche et propose son aide martiale au contact).",
+			"emoji": "🥋",
+			"id": "ancre_6",
+			"maxAngle": 300.0,
+			"maxDistance": 120.0,
+			"minAngle": 260.0,
+			"minDistance": 88.0,
+			"minSeparation": 45.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre Multijoueur — Relais Coop P2P (proposer ou rejoindre une partie partagée en WebRTC).",
+			"emoji": "📡",
+			"id": "ancre_7",
+			"maxAngle": 92.0,
+			"maxDistance": 115.0,
+			"minAngle": 52.0,
+			"minDistance": 85.0,
+			"minSeparation": 45.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre Feuille de Sprite — Plante de Roche (affleurement qui pousse à l'approche et se replante à l'éloignement).",
+			"emoji": "🪨",
+			"id": "ancre_8",
+			"maxAngle": 196.0,
+			"maxDistance": 90.0,
+			"minAngle": 156.0,
+			"minDistance": 65.0,
+			"minSeparation": 42.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		}
+	],
+	"version": 1
+}

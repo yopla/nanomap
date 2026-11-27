@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Boussole Bis (Points d'intérêt)</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "arrowColor",
+      "label": "Couleur principale de la flèche",
+      "type": "color",
+      "default": "#38e0ff",
+      "hint": "Couleur de la première flèche secondaire (des couleurs contrastées sont attribuées si plusieurs points d'intérêt sont pointés)."
+    },
+    {
+      "key": "discoveryRadiusM",
+      "label": "Rayon de découverte d'un point d'intérêt (m)",
+      "type": "number",
+      "default": 14,
+      "min": 4,
+      "max": 45,
+      "step": 1,
+      "hint": "Distance à partir de laquelle un point d'intérêt est mémorisé comme découvert."
+    },
+    {
+      "key": "arrivalRadiusM",
+      "label": "Distance d'arrivée (m)",
+      "type": "number",
+      "default": 4.5,
+      "min": 1,
+      "max": 15,
+      "step": 0.5,
+      "hint": "Rayon en dessous duquel le point d'intérêt est affiché comme atteint."
+    },
+    {
+      "key": "showTipEmoji",
+      "label": "Afficher la pastille d'icône près de la pointe",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche l'emoji du point d'intérêt ciblé à l'extrémité de la flèche."
+    },
+    {
+      "key": "showDistanceReadout",
+      "label": "Afficher la distance sous la boussole",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche la distance restante vers chaque point d'intérêt sélectionné sous le compteur du vaisseau."
+    },
+    {
+      "key": "notifyOnDiscover",
+      "label": "Notification lors d'une nouvelle découverte",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche un toast quand vous découvrez un nouveau point d'intérêt."
+    },
+    {
+      "key": "discoverAllInBiome",
+      "label": "Considérer tous les points d'intérêt comme découverts",
+      "type": "bool",
+      "default": false,
+      "hint": "Si activé, tous les points d'intérêt du biome actif apparaissent immédiatement dans la liste."
+    },
+    {
+      "key": "autoClearOnArrival",
+      "label": "Retirer automatiquement la cible à l'arrivée",
+      "type": "bool",
+      "default": false,
+      "hint": "Désélectionne automatiquement un point d'intérêt une fois que l'alien l'a atteint."
+    }
+  ]
+}
+</script>
+<script>
+// Extension Assemblage : boussole_bis.html
+// Dessine une 2e flèche de boussole (ou plusieurs) depuis le même centre que celle du vaisseau,
+// et permet de cliquer/toucher l'alien pour choisir parmi les points d'intérêt découverts.
+(() => {
+  const FILENAME = "boussole_bis.html";
+  const STYLE_ID = "assemblage-boussole-bis-style";
+  const FLAG_SELECTED = "boussole_bis_target_selected";
+  const PIXELS_PER_METER = 18;
+  const EXTRA_PALETTE = [
+    "#38e0ff",
+    "#ff6bd6",
+    "#ffd166",
+    "#9be564",
+    "#b388ff",
+    "#ff8a65",
+    "#47f2c7",
+  ];
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function normalizeAngle(a) {
+    let r = (a + Math.PI) % (Math.PI * 2);
+    if (r < 0) r += Math.PI * 2;
+    return r - Math.PI;
+  }
+
+  function lerpAngle(a, b, t) {
+    return normalizeAngle(a + normalizeAngle(b - a) * t);
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function hexToRgba(hex, alpha) {
+    const raw = String(hex || "").trim().replace("#", "");
+    let r = 56, g = 224, b = 255;
+    if (/^[0-9a-fA-F]{6}$/.test(raw)) {
+      r = parseInt(raw.slice(0, 2), 16);
+      g = parseInt(raw.slice(2, 4), 16);
+      b = parseInt(raw.slice(4, 6), 16);
+    } else if (/^[0-9a-fA-F]{3}$/.test(raw)) {
+      r = parseInt(raw[0] + raw[0], 16);
+      g = parseInt(raw[1] + raw[1], 16);
+      b = parseInt(raw[2] + raw[2], 16);
+    }
+    return `rgba(${r}, ${g}, ${b}, ${clamp(Number(alpha) || 1, 0, 1).toFixed(3)})`;
+  }
+
+  function derivePoiTitle(anchor) {
+    const id = String(anchor?.id || "").trim();
+    const desc = String(anchor?.description || "").trim();
+    if (desc) {
+      const dashParts = desc.split("—");
+      if (dashParts.length > 1) {
+        const afterDash = dashParts.slice(1).join("—").split("(")[0].trim();
+        if (afterDash.length >= 3 && afterDash.length <= 42) {
+          return afterDash;
+        }
+      }
+      const beforeParen = desc.split("(")[0].trim();
+      if (beforeParen.length >= 3 && beforeParen.length <= 38) {
+        return beforeParen;
+      }
+    }
+    if (!id) return "Point d'intérêt";
+    return id
+      .split("_")
+      .filter(Boolean)
+      .map((part) => (/^\d+$/.test(part) ? `#${part}` : part.charAt(0).toUpperCase() + part.slice(1)))
+      .join(" ");
+  }
+
+  function injectStyleOnce() {
+    const old = document.getElementById(STYLE_ID);
+    if (old) old.remove();
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      .bbis-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 11px;
+      }
+      .bbis-banner {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(14, 34, 56, 0.92), rgba(17, 24, 44, 0.96));
+        border: 1px solid rgba(56, 224, 255, 0.42);
+      }
+      .bbis-banner-icon {
+        font-size: 26px;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+      .bbis-banner-title {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #9ff0ff;
+      }
+      .bbis-banner-sub {
+        font-size: 12px;
+        line-height: 1.38;
+        color: #c2dff2;
+        margin-top: 2px;
+      }
+      .bbis-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+      .bbis-pill {
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(56, 224, 255, 0.14);
+        border: 1px solid rgba(56, 224, 255, 0.38);
+        color: #b7f4ff;
+      }
+      .bbis-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        max-height: 270px;
+        overflow-y: auto;
+        padding-right: 2px;
+      }
+      .bbis-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+        text-align: left;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1.5px solid rgba(110, 165, 210, 0.28);
+        background: rgba(15, 25, 45, 0.86);
+        color: #eef9ff;
+        font-family: inherit;
+        cursor: pointer;
+        transition: transform 0.12s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+      .bbis-card:hover {
+        border-color: rgba(56, 224, 255, 0.65);
+        transform: translateY(-1px);
+      }
+      .bbis-card.selected {
+        background: rgba(20, 44, 68, 0.94);
+        border-color: var(--bbis-accent, #38e0ff);
+        box-shadow: 0 0 0 1px rgba(56, 224, 255, 0.18) inset;
+      }
+      .bbis-check {
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
+        border: 1.5px solid rgba(140, 195, 230, 0.55);
+        background: rgba(8, 15, 28, 0.85);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 800;
+        flex: 0 0 auto;
+        margin-top: 2px;
+        color: #0b1626;
+      }
+      .bbis-card.selected .bbis-check {
+        background: var(--bbis-accent, #38e0ff);
+        border-color: var(--bbis-accent, #38e0ff);
+      }
+      .bbis-emoji {
+        font-size: 22px;
+        line-height: 1.1;
+        flex: 0 0 auto;
+        margin-top: 1px;
+      }
+      .bbis-info {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .bbis-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .bbis-title {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #ffffff;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .bbis-dist {
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #aee9ff;
+        flex: 0 0 auto;
+      }
+      .bbis-desc {
+        font-size: 11.5px;
+        line-height: 1.38;
+        color: #9bc0da;
+        margin-top: 3px;
+      }
+      .bbis-signal-tag {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 999px;
+        margin-left: 6px;
+        vertical-align: middle;
+        background: rgba(56, 224, 255, 0.16);
+        border: 1px solid rgba(56, 224, 255, 0.42);
+        color: #8eeeff;
+      }
+      .bbis-color-dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        margin-right: 5px;
+        vertical-align: middle;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      .bbis-empty {
+        padding: 14px 12px;
+        border-radius: 12px;
+        border: 1px dashed rgba(120, 180, 225, 0.38);
+        background: rgba(12, 21, 38, 0.78);
+        font-size: 12.5px;
+        line-height: 1.48;
+        color: #b3d5eb;
+        text-align: center;
+      }
+      .bbis-locked-note {
+        font-size: 11.5px;
+        color: #88acc7;
+        text-align: center;
+        padding: 2px 4px;
+      }
+      .bbis-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .bbis-btn {
+        appearance: none;
+        -webkit-appearance: none;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 700;
+        padding: 8px 13px;
+        border-radius: 10px;
+        border: 1px solid rgba(110, 175, 220, 0.45);
+        background: rgba(22, 36, 62, 0.9);
+        color: #e6f6ff;
+        cursor: pointer;
+      }
+      .bbis-btn:hover {
+        border-color: rgba(56, 224, 255, 0.8);
+      }
+      .bbis-btn.primary {
+        background: rgba(56, 224, 255, 0.2);
+        border-color: rgba(56, 224, 255, 0.75);
+        color: #b8f6ff;
+      }
+      .bbis-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      if (style.parentNode) style.remove();
+    };
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host) {
+      const canvas = host.game.canvas;
+      if (!canvas) return;
+
+      const primaryColor = String(host.ui.getConfig("arrowColor", "#38e0ff") || "#38e0ff").trim();
+      const discoveryRadiusM = clamp(Number(host.ui.getConfig("discoveryRadiusM", 14)) || 14, 4, 45);
+      const arrivalRadiusM = clamp(Number(host.ui.getConfig("arrivalRadiusM", 4.5)) || 4.5, 1, 15);
+      const showTipEmoji = host.ui.getConfig("showTipEmoji", true) !== false;
+      const showDistanceReadout = host.ui.getConfig("showDistanceReadout", true) !== false;
+      const notifyOnDiscover = host.ui.getConfig("notifyOnDiscover", true) !== false;
+      const discoverAllInBiome = Boolean(host.ui.getConfig("discoverAllInBiome", false));
+      const autoClearOnArrival = Boolean(host.ui.getConfig("autoClearOnArrival", false));
+
+      const removeCss = injectStyleOnce();
+      host.registerCleanup(removeCss);
+
+      const saved = host.state.get() || {};
+      const selectedByBiome = new Map();
+      if (saved.selectedByBiome && typeof saved.selectedByBiome === "object") {
+        for (const [bid, list] of Object.entries(saved.selectedByBiome)) {
+          if (!Array.isArray(list)) continue;
+          const clean = list.map((x) => String(x || "").trim()).filter(Boolean);
+          if (clean.length) selectedByBiome.set(String(bid), clean);
+        }
+      }
+
+      const localDiscoveredByBiome = new Map();
+      if (saved.discoveredByBiome && typeof saved.discoveredByBiome === "object") {
+        for (const [bid, list] of Object.entries(saved.discoveredByBiome)) {
+          if (!Array.isArray(list)) continue;
+          localDiscoveredByBiome.set(String(bid), new Set(list.map((x) => String(x || "").trim()).filter(Boolean)));
+        }
+      }
+
+      const signaledByBiome = new Map();
+      if (saved.signaledByBiome && typeof saved.signaledByBiome === "object") {
+        for (const [bid, list] of Object.entries(saved.signaledByBiome)) {
+          if (!Array.isArray(list)) continue;
+          signaledByBiome.set(String(bid), new Set(list.map((x) => String(x || "").trim()).filter(Boolean)));
+        }
+      }
+
+      const customPois = new Map();
+      const smoothedAngles = new Map();
+
+      let alienScreenX = -9999;
+      let alienScreenY = -9999;
+      let alienScreenRadius = 0;
+      let isHoveringAlien = false;
+      let lastTouchMs = 0;
+      let animClock = 0;
+      let modalBodyEl = null;
+
+      function getPaletteColor(idx) {
+        if (idx === 0) return primaryColor;
+        const filtered = EXTRA_PALETTE.filter((c) => c.toLowerCase() !== primaryColor.toLowerCase());
+        return filtered[(idx - 1) % filtered.length] || primaryColor;
+      }
+
+      function persistState() {
+        const selObj = {};
+        for (const [bid, list] of selectedByBiome.entries()) {
+          if (list.length) selObj[bid] = list.slice();
+        }
+        const discObj = {};
+        for (const [bid, set] of localDiscoveredByBiome.entries()) {
+          if (set && set.size) discObj[bid] = Array.from(set).sort();
+        }
+        const sigObj = {};
+        for (const [bid, set] of signaledByBiome.entries()) {
+          if (set && set.size) sigObj[bid] = Array.from(set).sort();
+        }
+        host.state.set({
+          selectedByBiome: selObj,
+          discoveredByBiome: discObj,
+          signaledByBiome: sigObj,
+        }, true);
+      }
+
+      function getDiscoveredSetForBiome(biomeId) {
+        const bid = String(biomeId || host.game.activeBiomeId || "").trim();
+        const combined = new Set();
+        if (typeof host.game.getDiscoveredAnchors === "function") {
+          for (const aid of host.game.getDiscoveredAnchors(bid)) {
+            combined.add(aid);
+          }
+        }
+        const localSet = localDiscoveredByBiome.get(bid);
+        if (localSet) {
+          for (const aid of localSet) combined.add(aid);
+        }
+        return combined;
+      }
+
+      function getSignaledSetForBiome(biomeId) {
+        const bid = String(biomeId || host.game.activeBiomeId || "").trim();
+        const sigSet = signaledByBiome.get(bid);
+        return sigSet ? new Set(sigSet) : new Set();
+      }
+
+      function markSignaledLocal(poiId, biomeId) {
+        const pid = String(poiId || "").trim();
+        const bid = String(biomeId || host.game.activeBiomeId || "").trim();
+        if (!pid || !bid) return false;
+        if (getDiscoveredSetForBiome(bid).has(pid)) return false;
+        let set = signaledByBiome.get(bid);
+        if (!set) {
+          set = new Set();
+          signaledByBiome.set(bid, set);
+        }
+        if (set.has(pid)) return false;
+        set.add(pid);
+        return true;
+      }
+
+      function markDiscoveredLocal(poiId, biomeId) {
+        const pid = String(poiId || "").trim();
+        const bid = String(biomeId || host.game.activeBiomeId || "").trim();
+        if (!pid || !bid) return false;
+        const sigSet = signaledByBiome.get(bid);
+        let removedSignal = false;
+        if (sigSet && sigSet.has(pid)) {
+          sigSet.delete(pid);
+          removedSignal = true;
+        }
+        let set = localDiscoveredByBiome.get(bid);
+        if (!set) {
+          set = new Set();
+          localDiscoveredByBiome.set(bid, set);
+        }
+        if (set.has(pid)) return removedSignal;
+        set.add(pid);
+        return true;
+      }
+
+      function getBiomePois() {
+        const bid = String(host.game.activeBiomeId || "").trim();
+        const list = [];
+        const seen = new Set();
+        const anchors = Array.isArray(host.game.anchors) ? host.game.anchors : [];
+        for (const a of anchors) {
+          if (!a || !a.id || seen.has(a.id)) continue;
+          seen.add(a.id);
+          list.push({
+            id: a.id,
+            emoji: String(a.emoji || "⚓"),
+            title: derivePoiTitle(a),
+            description: String(a.description || ""),
+            x: Number(a.x || 0),
+            y: Number(a.y || 0),
+            isCustom: false,
+          });
+        }
+        for (const cp of customPois.values()) {
+          if (!cp || !cp.id || seen.has(cp.id)) continue;
+          if (cp.biomeId && cp.biomeId !== "all" && cp.biomeId !== bid) continue;
+          seen.add(cp.id);
+          list.push({
+            id: cp.id,
+            emoji: String(cp.emoji || "📍"),
+            title: String(cp.title || cp.id),
+            description: String(cp.description || ""),
+            x: Number(cp.x || 0),
+            y: Number(cp.y || 0),
+            isCustom: true,
+          });
+        }
+        return list;
+      }
+
+      function getSelectedIds(biomeId = host.game.activeBiomeId) {
+        const bid = String(biomeId || "").trim();
+        return selectedByBiome.get(bid) || [];
+      }
+
+      function setSelectedIds(ids, biomeId = host.game.activeBiomeId, opts = null) {
+        const bid = String(biomeId || "").trim();
+        const clean = Array.from(new Set((Array.isArray(ids) ? ids : []).map((x) => String(x || "").trim()).filter(Boolean)));
+        if (clean.length) {
+          selectedByBiome.set(bid, clean);
+          if (!(opts && opts.markFlag === false) && host.progress && typeof host.progress.setFlag === "function") {
+            host.progress.setFlag(FLAG_SELECTED, true, true);
+          }
+        } else {
+          selectedByBiome.delete(bid);
+        }
+        persistState();
+      }
+
+      function syncDiscoveredFromHost() {
+        const bid = String(host.game.activeBiomeId || "").trim();
+        if (!bid || typeof host.game.getDiscoveredAnchors !== "function") return;
+        const fromHost = host.game.getDiscoveredAnchors(bid);
+        const localSet = localDiscoveredByBiome.get(bid);
+        let changed = false;
+        if (localSet) {
+          for (const aid of localSet) {
+            if (typeof host.game.discoverAnchor === "function") {
+              host.game.discoverAnchor(aid, bid);
+            }
+          }
+        }
+        for (const aid of fromHost) {
+          if (markDiscoveredLocal(aid, bid)) changed = true;
+        }
+        if (changed) persistState();
+      }
+
+      syncDiscoveredFromHost();
+
+      host.events.on("anchor_discovered", (payload) => {
+        if (!payload || !payload.anchorId) return;
+        const bid = String(payload.biomeId || host.game.activeBiomeId || "").trim();
+        const isNewLocal = markDiscoveredLocal(payload.anchorId, bid);
+        if (isNewLocal) {
+          persistState();
+          if (notifyOnDiscover && bid === String(host.game.activeBiomeId || "").trim()) {
+            const poi = getBiomePois().find((p) => p.id === payload.anchorId);
+            if (poi) {
+              host.ui.showToast(`📍 Point d'intérêt découvert : ${poi.emoji} ${poi.title}`);
+            }
+          }
+          if (modalBodyEl && modalBodyEl.isConnected) {
+            renderPickerContent(modalBodyEl);
+          }
+        }
+      });
+
+      function normalizeIdList(ids) {
+        const raw = Array.isArray(ids) ? ids : (ids ? [ids] : []);
+        return Array.from(new Set(raw.map((x) => String(x || "").trim()).filter(Boolean)));
+      }
+
+      function revealAnchors(ids, biomeId = host.game.activeBiomeId) {
+        const bid = String(biomeId || host.game.activeBiomeId || "").trim();
+        const list = normalizeIdList(ids);
+        if (!bid || !list.length) return [];
+        const added = [];
+        let changed = false;
+        for (const id of list) {
+          if (markSignaledLocal(id, bid)) {
+            added.push(id);
+            changed = true;
+          }
+        }
+        if (changed) {
+          persistState();
+          if (modalBodyEl && modalBodyEl.isConnected) {
+            renderPickerContent(modalBodyEl);
+          }
+        }
+        return added;
+      }
+
+      function pointAnchors(ids, opts = {}) {
+        const bid = String((opts && opts.biomeId) || host.game.activeBiomeId || "").trim();
+        const list = normalizeIdList(ids);
+        if (!bid || !list.length) return { applied: false, pointed: [] };
+
+        const pois = getBiomePois();
+        const poiMap = new Map(pois.map((p) => [p.id, p]));
+        const al = host.game.alien;
+        const minDistanceM = Math.max(0, Number(opts && opts.minDistanceM) || 0);
+        const replace = Boolean(opts && opts.replace);
+        const reveal = !(opts && opts.reveal === false);
+        const markFlag = Boolean(opts && opts.markFlag === true);
+
+        const qualifyingIds = [];
+        for (const id of list) {
+          const poi = poiMap.get(id);
+          if (!poi) continue;
+          if (minDistanceM > 0 && al) {
+            const distM = Math.hypot(poi.x - al.x, poi.y - al.y) / PIXELS_PER_METER;
+            if (distM < minDistanceM) continue;
+          }
+          qualifyingIds.push(id);
+        }
+
+        if (!qualifyingIds.length) {
+          return { applied: false, pointed: [] };
+        }
+
+        if (reveal) {
+          revealAnchors(qualifyingIds, bid);
+        }
+
+        const nextIds = replace
+          ? qualifyingIds
+          : Array.from(new Set([...getSelectedIds(bid), ...qualifyingIds]));
+        setSelectedIds(nextIds, bid, { markFlag });
+        if (modalBodyEl && modalBodyEl.isConnected) {
+          renderPickerContent(modalBodyEl);
+        }
+        return { applied: true, pointed: qualifyingIds.slice() };
+      }
+
+      function clearAnchors(ids = null, opts = {}) {
+        const bid = String((opts && opts.biomeId) || host.game.activeBiomeId || "").trim();
+        if (!bid) return;
+        if (ids === null || ids === undefined) {
+          setSelectedIds([], bid, { markFlag: false });
+        } else {
+          const removeSet = new Set(normalizeIdList(ids));
+          const kept = getSelectedIds(bid).filter((id) => !removeSet.has(id));
+          setSelectedIds(kept, bid, { markFlag: false });
+        }
+        if (modalBodyEl && modalBodyEl.isConnected) {
+          renderPickerContent(modalBodyEl);
+        }
+      }
+
+      host.services.provide("boussole_bis", {
+        registerPoi(poi) {
+          if (!poi || !poi.id) return () => {};
+          const id = String(poi.id).trim();
+          customPois.set(id, Object.assign({ biomeId: "all" }, poi, { id }));
+          if (poi.discovered !== false) {
+            markDiscoveredLocal(id, String(poi.biomeId && poi.biomeId !== "all" ? poi.biomeId : host.game.activeBiomeId));
+          }
+          return () => customPois.delete(id);
+        },
+        unregisterPoi(id) {
+          return customPois.delete(String(id || "").trim());
+        },
+        openPicker() {
+          openPickerModal();
+        },
+        getSelectedIds() {
+          return getSelectedIds().slice();
+        },
+        setSelectedIds(ids, opts = null) {
+          setSelectedIds(ids, host.game.activeBiomeId, opts);
+        },
+        revealAnchors,
+        pointAnchors,
+        clearAnchors,
+      });
+
+      function renderPickerContent(bodyEl) {
+        if (!bodyEl) return;
+        const bid = String(host.game.activeBiomeId || "").trim();
+        const pois = getBiomePois();
+        const discSet = getDiscoveredSetForBiome(bid);
+        const signaledSet = getSignaledSetForBiome(bid);
+        const discoveredPois = discoverAllInBiome
+          ? pois
+          : pois.filter((p) => discSet.has(p.id) || signaledSet.has(p.id));
+        const hiddenCount = Math.max(0, pois.length - discoveredPois.length);
+        const signaledOnlyCount = discoverAllInBiome
+          ? 0
+          : discoveredPois.filter((p) => !discSet.has(p.id) && signaledSet.has(p.id)).length;
+
+        const validIds = new Set(discoveredPois.map((p) => p.id));
+        const selected = getSelectedIds(bid).filter((id) => validIds.has(id));
+        const al = host.game.alien;
+
+        discoveredPois.sort((a, b) => {
+          const sa = selected.includes(a.id) ? 0 : 1;
+          const sb = selected.includes(b.id) ? 0 : 1;
+          if (sa !== sb) return sa - sb;
+          const da = al ? Math.hypot(a.x - al.x, a.y - al.y) : 0;
+          const db = al ? Math.hypot(b.x - al.x, b.y - al.y) : 0;
+          return da - db;
+        });
+
+        let listHtml = "";
+        if (discoveredPois.length === 0) {
+          listHtml = `
+            <div class="bbis-empty">
+              Aucun point d'intérêt n'a encore été découvert dans ce biome.<br>
+              Explorez les alentours (à moins de ${Math.round(discoveryRadiusM)} m d'une ancre) pour l'enregistrer ici, puis cliquez à nouveau sur votre alien !
+            </div>
+          `;
+        } else {
+          listHtml = `<div class="bbis-list">${discoveredPois.map((poi) => {
+            const selIdx = selected.indexOf(poi.id);
+            const isSel = selIdx >= 0;
+            const isSignaledOnly = !discoverAllInBiome && !discSet.has(poi.id) && signaledSet.has(poi.id);
+            const color = isSel ? getPaletteColor(selIdx) : primaryColor;
+            const distM = al ? (Math.hypot(poi.x - al.x, poi.y - al.y) / PIXELS_PER_METER) : 0;
+            const distLabel = distM <= arrivalRadiusM ? "Arrivé" : `${Math.round(distM)} m`;
+            const colorDot = isSel
+              ? `<span class="bbis-color-dot" style="background:${escapeHtml(color)};"></span>`
+              : "";
+            const signalTag = isSignaledOnly
+              ? `<span class="bbis-signal-tag">📡 Signal</span>`
+              : "";
+            const descLine = poi.description && poi.description !== poi.title
+              ? `<div class="bbis-desc">${escapeHtml(poi.description)}</div>`
+              : `<div class="bbis-desc">${escapeHtml(poi.id)}</div>`;
+            return `
+              <button type="button" class="bbis-card${isSel ? " selected" : ""}" data-bbis-id="${escapeHtml(poi.id)}" style="--bbis-accent:${escapeHtml(color)};">
+                <span class="bbis-check">${isSel ? "✓" : ""}</span>
+                <span class="bbis-emoji">${escapeHtml(poi.emoji)}</span>
+                <span class="bbis-info">
+                  <span class="bbis-head">
+                    <span class="bbis-title">${colorDot}${escapeHtml(poi.title)}${signalTag}</span>
+                    <span class="bbis-dist">${escapeHtml(distLabel)}</span>
+                  </span>
+                  ${descLine}
+                </span>
+              </button>
+            `;
+          }).join("")}</div>`;
+        }
+
+        const lockedNoteHtml = hiddenCount > 0
+          ? `<div class="bbis-locked-note">🔒 ${hiddenCount} autre(s) point(s) d'intérêt encore à découvrir dans ce biome.</div>`
+          : "";
+        const signalPillHtml = signaledOnlyCount > 0
+          ? `<span class="bbis-pill">📡 ${signaledOnlyCount} signal(aux)</span>`
+          : "";
+
+        bodyEl.innerHTML = `
+          <div class="bbis-wrap">
+            <div class="bbis-banner">
+              <div class="bbis-banner-icon">🧭</div>
+              <div>
+                <div class="bbis-banner-title">Choisir les cibles de la boussole bis</div>
+                <div class="bbis-banner-sub">Les flèches sélectionnées partent du même centre que l'aiguille du vaisseau.</div>
+              </div>
+            </div>
+            <div class="bbis-pills">
+              <span class="bbis-pill">📍 ${discoveredPois.length} / ${pois.length} repéré(s)</span>
+              ${signalPillHtml}
+              <span class="bbis-pill">🎯 ${selected.length} pointé(s)</span>
+            </div>
+            ${listHtml}
+            ${lockedNoteHtml}
+            <div class="bbis-actions">
+              <button type="button" class="bbis-btn" data-bbis-all ${discoveredPois.length === 0 ? "disabled" : ""}>Tout pointer</button>
+              <button type="button" class="bbis-btn" data-bbis-none ${selected.length === 0 ? "disabled" : ""}>Tout masquer</button>
+              <button type="button" class="bbis-btn primary" data-bbis-close>Valider</button>
+            </div>
+          </div>
+        `;
+
+        bodyEl.querySelectorAll("[data-bbis-id]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const pid = btn.getAttribute("data-bbis-id") || "";
+            const cur = getSelectedIds(bid).filter((id) => validIds.has(id));
+            const idx = cur.indexOf(pid);
+            if (idx >= 0) cur.splice(idx, 1);
+            else cur.push(pid);
+            setSelectedIds(cur, bid);
+            renderPickerContent(bodyEl);
+          });
+        });
+
+        const btnAll = bodyEl.querySelector("[data-bbis-all]");
+        if (btnAll) {
+          btnAll.addEventListener("click", () => {
+            setSelectedIds(discoveredPois.map((p) => p.id), bid);
+            renderPickerContent(bodyEl);
+          });
+        }
+
+        const btnNone = bodyEl.querySelector("[data-bbis-none]");
+        if (btnNone) {
+          btnNone.addEventListener("click", () => {
+            setSelectedIds([], bid);
+            renderPickerContent(bodyEl);
+          });
+        }
+
+        const btnClose = bodyEl.querySelector("[data-bbis-close]");
+        if (btnClose) {
+          btnClose.addEventListener("click", () => host.ui.closeModal());
+        }
+      }
+
+      function openPickerModal() {
+        syncDiscoveredFromHost();
+        host.ui.showModal({
+          icon: "🧭",
+          title: "Boussole Bis — Points d'intérêt",
+          html: `<div data-bbis-root></div>`,
+          onMount(bodyEl) {
+            modalBodyEl = bodyEl;
+            renderPickerContent(bodyEl);
+          },
+        });
+      }
+
+      host.ui.addSettingButton({
+        id: "boussole_bis_picker",
+        label: "Boussole Bis — Points d'intérêt",
+        desc: "Choisir quels points d'intérêt découverts pointer depuis le centre de la boussole (aussi accessible en cliquant sur l'alien).",
+        buttonText: "Choisir",
+        onClick: openPickerModal,
+      });
+
+      function isHitAlien(sx, sy) {
+        return alienScreenRadius > 0 && Math.hypot(sx - alienScreenX, sy - alienScreenY) <= alienScreenRadius;
+      }
+
+      const onTouchStartCapture = (e) => {
+        lastTouchMs = performance.now();
+        if (host.game.isAnyUIOpen()) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          const pos = host.game.getCanvasPos(t.clientX, t.clientY);
+          if (typeof host.game.isPointOnCompass === "function" && host.game.isPointOnCompass(pos.x, pos.y)) {
+            continue;
+          }
+          if (isHitAlien(pos.x, pos.y)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            host.game.stopMovement();
+            openPickerModal();
+            return;
+          }
+        }
+      };
+
+      const onMouseDownCapture = (e) => {
+        if (e.button !== 0) return;
+        if (performance.now() - lastTouchMs < 500) return;
+        if (host.game.isAnyUIOpen()) return;
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        if (typeof host.game.isPointOnCompass === "function" && host.game.isPointOnCompass(pos.x, pos.y)) {
+          return;
+        }
+        if (isHitAlien(pos.x, pos.y)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          host.game.stopMovement();
+          openPickerModal();
+        }
+      };
+
+      const onMouseMoveHover = (e) => {
+        if (performance.now() - lastTouchMs < 500) return;
+        if (host.game.isAnyUIOpen()) {
+          if (isHoveringAlien) {
+            isHoveringAlien = false;
+            canvas.style.cursor = "";
+          }
+          return;
+        }
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        const blockedByCompass = typeof host.game.isPointOnCompass === "function" && host.game.isPointOnCompass(pos.x, pos.y);
+        const hit = !blockedByCompass && isHitAlien(pos.x, pos.y);
+        if (hit !== isHoveringAlien) {
+          isHoveringAlien = hit;
+          canvas.style.cursor = hit ? "pointer" : "";
+        }
+      };
+
+      canvas.addEventListener("touchstart", onTouchStartCapture, { capture: true, passive: false });
+      canvas.addEventListener("mousedown", onMouseDownCapture, true);
+      window.addEventListener("mousemove", onMouseMoveHover);
+      host.registerCleanup(() => {
+        canvas.removeEventListener("touchstart", onTouchStartCapture, true);
+        canvas.removeEventListener("mousedown", onMouseDownCapture, true);
+        window.removeEventListener("mousemove", onMouseMoveHover);
+        if (isHoveringAlien) canvas.style.cursor = "";
+      });
+
+      function drawHoverHint(ctx, sx, sy, scale) {
+        if (!isHoveringAlien || host.game.isAnyUIOpen()) return;
+        const pulse = 0.5 + 0.5 * Math.sin(animClock * 5.0);
+        const ringR = 23 * scale + pulse * 2.5;
+        ctx.save();
+        ctx.strokeStyle = hexToRgba(primaryColor, 0.72);
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, ringR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.font = `${Math.round(13 * clamp(scale, 0.85, 1.35))}px system-ui, -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText("🧭", sx, sy - ringR - 3);
+        ctx.restore();
+      }
+
+      const sourceKey = `${host.instanceId || FILENAME}:alien_hitbox`;
+      window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+      window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+        const al = host.game.alien;
+        if (!al) return;
+        pushBillboard(al.y - 0.12, (ctx, projectPoint) => {
+          const pt = projectPoint(al.x, al.y, 16);
+          alienScreenX = pt.x;
+          alienScreenY = pt.y;
+          alienScreenRadius = Math.max(24, 32 * pt.scale);
+          drawHoverHint(ctx, pt.x, pt.y, pt.scale);
+        }, al.x);
+      });
+      host.registerCleanup(() => {
+        if (window.Assemblage25DBillboardSources) {
+          window.Assemblage25DBillboardSources.delete(sourceKey);
+        }
+      });
+
+      function worldToScreenFallback(wx, wy) {
+        if (typeof host.game.worldToScreenPos === "function") {
+          return host.game.worldToScreenPos(wx, wy);
+        }
+        const cam = host.game.cam;
+        const zoom = host.game.currentZoom || 1;
+        const dx = wx - cam.x;
+        const dy = wy - cam.y;
+        let rx = dx;
+        let ry = dy;
+        if (cam.angle) {
+          const c = Math.cos(cam.angle);
+          const s = Math.sin(cam.angle);
+          rx = dx * c - dy * s;
+          ry = dx * s + dy * c;
+        }
+        return {
+          x: host.game.viewW * 0.5 + rx * zoom,
+          y: host.game.viewH * 0.5 + ry * zoom,
+        };
+      }
+
+      host.hooks.after("drawWorldAfter", () => {
+        if (window.Assemblage25DActive) return;
+        const al = host.game.alien;
+        const ctx = host.game.ctx;
+        if (!al || !ctx) return;
+        const sp = worldToScreenFallback(al.x, al.y);
+        const zoom = host.game.currentZoom || 1;
+        alienScreenX = sp.x;
+        alienScreenY = sp.y;
+        alienScreenRadius = Math.max(24, 30 * zoom);
+        drawHoverHint(ctx, al.x, al.y, 1);
+      });
+
+      host.hooks.after("update", (_, dt) => {
+        const safeDt = clamp(dt || 0.016, 0.001, 0.05);
+        animClock += safeDt;
+
+        const al = host.game.alien;
+        if (!al) return;
+        const bid = String(host.game.activeBiomeId || "").trim();
+        const pois = getBiomePois();
+
+        // Détecte et enregistre les points d'intérêt découverts dans le rayon configuré
+        const discPx = discoveryRadiusM * PIXELS_PER_METER;
+        let discoveredChanged = false;
+        for (const poi of pois) {
+          const dPx = Math.hypot(poi.x - al.x, poi.y - al.y);
+          if (dPx <= discPx) {
+            if (!poi.isCustom && typeof host.game.discoverAnchor === "function") {
+              if (host.game.discoverAnchor(poi.id, bid)) {
+                markDiscoveredLocal(poi.id, bid);
+                discoveredChanged = true;
+              }
+            } else if (markDiscoveredLocal(poi.id, bid)) {
+              discoveredChanged = true;
+              if (notifyOnDiscover) {
+                host.ui.showToast(`📍 Point d'intérêt découvert : ${poi.emoji} ${poi.title}`);
+              }
+            }
+          }
+        }
+        if (discoveredChanged) persistState();
+
+        // Met à jour l'angle lissé de chaque cible pointée et gère autoClearOnArrival
+        const selected = getSelectedIds(bid);
+        if (!selected.length) return;
+        const poiMap = new Map(pois.map((p) => [p.id, p]));
+        let selectionChanged = false;
+        const kept = [];
+
+        for (const id of selected) {
+          const poi = poiMap.get(id);
+          if (!poi) {
+            kept.push(id);
+            continue;
+          }
+          const dx = poi.x - al.x;
+          const dy = poi.y - al.y;
+          const distM = Math.hypot(dx, dy) / PIXELS_PER_METER;
+          if (autoClearOnArrival && distM <= arrivalRadiusM) {
+            selectionChanged = true;
+            host.ui.showToast(`🎯 Arrivé à ${poi.emoji} ${poi.title}`);
+            continue;
+          }
+          kept.push(id);
+          if (Math.hypot(dx, dy) > 4) {
+            const targetAngle = Math.atan2(dy, dx);
+            const prev = smoothedAngles.has(id) ? smoothedAngles.get(id) : targetAngle;
+            smoothedAngles.set(id, lerpAngle(prev, targetAngle, clamp(safeDt * 10, 0, 1)));
+          }
+        }
+
+        if (selectionChanged) {
+          setSelectedIds(kept, bid);
+          if (modalBodyEl && modalBodyEl.isConnected) {
+            renderPickerContent(modalBodyEl);
+          }
+        }
+      });
+
+      function getCompassLayoutFallback() {
+        if (typeof host.game.getCompassLayout === "function") {
+          return host.game.getCompassLayout();
+        }
+        const vw = host.game.viewW || window.innerWidth;
+        const vh = host.game.viewH || window.innerHeight;
+        const isNarrowPortrait = vh > vw && vw <= 500;
+        const r = isNarrowPortrait ? 30 : 34;
+        return {
+          cx: vw - (isNarrowPortrait ? 46 : 58),
+          cy: isNarrowPortrait ? 52 : 56,
+          r,
+        };
+      }
+
+      host.hooks.after("drawCompass", () => {
+        if (host.game.showCompass === false || host.game.isAnyUIOpen()) return;
+        const al = host.game.alien;
+        const ctx = host.game.ctx;
+        if (!al || !ctx) return;
+
+        const bid = String(host.game.activeBiomeId || "").trim();
+        const pois = getBiomePois();
+        const poiMap = new Map(pois.map((p) => [p.id, p]));
+        const discSet = getDiscoveredSetForBiome(bid);
+        const signaledSet = getSignaledSetForBiome(bid);
+
+        const activeTargets = [];
+        const selectedIds = getSelectedIds(bid);
+        for (const id of selectedIds) {
+          const poi = poiMap.get(id);
+          if (!poi) continue;
+          if (!discoverAllInBiome && !discSet.has(id) && !signaledSet.has(id)) continue;
+          activeTargets.push(poi);
+        }
+        if (!activeTargets.length) return;
+
+        const { cx, cy, r } = getCompassLayoutFallback();
+        const camAngle = host.game.cam ? (host.game.cam.angle || 0) : 0;
+
+        ctx.save();
+        const readouts = [];
+
+        activeTargets.forEach((poi, idx) => {
+          const color = getPaletteColor(idx);
+          const dxWorld = poi.x - al.x;
+          const dyWorld = poi.y - al.y;
+          const distM = Math.hypot(dxWorld, dyWorld) / PIXELS_PER_METER;
+          const isNear = distM <= arrivalRadiusM;
+
+          const baseAngle = smoothedAngles.has(poi.id)
+            ? smoothedAngles.get(poi.id)
+            : Math.atan2(dyWorld, dxWorld);
+          const screenAngle = baseAngle + camAngle;
+          const dx = Math.cos(screenAngle);
+          const dy = Math.sin(screenAngle);
+          const px = -dy;
+          const py = dx;
+
+          const tipReach = r + 2;
+          const baseBack = r * 0.48;
+          const headBack = tipReach - 11;
+
+          // Ombre portée légère
+          ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+          ctx.beginPath();
+          ctx.moveTo(cx + 1.5 - dx * baseBack - px * 2.2, cy + 2.5 - dy * baseBack - py * 2.2);
+          ctx.lineTo(cx + 1.5 + dx * headBack - px * 2.2, cy + 2.5 + dy * headBack - py * 2.2);
+          ctx.lineTo(cx + 1.5 + dx * headBack - px * 6.4, cy + 2.5 + dy * headBack - py * 6.4);
+          ctx.lineTo(cx + 1.5 + dx * tipReach, cy + 2.5 + dy * tipReach);
+          ctx.lineTo(cx + 1.5 + dx * headBack + px * 6.4, cy + 2.5 + dy * headBack + py * 6.4);
+          ctx.lineTo(cx + 1.5 + dx * headBack + px * 2.2, cy + 2.5 + dy * headBack + py * 2.2);
+          ctx.lineTo(cx + 1.5 - dx * baseBack + px * 2.2, cy + 2.5 - dy * baseBack + py * 2.2);
+          ctx.closePath();
+          ctx.fill();
+
+          // Flèche fine et nette depuis le centre commun (cx, cy)
+          ctx.fillStyle = color;
+          ctx.strokeStyle = "rgba(10, 16, 28, 0.78)";
+          ctx.lineWidth = 1.25;
+          ctx.beginPath();
+          ctx.moveTo(cx - dx * baseBack - px * 2.0, cy - dy * baseBack - py * 2.0);
+          ctx.lineTo(cx + dx * headBack - px * 2.0, cy + dy * headBack - py * 2.0);
+          ctx.lineTo(cx + dx * headBack - px * 6.2, cy + dy * headBack - py * 6.2);
+          ctx.lineTo(cx + dx * tipReach, cy + dy * tipReach);
+          ctx.lineTo(cx + dx * headBack + px * 6.2, cy + dy * headBack + py * 6.2);
+          ctx.lineTo(cx + dx * headBack + px * 2.0, cy + dy * headBack + py * 2.0);
+          ctx.lineTo(cx - dx * baseBack + px * 2.0, cy - dy * baseBack + py * 2.0);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          if (isNear) {
+            const pulse = 0.5 + 0.5 * Math.sin(animClock * 6.0);
+            ctx.strokeStyle = hexToRgba(color, 0.45 + 0.35 * pulse);
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.arc(cx + dx * (tipReach - 2), cy + dy * (tipReach - 2), 6 + pulse * 3, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          if (showTipEmoji && poi.emoji) {
+            // Si la flèche pointe vers le bas, décaler la pastille sur le côté pour ne jamais recouvrir le label du vaisseau
+            let bx = cx + dx * (tipReach + 8.5);
+            let by = cy + dy * (tipReach + 8.5);
+            if (dy > 0.72) {
+              const side = dx >= 0 ? 1 : -1;
+              bx = cx + dx * (tipReach - 5) + px * (10 * side);
+              by = cy + dy * (tipReach - 5) + py * (10 * side);
+            }
+            ctx.fillStyle = "rgba(10, 16, 28, 0.9)";
+            ctx.beginPath();
+            ctx.arc(bx, by, 8.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(bx, by, 8.5, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.font = "10.5px system-ui, -apple-system, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(poi.emoji, bx, by + 0.5);
+          }
+
+          readouts.push({
+            emoji: poi.emoji,
+            color,
+            text: isNear ? `${poi.emoji} Arrivé` : `${poi.emoji} ${Math.round(distM)} m`,
+          });
+        });
+
+        // Redessine le pivot central commun par-dessus pour lier visuellement les aiguilles au même axe
+        ctx.fillStyle = "#ebf5ff";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#1a293d";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (showDistanceReadout && readouts.length > 0) {
+          ctx.font = "600 11.5px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "top";
+          const maxShow = Math.min(3, readouts.length);
+          let yOff = cy + r + 38;
+          for (let i = 0; i < maxShow; i++) {
+            const item = readouts[i];
+            ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+            ctx.fillText(item.text, cx + 1, yOff + 1);
+            ctx.fillStyle = item.color;
+            ctx.fillText(item.text, cx, yOff);
+            yOff += 14;
+          }
+          if (readouts.length > maxShow) {
+            const extraTxt = `+${readouts.length - maxShow} autre(s)`;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+            ctx.fillText(extraTxt, cx + 1, yOff + 1);
+            ctx.fillStyle = "#9ecce8";
+            ctx.fillText(extraTxt, cx, yOff);
+          }
+        }
+
+        ctx.restore();
+      });
+    },
+
+    onDeactivate() {},
+  };
+})();
+</script>
+</body>
+</html>

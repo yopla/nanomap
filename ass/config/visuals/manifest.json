@@ -1,0 +1,49 @@
+{
+	"packs": [
+		{
+			"file": "packs/plaine_astrale.json",
+			"id": "plaine_astrale",
+			"name": "🌿 Plaines Astrales",
+			"preload": false,
+			"symbolIds": [
+				"plante_ondule"
+			],
+			"visualIds": [
+				"plante_tentacule"
+			]
+		},
+		{
+			"file": "packs/testprop.json",
+			"id": "testprop",
+			"name": "testprop",
+			"preload": false,
+			"symbolIds": [],
+			"visualIds": [
+				"portail_extension"
+			]
+		},
+		{
+			"file": "packs/jclcn.json",
+			"id": "jclcn",
+			"name": "🥋 JCLCN — Jean-Claude Lee Chan Norris",
+			"preload": false,
+			"symbolIds": [
+				"jclcn_tete",
+				"jclcn_idle",
+				"jclcn_run",
+				"jclcn_roundhouse_kick",
+				"jclcn_grand_ecart_kick",
+				"jclcn_rafale_poings",
+				"jclcn_nunchaku_furie",
+				"jclcn_uppercut_dragon",
+				"jclcn_balayage_tourbillon",
+				"jclcn_coup_de_tete_barbu"
+			],
+			"visualIds": [
+				"jclcn_skin",
+				"jclcn_medaillon_ancre"
+			]
+		}
+	],
+	"version": 1
+}

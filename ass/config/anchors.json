@@ -15,6 +15,147 @@
 			"positionMode": "generative_ship",
 			"referenceAnchorId": "",
 			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": false,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre de test qui affiche un visuel vectoriel quand le joueur s'en approche et le retire quand il s'éloigne.",
+			"emoji": "🌀",
+			"id": "ancre_2",
+			"maxAngle": 360.0,
+			"maxDistance": 20.0,
+			"minAngle": 0.0,
+			"minDistance": 10.0,
+			"minSeparation": 10.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": false,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre MiniGD — Fumée Thermique & Curl-Noise 3D (Curl Smoke).",
+			"emoji": "🌫️",
+			"id": "ancre_3",
+			"maxAngle": 90.0,
+			"maxDistance": 36.0,
+			"minAngle": 0.0,
+			"minDistance": 22.0,
+			"minSeparation": 14.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre MiniGD — Combat 1D Lumineux (DimCom 1D).",
+			"emoji": "➖",
+			"id": "ancre_4",
+			"maxAngle": 180.0,
+			"maxDistance": 36.0,
+			"minAngle": 90.0,
+			"minDistance": 22.0,
+			"minSeparation": 14.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre disponible pour associer dynamiquement un nouveau MiniGD.",
+			"emoji": "🧭",
+			"id": "ancre_5",
+			"maxAngle": 270.0,
+			"maxDistance": 44.0,
+			"minAngle": 180.0,
+			"minDistance": 28.0,
+			"minSeparation": 14.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre de Jean-Claude Lee Chan Norris (JCLCN) — apparaît à l'approche et propose son aide au contact.",
+			"emoji": "🥋",
+			"id": "ancre_6",
+			"maxAngle": 360.0,
+			"maxDistance": 44.0,
+			"minAngle": 270.0,
+			"minDistance": 28.0,
+			"minSeparation": 14.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": true,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre Relais P2P — approche pour proposer ou rejoindre une partie partagée en P2P.",
+			"emoji": "📡",
+			"id": "ancre_7",
+			"maxAngle": 360.0,
+			"maxDistance": 26.0,
+			"minAngle": 0.0,
+			"minDistance": 14.0,
+			"minSeparation": 12.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
+			"useAngleRange": false,
+			"x": 0.0,
+			"y": 0.0
+		},
+		{
+			"biomes": [
+				"all"
+			],
+			"description": "Ancre Plante Minérale (Feuille de Sprite) — affleurement rocheux qui pousse à l'approche et se replante dans le sol à l'éloignement.",
+			"emoji": "🪨",
+			"id": "ancre_8",
+			"maxAngle": 360.0,
+			"maxDistance": 24.0,
+			"minAngle": 0.0,
+			"minDistance": 12.0,
+			"minSeparation": 12.0,
+			"positionMode": "generative_ship",
+			"referenceAnchorId": "",
+			"showOnMap": true,
+			"tags": [],
 			"useAngleRange": false,
 			"x": 0.0,
 			"y": 0.0

@@ -1,0 +1,155 @@
+{
+	"actors": [
+		{
+			"aggroRadius": 280.0,
+			"animationId": "",
+			"attackPower": 12.0,
+			"attackRate": 1.0,
+			"behavior": "chase",
+			"biomeSpawns": [
+				{
+					"biome": "marais",
+					"density": 1.0,
+					"enabled": true,
+					"overrides": {}
+				}
+			],
+			"biomes": [
+				"marais"
+			],
+			"description": "Créature amphibie des marais qui patrouille et poursuit l'alien à vue. Personnalisable par biome (PV, teinte, vitesse, densité).",
+			"faction": "hostile",
+			"hp": 60,
+			"icon": "🐙",
+			"id": "poulpe_marcheur",
+			"lootChance": 0.6,
+			"lootElementId": "#ressource",
+			"minSeparation": 56.0,
+			"name": "Poulpe Marcheur",
+			"radius": 24.0,
+			"scale": 1.0,
+			"speed": 95.0,
+			"tags": [
+				"acteur",
+				"créature",
+				"hostile",
+				"marais"
+			],
+			"tint": "#9be564",
+			"visualId": ""
+		},
+		{
+			"aggroRadius": 320.0,
+			"animationId": "plante_ondule",
+			"attackPower": 8.0,
+			"attackRate": 1.0,
+			"behavior": "turret",
+			"biomeSpawns": [
+				{
+					"biome": "marais",
+					"density": 1.0,
+					"enabled": true,
+					"overrides": {}
+				}
+			],
+			"biomes": [
+				"marais"
+			],
+			"description": "Tourelle organique qui guette les intrus et crache des projectiles à distance.",
+			"faction": "hostile",
+			"hp": 45,
+			"icon": "🌿",
+			"id": "plante_tentacule",
+			"lootChance": 0.5,
+			"lootElementId": "#flore",
+			"minSeparation": 64.0,
+			"name": "Plante Tentacule",
+			"radius": 22.0,
+			"scale": 1.0,
+			"speed": 0.0,
+			"tags": [
+				"acteur",
+				"créature",
+				"hostile",
+				"flore"
+			],
+			"tint": "#5ce68a",
+			"visualId": "plante_tentacule"
+		},
+		{
+			"aggroRadius": 200.0,
+			"animationId": "",
+			"attackPower": 5.0,
+			"attackRate": 1.2,
+			"behavior": "swarm",
+			"biomeSpawns": [
+				{
+					"biome": "marais",
+					"density": 1.0,
+					"enabled": true,
+					"overrides": {}
+				}
+			],
+			"biomes": [
+				"marais"
+			],
+			"description": "Petites créatures gélatineuses rebondissantes qui se déplacent en essaim.",
+			"faction": "neutral",
+			"hp": 30,
+			"icon": "🫧",
+			"id": "troupe_puyos",
+			"lootChance": 0.35,
+			"lootElementId": "",
+			"minSeparation": 40.0,
+			"name": "Troupe de Puyos",
+			"radius": 16.0,
+			"scale": 0.85,
+			"speed": 115.0,
+			"tags": [
+				"acteur",
+				"créature",
+				"neutre"
+			],
+			"tint": "#6be5ff",
+			"visualId": ""
+		},
+		{
+			"aggroRadius": 170.0,
+			"animationId": "",
+			"attackPower": 0.0,
+			"attackRate": 1.0,
+			"behavior": "flee",
+			"biomeSpawns": [
+				{
+					"biome": "plaine_astrale",
+					"density": 0.8,
+					"enabled": true,
+					"overrides": {}
+				}
+			],
+			"biomes": [
+				"plaine_astrale"
+			],
+			"description": "Faune bioluminescente paisible qui erre dans les plaines astrales et fuit si on s'approche trop vite.",
+			"faction": "ambient",
+			"hp": 20,
+			"icon": "✨",
+			"id": "luciole_astrale",
+			"lootChance": 0.25,
+			"lootElementId": "#cristal",
+			"minSeparation": 48.0,
+			"name": "Luciole Astrale",
+			"radius": 12.0,
+			"scale": 0.75,
+			"speed": 130.0,
+			"tags": [
+				"acteur",
+				"faune",
+				"ambiance"
+			],
+			"tint": "#38e0d1",
+			"visualId": ""
+		}
+	],
+	"version": 1
+}

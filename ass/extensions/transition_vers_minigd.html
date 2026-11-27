@@ -1,0 +1,3423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Transition vers MiniGD</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "anchorBindings",
+      "label": "Associations dynamiques Ancres ↔ MiniGD",
+      "type": "minigd_anchors",
+      "default": [],
+      "hint": "Ajoutez autant d'associations que voulu : chaque ancre déclenche son propre mini-jeu MiniGD à l'approche et se réarme à l'éloignement."
+    },
+    {
+      "key": "minigamePath",
+      "label": "Mini-jeu par défaut (bouton Paramètres)",
+      "type": "minigd",
+      "default": "core/g14a_dimcom_1d.html",
+      "hint": "Mini-jeu lancé depuis le bouton Paramètres ou si aucune ancre spécifique n'est fournie (ou Aléatoire)."
+    },
+    {
+      "key": "displayMode",
+      "label": "Mode d'affichage",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        { "id": "auto", "label": "Auto (selon le mini-jeu)" },
+        { "id": "framed", "label": "Encadré (UI externe)" },
+        { "id": "fullframe", "label": "Full Frame (plein écran)" }
+      ],
+      "hint": "En mode Auto, chaque mini-jeu décide s'il s'ouvre dans un cadre avec UI externe ou en plein écran (layout: \"fullframe\")."
+    },
+    {
+      "key": "showSummaryOnStart",
+      "label": "Afficher le résumé en pause à la fin de la transition",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche le résumé du mini-jeu (titre, description, objectif, contrôles) dans un cadre en pause à la fin de la transition ; le jeu démarre ensuite."
+    },
+    {
+      "key": "blurRadiusPx",
+      "label": "Flou maximal (px)",
+      "type": "number",
+      "default": 14,
+      "min": 4,
+      "max": 32,
+      "step": 1
+    },
+    {
+      "key": "blurDurationMs",
+      "label": "Durée floutage / mise au net (ms)",
+      "type": "number",
+      "default": 1000,
+      "min": 200,
+      "max": 3000,
+      "step": 100
+    },
+    {
+      "key": "fadeDurationMs",
+      "label": "Durée fondu alpha (ms)",
+      "type": "number",
+      "default": 500,
+      "min": 100,
+      "max": 2000,
+      "step": 50
+    },
+    {
+      "key": "showInfoButton",
+      "label": "Afficher le bouton d'infos (?)",
+      "type": "bool",
+      "default": true,
+      "hint": "Permet de consulter le titre, la description, l'objectif et les contrôles du mini-jeu."
+    },
+    {
+      "key": "settingButtonLabel",
+      "label": "Bouton Paramètres",
+      "type": "text",
+      "default": "Lancer le mini-jeu"
+    }
+  ]
+}
+</script>
+<style>
+  body.minigd-transition-active #settings-btn,
+  body.minigd-transition-active #fullscreen-btn,
+  body.minigd-transition-active #hint {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  #minigd-frozen-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 57;
+    pointer-events: none;
+    display: block;
+    background: #14121f;
+  }
+
+  #minigd-transition-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 58;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: max(14px, env(safe-area-inset-top, 14px)) max(14px, env(safe-area-inset-right, 14px)) max(14px, env(safe-area-inset-bottom, 14px)) max(14px, env(safe-area-inset-left, 14px));
+    background: rgba(4, 8, 16, 0);
+    touch-action: none;
+  }
+
+  #minigd-stage {
+    --minigd-size: min(520px, calc(100vw - 28px), calc(100dvh - 230px));
+    --minigd-accent: #38d6ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    will-change: opacity;
+  }
+
+  #minigd-stage.has-minimap {
+    --minigd-size: min(490px, calc(100vw - 24px), calc(100dvh - 265px));
+  }
+
+  #minigd-stage.has-minimap.has-ctrl-picker {
+    --minigd-size: min(490px, calc(100vw - 24px), calc(100dvh - 275px));
+  }
+
+  #minigd-stage.has-minimap.has-ext-controls {
+    --minigd-size: min(440px, calc(100vw - 24px), max(200px, calc(100dvh - 395px)));
+  }
+
+  #minigd-top-bar {
+    width: var(--minigd-size);
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+  }
+
+  #minigd-stage.has-top-extras #minigd-top-bar {
+    gap: 6px;
+  }
+
+  #minigd-stage.has-top-extras .minigd-top-big-btn {
+    width: 44px;
+    height: 38px;
+    font-size: 16px;
+  }
+
+  #minigd-stage.has-top-extras #minigd-info-btn {
+    position: static;
+    transform: none;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  #minigd-stage.has-top-extras #minigd-info-btn:hover {
+    transform: scale(1.05);
+  }
+
+  .minigd-select-icon-btn {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .minigd-select-icon-btn select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .minigd-top-big-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 50px;
+    height: 42px;
+    border-radius: 999px;
+    border: 1.5px solid var(--minigd-accent, #38d6ff);
+    background: rgba(12, 22, 38, 0.90);
+    color: #e8f8ff;
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 18px rgba(56, 214, 255, 0.24);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    pointer-events: none;
+    transition: transform 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, opacity 0.2s ease;
+  }
+
+  .minigd-top-big-btn:hover {
+    background: rgba(24, 48, 76, 0.96);
+    transform: translateY(-1px) scale(1.04);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), 0 0 22px rgba(56, 214, 255, 0.40);
+  }
+
+  .minigd-top-big-btn:active {
+    transform: scale(0.95);
+  }
+
+  .minigd-top-big-btn[disabled] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  #minigd-header-row {
+    width: var(--minigd-size);
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  #minigd-minimap-box {
+    display: none;
+    width: 118px;
+    height: 66px;
+    flex-shrink: 0;
+    position: relative;
+    border-radius: 10px;
+    background: rgba(10, 18, 32, 0.92);
+    border: 1px solid rgba(56, 214, 255, 0.50);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.42);
+    overflow: hidden;
+  }
+
+  #minigd-stage.has-minimap #minigd-minimap-box {
+    display: block;
+  }
+
+  #minigd-minimap-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  #minigd-minimap-badges {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    display: flex;
+    gap: 3px;
+    pointer-events: none;
+  }
+
+  .minigd-mm-badge {
+    display: none;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 4px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  .minigd-mm-badge.drift {
+    background: rgba(245, 158, 11, 0.92);
+    color: #050a12;
+  }
+
+  .minigd-mm-badge.turbo {
+    background: rgba(14, 116, 144, 0.94);
+    border: 1px solid #38d6ff;
+    color: #e6f4ff;
+  }
+
+  #minigd-stats-bar {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: rgba(14, 23, 40, 0.88);
+    border: 1px solid rgba(56, 214, 255, 0.42);
+    color: #e2f1ff;
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.40);
+  }
+
+  #minigd-bottom-area {
+    width: var(--minigd-size);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #minigd-ext-controls {
+    display: none;
+    width: var(--minigd-size);
+    background: rgba(12, 22, 38, 0.90);
+    border: 1px solid rgba(56, 214, 255, 0.45);
+    border-radius: 14px;
+    padding: 8px 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  #minigd-stage.has-ext-controls #minigd-ext-controls {
+    display: flex;
+  }
+
+  #minigd-stage.has-ext-controls #minigd-fire-btn {
+    min-height: 38px;
+    padding: 7px 16px;
+    font-size: 13.5px;
+  }
+
+  @media (max-height: 760px) {
+    #minigd-stage.has-ext-controls #minigd-hint {
+      display: none;
+    }
+  }
+
+  .minigd-ctrl-left {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .minigd-ctrl-canvas {
+    display: block;
+    touch-action: none;
+    border-radius: 12px;
+  }
+
+  .minigd-ctrl-pedals {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .minigd-ctrl-pedals-row {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .minigd-pedal-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    min-width: 68px;
+    height: 46px;
+    padding: 0 10px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    color: #e6f4ff;
+    background: rgba(16, 28, 48, 0.92);
+    border: 1.5px solid #38d6ff;
+    cursor: pointer;
+    touch-action: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.08s ease, background 0.1s ease;
+  }
+
+  .minigd-pedal-btn.gas { border-color: #4ade80; color: #dcfce7; }
+  .minigd-pedal-btn.gas.active { background: rgba(34, 197, 94, 0.85); color: #050a12; transform: scale(0.96); }
+  .minigd-pedal-btn.brake { border-color: #f87171; color: #fee2e2; }
+  .minigd-pedal-btn.brake.active { background: rgba(239, 68, 68, 0.85); color: #050a12; transform: scale(0.96); }
+  .minigd-pedal-btn.drift { border-color: #fde047; color: #fef08a; height: 32px; width: 100%; }
+  .minigd-pedal-btn.drift.active { background: rgba(250, 204, 21, 0.92); color: #050a12; transform: scale(0.96); }
+
+  .minigd-dpad-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .minigd-dpad-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 62px;
+    height: 62px;
+    border-radius: 12px;
+    font-size: 22px;
+    font-weight: 800;
+    color: #e6f4ff;
+    background: rgba(16, 28, 48, 0.92);
+    border: 1.5px solid #38d6ff;
+    touch-action: none;
+    cursor: pointer;
+  }
+
+  .minigd-dpad-btn.active {
+    background: rgba(56, 214, 255, 0.85);
+    color: #050a12;
+  }
+
+  .minigd-slider-track {
+    position: relative;
+    width: 100%;
+    max-width: 210px;
+    height: 46px;
+    border-radius: 999px;
+    background: rgba(10, 18, 32, 0.92);
+    border: 1.5px solid rgba(56, 214, 255, 0.55);
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .minigd-slider-thumb {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #38d6ff;
+    border: 2px solid #e6f4ff;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: 0 2px 10px rgba(56, 214, 255, 0.5);
+  }
+
+  #minigd-settings-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 62;
+    background: rgba(4, 8, 18, 0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+  }
+
+  #minigd-settings-overlay.open {
+    display: flex;
+  }
+
+  #minigd-settings-card {
+    width: min(460px, 94vw);
+    max-height: calc(100vh - 28px);
+    max-height: calc(100dvh - 28px);
+    background: #121a2b;
+    border: 1.5px solid var(--minigd-accent, #38d6ff);
+    border-radius: 14px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+    color: #e6f4ff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .minigd-set-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid rgba(56, 214, 255, 0.25);
+  }
+
+  .minigd-set-head h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #38d6ff;
+  }
+
+  .minigd-set-btn {
+    background: #1a3350;
+    color: #aef0ff;
+    border: 1px solid #38d6ff;
+    border-radius: 7px;
+    padding: 5px 10px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .minigd-set-btn:hover { background: #23466d; }
+
+  .minigd-set-tabs {
+    display: flex;
+    gap: 5px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(56, 214, 255, 0.2);
+    background: rgba(10, 18, 32, 0.65);
+    flex-wrap: wrap;
+  }
+
+  .minigd-set-tab {
+    flex: 1 1 auto;
+    padding: 5px 7px;
+    font-size: 11.5px;
+    font-weight: 700;
+    border-radius: 7px;
+    background: #132338;
+    border: 1px solid rgba(56, 214, 255, 0.35);
+    color: #9fc4e2;
+    cursor: pointer;
+  }
+
+  .minigd-set-tab.active {
+    background: #1e4268;
+    border-color: #38d6ff;
+    color: #e6f4ff;
+  }
+
+  .minigd-set-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .minigd-set-pane { display: none; flex-direction: column; gap: 10px; }
+  .minigd-set-pane.active { display: flex; }
+
+  .minigd-set-sec {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #38d6ff;
+  }
+
+  .minigd-set-select {
+    width: 100%;
+    background: #0c1726;
+    color: #e6f4ff;
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    border-radius: 8px;
+    padding: 8px 28px 8px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .minigd-set-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .minigd-set-row .minigd-set-select { flex: 1; min-width: 0; }
+
+  .minigd-set-param { display: flex; flex-direction: column; gap: 4px; }
+  .minigd-set-param-head { display: flex; justify-content: space-between; font-size: 12px; color: #cbe0f5; }
+  .minigd-set-param-head span:last-child { color: #fde047; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .minigd-set-param input[type=range] { width: 100%; accent-color: #38d6ff; margin: 0; }
+
+  .minigd-set-color {
+    flex: 1;
+    min-width: 125px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(20, 35, 58, 0.75);
+    border: 1px solid rgba(56, 214, 255, 0.3);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .minigd-set-color input[type=color] { width: 32px; height: 22px; border: none; background: none; padding: 0; cursor: pointer; }
+
+  .minigd-set-check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #d6e8f8; cursor: pointer; }
+  .minigd-set-check input { width: 15px; height: 15px; accent-color: #38d6ff; flex-shrink: 0; }
+
+  #minigd-track-draw-canvas {
+    width: 100%;
+    height: auto;
+    max-height: 200px;
+    border-radius: 8px;
+    background: #08121f;
+    border: 1px solid rgba(56, 214, 255, 0.45);
+    touch-action: none;
+    cursor: crosshair;
+    display: block;
+  }
+
+  .minigd-set-foot {
+    padding: 10px 14px;
+    border-top: 1px solid rgba(56, 214, 255, 0.25);
+    background: rgba(10, 18, 32, 0.65);
+  }
+  .minigd-set-foot .minigd-set-btn { width: 100%; padding: 8px; font-size: 13px; }
+
+  #minigd-bottom-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  #minigd-ctrl-quick-wrap {
+    display: none;
+    width: min(var(--minigd-size), 280px);
+    position: relative;
+  }
+
+  #minigd-stage.has-ctrl-picker #minigd-ctrl-quick-wrap {
+    display: flex;
+  }
+
+  #minigd-stage.has-ctrl-picker #minigd-hint {
+    display: none;
+  }
+
+  #minigd-ctrl-quick-select {
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    padding: 0 28px 0 10px;
+    border-radius: 12px;
+    border: 1.5px solid var(--minigd-accent, #38d6ff);
+    background: rgba(14, 26, 46, 0.94);
+    color: #e8f8ff;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2338d6ff' d='M2 4l4 4 4-4z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    text-overflow: ellipsis;
+  }
+
+  #minigd-ctrl-quick-select option {
+    background: #0c1726;
+    color: #e8f8ff;
+  }
+
+  #minigd-ctrl-quick-select[disabled] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  #minigd-stage.has-ctrl-picker #minigd-fire-btn {
+    width: min(var(--minigd-size), 280px);
+    min-height: 38px;
+    padding: 7px 16px;
+    font-size: 13.5px;
+  }
+
+  #minigd-fire-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    width: min(var(--minigd-size), 280px);
+    min-height: 46px;
+    padding: 10px 22px;
+    border-radius: 14px;
+    border: 1.5px solid var(--minigd-accent, #38d6ff);
+    background: linear-gradient(180deg, rgba(24, 58, 92, 0.96), rgba(14, 34, 58, 0.96));
+    color: #e8f8ff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 18px rgba(56, 214, 255, 0.22);
+    cursor: pointer;
+    pointer-events: none;
+    transition: transform 0.1s ease, background 0.14s ease, box-shadow 0.14s ease, opacity 0.2s ease;
+  }
+
+  #minigd-fire-btn:hover {
+    background: linear-gradient(180deg, rgba(32, 76, 118, 0.98), rgba(20, 48, 80, 0.98));
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 214, 255, 0.36);
+  }
+
+  #minigd-fire-btn:active {
+    transform: scale(0.96);
+  }
+
+  #minigd-fire-btn[disabled] {
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  #minigd-hint {
+    width: 100%;
+    font-size: 11.5px;
+    color: #9fc4e2;
+    text-align: center;
+    line-height: 1.35;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  }
+
+  #minigd-info-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    background: rgba(14, 24, 40, 0.88);
+    color: #bfefff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.14s ease, transform 0.12s ease;
+  }
+
+  #minigd-info-btn:hover {
+    background: rgba(26, 48, 74, 0.96);
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  #minigd-square-shell {
+    width: var(--minigd-size);
+    height: var(--minigd-size);
+    aspect-ratio: 1 / 1;
+    border-radius: 18px;
+    overflow: hidden;
+    position: relative;
+    background: #050a12;
+    border: 2px solid var(--minigd-accent, #38d6ff);
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.72), 0 0 32px rgba(56, 214, 255, 0.22);
+    transform: translateZ(0);
+    contain: layout paint;
+  }
+
+  #minigd-iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    background: #050a12;
+    pointer-events: none;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  #minigd-info-card {
+    position: absolute;
+    inset: 14px;
+    z-index: 5;
+    border-radius: 14px;
+    background: rgba(9, 16, 28, 0.95);
+    border: 1.5px solid var(--minigd-accent, #38d6ff);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+    padding: 16px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    color: #e6f4ff;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #minigd-info-card.open {
+    display: flex;
+  }
+
+  .minigd-info-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #6bf0ff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .minigd-info-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(56, 214, 255, 0.16);
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    color: #9ceeff;
+    white-space: nowrap;
+  }
+
+  .minigd-info-sec {
+    font-size: 13px;
+    line-height: 1.45;
+    color: #d0e4f5;
+  }
+
+  .minigd-info-sec b {
+    color: #fde047;
+  }
+
+  .minigd-info-close {
+    margin-top: auto;
+    align-self: flex-end;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(56, 214, 255, 0.72);
+    background: linear-gradient(180deg, rgba(28, 72, 108, 0.96), rgba(18, 44, 72, 0.96));
+    color: #e8f8ff;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    transition: transform 0.12s ease, background 0.14s ease;
+  }
+
+  .minigd-info-close:hover {
+    background: linear-gradient(180deg, rgba(36, 92, 136, 0.98), rgba(22, 56, 90, 0.98));
+    transform: translateY(-1px);
+  }
+
+  .minigd-info-close:active {
+    transform: scale(0.96);
+  }
+
+  /* ── Mode Full Frame (plein écran, piloté par le mini-jeu ou forcé) ── */
+  #minigd-transition-overlay.is-fullframe {
+    padding: 0;
+    gap: 0;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-stage {
+    width: 100vw;
+    height: 100dvh;
+    position: relative;
+    gap: 0;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-square-shell {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    z-index: 1;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-header-row,
+  #minigd-transition-overlay.is-fullframe #minigd-bottom-area,
+  #minigd-transition-overlay.is-fullframe #minigd-reset-btn,
+  #minigd-transition-overlay.is-fullframe #minigd-audio-btn,
+  #minigd-transition-overlay.is-fullframe #minigd-skin-wrap,
+  #minigd-transition-overlay.is-fullframe #minigd-settings-btn {
+    display: none !important;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-top-bar {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top, 12px));
+    left: max(12px, env(safe-area-inset-left, 12px));
+    right: max(12px, env(safe-area-inset-right, 12px));
+    width: auto;
+    min-height: 0;
+    z-index: 4;
+    justify-content: flex-start;
+    pointer-events: none;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-info-btn {
+    position: static;
+    transform: none;
+    margin-left: auto;
+    pointer-events: auto;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-info-btn:hover {
+    transform: scale(1.05);
+  }
+
+  #minigd-transition-overlay.is-fullframe.has-own-exit #minigd-exit-btn {
+    display: none !important;
+  }
+
+  #minigd-transition-overlay.is-fullframe #minigd-info-card {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(460px, calc(100vw - 32px));
+    max-height: calc(100dvh - 48px);
+  }
+
+  /* ── Mode Rond avec interface autour ── */
+  #minigd-transition-overlay.layout-circle #minigd-square-shell {
+    border-radius: 50%;
+  }
+
+  /* ── Mode Rectangle avec interface autour ── */
+  #minigd-transition-overlay.layout-rectangle #minigd-stage {
+    --minigd-rect-w: min(740px, calc(100vw - 28px));
+    --minigd-rect-h: min(440px, calc(100dvh - 230px));
+  }
+
+  #minigd-transition-overlay.layout-rectangle #minigd-top-bar,
+  #minigd-transition-overlay.layout-rectangle #minigd-header-row,
+  #minigd-transition-overlay.layout-rectangle #minigd-bottom-area {
+    width: var(--minigd-rect-w);
+  }
+
+  #minigd-transition-overlay.layout-rectangle #minigd-square-shell {
+    width: var(--minigd-rect-w);
+    height: var(--minigd-rect-h);
+    aspect-ratio: auto;
+  }
+
+  @media (max-height: 540px) and (min-width: 480px) {
+    #minigd-transition-overlay {
+      padding: 6px;
+      gap: 6px;
+    }
+    #minigd-stage {
+      --minigd-size: min(440px, calc(100vw - 24px), max(160px, calc(100dvh - 145px)));
+      gap: 5px;
+    }
+    #minigd-stage.has-minimap {
+      --minigd-size: min(420px, calc(100vw - 24px), max(150px, calc(100dvh - 175px)));
+    }
+    #minigd-stage.has-minimap.has-ctrl-picker {
+      --minigd-size: min(420px, calc(100vw - 24px), max(150px, calc(100dvh - 185px)));
+    }
+    #minigd-stage.has-minimap.has-ext-controls {
+      --minigd-size: min(380px, calc(100vw - 24px), max(140px, calc(100dvh - 235px)));
+    }
+    #minigd-transition-overlay.layout-rectangle #minigd-stage {
+      --minigd-rect-w: min(740px, calc(100vw - 24px));
+      --minigd-rect-h: min(360px, max(150px, calc(100dvh - 145px)));
+    }
+    #minigd-top-bar { min-height: 36px; }
+    .minigd-top-big-btn { width: 42px; height: 34px; font-size: 15px; }
+    #minigd-minimap-box { width: 96px; height: 52px; }
+    #minigd-stats-bar { padding: 4px 10px; font-size: 12px; }
+  }
+</style>
+<script>
+// Extension Assemblage : transition_vers_minigd.html
+(function () {
+  const FILENAME = "transition_vers_minigd.html";
+  const DEFAULT_MINIGAME = "core/g14a_dimcom_1d.html";
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function easeInOutCubic(t) {
+    const x = clamp(t, 0, 1);
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  }
+
+  function normalizeMiniGamePath(rawPath) {
+    let s = String(rawPath || "").trim().replaceAll("\\", "/");
+    if (!s || s === "__random__") return "";
+    if (s.startsWith("extensions/minigd/")) s = s.slice("extensions/minigd/".length);
+    s = s.replace(/^\/+/, "");
+    if (!s || s.includes("..")) return "";
+    return s;
+  }
+
+  function encodeRelPathSegments(relPath) {
+    return String(relPath || "")
+      .split("/")
+      .filter(Boolean)
+      .map((seg) => encodeURIComponent(seg))
+      .join("/");
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function normalizeLayout(raw) {
+    const s = String(raw || "").trim().toLowerCase();
+    if (s === "fullframe" || s === "full-frame" || s === "full_frame" || s === "fullscreen") {
+      return "fullframe";
+    }
+    if (s === "circle" || s === "round" || s === "rond") return "circle";
+    if (s === "rectangle" || s === "rect") return "rectangle";
+    if (s === "framed" || s === "square" || s === "carre" || s === "carré") return "framed";
+    return "";
+  }
+
+  function resolveLayoutMode(displayMode, meta, capabilities) {
+    const forced = normalizeLayout(displayMode);
+    if (forced === "fullframe") return "fullframe";
+    const caps = (capabilities && typeof capabilities === "object") ? capabilities : {};
+    const m = (meta && typeof meta === "object") ? meta : {};
+    if (caps.fullframe === true) return "fullframe";
+    const capLayout = normalizeLayout(caps.layout);
+    if (capLayout) return capLayout;
+    if (m.fullframe === true) return "fullframe";
+    const metaLayout = normalizeLayout(m.layout);
+    if (metaLayout) return metaLayout;
+    return "framed";
+  }
+
+  function resolveFullFrame(displayMode, meta, capabilities) {
+    return resolveLayoutMode(displayMode, meta, capabilities) === "fullframe";
+  }
+
+  function resolveOwnExit(meta, capabilities) {
+    const caps = (capabilities && typeof capabilities === "object") ? capabilities : {};
+    const m = (meta && typeof meta === "object") ? meta : {};
+    if (typeof caps.ownExit === "boolean") return caps.ownExit;
+    if (typeof m.ownExit === "boolean") return m.ownExit;
+    return false;
+  }
+
+  const DEFAULT_SHARED_TEXTS = {
+    pauseBadge: "⏸ EN PAUSE",
+    startButtonText: "▶ Commencer",
+    resumeButtonText: "Reprendre",
+    descLabel: "Description :",
+    goalLabel: "Objectif :",
+    controlsLabel: "Contrôles :",
+    exitTooltip: "Revenir au jeu principal",
+    resetTooltip: "Recommencer",
+    infoTooltip: "Titre, description, objectif et contrôles",
+    endReturnHint: "Cliquez pour revenir au jeu principal",
+    timeoutTitle: "CHRONO ÉCOULÉ",
+  };
+
+  function resolveMiniGameParams(iframeMeta, manifestMeta) {
+    const out = {};
+    const im = (iframeMeta && typeof iframeMeta === "object") ? iframeMeta : {};
+    if (Array.isArray(im.fields)) {
+      for (const f of im.fields) {
+        if (f && f.key && f.default !== undefined) {
+          out[String(f.key)] = f.default;
+        }
+      }
+    }
+    const mm = (manifestMeta && typeof manifestMeta === "object") ? manifestMeta : {};
+    if (mm.params && typeof mm.params === "object") {
+      Object.assign(out, mm.params);
+    }
+    return out;
+  }
+
+  function resolveMiniGameTexts(iframeMeta, manifestMeta, sharedTexts) {
+    const out = Object.assign({}, DEFAULT_SHARED_TEXTS);
+    if (sharedTexts && typeof sharedTexts === "object") {
+      for (const k of Object.keys(sharedTexts)) {
+        if (sharedTexts[k] !== undefined && sharedTexts[k] !== null && String(sharedTexts[k]).trim() !== "") {
+          out[k] = String(sharedTexts[k]);
+        }
+      }
+    }
+    const im = (iframeMeta && typeof iframeMeta === "object") ? iframeMeta : {};
+    if (Array.isArray(im.texts)) {
+      for (const t of im.texts) {
+        if (t && t.key && t.default !== undefined) {
+          out[String(t.key)] = String(t.default);
+        }
+      }
+    }
+    const mm = (manifestMeta && typeof manifestMeta === "object") ? manifestMeta : {};
+    if (mm.texts && typeof mm.texts === "object") {
+      for (const k of Object.keys(mm.texts)) {
+        if (mm.texts[k] !== undefined && mm.texts[k] !== null && String(mm.texts[k]).trim() !== "") {
+          out[k] = String(mm.texts[k]);
+        }
+      }
+    }
+    return out;
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      let activeSession = null;
+      let unsubTitleCard = null;
+      let destroyedExt = false;
+
+      const blurRadiusPx = clamp(Number(host.ui.getConfig("blurRadiusPx", 14)) || 14, 4, 32);
+      const blurDurationMs = clamp(Number(host.ui.getConfig("blurDurationMs", 1000)) || 1000, 200, 3000);
+      const fadeDurationMs = clamp(Number(host.ui.getConfig("fadeDurationMs", 500)) || 500, 100, 2000);
+      const showInfoButton = Boolean(host.ui.getConfig("showInfoButton", true));
+      const showSummaryOnStart = Boolean(host.ui.getConfig("showSummaryOnStart", true));
+      const defaultDisplayMode = String(host.ui.getConfig("displayMode", "auto") || "auto").trim().toLowerCase();
+      const settingButtonLabel = String(host.ui.getConfig("settingButtonLabel", "Lancer le mini-jeu") || "Lancer le mini-jeu").trim();
+
+      const bindingsMap = new Map();
+
+      function sanitizeAnchorId(rawId) {
+        return String(rawId || "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_-]/g, "");
+      }
+
+      function registerAnchorBinding(anchorId, minigamePath, opts) {
+        const aid = sanitizeAnchorId(anchorId);
+        if (!aid) return null;
+        const o = (opts && typeof opts === "object") ? opts : {};
+        const rawPath = String(minigamePath || "").trim();
+        const normPath = rawPath === "__random__" ? "__random__" : (normalizeMiniGamePath(rawPath) || "__random__");
+        const trigR = clamp(Number(o.triggerRadiusM ?? 5) || 5, 1, 200);
+        const resetR = clamp(Number(o.resetRadiusM ?? Math.max(trigR + 3, 10)) || Math.max(trigR + 3, 10), trigR + 1, 400);
+        const prev = bindingsMap.get(aid);
+        const entry = {
+          anchorId: aid,
+          minigamePath: normPath,
+          triggerRadiusM: trigR,
+          resetRadiusM: resetR,
+          showSummaryOnStart: (typeof o.showSummaryOnStart === "boolean") ? o.showSummaryOnStart : showSummaryOnStart,
+          displayMode: (typeof o.displayMode === "string" && o.displayMode.trim()) ? o.displayMode.trim().toLowerCase() : "",
+          armed: prev ? prev.armed : true,
+        };
+        bindingsMap.set(aid, entry);
+        return Object.assign({}, entry);
+      }
+
+      function unregisterAnchorBinding(anchorId) {
+        const aid = sanitizeAnchorId(anchorId);
+        if (!aid) return false;
+        return bindingsMap.delete(aid);
+      }
+
+      function getAnchorBindings() {
+        return Array.from(bindingsMap.values()).map((b) => Object.assign({}, b));
+      }
+
+      const rawBindings = host.ui.getConfig("anchorBindings", []);
+      if (Array.isArray(rawBindings)) {
+        for (const item of rawBindings) {
+          if (!item || typeof item !== "object") continue;
+          registerAnchorBinding(item.anchorId, item.minigamePath, {
+            triggerRadiusM: item.triggerRadiusM,
+            resetRadiusM: item.resetRadiusM,
+            showSummaryOnStart: item.showSummaryOnStart,
+            displayMode: item.displayMode,
+          });
+        }
+      }
+
+      function clearCanvasBlur() {
+        const canvas = host.game.canvas;
+        if (canvas) {
+          canvas.style.filter = "";
+          canvas.style.willChange = "";
+          canvas.style.visibility = "";
+        }
+      }
+
+      function stopAlienMovement() {
+        try {
+          if (typeof host.game.stopMovement === "function") {
+            host.game.stopMovement();
+          }
+          const a = host.game.alien;
+          if (a) {
+            a.vx = 0;
+            a.vy = 0;
+          }
+        } catch (_e) {}
+      }
+
+      function createFrozenBlurredBg(session, canvas) {
+        if (!session || session.aborted || !canvas || !canvas.width || !canvas.height) return null;
+        if (session.frozenBg) return session.frozenBg;
+        try {
+          const vw = Math.max(1, window.innerWidth || canvas.clientWidth || 320);
+          const vh = Math.max(1, window.innerHeight || canvas.clientHeight || 320);
+          // 0.5x resolution (16x fewer pixels than DPRx2) -> crisp Gaussian blur computed once in ~1-2ms
+          const scale = 0.5;
+          const outW = Math.max(160, Math.round(vw * scale));
+          const outH = Math.max(160, Math.round(vh * scale));
+
+          const bg = document.createElement("canvas");
+          bg.id = "minigd-frozen-bg";
+          bg.width = outW;
+          bg.height = outH;
+          bg.style.opacity = "0";
+          bg.style.willChange = "opacity";
+          const bctx = bg.getContext("2d", { alpha: false });
+          bctx.fillStyle = "#14121f";
+          bctx.fillRect(0, 0, outW, outH);
+          bctx.imageSmoothingEnabled = true;
+          bctx.imageSmoothingQuality = "high";
+
+          if (typeof bctx.filter === "string") {
+            // Exact 1:1 pixel-aligned Gaussian blur with edge padding (no dark vignette borders)
+            const scaledBlur = Math.max(1, blurRadiusPx * scale);
+            const pad = Math.ceil(scaledBlur * 2);
+            const padded = document.createElement("canvas");
+            padded.width = outW + pad * 2;
+            padded.height = outH + pad * 2;
+            const pctx = padded.getContext("2d", { alpha: false });
+            pctx.imageSmoothingEnabled = true;
+            pctx.imageSmoothingQuality = "high";
+            pctx.drawImage(canvas, 0, 0, padded.width, padded.height);
+            pctx.drawImage(canvas, pad, pad, outW, outH);
+
+            bctx.filter = `blur(${scaledBlur.toFixed(1)}px)`;
+            bctx.drawImage(padded, -pad, -pad);
+            bctx.filter = "none";
+            padded.width = 0;
+            padded.height = 0;
+          } else {
+            // Smooth multi-pass mipmap blur fallback (older Safari without ctx.filter)
+            const downFactor = Math.max(4, Math.min(12, Math.round(blurRadiusPx * 0.55)));
+            const midW = Math.max(48, Math.round(outW * 0.5));
+            const midH = Math.max(48, Math.round(outH * 0.5));
+            const tinyW = Math.max(24, Math.round(vw / downFactor));
+            const tinyH = Math.max(24, Math.round(vh / downFactor));
+
+            const c1 = document.createElement("canvas");
+            c1.width = midW;
+            c1.height = midH;
+            const ctx1 = c1.getContext("2d", { alpha: false });
+            ctx1.imageSmoothingEnabled = true;
+            ctx1.imageSmoothingQuality = "high";
+            ctx1.drawImage(canvas, 0, 0, midW, midH);
+
+            const c2 = document.createElement("canvas");
+            c2.width = tinyW;
+            c2.height = tinyH;
+            const ctx2 = c2.getContext("2d", { alpha: false });
+            ctx2.imageSmoothingEnabled = true;
+            ctx2.imageSmoothingQuality = "high";
+            ctx2.drawImage(c1, 0, 0, tinyW, tinyH);
+
+            bctx.drawImage(c2, 0, 0, outW, outH);
+            c1.width = 0;
+            c1.height = 0;
+            c2.width = 0;
+            c2.height = 0;
+          }
+
+          if (session.overlay && session.overlay.parentNode) {
+            session.overlay.parentNode.insertBefore(bg, session.overlay);
+          } else {
+            document.body.appendChild(bg);
+          }
+          session.frozenBg = bg;
+          return bg;
+        } catch (_e) {
+          return null;
+        }
+      }
+
+      function destroySession(session) {
+        if (!session) return;
+        session.aborted = true;
+
+        if (session.cleanupFns) {
+          for (const fn of session.cleanupFns) {
+            try { fn(); } catch (_e) {}
+          }
+          session.cleanupFns.clear();
+        }
+        if (session.extControlCleanups) {
+          for (const fn of session.extControlCleanups) {
+            try { fn(); } catch (_e) {}
+          }
+          session.extControlCleanups.clear();
+        }
+
+        for (const rafId of session.rafIds) {
+          try { cancelAnimationFrame(rafId); } catch (_e) {}
+        }
+        session.rafIds.clear();
+
+        for (const tid of session.timerIds) {
+          try { clearTimeout(tid); } catch (_e) {}
+        }
+        session.timerIds.clear();
+
+        if (session.abortController) {
+          try { session.abortController.abort(); } catch (_e) {}
+          session.abortController = null;
+        }
+
+        if (session.onMessage) {
+          window.removeEventListener("message", session.onMessage);
+          session.onMessage = null;
+        }
+        if (session.onKeyDown) {
+          window.removeEventListener("keydown", session.onKeyDown, true);
+          session.onKeyDown = null;
+        }
+
+        if (session.iframe) {
+          try {
+            if (session.iframe.contentWindow) {
+              session.iframe.contentWindow.postMessage({ type: "minigd_destroy" }, "*");
+            }
+          } catch (_e) {}
+          try { session.iframe.src = "about:blank"; } catch (_e) {}
+          session.iframe.remove();
+          session.iframe = null;
+        }
+
+        if (session.stage) {
+          session.stage.remove();
+          session.stage = null;
+        }
+
+        if (session.overlay) {
+          session.overlay.remove();
+          session.overlay = null;
+        }
+
+        if (session.frozenBg) {
+          session.frozenBg.width = 0;
+          session.frozenBg.height = 0;
+          session.frozenBg.remove();
+          session.frozenBg = null;
+        }
+
+        document.body.classList.remove("minigd-transition-active");
+        clearCanvasBlur();
+        stopAlienMovement();
+        host.game.resume("minigd_session");
+        stopAlienMovement();
+
+        if (activeSession === session) {
+          activeSession = null;
+        }
+      }
+
+      function forceCleanup() {
+        destroyedExt = true;
+        bindingsMap.clear();
+        if (window.AssemblageMiniGD && window.AssemblageMiniGD._owner === FILENAME) {
+          delete window.AssemblageMiniGD;
+        }
+        if (unsubTitleCard) {
+          try { unsubTitleCard(); } catch (_e) {}
+          unsubTitleCard = null;
+        }
+        if (activeSession) {
+          destroySession(activeSession);
+        } else {
+          document.body.classList.remove("minigd-transition-active");
+          clearCanvasBlur();
+          host.game.resume("minigd_session");
+        }
+      }
+
+      host.registerCleanup(forceCleanup);
+
+      function animateValue(session, durationMs, onProgress) {
+        return new Promise((resolve) => {
+          if (!session || session.aborted || durationMs <= 0) {
+            if (session && !session.aborted) {
+              try { onProgress(1); } catch (_e) {}
+            }
+            resolve();
+            return;
+          }
+          const start = performance.now();
+          const stepAnim = (now) => {
+            if (!session || session.aborted) {
+              resolve();
+              return;
+            }
+            const raw = clamp((now - start) / durationMs, 0, 1);
+            const eased = easeInOutCubic(raw);
+            try { onProgress(eased); } catch (_e) {}
+            if (raw < 1) {
+              const id = requestAnimationFrame(stepAnim);
+              session.rafIds.add(id);
+            } else {
+              resolve();
+            }
+          };
+          const id = requestAnimationFrame(stepAnim);
+          session.rafIds.add(id);
+        });
+      }
+
+      function animateFilterCss(session, el, fromBlurPx, toBlurPx, durationMs) {
+        return new Promise((resolve) => {
+          if (!session || session.aborted || !el) {
+            resolve();
+            return;
+          }
+          if (durationMs <= 0) {
+            el.style.transition = "";
+            el.style.filter = toBlurPx > 0 ? `blur(${toBlurPx}px)` : "none";
+            resolve();
+            return;
+          }
+          el.style.willChange = "filter";
+          el.style.transition = "none";
+          el.style.filter = `blur(${fromBlurPx}px)`;
+          void el.offsetWidth;
+
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            el.removeEventListener("transitionend", onEnd);
+            el.style.willChange = "";
+            resolve();
+          };
+          const onEnd = (ev) => {
+            if (ev.target === el && ev.propertyName === "filter") finish();
+          };
+          el.addEventListener("transitionend", onEnd);
+
+          const tid = setTimeout(finish, durationMs + 60);
+          session.timerIds.add(tid);
+
+          const r1 = requestAnimationFrame(() => {
+            if (!session || session.aborted) { finish(); return; }
+            el.style.transition = `filter ${durationMs}ms linear`;
+            const r2 = requestAnimationFrame(() => {
+              if (!session || session.aborted) { finish(); return; }
+              el.style.filter = `blur(${toBlurPx}px)`;
+            });
+            session.rafIds.add(r2);
+          });
+          session.rafIds.add(r1);
+        });
+      }
+
+      async function pickMiniGame(session, overridePath) {
+        const rawOverride = typeof overridePath === "string" ? overridePath.trim() : "";
+        const rawTarget = rawOverride || host.ui.getConfig("minigamePath", DEFAULT_MINIGAME);
+        const hashIdx = String(rawTarget || "").indexOf("#");
+        const rawBaseTarget = hashIdx >= 0 ? String(rawTarget).slice(0, hashIdx) : String(rawTarget || "");
+        const presetId = hashIdx >= 0 ? String(rawTarget).slice(hashIdx + 1).trim() : "";
+        const isTagRandom = rawBaseTarget.startsWith("__tag:");
+        const randomTagId = isTagRandom ? rawBaseTarget.slice("__tag:".length).trim() : "";
+        const configuredPath = isTagRandom ? "" : normalizeMiniGamePath(rawBaseTarget);
+        let games = [];
+        let sharedTexts = {};
+        try {
+          const assetBase = (host && host.ASSEMBLAGE_ASSET_BASE) || window.ASSEMBLAGE_ASSET_BASE || "";
+          session.abortController = new AbortController();
+          let resp = await fetch(`config/minigd_manifest.json?_ts=${Date.now()}`, {
+            cache: "no-store",
+            signal: session.abortController.signal,
+          }).catch(() => null);
+          if (!resp || !resp.ok) {
+            resp = await fetch(`${assetBase}extensions/minigd/manifest.json?_ts=${Date.now()}`, {
+              cache: "no-store",
+              signal: session.abortController.signal,
+            });
+          }
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data && Array.isArray(data.games)) {
+              games = data.games.filter((g) => g && normalizeMiniGamePath(g.path));
+            }
+            if (data && data.sharedTexts && typeof data.sharedTexts === "object") {
+              sharedTexts = data.sharedTexts;
+            }
+          }
+        } catch (_e) {
+          if (session.aborted) return null;
+        } finally {
+          session.abortController = null;
+        }
+
+        if (games.length === 0 && window.AssemblageMiniGDManifest && Array.isArray(window.AssemblageMiniGDManifest.games)) {
+          games = window.AssemblageMiniGDManifest.games.filter((g) => g && normalizeMiniGamePath(g.path));
+          if (window.AssemblageMiniGDManifest.sharedTexts && typeof window.AssemblageMiniGDManifest.sharedTexts === "object") {
+            sharedTexts = window.AssemblageMiniGDManifest.sharedTexts;
+          }
+        }
+
+        function applyPresetToMeta(baseMeta, pId) {
+          if (!baseMeta || !pId || !Array.isArray(baseMeta.presets)) return baseMeta;
+          const preset = baseMeta.presets.find((p) => p && String(p.id) === pId);
+          if (!preset) return baseMeta;
+          return Object.assign({}, baseMeta, {
+            name: preset.name ? `${baseMeta.name || baseMeta.id} — ${preset.name}` : baseMeta.name,
+            icon: preset.icon || baseMeta.icon,
+            description: preset.description || baseMeta.description,
+            params: Object.assign({}, baseMeta.params || {}, preset.params || {}),
+            texts: Object.assign({}, baseMeta.texts || {}, preset.texts || {}),
+            rewards: Object.assign({}, baseMeta.rewards || {}, preset.rewards || {}),
+            presetId: pId,
+          });
+        }
+
+        if (configuredPath) {
+          const matched = games.find((g) => normalizeMiniGamePath(g.path) === configuredPath) || null;
+          const baseMeta = matched || {
+            id: configuredPath,
+            name: configuredPath.split("/").pop() || "Mini-jeu",
+            icon: "🕹️",
+            description: "",
+            goal: "",
+            controls: "",
+            params: {},
+            texts: {},
+            rewards: {},
+          };
+          const mergedMeta = applyPresetToMeta(baseMeta, presetId);
+          return {
+            path: configuredPath,
+            targetKey: presetId ? `${configuredPath}#${presetId}` : configuredPath,
+            presetId,
+            sharedTexts,
+            meta: mergedMeta,
+          };
+        }
+
+        let pool = games;
+        if (isTagRandom && randomTagId && host.tags && typeof host.tags.matches === "function") {
+          const tagged = games.filter((g) => host.tags.matches(g, randomTagId));
+          if (tagged.length > 0) pool = tagged;
+        }
+        if (pool.length > 0) {
+          // Privilégier les mini-jeux non encore gagnés s'il y en a
+          const unwon = (host.progress && typeof host.progress.getMiniGDResult === "function")
+            ? pool.filter((g) => !(host.progress.getMiniGDResult(normalizeMiniGamePath(g.path))?.wins > 0))
+            : [];
+          const candidates = unwon.length > 0 ? unwon : pool;
+          const picked = candidates[Math.floor(Math.random() * candidates.length)];
+          const pPath = normalizeMiniGamePath(picked.path) || DEFAULT_MINIGAME;
+          return {
+            path: pPath,
+            targetKey: pPath,
+            presetId: "",
+            sharedTexts,
+            meta: picked,
+          };
+        }
+
+        return {
+          path: DEFAULT_MINIGAME,
+          targetKey: DEFAULT_MINIGAME,
+          presetId: "",
+          sharedTexts,
+          meta: {
+            id: "g14a_dimcom_1d",
+            name: "Combat 1D Lumineux (DimCom 1D)",
+            icon: "➖",
+            description: "Combat sur une seule dimension lumineuse horizontale avec explosions en chaîne.",
+            goal: "Atteindre 90 points en moins de 55 secondes sans perdre vos 3 boucliers.",
+            controls: "Flèches Gauche/Droite ou Q/D (ou glisser) • Espace / Z / Clic : tirer puis détoner.",
+            params: {},
+            texts: {},
+          },
+        };
+      }
+
+      function renderInfoCard(infoCardEl, meta, onCloseInfo, opts) {
+        if (!infoCardEl) return;
+        const m = meta || {};
+        const o = (opts && typeof opts === "object") ? opts : {};
+        const isStart = Boolean(o.isStart);
+        const texts = (o.texts && typeof o.texts === "object") ? o.texts : DEFAULT_SHARED_TEXTS;
+        const icon = m.icon || "🕹️";
+        const title = m.name || "Mini-jeu";
+        const desc = m.description || "";
+        const goal = m.goal || "";
+        const ctrls = m.controls || "";
+        const pauseBadge = texts.pauseBadge || "⏸ EN PAUSE";
+        const descLabel = texts.descLabel || "Description :";
+        const goalLabel = texts.goalLabel || "Objectif :";
+        const controlsLabel = texts.controlsLabel || "Contrôles :";
+        const btnLabel = isStart ? (texts.startButtonText || "▶ Commencer") : (texts.resumeButtonText || "Reprendre");
+        infoCardEl.innerHTML = `
+          <div class="minigd-info-title">
+            <span>${escapeHtml(icon)} ${escapeHtml(title)}</span>
+            <span class="minigd-info-badge">${escapeHtml(pauseBadge)}</span>
+          </div>
+          ${desc ? `<div class="minigd-info-sec"><b>${escapeHtml(descLabel)}</b> ${escapeHtml(desc)}</div>` : ""}
+          ${goal ? `<div class="minigd-info-sec"><b>${escapeHtml(goalLabel)}</b> ${escapeHtml(goal)}</div>` : ""}
+          ${ctrls ? `<div class="minigd-info-sec"><b>${escapeHtml(controlsLabel)}</b> ${escapeHtml(ctrls)}</div>` : ""}
+          <button type="button" class="minigd-info-close">${escapeHtml(btnLabel)}</button>
+        `;
+        const closeBtn = infoCardEl.querySelector(".minigd-info-close");
+        if (closeBtn) {
+          closeBtn.addEventListener("click", onCloseInfo);
+          if (isStart) {
+            setTimeout(() => {
+              try { closeBtn.focus(); } catch (_e) {}
+            }, 0);
+          }
+        }
+      }
+
+      function animateInfoCardFadeBlur(session, el, show, durationMs) {
+        return new Promise((resolve) => {
+          if (!session || session.aborted || !el) {
+            resolve();
+            return;
+          }
+          const fromOpacity = show ? 0 : 1;
+          const toOpacity = show ? 1 : 0;
+          const fromBlur = show ? blurRadiusPx : 0;
+          const toBlur = show ? 0 : blurRadiusPx;
+
+          if (show) el.classList.add("open");
+
+          if (durationMs <= 0) {
+            el.style.transition = "";
+            el.style.willChange = "";
+            el.style.opacity = String(toOpacity);
+            el.style.filter = toBlur > 0 ? `blur(${toBlur}px)` : "none";
+            if (!show) el.classList.remove("open");
+            resolve();
+            return;
+          }
+
+          el.style.willChange = "opacity, filter";
+          el.style.transition = "none";
+          el.style.opacity = String(fromOpacity);
+          el.style.filter = fromBlur > 0 ? `blur(${fromBlur}px)` : "none";
+          void el.offsetWidth;
+
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            el.style.transition = "";
+            el.style.willChange = "";
+            if (show) {
+              el.style.opacity = "1";
+              el.style.filter = "none";
+            } else {
+              el.classList.remove("open");
+              el.style.opacity = "";
+              el.style.filter = "";
+            }
+            resolve();
+          };
+
+          const tid = setTimeout(finish, durationMs + 50);
+          session.timerIds.add(tid);
+
+          const r1 = requestAnimationFrame(() => {
+            if (!session || session.aborted) { finish(); return; }
+            el.style.transition = `opacity ${durationMs}ms ease, filter ${durationMs}ms ease`;
+            const r2 = requestAnimationFrame(() => {
+              if (!session || session.aborted) { finish(); return; }
+              el.style.opacity = String(toOpacity);
+              el.style.filter = toBlur > 0 ? `blur(${toBlur}px)` : "none";
+            });
+            session.rafIds.add(r2);
+          });
+          session.rafIds.add(r1);
+        });
+      }
+
+      async function launchMiniGame(launchOpts) {
+        if (destroyedExt || activeSession) return;
+        const opts = (launchOpts && typeof launchOpts === "object") ? launchOpts : {};
+        const overridePath = typeof opts.minigamePath === "string" ? opts.minigamePath : "";
+        const shouldShowSummary = (typeof opts.showSummaryOnStart === "boolean") ? opts.showSummaryOnStart : showSummaryOnStart;
+        const requestedDisplayMode = (typeof opts.displayMode === "string" && opts.displayMode.trim())
+          ? opts.displayMode.trim().toLowerCase()
+          : defaultDisplayMode;
+
+        // Fermer d'éventuelles UI du vaisseau / paramètres
+        try { host.game.closeShipUI(); } catch (_e) {}
+        try { host.game.closeSettingsUI(); } catch (_e) {}
+
+        // 1. Stopper tout déplacement en cours et mettre le jeu principal en pause immédiatement
+        stopAlienMovement();
+        host.game.pause("minigd_session");
+
+        const session = {
+          aborted: false,
+          exiting: false,
+          interactive: false,
+          infoOpen: false,
+          settingsOpen: false,
+          awaitingStart: false,
+          anchorId: opts.anchorId || "",
+          rafIds: new Set(),
+          timerIds: new Set(),
+          cleanupFns: new Set(),
+          extControlCleanups: new Set(),
+          abortController: null,
+          overlay: null,
+          frozenBg: null,
+          stage: null,
+          shell: null,
+          iframe: null,
+          exitBtn: null,
+          resetBtn: null,
+          audioBtn: null,
+          settingsBtn: null,
+          infoBtn: null,
+          infoCard: null,
+          minimapBox: null,
+          minimapCanvas: null,
+          mmDriftBadge: null,
+          mmTurboBadge: null,
+          extControls: null,
+          settingsOverlay: null,
+          capabilities: {},
+          controlState: null,
+          settingsState: null,
+          minimapTrack: null,
+          minimapState: null,
+          audioEnabled: false,
+          displayMode: requestedDisplayMode,
+          isFullFrame: false,
+          ownExit: false,
+          meta: null,
+          onMessage: null,
+          onKeyDown: null,
+          readyPromise: null,
+          resolveReady: null,
+        };
+        activeSession = session;
+
+        const chosen = await pickMiniGame(session, overridePath);
+        if (!chosen || session.aborted) {
+          destroySession(session);
+          return;
+        }
+        session.targetKey = chosen.targetKey || chosen.path;
+        session.resultRecorded = false;
+        session.launchRewards = opts.rewards || null;
+        if (host.audio && typeof host.audio.setDucked === "function") {
+          host.audio.setDucked(true);
+          session.cleanupFns.add(() => host.audio.setDucked(false));
+        }
+        session.manifestMeta = chosen.meta || {};
+        session.sharedTexts = chosen.sharedTexts || {};
+        session.meta = Object.assign({}, session.manifestMeta);
+        session.resolvedParams = resolveMiniGameParams(null, session.manifestMeta);
+        session.resolvedTexts = resolveMiniGameTexts(null, session.manifestMeta, session.sharedTexts);
+        session.layoutMode = resolveLayoutMode(session.displayMode, session.meta, null);
+        session.isFullFrame = session.layoutMode === "fullframe";
+        session.ownExit = resolveOwnExit(session.meta, null);
+        const sumMode = String(session.meta.showSummaryMode || "inherit").trim().toLowerCase();
+        const effectiveShowSummary = sumMode === "always" ? true : (sumMode === "never" ? false : shouldShowSummary);
+
+        const canvas = host.game.canvas;
+        document.body.classList.add("minigd-transition-active");
+
+        // Construction de l'overlay + conteneur (carré, rond, rectangle ou full-frame selon le mini-jeu)
+        const overlay = document.createElement("div");
+        overlay.id = "minigd-transition-overlay";
+        if (session.isFullFrame) overlay.classList.add("is-fullframe");
+        overlay.classList.toggle("layout-circle", session.layoutMode === "circle");
+        overlay.classList.toggle("layout-rectangle", session.layoutMode === "rectangle");
+        if (session.isFullFrame && session.ownExit) overlay.classList.add("has-own-exit");
+        overlay.setAttribute("role", "dialog");
+        overlay.setAttribute("aria-modal", "true");
+        overlay.setAttribute("aria-label", session.meta.name || "Mini-jeu");
+        for (const evName of ["mousedown", "touchstart", "pointerdown"]) {
+          overlay.addEventListener(evName, (ev) => {
+            ev.stopPropagation();
+          });
+        }
+
+        const stage = document.createElement("div");
+        stage.id = "minigd-stage";
+        stage.style.setProperty("--minigd-accent", session.meta.accentColor || ext.accentColor || "#38d6ff");
+        stage.style.opacity = "0";
+
+        const topBar = document.createElement("div");
+        topBar.id = "minigd-top-bar";
+
+        const exitBtn = document.createElement("button");
+        exitBtn.id = "minigd-exit-btn";
+        exitBtn.className = "minigd-top-big-btn";
+        exitBtn.type = "button";
+        exitBtn.setAttribute("aria-label", "Sortir du mini-jeu");
+        exitBtn.setAttribute("title", session.resolvedTexts.exitTooltip || "Revenir au jeu principal");
+        exitBtn.disabled = true;
+        exitBtn.innerHTML = `
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 14L4 9l5-5"/>
+            <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+          </svg>
+        `;
+        topBar.appendChild(exitBtn);
+
+        const resetBtn = document.createElement("button");
+        resetBtn.id = "minigd-reset-btn";
+        resetBtn.className = "minigd-top-big-btn";
+        resetBtn.type = "button";
+        resetBtn.textContent = "🔄";
+        resetBtn.setAttribute("aria-label", "Recommencer le mini-jeu");
+        resetBtn.setAttribute("title", session.resolvedTexts.resetTooltip || "Recommencer");
+        resetBtn.disabled = true;
+        topBar.appendChild(resetBtn);
+
+        const audioBtn = document.createElement("button");
+        audioBtn.id = "minigd-audio-btn";
+        audioBtn.className = "minigd-top-big-btn";
+        audioBtn.type = "button";
+        audioBtn.textContent = "🔇";
+        audioBtn.setAttribute("aria-label", "Audio du mini-jeu");
+        audioBtn.setAttribute("title", "Activer / couper l'audio");
+        audioBtn.style.display = "none";
+        audioBtn.disabled = true;
+        topBar.appendChild(audioBtn);
+
+        const skinWrap = document.createElement("div");
+        skinWrap.id = "minigd-skin-wrap";
+        skinWrap.className = "minigd-top-big-btn minigd-select-icon-btn";
+        skinWrap.setAttribute("title", "Choisir son skin en un clic");
+        skinWrap.style.display = "none";
+        skinWrap.style.pointerEvents = "none";
+        const skinIcon = document.createElement("span");
+        skinIcon.textContent = "🎨";
+        skinIcon.setAttribute("aria-hidden", "true");
+        const skinSelect = document.createElement("select");
+        skinSelect.id = "minigd-skin-select";
+        skinSelect.setAttribute("aria-label", "Choisir son skin");
+        skinSelect.disabled = true;
+        skinWrap.appendChild(skinIcon);
+        skinWrap.appendChild(skinSelect);
+        topBar.appendChild(skinWrap);
+
+        const settingsBtn = document.createElement("button");
+        settingsBtn.id = "minigd-settings-btn";
+        settingsBtn.className = "minigd-top-big-btn";
+        settingsBtn.type = "button";
+        settingsBtn.textContent = "⚙️";
+        settingsBtn.setAttribute("aria-label", "Paramètres du mini-jeu");
+        settingsBtn.setAttribute("title", "Paramètres (skin, physique, circuit)");
+        settingsBtn.style.display = "none";
+        settingsBtn.disabled = true;
+        topBar.appendChild(settingsBtn);
+
+        let infoBtn = null;
+        if (showInfoButton) {
+          infoBtn = document.createElement("button");
+          infoBtn.id = "minigd-info-btn";
+          infoBtn.type = "button";
+          infoBtn.textContent = "?";
+          infoBtn.setAttribute("aria-label", "Informations sur le mini-jeu");
+          infoBtn.setAttribute("title", session.resolvedTexts.infoTooltip || "Titre, description, objectif et contrôles");
+          topBar.appendChild(infoBtn);
+        }
+
+        const headerRow = document.createElement("div");
+        headerRow.id = "minigd-header-row";
+
+        const minimapBox = document.createElement("div");
+        minimapBox.id = "minigd-minimap-box";
+        const minimapCanvas = document.createElement("canvas");
+        minimapCanvas.id = "minigd-minimap-canvas";
+        const minimapBadges = document.createElement("div");
+        minimapBadges.id = "minigd-minimap-badges";
+        const mmDriftBadge = document.createElement("span");
+        mmDriftBadge.className = "minigd-mm-badge drift";
+        mmDriftBadge.textContent = session.resolvedTexts.driftBadgeText || "DRIFT";
+        const mmTurboBadge = document.createElement("span");
+        mmTurboBadge.className = "minigd-mm-badge turbo";
+        mmTurboBadge.textContent = session.resolvedTexts.turboBadgeText || "TURBO";
+        minimapBadges.appendChild(mmDriftBadge);
+        minimapBadges.appendChild(mmTurboBadge);
+        minimapBox.appendChild(minimapCanvas);
+        minimapBox.appendChild(minimapBadges);
+
+        const statsBar = document.createElement("div");
+        statsBar.id = "minigd-stats-bar";
+        statsBar.textContent = `${session.meta.icon || "🕹️"} ${session.meta.name || "Mini-jeu"}`;
+
+        headerRow.appendChild(minimapBox);
+        headerRow.appendChild(statsBar);
+
+        const shell = document.createElement("div");
+        shell.id = "minigd-square-shell";
+
+        const iframe = document.createElement("iframe");
+        iframe.id = "minigd-iframe";
+        iframe.style.filter = `blur(${blurRadiusPx}px)`;
+        iframe.title = session.meta.name || "Mini-jeu MiniGD";
+        iframe.setAttribute("allow", "autoplay");
+        const assetBase = (host && host.ASSEMBLAGE_ASSET_BASE) || window.ASSEMBLAGE_ASSET_BASE || "";
+        const encodedRel = encodeRelPathSegments(chosen.path);
+        const fullFrameParam = session.isFullFrame ? "&minigd_fullframe=1" : "";
+        iframe.src = `${assetBase}extensions/minigd/${encodedRel}?minigd_paused=1&minigd_embedded=1${fullFrameParam}&_ts=${Date.now()}`;
+
+        const infoCard = document.createElement("div");
+        infoCard.id = "minigd-info-card";
+
+        const bottomArea = document.createElement("div");
+        bottomArea.id = "minigd-bottom-area";
+
+        const extControls = document.createElement("div");
+        extControls.id = "minigd-ext-controls";
+
+        const bottomActions = document.createElement("div");
+        bottomActions.id = "minigd-bottom-actions";
+
+        const ctrlQuickWrap = document.createElement("div");
+        ctrlQuickWrap.id = "minigd-ctrl-quick-wrap";
+        ctrlQuickWrap.style.pointerEvents = "none";
+        const ctrlQuickSelect = document.createElement("select");
+        ctrlQuickSelect.id = "minigd-ctrl-quick-select";
+        ctrlQuickSelect.setAttribute("aria-label", "Mode de contrôle");
+        ctrlQuickSelect.setAttribute("title", "Choisir le mode de contrôle");
+        ctrlQuickSelect.disabled = true;
+        ctrlQuickWrap.appendChild(ctrlQuickSelect);
+
+        const fireBtn = document.createElement("button");
+        fireBtn.id = "minigd-fire-btn";
+        fireBtn.type = "button";
+        fireBtn.textContent = session.resolvedTexts.actionLabel || session.resolvedTexts.fireButtonLabel || "💥 TIRER";
+        fireBtn.disabled = true;
+
+        bottomActions.appendChild(fireBtn);
+        bottomActions.appendChild(ctrlQuickWrap);
+
+        const hintBar = document.createElement("div");
+        hintBar.id = "minigd-hint";
+        hintBar.textContent = session.meta.controls || "";
+
+        bottomArea.appendChild(extControls);
+        bottomArea.appendChild(bottomActions);
+        if (hintBar.textContent) bottomArea.appendChild(hintBar);
+
+        const settingsOverlay = document.createElement("div");
+        settingsOverlay.id = "minigd-settings-overlay";
+
+        shell.appendChild(iframe);
+        shell.appendChild(infoCard);
+        stage.appendChild(topBar);
+        stage.appendChild(headerRow);
+        stage.appendChild(shell);
+        stage.appendChild(bottomArea);
+        overlay.appendChild(stage);
+        overlay.appendChild(settingsOverlay);
+        document.body.appendChild(overlay);
+
+        session.overlay = overlay;
+        session.stage = stage;
+        session.shell = shell;
+        session.iframe = iframe;
+        session.exitBtn = exitBtn;
+        session.resetBtn = resetBtn;
+        session.audioBtn = audioBtn;
+        session.settingsBtn = settingsBtn;
+        session.fireBtn = fireBtn;
+        session.statsBar = statsBar;
+        session.hintBar = hintBar;
+        session.infoBtn = infoBtn;
+        session.infoCard = infoCard;
+        session.minimapBox = minimapBox;
+        session.minimapCanvas = minimapCanvas;
+        session.mmDriftBadge = mmDriftBadge;
+        session.mmTurboBadge = mmTurboBadge;
+        session.extControls = extControls;
+        session.settingsOverlay = settingsOverlay;
+
+        const sendIframeMsg = (payload) => {
+          try {
+            if (iframe && iframe.contentWindow) {
+              iframe.contentWindow.postMessage(payload, "*");
+            }
+          } catch (_e) {}
+        };
+
+        const drawMinimap = () => {
+          if (!session.capabilities.minimap || !minimapCanvas) return;
+          const mw = 118, mh = 66;
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          if (minimapCanvas.width !== Math.round(mw * dpr) || minimapCanvas.height !== Math.round(mh * dpr)) {
+            minimapCanvas.width = Math.round(mw * dpr);
+            minimapCanvas.height = Math.round(mh * dpr);
+          }
+          const mctx = minimapCanvas.getContext("2d");
+          mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          mctx.clearRect(0, 0, mw, mh);
+
+          const tr = session.minimapTrack;
+          if (tr && Array.isArray(tr.points) && tr.points.length >= 2 && tr.bounds) {
+            const b = tr.bounds;
+            const bw = Math.max(1, (b.maxX ?? 2000) - (b.minX ?? 0));
+            const bh = Math.max(1, (b.maxY ?? 1500) - (b.minY ?? 0));
+            const pad = 7;
+            const sc = Math.min((mw - pad * 2) / bw, (mh - pad * 2) / bh);
+            const ox = (mw - bw * sc) * 0.5 - (b.minX ?? 0) * sc;
+            const oy = (mh - bh * sc) * 0.5 - (b.minY ?? 0) * sc;
+
+            mctx.strokeStyle = "rgba(148, 163, 184, 0.72)";
+            mctx.lineWidth = 3;
+            mctx.beginPath();
+            for (let i = 0; i <= tr.points.length; i++) {
+              const pt = tr.points[i % tr.points.length];
+              const x = ox + pt[0] * sc, y = oy + pt[1] * sc;
+              if (i === 0) mctx.moveTo(x, y); else mctx.lineTo(x, y);
+            }
+            mctx.stroke();
+
+            const p0 = tr.points[0];
+            mctx.fillStyle = "#4ade80";
+            mctx.beginPath();
+            mctx.arc(ox + p0[0] * sc, oy + p0[1] * sc, 2.8, 0, Math.PI * 2);
+            mctx.fill();
+
+            const st = session.minimapState;
+            if (st) {
+              if (typeof st.cpX === "number" && typeof st.cpY === "number") {
+                mctx.fillStyle = "#fde047";
+                mctx.beginPath();
+                mctx.arc(ox + st.cpX * sc, oy + st.cpY * sc, 2.8, 0, Math.PI * 2);
+                mctx.fill();
+              }
+              if (typeof st.carX === "number" && typeof st.carY === "number") {
+                const cx = ox + st.carX * sc, cy = oy + st.carY * sc;
+                mctx.fillStyle = "#38d6ff";
+                mctx.beginPath();
+                mctx.arc(cx, cy, 3.6, 0, Math.PI * 2);
+                mctx.fill();
+                mctx.strokeStyle = "#ffffff";
+                mctx.lineWidth = 1;
+                mctx.stroke();
+                if (typeof st.carRot === "number") {
+                  mctx.beginPath();
+                  mctx.moveTo(cx, cy);
+                  mctx.lineTo(cx + Math.cos(st.carRot) * 6.5, cy + Math.sin(st.carRot) * 6.5);
+                  mctx.strokeStyle = "#fde047";
+                  mctx.lineWidth = 1.6;
+                  mctx.stroke();
+                }
+              }
+              mmDriftBadge.style.display = st.drifting ? "inline-block" : "none";
+              mmTurboBadge.style.display = st.boosting ? "inline-block" : "none";
+            }
+          }
+        };
+
+        const clearExtControlsListeners = () => {
+          for (const fn of session.extControlCleanups) {
+            try { fn(); } catch (_e) {}
+          }
+          session.extControlCleanups.clear();
+        };
+
+        const clearExternalInput = () => {
+          sendIframeMsg({
+            type: "minigd_external_input",
+            steer: 0,
+            throttle: 0,
+            handbrake: false,
+            targetHeadingAngle: null,
+            active: false,
+          });
+        };
+
+        const buildExternalControls = () => {
+          clearExtControlsListeners();
+          extControls.innerHTML = "";
+          const cs = session.controlState;
+          if (!cs || (cs.placement !== "external" && cs.placement !== "hybrid")) {
+            stage.classList.remove("has-ext-controls");
+            clearExternalInput();
+            return;
+          }
+          stage.classList.add("has-ext-controls");
+
+          let curSteer = 0, curThrottle = 0, curHandbrake = false, curTargetAng = null;
+          const emitExt = () => {
+            if (!session.interactive || session.infoOpen || session.settingsOpen) return;
+            sendIframeMsg({
+              type: "minigd_external_input",
+              steer: curSteer,
+              throttle: curThrottle,
+              handbrake: curHandbrake,
+              targetHeadingAngle: curTargetAng,
+              active: Math.abs(curSteer) > 0.01 || Math.abs(curThrottle) > 0.01 || curHandbrake || curTargetAng !== null,
+            });
+          };
+
+          const addTracked = (target, ev, fn, opts) => {
+            target.addEventListener(ev, fn, opts);
+            session.extControlCleanups.add(() => target.removeEventListener(ev, fn, opts));
+          };
+
+          const makePedals = () => {
+            const wrap = document.createElement("div");
+            wrap.className = "minigd-ctrl-pedals";
+            const driftBtn = document.createElement("button");
+            driftBtn.type = "button";
+            driftBtn.className = "minigd-pedal-btn drift";
+            driftBtn.textContent = "DRIFT";
+
+            const row = document.createElement("div");
+            row.className = "minigd-ctrl-pedals-row";
+            const brakeBtn = document.createElement("button");
+            brakeBtn.type = "button";
+            brakeBtn.className = "minigd-pedal-btn brake";
+            brakeBtn.textContent = "FREIN ⬇";
+            const gasBtn = document.createElement("button");
+            gasBtn.type = "button";
+            gasBtn.className = "minigd-pedal-btn gas";
+            gasBtn.textContent = "GAZ ⬆";
+
+            const activeIds = { gas: null, brake: null, drift: null };
+            const recompute = () => {
+              curThrottle = activeIds.gas !== null ? 1.0 : (activeIds.brake !== null ? -1.0 : 0.0);
+              curHandbrake = activeIds.drift !== null;
+              gasBtn.classList.toggle("active", activeIds.gas !== null);
+              brakeBtn.classList.toggle("active", activeIds.brake !== null);
+              driftBtn.classList.toggle("active", activeIds.drift !== null);
+              emitExt();
+            };
+
+            const bindHold = (btn, key) => {
+              addTracked(btn, "pointerdown", (e) => {
+                e.preventDefault();
+                activeIds[key] = e.pointerId !== undefined ? e.pointerId : 1;
+                recompute();
+              });
+              const rel = (e) => {
+                const pid = e.pointerId !== undefined ? e.pointerId : 1;
+                if (activeIds[key] === pid) { activeIds[key] = null; recompute(); }
+              };
+              addTracked(window, "pointerup", rel);
+              addTracked(window, "pointercancel", rel);
+            };
+            bindHold(gasBtn, "gas");
+            bindHold(brakeBtn, "brake");
+            bindHold(driftBtn, "drift");
+
+            row.appendChild(brakeBtn);
+            row.appendChild(gasBtn);
+            wrap.appendChild(driftBtn);
+            wrap.appendChild(row);
+            return wrap;
+          };
+
+          const leftBox = document.createElement("div");
+          leftBox.className = "minigd-ctrl-left";
+          extControls.appendChild(leftBox);
+
+          if (cs.type === "floating_n_way") {
+            leftBox.style.fontSize = "11.5px";
+            leftBox.style.color = "#9fc4e2";
+            leftBox.style.textAlign = "center";
+            leftBox.textContent = "Glissez dans le cadre pour orienter";
+            extControls.appendChild(makePedals());
+          } else if (cs.type === "buttons_dpad") {
+            const row = document.createElement("div");
+            row.className = "minigd-dpad-row";
+            const bL = document.createElement("button");
+            bL.type = "button"; bL.className = "minigd-dpad-btn"; bL.textContent = "◀";
+            const bR = document.createElement("button");
+            bR.type = "button"; bR.className = "minigd-dpad-btn"; bR.textContent = "▶";
+            let lId = null, rId = null;
+            const upd = () => {
+              curSteer = (lId !== null ? -1 : 0) + (rId !== null ? 1 : 0);
+              bL.classList.toggle("active", lId !== null);
+              bR.classList.toggle("active", rId !== null);
+              emitExt();
+            };
+            addTracked(bL, "pointerdown", (e) => { e.preventDefault(); lId = e.pointerId ?? 1; upd(); });
+            addTracked(bR, "pointerdown", (e) => { e.preventDefault(); rId = e.pointerId ?? 2; upd(); });
+            const endDp = (e) => {
+              const pid = e.pointerId ?? 1;
+              if (lId === pid) { lId = null; upd(); }
+              if (rId === pid) { rId = null; upd(); }
+            };
+            addTracked(window, "pointerup", endDp);
+            addTracked(window, "pointercancel", endDp);
+            row.appendChild(bL);
+            row.appendChild(bR);
+            leftBox.appendChild(row);
+            extControls.appendChild(makePedals());
+          } else if (cs.type === "slider_tilt") {
+            const track = document.createElement("div");
+            track.className = "minigd-slider-track";
+            const thumb = document.createElement("div");
+            thumb.className = "minigd-slider-thumb";
+            track.appendChild(thumb);
+            let sId = null;
+            const updateSl = (clientX) => {
+              const r = track.getBoundingClientRect();
+              const maxOff = Math.max(10, r.width * 0.5 - 20);
+              const off = Math.max(-maxOff, Math.min(maxOff, clientX - (r.left + r.width * 0.5)));
+              curSteer = off / maxOff;
+              thumb.style.left = `calc(50% + ${off.toFixed(1)}px)`;
+              emitExt();
+            };
+            addTracked(track, "pointerdown", (e) => { e.preventDefault(); sId = e.pointerId ?? 1; updateSl(e.clientX); });
+            addTracked(window, "pointermove", (e) => { if (sId === (e.pointerId ?? 1)) updateSl(e.clientX); });
+            const endSl = (e) => {
+              if (sId === (e.pointerId ?? 1)) { sId = null; curSteer = 0; thumb.style.left = "50%"; emitExt(); }
+            };
+            addTracked(window, "pointerup", endSl);
+            addTracked(window, "pointercancel", endSl);
+            leftBox.appendChild(track);
+            extControls.appendChild(makePedals());
+          } else {
+            const size = cs.type === "fixed_bottom_n_way" ? 118 : 100;
+            const cv = document.createElement("canvas");
+            cv.className = "minigd-ctrl-canvas";
+            cv.width = size;
+            cv.height = size;
+            cv.style.width = size + "px";
+            cv.style.height = size + "px";
+            leftBox.appendChild(cv);
+            if (cs.type !== "fixed_bottom_n_way") {
+              extControls.appendChild(makePedals());
+            }
+
+            const cctx = cv.getContext("2d");
+            let pid = null, hx = 0, hy = 0, wAng = 0, nSector = -1;
+            const cx = size * 0.5, cy = size * 0.5, rad = size * 0.42;
+
+            const drawW = () => {
+              cctx.clearRect(0, 0, size, size);
+              if (cs.type === "joystick") {
+                cctx.fillStyle = "rgba(10, 18, 32, 0.9)";
+                cctx.beginPath(); cctx.arc(cx, cy, rad, 0, Math.PI * 2); cctx.fill();
+                cctx.strokeStyle = "rgba(56, 214, 255, 0.55)"; cctx.lineWidth = 2; cctx.stroke();
+                cctx.fillStyle = "rgba(56, 214, 255, 0.9)";
+                cctx.beginPath(); cctx.arc(cx + hx, cy + hy, rad * 0.42, 0, Math.PI * 2); cctx.fill();
+                cctx.strokeStyle = "#e6f4ff"; cctx.lineWidth = 1.5; cctx.stroke();
+              } else if (cs.type === "steering_wheel") {
+                cctx.save();
+                cctx.translate(cx, cy);
+                cctx.rotate(wAng);
+                cctx.strokeStyle = "rgba(56, 214, 255, 0.88)"; cctx.lineWidth = 10;
+                cctx.beginPath(); cctx.arc(0, 0, rad - 4, 0, Math.PI * 2); cctx.stroke();
+                cctx.lineWidth = 4;
+                cctx.beginPath();
+                cctx.moveTo(-(rad - 6), 0); cctx.lineTo(rad - 6, 0);
+                cctx.moveTo(0, 0); cctx.lineTo(0, rad - 6);
+                cctx.stroke();
+                cctx.fillStyle = "#f87171";
+                cctx.beginPath(); cctx.arc(0, -(rad - 4), 5, 0, Math.PI * 2); cctx.fill();
+                cctx.restore();
+              } else {
+                const count = Math.max(2, cs.nWayDirections || 4);
+                const stepAng = (Math.PI * 2) / count;
+                const offsetAng = cs.nWayShiftedHalfStep ? (stepAng * 0.5) : 0.0;
+                const dz = rad * 0.24;
+                cctx.fillStyle = "rgba(10, 18, 32, 0.92)";
+                cctx.beginPath(); cctx.arc(cx, cy, rad, 0, Math.PI * 2); cctx.fill();
+                if (nSector !== -1) {
+                  const midAng = nSector * stepAng + offsetAng;
+                  cctx.fillStyle = "rgba(74, 222, 128, 0.45)";
+                  cctx.beginPath(); cctx.moveTo(cx, cy);
+                  cctx.arc(cx, cy, rad, midAng - stepAng * 0.5, midAng + stepAng * 0.5);
+                  cctx.closePath(); cctx.fill();
+                }
+                cctx.strokeStyle = "rgba(255,255,255,0.28)"; cctx.lineWidth = 1.5;
+                for (let i = 0; i < count; i++) {
+                  const divAng = (i + 0.5) * stepAng + offsetAng;
+                  cctx.beginPath();
+                  cctx.moveTo(cx + Math.cos(divAng) * dz, cy + Math.sin(divAng) * dz);
+                  cctx.lineTo(cx + Math.cos(divAng) * rad, cy + Math.sin(divAng) * rad);
+                  cctx.stroke();
+                }
+                cctx.strokeStyle = "#38d6ff"; cctx.lineWidth = 2;
+                cctx.beginPath(); cctx.arc(cx, cy, rad, 0, Math.PI * 2); cctx.stroke();
+                cctx.fillStyle = "#38d6ff";
+                cctx.beginPath(); cctx.arc(cx + hx, cy + hy, 12, 0, Math.PI * 2); cctx.fill();
+                cctx.strokeStyle = "#e6f4ff"; cctx.lineWidth = 1.5; cctx.stroke();
+              }
+            };
+
+            const applyPtr = (clientX, clientY) => {
+              const r = cv.getBoundingClientRect();
+              const px = (clientX - r.left) * (size / Math.max(1, r.width));
+              const py = (clientY - r.top) * (size / Math.max(1, r.height));
+              const dx = px - cx, dy = py - cy;
+              const dist = Math.hypot(dx, dy);
+              if (cs.type === "joystick") {
+                if (dist > 0.001) {
+                  const cl = Math.min(dist, rad);
+                  hx = (dx / dist) * cl; hy = (dy / dist) * cl;
+                  curSteer = hx / rad;
+                  if (Math.abs(hy) > 10) curThrottle = -hy / rad;
+                } else {
+                  hx = 0; hy = 0; curSteer = 0;
+                }
+              } else if (cs.type === "steering_wheel") {
+                const ang = Math.atan2(dy, dx) + Math.PI * 0.5;
+                wAng = Math.max(-2.0, Math.min(2.0, ang));
+                curSteer = wAng / 2.0;
+              } else {
+                const count = Math.max(2, cs.nWayDirections || 4);
+                const stepAng = (Math.PI * 2) / count;
+                const offsetAng = cs.nWayShiftedHalfStep ? (stepAng * 0.5) : 0.0;
+                const dz = rad * 0.24;
+                const cl = Math.min(dist, rad);
+                hx = dist > 0.001 ? (dx / dist) * cl : 0;
+                hy = dist > 0.001 ? (dy / dist) * cl : 0;
+                if (dist >= dz) {
+                  const rawAng = Math.atan2(dy, dx);
+                  const k = Math.round((rawAng - offsetAng) / stepAng);
+                  nSector = ((k % count) + count) % count;
+                  curTargetAng = k * stepAng + offsetAng;
+                  curThrottle = cs.nWayDistanceAffectsSpeed ? Math.max(0.2, Math.min(1.0, (dist - dz) / Math.max(1, rad - dz))) : 1.0;
+                } else {
+                  nSector = -1; curTargetAng = null; curThrottle = 0;
+                }
+              }
+              drawW();
+              emitExt();
+            };
+
+            drawW();
+            addTracked(cv, "pointerdown", (e) => {
+              e.preventDefault();
+              pid = e.pointerId ?? 1;
+              applyPtr(e.clientX, e.clientY);
+            });
+            addTracked(window, "pointermove", (e) => {
+              if (pid === (e.pointerId ?? 1)) applyPtr(e.clientX, e.clientY);
+            });
+            const endW = (e) => {
+              if (pid === (e.pointerId ?? 1)) {
+                pid = null;
+                hx = 0; hy = 0; nSector = -1;
+                curSteer = 0; curTargetAng = null;
+                if (cs.type === "fixed_bottom_n_way") curThrottle = 0;
+                drawW();
+                emitExt();
+              }
+            };
+            addTracked(window, "pointerup", endW);
+            addTracked(window, "pointercancel", endW);
+          }
+        };
+
+        let activeSetTab = "skin";
+        let applyPresetPhysics = true;
+        let drawnTrackPts = [];
+        let isDrawingTrack = false;
+
+        const renderSettingsModalContent = () => {
+          const st = session.settingsState;
+          if (!st) return;
+          settingsOverlay.innerHTML = "";
+
+          const card = document.createElement("div");
+          card.id = "minigd-settings-card";
+          card.addEventListener("click", (e) => e.stopPropagation());
+
+          const head = document.createElement("div");
+          head.className = "minigd-set-head";
+          head.innerHTML = `<h3>⚙️ Réglages ${escapeHtml(session.meta?.name || "Mini-jeu")}</h3>`;
+          const closeTop = document.createElement("button");
+          closeTop.type = "button";
+          closeTop.className = "minigd-set-btn";
+          closeTop.textContent = "✕";
+          closeTop.addEventListener("click", () => closeSettingsModal());
+          head.appendChild(closeTop);
+
+          const tabs = document.createElement("div");
+          tabs.className = "minigd-set-tabs";
+          const tabDefs = [
+            { id: "skin", label: "🎨 Skin" },
+            { id: "physics", label: "⚙️ Physique" },
+            { id: "track", label: "🛣️ Circuit" },
+          ];
+          if (!tabDefs.some((t) => t.id === activeSetTab)) activeSetTab = "skin";
+
+          const body = document.createElement("div");
+          body.className = "minigd-set-body";
+
+          const panes = {};
+          tabDefs.forEach((td) => {
+            const tb = document.createElement("button");
+            tb.type = "button";
+            tb.className = "minigd-set-tab" + (activeSetTab === td.id ? " active" : "");
+            tb.textContent = td.label;
+            tb.addEventListener("click", () => {
+              activeSetTab = td.id;
+              tabs.querySelectorAll(".minigd-set-tab").forEach((b, idx) => {
+                b.classList.toggle("active", tabDefs[idx].id === activeSetTab);
+              });
+              Object.keys(panes).forEach((k) => {
+                panes[k].classList.toggle("active", k === activeSetTab);
+              });
+            });
+            tabs.appendChild(tb);
+
+            const pane = document.createElement("div");
+            pane.className = "minigd-set-pane" + (activeSetTab === td.id ? " active" : "");
+            panes[td.id] = pane;
+            body.appendChild(pane);
+          });
+
+          const addRange = (parent, label, min, max, step, val, fmt, onChange) => {
+            const wrap = document.createElement("div");
+            wrap.className = "minigd-set-param";
+            const h = document.createElement("div");
+            h.className = "minigd-set-param-head";
+            const l = document.createElement("span");
+            l.textContent = label;
+            const vEl = document.createElement("span");
+            vEl.textContent = fmt(val);
+            h.appendChild(l);
+            h.appendChild(vEl);
+            const inp = document.createElement("input");
+            inp.type = "range";
+            inp.min = String(min); inp.max = String(max); inp.step = String(step);
+            inp.value = String(val);
+            inp.addEventListener("input", () => {
+              const num = parseFloat(inp.value);
+              vEl.textContent = fmt(num);
+              onChange(num);
+            });
+            wrap.appendChild(h);
+            wrap.appendChild(inp);
+            parent.appendChild(wrap);
+          };
+
+          const addCheck = (parent, label, checked, onChange) => {
+            const lbl = document.createElement("label");
+            lbl.className = "minigd-set-check";
+            const inp = document.createElement("input");
+            inp.type = "checkbox";
+            inp.checked = !!checked;
+            inp.addEventListener("change", () => onChange(inp.checked));
+            const sp = document.createElement("span");
+            sp.textContent = label;
+            lbl.appendChild(inp);
+            lbl.appendChild(sp);
+            parent.appendChild(lbl);
+          };
+
+          // Tab 1: Skin (tous les paramètres de skin)
+          const pSkin = panes.skin;
+          pSkin.innerHTML = `<div class="minigd-set-sec">Modèle de véhicule</div>`;
+          const selPreset = document.createElement("select");
+          selPreset.className = "minigd-set-select";
+          (st.presets || []).forEach((pr) => {
+            const o = document.createElement("option");
+            o.value = pr.id; o.textContent = pr.name;
+            selPreset.appendChild(o);
+          });
+          selPreset.value = st.car.id;
+          selPreset.addEventListener("change", () => {
+            sendIframeMsg({ type: "minigd_settings_action", action: "select_preset", id: selPreset.value, applyPhysics: applyPresetPhysics });
+          });
+          pSkin.appendChild(selPreset);
+          addCheck(pSkin, "Appliquer aussi la physique du modèle", applyPresetPhysics, (v) => { applyPresetPhysics = v; });
+
+          const secCol = document.createElement("div");
+          secCol.className = "minigd-set-sec";
+          secCol.textContent = "Couleurs personnalisées";
+          pSkin.appendChild(secCol);
+
+          const colRow = document.createElement("div");
+          colRow.className = "minigd-set-row";
+          const mkCol = (lblTxt, cur, key) => {
+            const lb = document.createElement("label");
+            lb.className = "minigd-set-color";
+            const sp = document.createElement("span");
+            sp.textContent = lblTxt;
+            const inp = document.createElement("input");
+            inp.type = "color";
+            inp.value = cur;
+            inp.addEventListener("input", () => {
+              sendIframeMsg({ type: "minigd_settings_update", patch: { [key]: inp.value } });
+            });
+            lb.appendChild(sp);
+            lb.appendChild(inp);
+            return lb;
+          };
+          colRow.appendChild(mkCol("Carrosserie", st.car.color, "color"));
+          colRow.appendChild(mkCol("Bordure / Accent", st.car.accent, "accent"));
+          pSkin.appendChild(colRow);
+
+          const secLiv = document.createElement("div");
+          secLiv.className = "minigd-set-sec";
+          secLiv.textContent = "Motif / Livrée";
+          pSkin.appendChild(secLiv);
+          const selLiv = document.createElement("select");
+          selLiv.className = "minigd-set-select";
+          (st.liveries || []).forEach((lv) => {
+            const o = document.createElement("option");
+            o.value = lv.id; o.textContent = lv.label;
+            selLiv.appendChild(o);
+          });
+          selLiv.value = st.car.livery;
+          selLiv.addEventListener("change", () => {
+            sendIframeMsg({ type: "minigd_settings_update", patch: { livery: selLiv.value } });
+          });
+          pSkin.appendChild(selLiv);
+
+          // Tab 3: Circuit
+          const pTrack = panes.track;
+          const secTr1 = document.createElement("div");
+          secTr1.className = "minigd-set-sec";
+          secTr1.textContent = "Générateur rapide";
+          pTrack.appendChild(secTr1);
+
+          const trRow = document.createElement("div");
+          trRow.className = "minigd-set-row";
+          const selTr = document.createElement("select");
+          selTr.className = "minigd-set-select";
+          [
+            { id: "classic", lbl: "🏁 Classique" },
+            { id: "oval", lbl: "🏎️ Ovale Rapide" },
+            { id: "technical", lbl: "🌀 Sinueux" },
+            { id: "random", lbl: "🎲 Aléatoire" },
+          ].forEach((oDef) => {
+            const o = document.createElement("option");
+            o.value = oDef.id; o.textContent = oDef.lbl;
+            selTr.appendChild(o);
+          });
+          const btnGenTr = document.createElement("button");
+          btnGenTr.type = "button";
+          btnGenTr.className = "minigd-set-btn";
+          btnGenTr.textContent = "⚡ Charger";
+          btnGenTr.addEventListener("click", () => {
+            sendIframeMsg({ type: "minigd_settings_action", action: "generate_track", style: selTr.value });
+            closeSettingsModal();
+          });
+          trRow.appendChild(selTr);
+          trRow.appendChild(btnGenTr);
+          pTrack.appendChild(trRow);
+
+          const secTr2 = document.createElement("div");
+          secTr2.className = "minigd-set-sec";
+          secTr2.textContent = "Dessiner un circuit fermé à la main";
+          pTrack.appendChild(secTr2);
+
+          const pad = document.createElement("canvas");
+          pad.id = "minigd-track-draw-canvas";
+          pad.width = 360; pad.height = 190;
+          const padCtx = pad.getContext("2d");
+          const trHint = document.createElement("div");
+          trHint.style.fontSize = "11px";
+          trHint.style.color = "#8fb4d4";
+          trHint.textContent = "Tracez une boucle continue puis validez.";
+
+          const drawPad = () => {
+            const w = pad.width, h = pad.height;
+            padCtx.fillStyle = "#08121f";
+            padCtx.fillRect(0, 0, w, h);
+            padCtx.strokeStyle = "rgba(56, 214, 255, 0.12)";
+            padCtx.lineWidth = 1;
+            for (let x = 30; x < w; x += 30) { padCtx.beginPath(); padCtx.moveTo(x, 0); padCtx.lineTo(x, h); padCtx.stroke(); }
+            for (let y = 30; y < h; y += 30) { padCtx.beginPath(); padCtx.moveTo(0, y); padCtx.lineTo(w, y); padCtx.stroke(); }
+            if (drawnTrackPts.length > 1) {
+              padCtx.strokeStyle = "#334155";
+              padCtx.lineWidth = 16;
+              padCtx.lineCap = "round";
+              padCtx.lineJoin = "round";
+              padCtx.beginPath();
+              padCtx.moveTo(drawnTrackPts[0].x, drawnTrackPts[0].y);
+              for (let i = 1; i < drawnTrackPts.length; i++) padCtx.lineTo(drawnTrackPts[i].x, drawnTrackPts[i].y);
+              if (!isDrawingTrack && drawnTrackPts.length >= 6) padCtx.closePath();
+              padCtx.stroke();
+              padCtx.strokeStyle = "#38d6ff";
+              padCtx.lineWidth = 2;
+              padCtx.setLineDash([4, 4]);
+              padCtx.stroke();
+              padCtx.setLineDash([]);
+              padCtx.fillStyle = "#4ade80";
+              padCtx.beginPath(); padCtx.arc(drawnTrackPts[0].x, drawnTrackPts[0].y, 5, 0, Math.PI * 2); padCtx.fill();
+            }
+          };
+          const padPos = (ev) => {
+            const r = pad.getBoundingClientRect();
+            return { x: (ev.clientX - r.left) * (pad.width / Math.max(1, r.width)), y: (ev.clientY - r.top) * (pad.height / Math.max(1, r.height)) };
+          };
+          pad.addEventListener("pointerdown", (ev) => {
+            ev.stopPropagation();
+            isDrawingTrack = true;
+            drawnTrackPts = [padPos(ev)];
+            drawPad();
+          });
+          pad.addEventListener("pointermove", (ev) => {
+            ev.stopPropagation();
+            if (!isDrawingTrack) return;
+            const p = padPos(ev);
+            const last = drawnTrackPts[drawnTrackPts.length - 1];
+            if (Math.hypot(p.x - last.x, p.y - last.y) >= 14) {
+              drawnTrackPts.push(p);
+              drawPad();
+            }
+          });
+          const endPad = (ev) => { if (ev) ev.stopPropagation(); if (!isDrawingTrack) return; isDrawingTrack = false; drawPad(); };
+          pad.addEventListener("pointerup", endPad);
+          pad.addEventListener("pointercancel", endPad);
+          drawPad();
+
+          const trBtns = document.createElement("div");
+          trBtns.className = "minigd-set-row";
+          const btnClr = document.createElement("button");
+          btnClr.type = "button"; btnClr.className = "minigd-set-btn"; btnClr.style.flex = "1";
+          btnClr.textContent = "🧹 Effacer";
+          btnClr.addEventListener("click", () => { drawnTrackPts = []; drawPad(); });
+          const btnApp = document.createElement("button");
+          btnApp.type = "button"; btnApp.className = "minigd-set-btn"; btnApp.style.flex = "1";
+          btnApp.textContent = "✅ Valider ce tracé";
+          btnApp.addEventListener("click", () => {
+            if (drawnTrackPts.length < 6) {
+              trHint.textContent = "Tracé trop court : dessinez une boucle plus grande.";
+              trHint.style.color = "#f87171";
+              return;
+            }
+            const sampled = [];
+            for (let i = 0; i < 14; i++) {
+              const pt = drawnTrackPts[Math.floor((i / 14) * drawnTrackPts.length)];
+              sampled.push({ x: Math.round(220 + (pt.x / pad.width) * 1700), y: Math.round(220 + (pt.y / pad.height) * 1200) });
+            }
+            sendIframeMsg({ type: "minigd_settings_action", action: "apply_drawn_track", points: sampled });
+            closeSettingsModal();
+          });
+          trBtns.appendChild(btnClr);
+          trBtns.appendChild(btnApp);
+          pTrack.appendChild(pad);
+          pTrack.appendChild(trHint);
+          pTrack.appendChild(trBtns);
+
+          // Tab 2: Physique (Caméra + Véhicule + Élastique + N-Directions)
+          const pPhy = panes.physics;
+          const secCam = document.createElement("div");
+          secCam.className = "minigd-set-sec";
+          secCam.textContent = "🎥 Caméra";
+          pPhy.appendChild(secCam);
+          const selCam = document.createElement("select");
+          selCam.className = "minigd-set-select";
+          [
+            { id: "vehicle", lbl: "🏎️ Le véhicule tourne (caméra fixe)" },
+            { id: "camera", lbl: "🎥 La caméra tourne (véhicule droit)" },
+          ].forEach((co) => {
+            const o = document.createElement("option");
+            o.value = co.id; o.textContent = co.lbl;
+            selCam.appendChild(o);
+          });
+          selCam.value = st.cameraRotates ? "camera" : "vehicle";
+          selCam.addEventListener("change", () => {
+            sendIframeMsg({ type: "minigd_settings_update", patch: { cameraRotates: selCam.value === "camera" } });
+          });
+          pPhy.appendChild(selCam);
+
+          const appendSlingshotSection = () => {
+            const secSl = document.createElement("div");
+            secSl.className = "minigd-set-sec";
+            secSl.textContent = "🎯 Physique Élastique (Fronde)";
+            pPhy.appendChild(secSl);
+            addRange(pPhy, "Puissance Élastique", 300, 2200, 25, st.slingshotPower, (v) => String(Math.round(v)), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotPower: v } }));
+            addRange(pPhy, "Allongement Max (px)", 80, 320, 10, st.slingshotMaxPull, (v) => String(Math.round(v)), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotMaxPull: v } }));
+            addRange(pPhy, "Glisse / Roulement", 0.920, 0.996, 0.002, st.slingshotFriction, (v) => v.toFixed(3), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotFriction: v } }));
+            addRange(pPhy, "Rebond Barrières", 0.10, 1.00, 0.05, st.slingshotBounce, (v) => v.toFixed(2), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotBounce: v } }));
+            addRange(pPhy, "Courbe de Tension", 0.5, 2.5, 0.1, st.slingshotTensionCurve, (v) => v.toFixed(1), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotTensionCurve: v } }));
+            if (!st.slingshotStopToShoot) {
+              addRange(pPhy, "Ralenti en Visée", 0.05, 1.00, 0.05, st.slingshotAimSlowmo, (v) => v.toFixed(2), (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotAimSlowmo: v } }));
+            }
+            addCheck(pPhy, "Tir uniquement à l'arrêt (Mode Billes pur)", st.slingshotStopToShoot, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotStopToShoot: v } }));
+            addCheck(pPhy, "Afficher la trajectoire prédictive", st.slingshotShowTrajectory, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { slingshotShowTrajectory: v } }));
+          };
+
+          if (st.controlType === "slingshot") {
+            appendSlingshotSection();
+          }
+
+          const secPhy = document.createElement("div");
+          secPhy.className = "minigd-set-sec";
+          secPhy.textContent = "🏎️ Physique du véhicule & Piste";
+          pPhy.appendChild(secPhy);
+          const phyDefs = [
+            { key: "maxSpeed", label: "Vitesse Max", min: 200, max: 850, step: 10, fmt: (v) => String(Math.round(v)) },
+            { key: "acceleration", label: "Accélération", min: 150, max: 900, step: 10, fmt: (v) => String(Math.round(v)) },
+            { key: "braking", label: "Freinage", min: 150, max: 1000, step: 10, fmt: (v) => String(Math.round(v)) },
+            { key: "turnSpeed", label: "Vitesse Braquage", min: 1.5, max: 6.5, step: 0.1, fmt: (v) => v.toFixed(1) },
+            { key: "traction", label: "Adhérence Sol", min: 0.05, max: 1.0, step: 0.02, fmt: (v) => v.toFixed(2) },
+            { key: "driftFactor", label: "Facteur Drift", min: 0.2, max: 0.98, step: 0.02, fmt: (v) => v.toFixed(2) },
+            { key: "naturalFriction", label: "Friction Naturelle", min: 0.95, max: 0.998, step: 0.002, fmt: (v) => v.toFixed(3) },
+            { key: "mass", label: "Masse / Poids", min: 0.3, max: 3.0, step: 0.1, fmt: (v) => v.toFixed(1) },
+            { key: "trackWidth", label: "Largeur de Piste", min: 110, max: 280, step: 5, fmt: (v) => String(Math.round(v)), isTrack: true },
+          ];
+          phyDefs.forEach((pd) => {
+            const cur = pd.isTrack ? st.trackWidth : st.car[pd.key];
+            addRange(pPhy, pd.label, pd.min, pd.max, pd.step, cur, pd.fmt, (v) => {
+              sendIframeMsg({ type: "minigd_settings_update", patch: { [pd.key]: v } });
+            });
+          });
+
+          if (st.controlType !== "slingshot") {
+            appendSlingshotSection();
+          }
+
+          const secNw = document.createElement("div");
+          secNw.className = "minigd-set-sec";
+          secNw.textContent = "🧭 Options N-Directions";
+          pPhy.appendChild(secNw);
+          addRange(pPhy, "Nombre de directions", 2, 16, 1, st.nWayDirections, (v) => String(Math.round(v)), (v) => {
+            sendIframeMsg({ type: "minigd_settings_update", patch: { nWayDirections: Math.round(v) } });
+          });
+          addRange(pPhy, "Temps rotation vers l'axe", 0, 1, 0.02, st.alignTime, (v) => v <= 0.001 ? "0 s" : `${v.toFixed(2)} s`, (v) => {
+            sendIframeMsg({ type: "minigd_settings_update", patch: { alignTime: v } });
+          });
+          addCheck(pPhy, "Accélération continue", st.continuousAccel, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { continuousAccel: v } }));
+          addCheck(pPhy, "Accélérer au toucher d'une direction", st.nWayAutoAccel, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { nWayAutoAccel: v } }));
+          addCheck(pPhy, "Distance au centre module la vitesse", st.nWayDistanceAffectsSpeed, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { nWayDistanceAffectsSpeed: v } }));
+          addCheck(pPhy, "Décaler la roue d'un demi-pas", st.nWayShiftedHalfStep, (v) => sendIframeMsg({ type: "minigd_settings_update", patch: { nWayShiftedHalfStep: v } }));
+
+          const phyBtns = document.createElement("div");
+          phyBtns.className = "minigd-set-row";
+          const btnRstPhy = document.createElement("button");
+          btnRstPhy.type = "button"; btnRstPhy.className = "minigd-set-btn"; btnRstPhy.style.flex = "1";
+          btnRstPhy.textContent = "↺ Réinitialiser";
+          btnRstPhy.addEventListener("click", () => sendIframeMsg({ type: "minigd_settings_action", action: "reset_physics" }));
+          const btnRepo = document.createElement("button");
+          btnRepo.type = "button"; btnRepo.className = "minigd-set-btn"; btnRepo.style.flex = "1";
+          btnRepo.textContent = "📍 Replacer voiture";
+          btnRepo.addEventListener("click", () => {
+            sendIframeMsg({ type: "minigd_settings_action", action: "reposition_car" });
+            closeSettingsModal();
+          });
+          phyBtns.appendChild(btnRstPhy);
+          phyBtns.appendChild(btnRepo);
+          pPhy.appendChild(phyBtns);
+
+          const foot = document.createElement("div");
+          foot.className = "minigd-set-foot";
+          const btnDone = document.createElement("button");
+          btnDone.type = "button"; btnDone.className = "minigd-set-btn";
+          btnDone.textContent = "Reprendre";
+          btnDone.addEventListener("click", () => closeSettingsModal());
+          foot.appendChild(btnDone);
+
+          card.appendChild(head);
+          card.appendChild(tabs);
+          card.appendChild(body);
+          card.appendChild(foot);
+          settingsOverlay.appendChild(card);
+        };
+
+        const setQuickPickersEnabled = (enabled) => {
+          const val = enabled ? "auto" : "none";
+          skinWrap.style.pointerEvents = val;
+          skinSelect.disabled = !enabled;
+          ctrlQuickWrap.style.pointerEvents = val;
+          ctrlQuickSelect.disabled = !enabled;
+        };
+
+        const syncQuickPickers = () => {
+          const st = session.settingsState;
+          if (!st) return;
+          if (Array.isArray(st.presets) && st.presets.length > 0) {
+            if (skinSelect.options.length !== st.presets.length) {
+              skinSelect.innerHTML = "";
+              st.presets.forEach((pr) => {
+                const o = document.createElement("option");
+                o.value = pr.id;
+                o.textContent = pr.name;
+                skinSelect.appendChild(o);
+              });
+            }
+            skinSelect.value = st.car.id;
+            skinWrap.style.display = "inline-flex";
+            stage.classList.add("has-top-extras");
+          }
+          if (Array.isArray(st.controlModes) && st.controlModes.length > 0) {
+            if (ctrlQuickSelect.options.length !== st.controlModes.length) {
+              ctrlQuickSelect.innerHTML = "";
+              st.controlModes.forEach((cm) => {
+                const o = document.createElement("option");
+                o.value = cm.id;
+                o.textContent = `🎮 ${cm.label}`;
+                ctrlQuickSelect.appendChild(o);
+              });
+            }
+            ctrlQuickSelect.value = st.controlType;
+            stage.classList.add("has-ctrl-picker");
+          }
+        };
+
+        skinSelect.addEventListener("change", () => {
+          if (session.aborted || session.exiting || !session.interactive) return;
+          sendIframeMsg({ type: "minigd_settings_action", action: "select_preset", id: skinSelect.value, applyPhysics: applyPresetPhysics });
+          skinSelect.blur();
+          try {
+            if (iframe.contentWindow) iframe.contentWindow.focus();
+            iframe.focus();
+          } catch (_e) {}
+        });
+
+        ctrlQuickSelect.addEventListener("change", () => {
+          if (session.aborted || session.exiting || !session.interactive) return;
+          sendIframeMsg({ type: "minigd_settings_update", patch: { controlType: ctrlQuickSelect.value } });
+          ctrlQuickSelect.blur();
+          try {
+            if (iframe.contentWindow) iframe.contentWindow.focus();
+            iframe.focus();
+          } catch (_e) {}
+        });
+
+        const openSettingsModal = () => {
+          if (session.aborted || session.exiting || !session.interactive || !session.settingsState) return;
+          if (session.infoOpen) {
+            session.infoOpen = false;
+            infoCard.classList.remove("open");
+            infoCard.style.opacity = "";
+            infoCard.style.filter = "";
+          }
+          session.settingsOpen = true;
+          clearExternalInput();
+          setQuickPickersEnabled(false);
+          iframe.style.pointerEvents = "none";
+          extControls.style.pointerEvents = "none";
+          fireBtn.disabled = true;
+          fireBtn.style.pointerEvents = "none";
+          sendIframeMsg({ type: "minigd_pause" });
+          renderSettingsModalContent();
+          settingsOverlay.classList.add("open");
+        };
+
+        const closeSettingsModal = () => {
+          if (!session.settingsOpen) return;
+          session.settingsOpen = false;
+          settingsOverlay.classList.remove("open");
+          settingsOverlay.innerHTML = "";
+          if (!session.awaitingStart && !session.infoOpen && !session.exiting && !session.aborted) {
+            setQuickPickersEnabled(true);
+            iframe.style.pointerEvents = "auto";
+            extControls.style.pointerEvents = "auto";
+            fireBtn.disabled = false;
+            fireBtn.style.pointerEvents = "auto";
+            sendIframeMsg({ type: "minigd_resume" });
+            try {
+              if (iframe.contentWindow) iframe.contentWindow.focus();
+              iframe.focus();
+            } catch (_e) {}
+          }
+        };
+
+        settingsOverlay.addEventListener("click", (e) => {
+          if (e.target === settingsOverlay) closeSettingsModal();
+        });
+
+        audioBtn.addEventListener("click", () => {
+          if (session.aborted || session.exiting || !session.interactive) return;
+          sendIframeMsg({ type: "minigd_toggle_audio" });
+        });
+
+        settingsBtn.addEventListener("click", () => {
+          if (session.settingsOpen) closeSettingsModal();
+          else openSettingsModal();
+        });
+
+        session.readyPromise = new Promise((resolve) => {
+          session.resolveReady = resolve;
+          const fallbackTimer = setTimeout(() => {
+            if (session.resolveReady) {
+              const r = session.resolveReady;
+              session.resolveReady = null;
+              r();
+            }
+          }, 1500);
+          session.timerIds.add(fallbackTimer);
+        });
+
+        iframe.addEventListener("load", () => {
+          if (session.aborted) return;
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+            }
+          } catch (_e) {}
+          if (session.resolveReady) {
+            const r = session.resolveReady;
+            session.resolveReady = null;
+            r();
+          }
+        }, { once: true });
+
+        let infoAnimating = false;
+
+        const startPausedMiniGame = async (withFadeOut = false) => {
+          if (session.aborted || session.exiting || infoAnimating) return;
+          if (withFadeOut && infoCard.classList.contains("open")) {
+            infoAnimating = true;
+            await animateInfoCardFadeBlur(session, infoCard, false, Math.min(280, fadeDurationMs));
+            infoAnimating = false;
+            if (session.aborted || session.exiting) return;
+          } else {
+            infoCard.classList.remove("open");
+            infoCard.style.opacity = "";
+            infoCard.style.filter = "";
+          }
+          session.infoOpen = false;
+          session.awaitingStart = false;
+          setQuickPickersEnabled(true);
+          iframe.style.pointerEvents = "auto";
+          extControls.style.pointerEvents = "auto";
+          fireBtn.disabled = false;
+          fireBtn.style.pointerEvents = "auto";
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "minigd_start" }, "*");
+              iframe.contentWindow.focus();
+            }
+            iframe.focus();
+          } catch (_e) {}
+        };
+
+        const toggleInfo = async (forceOpen) => {
+          if (session.aborted || session.exiting || !session.interactive || infoAnimating) return;
+          const next = typeof forceOpen === "boolean" ? forceOpen : !session.infoOpen;
+          if (!next) {
+            await startPausedMiniGame(true);
+            return;
+          }
+          if (session.settingsOpen) {
+            session.settingsOpen = false;
+            settingsOverlay.classList.remove("open");
+            settingsOverlay.innerHTML = "";
+          }
+          session.infoOpen = true;
+          clearExternalInput();
+          setQuickPickersEnabled(false);
+          iframe.style.pointerEvents = "none";
+          extControls.style.pointerEvents = "none";
+          fireBtn.disabled = true;
+          fireBtn.style.pointerEvents = "none";
+          renderInfoCard(infoCard, session.meta, () => toggleInfo(false), { isStart: session.awaitingStart, texts: session.resolvedTexts });
+          try {
+            if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+          } catch (_e) {}
+          infoAnimating = true;
+          await animateInfoCardFadeBlur(session, infoCard, true, fadeDurationMs);
+          infoAnimating = false;
+        };
+
+        if (infoBtn) {
+          infoBtn.addEventListener("click", () => toggleInfo());
+        }
+
+        const exitMiniGame = async () => {
+          if (session.aborted || session.exiting) return;
+          session.exiting = true;
+          session.interactive = false;
+          session.infoOpen = false;
+          session.settingsOpen = false;
+          infoCard.classList.remove("open");
+          settingsOverlay.classList.remove("open");
+          settingsOverlay.innerHTML = "";
+          clearExternalInput();
+          clearExtControlsListeners();
+
+          exitBtn.disabled = true;
+          exitBtn.style.pointerEvents = "none";
+          resetBtn.disabled = true;
+          resetBtn.style.pointerEvents = "none";
+          audioBtn.disabled = true;
+          audioBtn.style.pointerEvents = "none";
+          settingsBtn.disabled = true;
+          settingsBtn.style.pointerEvents = "none";
+          setQuickPickersEnabled(false);
+          fireBtn.disabled = true;
+          fireBtn.style.pointerEvents = "none";
+          extControls.style.pointerEvents = "none";
+          if (infoBtn) infoBtn.style.pointerEvents = "none";
+          iframe.style.pointerEvents = "none";
+
+          // 1. Pause et floutage du mini-jeu en 1 seconde, puis fondu alpha et mise au net superposés
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+            }
+          } catch (_e) {}
+
+          const miniBlurPromise = animateFilterCss(session, iframe, 0, blurRadiusPx, blurDurationMs);
+
+          const blurOverlapMs = Math.round(blurDurationMs * (2 / 3));
+          await new Promise((resolve) => {
+            const tid = setTimeout(resolve, blurOverlapMs);
+            session.timerIds.add(tid);
+          });
+          if (session.aborted) return;
+
+          // 2. Disparition en fondu alpha du mini-jeu (démarre au 2e tiers du floutage)
+          const fadeOutPromise = animateValue(session, fadeDurationMs, (e) => {
+            if (session.stage) session.stage.style.opacity = String((1 - e).toFixed(4));
+          });
+
+          const fadeOverlapMs = Math.round(fadeDurationMs * (2 / 3));
+          await new Promise((resolve) => {
+            const tid = setTimeout(resolve, fadeOverlapMs);
+            session.timerIds.add(tid);
+          });
+          if (session.aborted) return;
+
+          // 3. Mise au net du jeu principal en 1 seconde (fondu inverse sans saut ni CSS filter)
+          if (canvas) canvas.style.visibility = "";
+          if (session.frozenBg) {
+            session.frozenBg.style.willChange = "opacity";
+          } else if (canvas) {
+            canvas.style.willChange = "filter";
+          }
+          const mainUnblurPromise = animateValue(session, blurDurationMs, (e) => {
+            if (session.frozenBg) {
+              session.frozenBg.style.opacity = String((1 - e).toFixed(4));
+            } else if (canvas) {
+              const blurVal = (1 - e) * blurRadiusPx;
+              canvas.style.filter = `blur(${blurVal.toFixed(2)}px)`;
+            }
+            if (session.overlay) session.overlay.style.background = `rgba(4, 8, 16, ${(0.52 * (1 - e)).toFixed(3)})`;
+          });
+
+          await Promise.all([miniBlurPromise, fadeOutPromise]);
+          if (session.aborted) return;
+
+          // 4. Destruction propre de l'iframe du mini-jeu une fois le fondu terminé
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "minigd_destroy" }, "*");
+            }
+          } catch (_e) {}
+          try { iframe.src = "about:blank"; } catch (_e) {}
+          if (session.iframe) {
+            session.iframe.remove();
+            session.iframe = null;
+          }
+          if (session.stage) {
+            session.stage.remove();
+            session.stage = null;
+          }
+
+          await mainUnblurPromise;
+          if (session.aborted) return;
+
+          // 5. Nettoyage complet & sortie de pause du jeu principal
+          destroySession(session);
+          try { window.focus(); } catch (_e) {}
+        };
+
+        exitBtn.addEventListener("click", () => {
+          exitMiniGame();
+        });
+
+        resetBtn.addEventListener("click", () => {
+          if (session.aborted || session.exiting || !session.interactive) return;
+          clearExternalInput();
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({
+                type: "minigd_reset",
+                meta: session.meta,
+                params: session.resolvedParams,
+                texts: session.resolvedTexts,
+                custom: Object.assign({}, session.resolvedParams, { texts: session.resolvedTexts }),
+              }, "*");
+              iframe.contentWindow.focus();
+            }
+          } catch (_e) {}
+        });
+
+        const triggerOuterFire = () => {
+          if (session.aborted || session.exiting || !session.interactive || session.infoOpen || session.settingsOpen) return;
+          try {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage({ type: "minigd_action", action: "fire" }, "*");
+              iframe.contentWindow.focus();
+            }
+          } catch (_e) {}
+        };
+        fireBtn.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          triggerOuterFire();
+        });
+        fireBtn.addEventListener("click", (e) => {
+          if (e.detail === 0) triggerOuterFire();
+        });
+
+        session.onMessage = (ev) => {
+          if (session.aborted) return;
+          const d = ev && ev.data;
+          if (!d || typeof d !== "object") return;
+          if (d.type === "minigd_ready") {
+            const iframeMeta = (d.meta && typeof d.meta === "object") ? d.meta : {};
+            const mergedMeta = Object.assign({}, iframeMeta, session.manifestMeta || {});
+            session.meta = mergedMeta;
+            session.resolvedParams = resolveMiniGameParams(iframeMeta, session.manifestMeta);
+            session.resolvedTexts = resolveMiniGameTexts(iframeMeta, session.manifestMeta, session.sharedTexts);
+            stage.style.setProperty("--minigd-accent", session.meta.accentColor || ext.accentColor || "#38d6ff");
+            exitBtn.setAttribute("title", session.resolvedTexts.exitTooltip || "Revenir au jeu principal");
+            resetBtn.setAttribute("title", session.resolvedTexts.resetTooltip || "Recommencer");
+            if (infoBtn) infoBtn.setAttribute("title", session.resolvedTexts.infoTooltip || "Titre, description, objectif et contrôles");
+            mmDriftBadge.textContent = session.resolvedTexts.driftBadgeText || "DRIFT";
+            mmTurboBadge.textContent = session.resolvedTexts.turboBadgeText || "TURBO";
+            if (session.hintBar && session.meta.controls) {
+              session.hintBar.textContent = session.meta.controls;
+              if (!session.hintBar.parentElement) bottomArea.appendChild(session.hintBar);
+            }
+            if (session.fireBtn) {
+              const cfgAction = session.resolvedTexts.actionLabel || session.resolvedTexts.boostReadyLabel || session.resolvedTexts.fireButtonLabel;
+              if (cfgAction && String(cfgAction).trim()) {
+                session.fireBtn.textContent = String(cfgAction).trim();
+              } else if (typeof d.actionLabel === "string" && d.actionLabel.trim()) {
+                session.fireBtn.textContent = d.actionLabel.trim();
+              }
+            }
+            if (d.capabilities && typeof d.capabilities === "object") {
+              session.capabilities = d.capabilities;
+              if (d.capabilities.audio) {
+                audioBtn.style.display = "inline-flex";
+                stage.classList.add("has-top-extras");
+              }
+              if (d.capabilities.settings) {
+                settingsBtn.style.display = "inline-flex";
+                stage.classList.add("has-top-extras");
+              }
+              if (d.capabilities.minimap) stage.classList.add("has-minimap");
+            }
+            const nextLayoutMode = resolveLayoutMode(session.displayMode, session.meta, session.capabilities);
+            const nextFullFrame = nextLayoutMode === "fullframe";
+            const nextOwnExit = resolveOwnExit(session.meta, session.capabilities);
+            session.layoutMode = nextLayoutMode;
+            session.isFullFrame = nextFullFrame;
+            session.ownExit = nextOwnExit;
+            if (session.overlay) {
+              session.overlay.classList.toggle("is-fullframe", nextFullFrame);
+              session.overlay.classList.toggle("layout-circle", nextLayoutMode === "circle");
+              session.overlay.classList.toggle("layout-rectangle", nextLayoutMode === "rectangle");
+              session.overlay.classList.toggle("has-own-exit", nextFullFrame && nextOwnExit);
+            }
+            if (d.minimapTrack) {
+              session.minimapTrack = d.minimapTrack;
+              drawMinimap();
+            }
+            if (d.controlState) {
+              session.controlState = d.controlState;
+              buildExternalControls();
+            }
+            if (d.settingsState) {
+              session.settingsState = d.settingsState;
+              syncQuickPickers();
+            }
+            try {
+              if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({
+                  type: "minigd_config",
+                  meta: session.meta,
+                  params: session.resolvedParams,
+                  texts: session.resolvedTexts,
+                  custom: Object.assign({}, session.resolvedParams, { texts: session.resolvedTexts }),
+                }, "*");
+                iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+              }
+            } catch (_e) {}
+            if (session.resolveReady) {
+              const r = session.resolveReady;
+              session.resolveReady = null;
+              r();
+            }
+          } else if (d.type === "minigd_stats") {
+            if (session.statsBar && typeof d.text === "string") {
+              session.statsBar.textContent = d.text;
+            }
+            if (session.fireBtn) {
+              if (typeof d.actionLabel === "string" && d.actionLabel.trim()) {
+                session.fireBtn.textContent = d.actionLabel.trim();
+              } else if (typeof d.shotActive === "boolean") {
+                session.fireBtn.textContent = d.shotActive
+                  ? (session.resolvedTexts.detonateButtonLabel || "💥 DÉTONER !")
+                  : (session.resolvedTexts.fireButtonLabel || "💥 TIRER");
+              }
+            }
+          } else if (d.type === "minigd_audio_state") {
+            session.audioEnabled = Boolean(d.enabled);
+            audioBtn.textContent = session.audioEnabled ? "🔊" : "🔇";
+          } else if (d.type === "minigd_controls_state" && d.controlState) {
+            session.controlState = d.controlState;
+            buildExternalControls();
+          } else if (d.type === "minigd_settings_state" && d.settingsState) {
+            session.settingsState = d.settingsState;
+            syncQuickPickers();
+            if (session.settingsOpen) {
+              renderSettingsModalContent();
+            }
+          } else if (d.type === "minigd_minimap_track") {
+            session.minimapTrack = { points: d.points || [], bounds: d.bounds || null };
+            drawMinimap();
+          } else if (d.type === "minigd_minimap_state") {
+            session.minimapState = d;
+            drawMinimap();
+          } else if (d.type === "minigd_exit" || d.type === "spawn_minigame_result") {
+            if (!session.resultRecorded && (d.type === "spawn_minigame_result" || d.won !== undefined || d.score !== undefined)) {
+              session.resultRecorded = true;
+              const won = Boolean(d.won);
+              const score = Number.isFinite(Number(d.score)) ? Number(d.score) : 0;
+              const targetKey = session.targetKey || (session.meta && session.meta.path) || "";
+              if (host.progress && typeof host.progress.recordMiniGDResult === "function" && targetKey) {
+                const outcome = host.progress.recordMiniGDResult(targetKey, { won, score, stats: d.stats || {} });
+                if (won) {
+                  const effRewards = Object.assign({}, (session.meta && session.meta.rewards) || {}, session.launchRewards || {});
+                  if (Object.keys(effRewards).length > 0 && typeof host.progress.grantRewards === "function") {
+                    host.progress.grantRewards(effRewards, { isFirstWin: Boolean(outcome && outcome.isFirstWin), score });
+                  }
+                }
+              }
+            }
+            exitMiniGame();
+          }
+        };
+        window.addEventListener("message", session.onMessage);
+
+        session.onKeyDown = (e) => {
+          if (session.aborted) return;
+          if (session.awaitingStart && !session.settingsOpen && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            e.stopPropagation();
+            startPausedMiniGame(true);
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            if (session.settingsOpen) {
+              closeSettingsModal();
+            } else if (session.infoOpen) {
+              toggleInfo(false);
+            } else if (session.interactive && !session.exiting) {
+              exitMiniGame();
+            }
+          }
+        };
+        window.addEventListener("keydown", session.onKeyDown, true);
+
+        // 2. Pré-calcul unique du fond flouté puis fondu enchaîné (0 -> 1) : fluide 60-120fps et zéro saut d'image !
+        const frozenBg = createFrozenBlurredBg(session, canvas);
+        if (!frozenBg && canvas) {
+          canvas.style.willChange = "filter";
+          canvas.style.filter = "blur(0px)";
+        }
+        const mainBlurPromise = animateValue(session, blurDurationMs, (e) => {
+          if (frozenBg) {
+            frozenBg.style.opacity = String(e.toFixed(4));
+          } else if (canvas) {
+            canvas.style.filter = `blur(${(e * blurRadiusPx).toFixed(2)}px)`;
+          }
+          overlay.style.background = `rgba(4, 8, 16, ${(0.52 * e).toFixed(3)})`;
+        });
+
+        const overlapDelayMs = Math.round(blurDurationMs * (2 / 3));
+        const waitOverlapPromise = new Promise((resolve) => {
+          const tid = setTimeout(resolve, overlapDelayMs);
+          session.timerIds.add(tid);
+        });
+
+        await waitOverlapPromise;
+        if (session.aborted) return;
+
+        // S'assurer que le mini-jeu est prêt et en pause avant de l'afficher
+        await session.readyPromise;
+        if (session.aborted) return;
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+          }
+        } catch (_e) {}
+
+        // 3. Le mini-jeu apparaît en fondu alpha par-dessus, flou et en pause (chevauche la fin du floutage principal)
+        const fadeInPromise = animateValue(session, fadeDurationMs, (e) => {
+          stage.style.opacity = String(e.toFixed(4));
+        });
+
+        await Promise.all([mainBlurPromise, fadeInPromise]);
+        if (session.aborted) return;
+
+        // Une fois frozenBg 100% opaque, masquer le gros canvas principal (0 pixel de changement visuel !)
+        if (frozenBg) {
+          frozenBg.style.opacity = "1";
+          frozenBg.style.willChange = "";
+          if (canvas) canvas.style.visibility = "hidden";
+        } else if (canvas) {
+          canvas.style.willChange = "";
+        }
+
+        // 4. Le mini-jeu se dé-floute et devient net en 1 seconde
+        await animateFilterCss(session, iframe, blurRadiusPx, 0, blurDurationMs);
+        if (session.aborted) return;
+        iframe.style.transition = "";
+        iframe.style.filter = "none";
+        iframe.style.willChange = "";
+        stage.style.willChange = "";
+
+        // 5. Initialisation du mini-jeu puis affichage optionnel du résumé en pause avant démarrage
+        session.interactive = true;
+        exitBtn.disabled = false;
+        exitBtn.style.pointerEvents = "auto";
+        resetBtn.disabled = false;
+        resetBtn.style.pointerEvents = "auto";
+        audioBtn.disabled = false;
+        audioBtn.style.pointerEvents = "auto";
+        settingsBtn.disabled = false;
+        settingsBtn.style.pointerEvents = "auto";
+
+        try {
+          if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage({
+              type: "spawn_minigame_init",
+              meta: session.meta,
+              params: session.resolvedParams,
+              texts: session.resolvedTexts,
+              custom: Object.assign({}, session.resolvedParams, { texts: session.resolvedTexts }),
+            }, "*");
+            iframe.contentWindow.postMessage({ type: "minigd_pause" }, "*");
+          }
+        } catch (_e) {}
+
+        if (effectiveShowSummary) {
+          session.awaitingStart = true;
+          session.infoOpen = true;
+          setQuickPickersEnabled(false);
+          iframe.style.pointerEvents = "none";
+          extControls.style.pointerEvents = "none";
+          fireBtn.disabled = true;
+          fireBtn.style.pointerEvents = "none";
+          renderInfoCard(infoCard, session.meta, () => startPausedMiniGame(true), { isStart: true, texts: session.resolvedTexts });
+          infoAnimating = true;
+          await animateInfoCardFadeBlur(session, infoCard, true, fadeDurationMs);
+          infoAnimating = false;
+        } else {
+          startPausedMiniGame(false);
+        }
+      }
+
+      // API dynamique pour associer / retirer des miniGD sur des ancres à tout moment
+      window.AssemblageMiniGD = {
+        _owner: FILENAME,
+        registerAnchor: registerAnchorBinding,
+        unregisterAnchor: unregisterAnchorBinding,
+        getBindings: getAnchorBindings,
+        launch: (minigamePath, opts) => launchMiniGame(Object.assign({}, opts || {}, { minigamePath: minigamePath || "" })),
+      };
+      if (host.services && typeof host.services.provide === "function") {
+        host.services.provide("minigd", window.AssemblageMiniGD);
+      }
+
+      // Surveillance dynamique de proximité sur toutes les ancres associées
+      host.hooks.after("update", () => {
+        if (destroyedExt || activeSession || bindingsMap.size === 0) return;
+        if (host.game.isAnyUIOpen()) return;
+        for (const binding of bindingsMap.values()) {
+          const dist = host.game.getAnchorDistance(binding.anchorId);
+          if (dist === null || !Number.isFinite(dist)) continue;
+          if (!binding.armed) {
+            if (dist >= binding.resetRadiusM) {
+              binding.armed = true;
+            }
+          } else if (dist <= binding.triggerRadiusM) {
+            binding.armed = false;
+            launchMiniGame({
+              minigamePath: binding.minigamePath,
+              anchorId: binding.anchorId,
+              showSummaryOnStart: binding.showSummaryOnStart,
+              displayMode: binding.displayMode || "",
+            });
+            break;
+          }
+        }
+      });
+
+      // Bouton dans Paramètres pour relancer le mini-jeu par défaut à tout moment
+      host.ui.addSettingButton({
+        id: "transition_minigd_launch",
+        label: ext.name || "Transition vers MiniGD",
+        desc: "Lance un mini-jeu depuis extensions/minigd/ avec transition floutée.",
+        buttonText: settingButtonLabel,
+        onClick: () => {
+          launchMiniGame();
+        },
+      });
+
+      // Déclenchement automatique lors de l'activation uniquement si l'extension n'est pas en mode persistant "always"
+      const condType = (ext && ext.condition && ext.condition.type) ? String(ext.condition.type) : "";
+      if (!ext.isSilentRestore && condType !== "always") {
+        if (host.ui.isTitleCardPending(ext.filename || FILENAME)) {
+          unsubTitleCard = host.ui.onTitleCardClosed(() => {
+            unsubTitleCard = null;
+            if (!destroyedExt) launchMiniGame();
+          }, { filename: ext.filename || FILENAME });
+        } else {
+          launchMiniGame();
+        }
+      }
+    },
+    onDeactivate() {},
+  };
+})();
+</script>
+</body>
+</html>

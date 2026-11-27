@@ -1,0 +1,344 @@
+{
+	"tags": [
+		{
+			"color": "",
+			"description": "Effets de profondeur et perspective 2.5D.",
+			"emoji": "🧊",
+			"id": "2.5d",
+			"label": "2.5D",
+			"parents": [
+				"visuel",
+				"caméra"
+			]
+		},
+		{
+			"color": "",
+			"description": "Éléments liés au personnage alien.",
+			"emoji": "👽",
+			"id": "alien",
+			"label": "Alien",
+			"parents": [
+				"avatar"
+			]
+		},
+		{
+			"color": "",
+			"description": "Points d'intérêt et repères sur la carte.",
+			"emoji": "⚓",
+			"id": "ancre",
+			"label": "Ancre",
+			"parents": [
+				"monde"
+			]
+		},
+		{
+			"color": "",
+			"description": "Systèmes utilisant des ancres du monde.",
+			"emoji": "⚓",
+			"id": "ancres",
+			"label": "Ancres",
+			"parents": [
+				"ancre",
+				"monde"
+			]
+		},
+		{
+			"color": "",
+			"description": "Apparence et représentation du joueur.",
+			"emoji": "🧑‍🚀",
+			"id": "avatar",
+			"label": "Avatar",
+			"parents": [
+				"visuel",
+				"gameplay"
+			]
+		},
+		{
+			"color": "",
+			"description": "Éléments du campement ou du vaisseau de base.",
+			"emoji": "🛸",
+			"id": "base",
+			"label": "Base",
+			"parents": [
+				"monde"
+			]
+		},
+		{
+			"color": "",
+			"description": "Environnements et écosystèmes planétaires.",
+			"emoji": "🗺️",
+			"id": "biome",
+			"label": "Biome",
+			"parents": [
+				"monde"
+			]
+		},
+		{
+			"color": "#7fd4ff",
+			"description": "Contrôle, rotation et effets de caméra.",
+			"emoji": "📷",
+			"id": "caméra",
+			"label": "Caméra",
+			"parents": [
+				"visuel"
+			]
+		},
+		{
+			"color": "#ff6e7a",
+			"description": "Tirs, projectiles et affrontements.",
+			"emoji": "⚔️",
+			"id": "combat",
+			"label": "Combat",
+			"parents": [
+				"gameplay"
+			]
+		},
+		{
+			"color": "",
+			"description": "Commandes, saisie joueur et ergonomie.",
+			"emoji": "🎛️",
+			"id": "contrôles",
+			"label": "Contrôles",
+			"parents": [
+				"gameplay",
+				"systeme"
+			]
+		},
+		{
+			"color": "",
+			"description": "Recettes et assemblage d'éléments.",
+			"emoji": "⚗️",
+			"id": "craft",
+			"label": "Craft",
+			"parents": [
+				"gameplay"
+			]
+		},
+		{
+			"color": "",
+			"description": "Cristaux et gemmes énergétiques.",
+			"emoji": "💎",
+			"id": "cristal",
+			"label": "Cristal",
+			"parents": [
+				"minéral",
+				"ressource"
+			]
+		},
+		{
+			"color": "",
+			"description": "Contenu de démonstration ou de test.",
+			"emoji": "🧪",
+			"id": "démo",
+			"label": "Démo",
+			"parents": [
+				"systeme"
+			]
+		},
+		{
+			"color": "",
+			"description": "Objets ou modules dédiés aux extensions HTML.",
+			"emoji": "🧩",
+			"id": "extension",
+			"label": "Extension",
+			"parents": [
+				"systeme"
+			]
+		},
+		{
+			"color": "#5ce68a",
+			"description": "Plantes et végétation des biomes.",
+			"emoji": "🌿",
+			"id": "flore",
+			"label": "Flore",
+			"parents": [
+				"monde",
+				"biome"
+			]
+		},
+		{
+			"color": "#4ce0a8",
+			"description": "Mécaniques de jeu, interactions, craft et mini-jeux.",
+			"emoji": "🎮",
+			"id": "gameplay",
+			"label": "Gameplay",
+			"parents": []
+		},
+		{
+			"color": "",
+			"description": "Zone centrale et interfaces principales.",
+			"emoji": "🏛️",
+			"id": "hub",
+			"label": "Hub",
+			"parents": [
+				"base",
+				"gameplay"
+			]
+		},
+		{
+			"color": "",
+			"description": "Entités contrôlées par le joueur.",
+			"emoji": "🕹️",
+			"id": "joueur",
+			"label": "Joueur",
+			"parents": [
+				"avatar",
+				"gameplay"
+			]
+		},
+		{
+			"color": "",
+			"description": "Animation par points d'articulation vectoriels.",
+			"emoji": "📌",
+			"id": "marionnette",
+			"label": "Marionnette",
+			"parents": [
+				"visuel"
+			]
+		},
+		{
+			"color": "",
+			"description": "Séquences de mini-jeu embarquées.",
+			"emoji": "🎲",
+			"id": "minijeu",
+			"label": "Mini-jeu",
+			"parents": [
+				"minigd",
+				"gameplay"
+			]
+		},
+		{
+			"color": "#45c4ff",
+			"description": "Mini-jeux intégrés MiniGD.",
+			"emoji": "🕹️",
+			"id": "minigd",
+			"label": "MiniGD",
+			"parents": [
+				"gameplay",
+				"systeme"
+			]
+		},
+		{
+			"color": "",
+			"description": "Roches, minerais et cristaux.",
+			"emoji": "🪨",
+			"id": "minéral",
+			"label": "Minéral",
+			"parents": [
+				"monde",
+				"ressource"
+			]
+		},
+		{
+			"color": "#5cc8ff",
+			"description": "Biomes, ancres, ressources et éléments de l'univers.",
+			"emoji": "🌍",
+			"id": "monde",
+			"label": "Monde",
+			"parents": []
+		},
+		{
+			"color": "",
+			"description": "Plans défilants en profondeur.",
+			"emoji": "🏔️",
+			"id": "parallaxe",
+			"label": "Parallaxe",
+			"parents": [
+				"visuel",
+				"caméra"
+			]
+		},
+		{
+			"color": "",
+			"description": "Portails de transition ou d'ancre.",
+			"emoji": "🌀",
+			"id": "portail",
+			"label": "Portail",
+			"parents": [
+				"ancre",
+				"transition"
+			]
+		},
+		{
+			"color": "",
+			"description": "Déclencheurs et visuels basés sur la distance.",
+			"emoji": "📡",
+			"id": "proximité",
+			"label": "Proximité",
+			"parents": [
+				"gameplay",
+				"ancre"
+			]
+		},
+		{
+			"color": "#ffd166",
+			"description": "Ressources récoltables ou craftables.",
+			"emoji": "📦",
+			"id": "ressource",
+			"label": "Ressource",
+			"parents": [
+				"monde",
+				"gameplay"
+			]
+		},
+		{
+			"color": "#f5b84c",
+			"description": "Structure, transitions, extensions et exemples techniques.",
+			"emoji": "⚙️",
+			"id": "systeme",
+			"label": "Système",
+			"parents": []
+		},
+		{
+			"color": "",
+			"description": "Action de tir et projectiles.",
+			"emoji": "🔫",
+			"id": "tir",
+			"label": "Tir",
+			"parents": [
+				"combat"
+			]
+		},
+		{
+			"color": "",
+			"description": "Passages entre scènes, modes ou mini-jeux.",
+			"emoji": "🔀",
+			"id": "transition",
+			"label": "Transition",
+			"parents": [
+				"systeme"
+			]
+		},
+		{
+			"color": "",
+			"description": "Vaisseau du joueur et ses systèmes.",
+			"emoji": "🚀",
+			"id": "vaisseau",
+			"label": "Vaisseau",
+			"parents": [
+				"base",
+				"monde"
+			]
+		},
+		{
+			"color": "#b97bff",
+			"description": "Rendu graphique, caméra, animations et avatar.",
+			"emoji": "🎨",
+			"id": "visuel",
+			"label": "Visuel",
+			"parents": []
+		},
+		{
+			"color": "",
+			"description": "Éléments chimiques, ressources et recettes.",
+			"emoji": "🧪",
+			"id": "éléments",
+			"label": "Éléments",
+			"parents": [
+				"craft",
+				"ressource"
+			]
+		}
+	],
+	"version": 1
+}

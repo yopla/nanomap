@@ -1,0 +1,22 @@
+{
+	"activeScenarioId": "decouverte_progressive",
+	"scenarios": [
+		{
+			"description": "Scénario principal migré depuis la configuration racine du projet.",
+			"exported": true,
+			"icon": "🌌",
+			"id": "base",
+			"isBase": true,
+			"name": "Campagne de base"
+		},
+		{
+			"description": "Campagne évolutive en 13 étapes avec ancres largement espacées et guidage automatique par Boussole Bis longue portée : récolte, assemblage, ancres vectorielles & feuilles de sprites, personnalisation, tir, vue 2.5D, mini-jeux, caméra rotative, acteurs/faune, allié JCLCN et coop P2P.",
+			"exported": true,
+			"icon": "🧭",
+			"id": "decouverte_progressive",
+			"isBase": false,
+			"name": "Odyssée de Découverte"
+		}
+	],
+	"version": 1
+}

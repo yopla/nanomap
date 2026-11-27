@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : JCLCN — Jean-Claude Lee Chan Norris</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "anchorId",
+      "label": "ID de l'ancre d'apparition",
+      "type": "anchor",
+      "default": "ancre_6",
+      "hint": "Ancre sur laquelle Jean-Claude Lee Chan Norris apparaît (par défaut ancre_6)."
+    },
+    {
+      "key": "appearRadiusM",
+      "label": "Rayon d'apparition (m)",
+      "type": "number",
+      "default": 12,
+      "min": 4,
+      "max": 30,
+      "step": 0.5,
+      "hint": "Distance à l'ancre à partir de laquelle JCLCN apparaît."
+    },
+    {
+      "key": "contactRadiusM",
+      "label": "Rayon de contact (m)",
+      "type": "number",
+      "default": 2.8,
+      "min": 1,
+      "max": 8,
+      "step": 0.2,
+      "hint": "Distance de contact avec l'ancre pour qu'il propose son aide."
+    },
+    {
+      "key": "scale",
+      "label": "Échelle du personnage",
+      "type": "number",
+      "default": 0.65,
+      "min": 0.3,
+      "max": 2.0,
+      "step": 0.05
+    },
+    {
+      "key": "aggroRadiusPx",
+      "label": "Portée de détection combat (px)",
+      "type": "number",
+      "default": 380,
+      "min": 120,
+      "max": 800,
+      "step": 20,
+      "hint": "Rayon autour du joueur dans lequel JCLCN repère et attaque les bestioles."
+    },
+    {
+      "key": "attackPower",
+      "label": "Puissance d'attaque (multiplicateur)",
+      "type": "number",
+      "default": 1.0,
+      "min": 0.3,
+      "max": 3.0,
+      "step": 0.1
+    },
+    {
+      "key": "tint",
+      "label": "Couleur de combinaison ($tint)",
+      "type": "color",
+      "default": "#f7c924"
+    }
+  ]
+}
+</script>
+<style>
+  .jclcn-modal-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .jclcn-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(46, 30, 12, 0.9), rgba(20, 26, 46, 0.94));
+    border: 1.5px solid rgba(247, 201, 36, 0.55);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.36);
+  }
+  .jclcn-preview-box {
+    width: 82px;
+    height: 82px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    background: radial-gradient(circle at 50% 42%, rgba(247, 201, 36, 0.22), rgba(10, 14, 26, 0.92));
+    border: 1.5px solid rgba(247, 201, 36, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .jclcn-hero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+  .jclcn-hero-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffd32a;
+    letter-spacing: 0.2px;
+  }
+  .jclcn-hero-quote {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.42;
+    color: #eef6ff;
+    font-style: italic;
+  }
+  .jclcn-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .jclcn-pill {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(247, 201, 36, 0.14);
+    border: 1px solid rgba(247, 201, 36, 0.42);
+    color: #ffe885;
+  }
+  .jclcn-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+    justify-content: flex-end;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .jclcn-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    padding: 9px 15px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: transform 0.12s ease, filter 0.14s ease, background 0.14s ease;
+  }
+  .jclcn-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .jclcn-btn:active { transform: scale(0.97); }
+  .jclcn-btn-primary {
+    background: linear-gradient(135deg, #f7c924, #ff9a3c);
+    color: #1a1204;
+    border-color: #fff0a8;
+  }
+  .jclcn-btn-danger {
+    background: rgba(168, 36, 46, 0.9);
+    color: #fff2f2;
+    border-color: rgba(255, 118, 118, 0.65);
+  }
+  .jclcn-btn-secondary {
+    background: rgba(34, 48, 78, 0.92);
+    color: #dceeff;
+    border-color: rgba(112, 188, 240, 0.55);
+  }
+  @media (max-width: 520px) {
+    .jclcn-preview-box {
+      width: 68px;
+      height: 68px;
+    }
+    .jclcn-actions .jclcn-btn {
+      flex: 1 1 130px;
+      min-height: 44px;
+      text-align: center;
+    }
+  }
+</style>
+<script>
+// Extension Assemblage : jclcn.html
+// Compagnon martial Jean-Claude Lee Chan Norris lié à l'ancre 6 :
+// - Apparaît à l'approche de l'ancre 6 et propose son aide au contact.
+// - Suit le joueur et attaque toutes les bestioles (poulpes, puyos, tentacules) avec 7 animations de combat.
+// - Cliquer sur lui permet de le renvoyer à son ancre.
+(() => {
+  const FILENAME = "jclcn.html";
+
+  // Identifiants littéraux du pack visuel/animations (utilisés aussi par VisualsExporter)
+  const VISUAL_SKIN = "jclcn_skin";
+  const VISUAL_MEDALLION = "jclcn_medaillon_ancre";
+  const ANIM_HEAD = "jclcn_tete";
+  const ANIM_IDLE = "jclcn_idle";
+  const ANIM_RUN = "jclcn_run";
+
+  const COMBAT_MOVES = [
+    {
+      id: "jclcn_roundhouse_kick",
+      label: "Roundhouse Kick (Chuck)",
+      frames: 36,
+      duration: 0.56,
+      dmg: 28,
+      aoeRadius: 56,
+      hitFracs: [0.36],
+      lunge: 22,
+      cry: "CHUCK KICK !",
+      color: "#ffd32a",
+    },
+    {
+      id: "jclcn_grand_ecart_kick",
+      label: "Grand Écart Volant (JCVD)",
+      frames: 44,
+      duration: 0.68,
+      dmg: 32,
+      aoeRadius: 72,
+      hitFracs: [0.30, 0.62],
+      lunge: 14,
+      cry: "AWARE !!",
+      color: "#48dbfb",
+    },
+    {
+      id: "jclcn_rafale_poings",
+      label: "Rafale de Poings (Bruce Lee)",
+      frames: 30,
+      duration: 0.52,
+      dmg: 12,
+      aoeRadius: 48,
+      hitFracs: [0.16, 0.38, 0.60, 0.84],
+      lunge: 10,
+      cry: "WATAAH !",
+      color: "#ff9a3c",
+    },
+    {
+      id: "jclcn_nunchaku_furie",
+      label: "Furie Nunchaku",
+      frames: 36,
+      duration: 0.58,
+      dmg: 22,
+      aoeRadius: 60,
+      hitFracs: [0.28, 0.68],
+      lunge: 16,
+      cry: "NUNCHA-FURY !",
+      color: "#ffd32a",
+    },
+    {
+      id: "jclcn_uppercut_dragon",
+      label: "Uppercut du Dragon",
+      frames: 40,
+      duration: 0.62,
+      dmg: 34,
+      aoeRadius: 54,
+      hitFracs: [0.40],
+      lunge: 24,
+      cry: "DRAGON PUNCH !",
+      color: "#ff6b35",
+    },
+    {
+      id: "jclcn_balayage_tourbillon",
+      label: "Tourbillon Balayage (Jackie)",
+      frames: 38,
+      duration: 0.60,
+      dmg: 26,
+      aoeRadius: 68,
+      hitFracs: [0.28, 0.65],
+      lunge: 12,
+      cry: "JACKIE SPIN !",
+      color: "#7be3ff",
+    },
+    {
+      id: "jclcn_coup_de_tete_barbu",
+      label: "Onde de Barbe (Super Chuck)",
+      frames: 42,
+      duration: 0.66,
+      dmg: 38,
+      aoeRadius: 78,
+      hitFracs: [0.48],
+      lunge: 20,
+      cry: "BARBE SISMIQUE !",
+      color: "#ffd32a",
+    },
+  ];
+
+  const OFFER_QUOTES = [
+    "« Un vrai guerrier ne fuit jamais les marais... Il fait le grand écart entre deux poulpes. »",
+    "« Besoin d'un coup de pied retourné ? Je suis 100% aware et ma barbe n'a peur de rien ! »",
+    "« Sois comme l'eau, mon ami… mais avec un roundhouse kick à Mach 3. »",
+  ];
+
+  const COMPANION_QUOTES = [
+    "« Toujours prêt à distribuer des coups de pied retournés, partenaire ! »",
+    "« Ces bestioles ne savent pas qu'on ne résiste pas à la double garde Wing Chun-Texas ! »",
+    "« Tu veux que je reste en renfort ou que je retourne garder l'ancre ? »",
+  ];
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function escapeHtml(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function injectStyleOnce() {
+    const styleEl = document.querySelector("style");
+    if (!styleEl || !styleEl.textContent) return null;
+    const stId = "ext-style-jclcn";
+    const prev = document.getElementById(stId);
+    if (prev) prev.remove();
+    const st = document.createElement("style");
+    st.id = stId;
+    st.textContent = styleEl.textContent;
+    document.head.appendChild(st);
+    return () => st.remove();
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host) {
+      const canvas = host.game.canvas;
+      if (!canvas) return;
+
+      const anchorId = String(host.ui.getConfig("anchorId", "ancre_6") || "ancre_6").trim();
+      const appearRadiusM = clamp(Number(host.ui.getConfig("appearRadiusM", 12)) || 12, 4, 30);
+      const contactRadiusM = clamp(Number(host.ui.getConfig("contactRadiusM", 2.8)) || 2.8, 1, 8);
+      const charScale = clamp(Number(host.ui.getConfig("scale", 0.65)) || 0.65, 0.3, 2.0);
+      const aggroRadiusPx = clamp(Number(host.ui.getConfig("aggroRadiusPx", 380)) || 380, 120, 800);
+      const attackPower = clamp(Number(host.ui.getConfig("attackPower", 1.0)) || 1.0, 0.3, 3.0);
+      const tint = String(host.ui.getConfig("tint", "#f7c924") || "#f7c924");
+
+      const removeCss = injectStyleOnce();
+      if (removeCss) host.registerCleanup(removeCss);
+
+      // Charge le pack visuel/animations JCLCN dès l'activation
+      const av = window.AssemblageVisuals;
+      if (av) {
+        av.loadPack("jclcn");
+        av.ensureVisual(VISUAL_SKIN);
+        av.ensureVisual(VISUAL_MEDALLION);
+        av.ensureAnimation(ANIM_HEAD);
+        av.ensureAnimation(ANIM_IDLE);
+        av.ensureAnimation(ANIM_RUN);
+        for (const mv of COMBAT_MOVES) av.ensureAnimation(mv.id);
+      }
+
+      const saved = host.state.get() || {};
+      let koCount = Math.max(0, Number(saved.koCount) || 0);
+      let state = saved.recruited ? "following" : "at_anchor_hidden"; // at_anchor_hidden | at_anchor_visible | following | returning
+
+      const initAnchor = host.game.getAnchor(anchorId);
+      const initAlien = host.game.alien;
+      let charX = state === "following" && initAlien
+        ? initAlien.x - 56
+        : (initAnchor ? initAnchor.x : 0);
+      let charY = state === "following" && initAlien
+        ? initAlien.y + 18
+        : (initAnchor ? initAnchor.y : 0);
+      let facingX = 1;
+      let appearT = state === "following" ? 1 : 0;
+      let isMoving = false;
+      let contactCooldown = false;
+      let modalOpenNow = false;
+      let lastBiomeId = host.game.activeBiomeId;
+
+      // État combat
+      let activeMove = null;
+      let moveElapsed = 0;
+      let moveHitMask = [];
+      let lastMoveIdx = -1;
+      let attackCooldown = 0;
+      let attackLockRef = null;
+      let returnTimer = 0;
+      let animClock = 0;
+
+      // Hitbox écran (mise à jour par le rendu 2D et 2.5D)
+      let lastScreenX = -9999;
+      let lastScreenY = -9999;
+      let lastScreenRadius = 0;
+      let isHovering = false;
+      let lastTouchMs = 0;
+
+      // Effets visuels de combat (monde)
+      const shockwaves = [];
+      const sparks = [];
+      const floatingTexts = [];
+
+      function saveState(recruitedFlag, persist = true) {
+        host.state.set({ recruited: Boolean(recruitedFlag), koCount }, persist);
+      }
+
+      function spawnShockwave(x, y, maxR, color, lineWidth = 4) {
+        shockwaves.push({ x, y, r: 8, maxR, color, lineWidth, life: 0.34, maxLife: 0.34 });
+      }
+
+      function spawnSparks(x, y, color, count = 12) {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const spd = 75 + Math.random() * 210;
+          const life = 0.22 + Math.random() * 0.24;
+          sparks.push({
+            x,
+            y,
+            vx: Math.cos(a) * spd,
+            vy: Math.sin(a) * spd,
+            r: 2.2 + Math.random() * 3.4,
+            color,
+            life,
+            maxLife: life,
+          });
+        }
+      }
+
+      function spawnFloatingText(x, y, text, color) {
+        floatingTexts.push({
+          x,
+          y,
+          vy: -54,
+          text,
+          color: color || "#ffd32a",
+          life: 0.72,
+          maxLife: 0.72,
+        });
+      }
+
+      function collectCreatures(activeGen) {
+        if (!activeGen) return [];
+        if (typeof activeGen.getCreatures === "function") {
+          return activeGen.getCreatures() || [];
+        }
+        if (typeof activeGen.getChunkStates !== "function") return [];
+        const cs = activeGen.getChunkStates();
+        if (!cs) return [];
+        const list = [];
+        for (const st of cs.values()) {
+          if (Array.isArray(st.octopuses)) {
+            for (const o of st.octopuses) {
+              list.push({ kind: "octopus", ref: o, chunkState: st, x: o.x, y: o.y, r: o.bodyR || 20, hp: o.hp, maxHp: o.maxHp, hostile: true });
+            }
+          }
+          if (Array.isArray(st.puyos)) {
+            for (const p of st.puyos) {
+              list.push({ kind: "puyo", ref: p, chunkState: st, x: p.x, y: p.y, r: p.r || 15, hp: p.hp ?? 30, maxHp: p.maxHp ?? 30, hostile: false });
+            }
+          }
+          if (Array.isArray(st.tentacles)) {
+            for (const t of st.tentacles) {
+              list.push({ kind: "tentacle", ref: t, chunkState: st, x: t.x, y: t.y, r: 20 * (t.scale || 1), hp: t.hp ?? 45, maxHp: t.maxHp ?? 45, hostile: Boolean(t.canSpit) });
+            }
+          }
+        }
+        return list;
+      }
+
+      function applyCreatureDamage(activeGen, creature, dmg, kx, ky) {
+        if (activeGen && typeof activeGen.damageCreature === "function") {
+          return activeGen.damageCreature(creature, dmg, kx, ky);
+        }
+        if (activeGen && typeof activeGen.onProjectileHit === "function") {
+          const hit = activeGen.onProjectileHit(creature.x, creature.y, 14, host.game.getBiomeGeneratorEnv());
+          return { hit, killed: false };
+        }
+        return { hit: false, killed: false };
+      }
+
+      function pickCombatMove() {
+        let idx = Math.floor(Math.random() * COMBAT_MOVES.length);
+        if (COMBAT_MOVES.length > 1 && idx === lastMoveIdx) {
+          idx = (idx + 1 + Math.floor(Math.random() * (COMBAT_MOVES.length - 1))) % COMBAT_MOVES.length;
+        }
+        lastMoveIdx = idx;
+        return COMBAT_MOVES[idx];
+      }
+
+      function startAttackMove(targetCreature) {
+        const mv = pickCombatMove();
+        activeMove = mv;
+        moveElapsed = 0;
+        moveHitMask = mv.hitFracs.map(() => false);
+        attackLockRef = targetCreature ? targetCreature.ref : null;
+        if (targetCreature && Math.abs(targetCreature.x - charX) > 2) {
+          facingX = targetCreature.x >= charX ? 1 : -1;
+        }
+        spawnFloatingText(charX, charY - 46 * charScale, mv.cry, mv.color);
+        if (window.AssemblageP2PBus && typeof window.AssemblageP2PBus.emit === "function") {
+          window.AssemblageP2PBus.emit("jclcn_move", {
+            moveId: mv.id,
+            frames: mv.frames,
+            duration: mv.duration,
+            x: charX,
+            y: charY,
+            facingX,
+            cry: mv.cry,
+            color: mv.color,
+            aoeRadius: mv.aoeRadius,
+            scale: charScale,
+            tint,
+          });
+        }
+      }
+
+      function executeAttackHit(mv, activeGen, creatures) {
+        const lungeX = facingX * mv.lunge * 0.45;
+        charX += lungeX;
+
+        const strikeX = charX + facingX * 22 * charScale;
+        const strikeY = charY;
+        const aoe = mv.aoeRadius;
+        const dmg = Math.round(mv.dmg * attackPower);
+
+        spawnShockwave(strikeX, strikeY, aoe * 1.08, mv.color, 3.6);
+        spawnSparks(strikeX, strikeY - 10, mv.color, 10);
+
+        if (activeGen && typeof activeGen.deflectProjectilesAt === "function") {
+          const deflected = activeGen.deflectProjectilesAt(charX, charY, aoe + 16);
+          if (deflected > 0) {
+            spawnFloatingText(charX, charY - 62 * charScale, "PARADE !", "#ffffff");
+          }
+        }
+
+        let anyKilled = false;
+        let hitCount = 0;
+        for (const c of creatures) {
+          const dStrike = Math.hypot(c.x - strikeX, c.y - strikeY);
+          const dSelf = Math.hypot(c.x - charX, c.y - charY);
+          if (Math.min(dStrike, dSelf) <= aoe + c.r) {
+            const kx = c.x - charX;
+            const ky = c.y - charY;
+            const res = applyCreatureDamage(activeGen, c, dmg, kx, ky);
+            if (res && res.hit) {
+              hitCount++;
+              spawnSparks(c.x, c.y - 12, mv.color, 7);
+              if (res.killed) {
+                anyKilled = true;
+                koCount++;
+                spawnShockwave(c.x, c.y, 44, "#ffffff", 4.5);
+                spawnFloatingText(c.x, c.y - 34, "K.O. !", "#ffd32a");
+              }
+            }
+          }
+        }
+        if (hitCount > 0) {
+          saveState(state === "following", anyKilled);
+        }
+      }
+
+      function renderModalPreviewCanvas(bodyEl) {
+        const cv = bodyEl.querySelector("#jclcn-modal-preview");
+        if (!cv || !window.AssemblageVisuals) return;
+        const c2 = cv.getContext("2d");
+        if (!c2) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        cv.width = 82 * dpr;
+        cv.height = 82 * dpr;
+        c2.scale(dpr, dpr);
+        c2.clearRect(0, 0, 82, 82);
+        const drew = window.AssemblageVisuals.drawVisual(c2, VISUAL_SKIN, 41, 41, { scale: 0.72, tint, direct: true });
+        if (!drew) {
+          window.AssemblageVisuals.ensureVisual(VISUAL_SKIN).then(() => {
+            c2.clearRect(0, 0, 82, 82);
+            window.AssemblageVisuals.drawVisual(c2, VISUAL_SKIN, 41, 41, { scale: 0.72, tint, direct: true });
+          });
+        }
+      }
+
+      function recruitJclcn() {
+        state = "following";
+        activeMove = null;
+        attackCooldown = 0.15;
+        appearT = 1;
+        saveState(true, true);
+        spawnShockwave(charX, charY, 68, "#ffd32a", 4.5);
+        spawnSparks(charX, charY - 12, "#ffd32a", 18);
+        spawnFloatingText(charX, charY - 48, "POUR L'HONNEUR !", "#ffd32a");
+        host.ui.showToast("🥋 Jean-Claude Lee Chan Norris combat à vos côtés !");
+      }
+
+      function sendBackToAnchor() {
+        state = "returning";
+        activeMove = null;
+        attackLockRef = null;
+        returnTimer = 0;
+        contactCooldown = true;
+        saveState(false, true);
+        spawnShockwave(charX, charY, 54, "#7be3ff", 3.5);
+        spawnFloatingText(charX, charY - 46, "À PLUS TARD !", "#7be3ff");
+        host.ui.showToast("🥋 JCLCN retourne veiller sur l'ancre 6 !");
+      }
+
+      function openOfferModal() {
+        if (modalOpenNow || host.game.isAnyUIOpen()) return;
+        modalOpenNow = true;
+        const quote = OFFER_QUOTES[Math.floor(Math.random() * OFFER_QUOTES.length)];
+        const html = `
+          <div class="jclcn-modal-wrap">
+            <div class="jclcn-hero">
+              <div class="jclcn-preview-box">
+                <canvas id="jclcn-modal-preview" width="82" height="82"></canvas>
+              </div>
+              <div class="jclcn-hero-info">
+                <div class="jclcn-hero-name">🥋 Jean-Claude Lee Chan Norris</div>
+                <p class="jclcn-hero-quote">${escapeHtml(quote)}</p>
+              </div>
+            </div>
+            <div class="jclcn-stats-row">
+              <span class="jclcn-pill">🦵 7 techniques martiales</span>
+              <span class="jclcn-pill">🐙 Chasse toutes les bestioles</span>
+              <span class="jclcn-pill">🏆 K.O. cumulés : ${koCount}</span>
+            </div>
+            <div class="jclcn-actions">
+              <button type="button" class="jclcn-btn jclcn-btn-secondary" data-jclcn-act="later">Plus tard</button>
+              <button type="button" class="jclcn-btn jclcn-btn-primary" data-jclcn-act="accept">🥋 Accepter son aide</button>
+            </div>
+          </div>
+        `;
+        host.ui.showModal({
+          icon: "🥋",
+          title: "Jean-Claude Lee Chan Norris",
+          html,
+          onMount(bodyEl) {
+            renderModalPreviewCanvas(bodyEl);
+            const btnAccept = bodyEl.querySelector('[data-jclcn-act="accept"]');
+            const btnLater = bodyEl.querySelector('[data-jclcn-act="later"]');
+            if (btnAccept) {
+              btnAccept.addEventListener("click", () => {
+                modalOpenNow = false;
+                host.ui.closeModal();
+                recruitJclcn();
+              });
+            }
+            if (btnLater) {
+              btnLater.addEventListener("click", () => {
+                modalOpenNow = false;
+                host.ui.closeModal();
+              });
+            }
+          },
+        });
+        setTimeout(() => { modalOpenNow = false; }, 350);
+      }
+
+      function openCompanionModal() {
+        if (modalOpenNow || host.game.isAnyUIOpen()) return;
+        modalOpenNow = true;
+        const quote = COMPANION_QUOTES[Math.floor(Math.random() * COMPANION_QUOTES.length)];
+        const html = `
+          <div class="jclcn-modal-wrap">
+            <div class="jclcn-hero">
+              <div class="jclcn-preview-box">
+                <canvas id="jclcn-modal-preview" width="82" height="82"></canvas>
+              </div>
+              <div class="jclcn-hero-info">
+                <div class="jclcn-hero-name">🥋 JCLCN — En mission avec vous</div>
+                <p class="jclcn-hero-quote">${escapeHtml(quote)}</p>
+              </div>
+            </div>
+            <div class="jclcn-stats-row">
+              <span class="jclcn-pill">🏆 Bestioles vaincues : ${koCount}</span>
+              <span class="jclcn-pill">⚔️ Mode : Garde du corps offensif</span>
+            </div>
+            <div class="jclcn-actions">
+              <button type="button" class="jclcn-btn jclcn-btn-secondary" data-jclcn-act="kata">🥋 Faire un kata</button>
+              <button type="button" class="jclcn-btn jclcn-btn-danger" data-jclcn-act="dismiss">⚓ Repartir à l'ancre</button>
+              <button type="button" class="jclcn-btn jclcn-btn-primary" data-jclcn-act="stay">🥊 Continuer à m'aider</button>
+            </div>
+          </div>
+        `;
+        host.ui.showModal({
+          icon: "🥋",
+          title: "Compagnon JCLCN",
+          html,
+          onMount(bodyEl) {
+            renderModalPreviewCanvas(bodyEl);
+            const btnKata = bodyEl.querySelector('[data-jclcn-act="kata"]');
+            const btnDismiss = bodyEl.querySelector('[data-jclcn-act="dismiss"]');
+            const btnStay = bodyEl.querySelector('[data-jclcn-act="stay"]');
+            if (btnKata) {
+              btnKata.addEventListener("click", () => {
+                modalOpenNow = false;
+                host.ui.closeModal();
+                startAttackMove(null);
+              });
+            }
+            if (btnDismiss) {
+              btnDismiss.addEventListener("click", () => {
+                modalOpenNow = false;
+                host.ui.closeModal();
+                sendBackToAnchor();
+              });
+            }
+            if (btnStay) {
+              btnStay.addEventListener("click", () => {
+                modalOpenNow = false;
+                host.ui.closeModal();
+              });
+            }
+          },
+        });
+        setTimeout(() => { modalOpenNow = false; }, 350);
+      }
+
+      function isHitCharacter(sx, sy) {
+        if (state === "at_anchor_hidden" || appearT < 0.25) return false;
+        if (lastScreenRadius <= 0) return false;
+        return Math.hypot(sx - lastScreenX, sy - lastScreenY) <= lastScreenRadius;
+      }
+
+      function handleCharacterClick() {
+        if (state === "following") {
+          openCompanionModal();
+        } else if (state === "at_anchor_visible") {
+          openOfferModal();
+        }
+      }
+
+      // Capture-phase listeners pour cliquer/toucher JCLCN sans déplacer l'alien
+      const onTouchStartCapture = (e) => {
+        lastTouchMs = performance.now();
+        if (host.game.isAnyUIOpen()) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          const pos = host.game.getCanvasPos(t.clientX, t.clientY);
+          if (isHitCharacter(pos.x, pos.y)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            host.game.stopMovement();
+            handleCharacterClick();
+            return;
+          }
+        }
+      };
+
+      const onMouseDownCapture = (e) => {
+        if (e.button !== 0) return;
+        if (performance.now() - lastTouchMs < 500) return;
+        if (host.game.isAnyUIOpen()) return;
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        if (isHitCharacter(pos.x, pos.y)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          host.game.stopMovement();
+          handleCharacterClick();
+        }
+      };
+
+      const onMouseMoveHover = (e) => {
+        if (performance.now() - lastTouchMs < 500) return;
+        if (host.game.isAnyUIOpen()) {
+          if (isHovering) {
+            isHovering = false;
+            canvas.style.cursor = "";
+          }
+          return;
+        }
+        const pos = host.game.getCanvasPos(e.clientX, e.clientY);
+        const hit = isHitCharacter(pos.x, pos.y);
+        if (hit !== isHovering) {
+          isHovering = hit;
+          canvas.style.cursor = hit ? "pointer" : "";
+        }
+      };
+
+      canvas.addEventListener("touchstart", onTouchStartCapture, { capture: true, passive: false });
+      canvas.addEventListener("mousedown", onMouseDownCapture, true);
+      window.addEventListener("mousemove", onMouseMoveHover);
+
+      host.registerCleanup(() => {
+        canvas.removeEventListener("touchstart", onTouchStartCapture, true);
+        canvas.removeEventListener("mousedown", onMouseDownCapture, true);
+        window.removeEventListener("mousemove", onMouseMoveHover);
+        if (isHovering) canvas.style.cursor = "";
+      });
+
+      // Mise à jour IA, proximité ancre, suivi et combat
+      host.hooks.after("update", (_, dt) => {
+        const safeDt = Math.max(0.001, Math.min(dt || 0.016, 0.05));
+        animClock += safeDt;
+
+        const alien = host.game.alien;
+        const anchor = host.game.getAnchor(anchorId);
+        const distM = host.game.getAnchorDistance(anchorId);
+
+        if (host.game.activeBiomeId !== lastBiomeId) {
+          lastBiomeId = host.game.activeBiomeId;
+          if (state === "following" && alien) {
+            charX = alien.x - 56;
+            charY = alien.y + 16;
+            activeMove = null;
+          } else if (anchor) {
+            charX = anchor.x;
+            charY = anchor.y;
+          }
+        }
+
+        // Mise à jour des VFX
+        for (let i = shockwaves.length - 1; i >= 0; i--) {
+          shockwaves[i].life -= safeDt;
+          if (shockwaves[i].life <= 0) shockwaves.splice(i, 1);
+        }
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const sp = sparks[i];
+          sp.x += sp.vx * safeDt;
+          sp.y += sp.vy * safeDt;
+          sp.vx *= Math.exp(-4.5 * safeDt);
+          sp.vy *= Math.exp(-4.5 * safeDt);
+          sp.life -= safeDt;
+          if (sp.life <= 0) sparks.splice(i, 1);
+        }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y += ft.vy * safeDt;
+          ft.vy *= Math.exp(-2.8 * safeDt);
+          ft.life -= safeDt;
+          if (ft.life <= 0) floatingTexts.splice(i, 1);
+        }
+
+        if (state === "at_anchor_hidden" || state === "at_anchor_visible") {
+          isMoving = false;
+          if (anchor) {
+            charX = anchor.x;
+            charY = anchor.y;
+          }
+          if (alien) {
+            facingX = alien.x >= charX ? 1 : -1;
+          }
+          if (distM !== null && distM <= appearRadiusM) {
+            state = "at_anchor_visible";
+            appearT = Math.min(1, appearT + safeDt * 3.0);
+          } else {
+            appearT = Math.max(0, appearT - safeDt * 3.2);
+            if (appearT <= 0.01) state = "at_anchor_hidden";
+          }
+
+          if (contactCooldown && (distM === null || distM > contactRadiusM + 1.8)) {
+            contactCooldown = false;
+          }
+          if (
+            state === "at_anchor_visible" &&
+            !contactCooldown &&
+            distM !== null &&
+            distM <= contactRadiusM &&
+            !host.game.isAnyUIOpen()
+          ) {
+            contactCooldown = true;
+            host.game.stopMovement();
+            openOfferModal();
+          }
+          return;
+        }
+
+        if (state === "returning") {
+          returnTimer += safeDt;
+          isMoving = true;
+          if (anchor) {
+            const dx = anchor.x - charX;
+            const dy = anchor.y - charY;
+            const dist = Math.hypot(dx, dy);
+            if (Math.abs(dx) > 2) facingX = dx >= 0 ? 1 : -1;
+            if (dist < 18 || returnTimer > 1.8) {
+              charX = anchor.x;
+              charY = anchor.y;
+              isMoving = false;
+              contactCooldown = true;
+              state = (distM !== null && distM <= appearRadiusM) ? "at_anchor_visible" : "at_anchor_hidden";
+              appearT = state === "at_anchor_visible" ? 1 : 0;
+              spawnShockwave(charX, charY, 46, "#ffd32a", 3);
+              return;
+            }
+            const spd = Math.min(460, Math.max(300, dist * 1.4));
+            charX += (dx / dist) * spd * safeDt;
+            charY += (dy / dist) * spd * safeDt;
+            if (dist > 900) {
+              appearT = Math.max(0.15, 1 - returnTimer * 1.1);
+            }
+          } else {
+            state = "at_anchor_hidden";
+            appearT = 0;
+          }
+          return;
+        }
+
+        // Mode compagnon ("following")
+        appearT = Math.min(1, appearT + safeDt * 4.0);
+        if (!alien) return;
+
+        const activeGen = host.game.getActiveBiomeGenerator();
+        const creatures = collectCreatures(activeGen);
+        if (attackCooldown > 0) attackCooldown = Math.max(0, attackCooldown - safeDt);
+
+        // Résolution du coup de combat en cours
+        if (activeMove) {
+          isMoving = false;
+          moveElapsed += safeDt;
+          const normT = clamp(moveElapsed / activeMove.duration, 0, 1);
+          for (let i = 0; i < activeMove.hitFracs.length; i++) {
+            if (!moveHitMask[i] && normT >= activeMove.hitFracs[i]) {
+              moveHitMask[i] = true;
+              executeAttackHit(activeMove, activeGen, creatures);
+            }
+          }
+          if (moveElapsed >= activeMove.duration) {
+            activeMove = null;
+            attackCooldown = 0.22;
+          }
+          return;
+        }
+
+        // Choix de la meilleure cible autour du joueur
+        let bestTarget = null;
+        let bestScore = Infinity;
+        for (const c of creatures) {
+          const dAlien = Math.hypot(c.x - alien.x, c.y - alien.y);
+          if (dAlien > aggroRadiusPx) continue;
+          const dChar = Math.hypot(c.x - charX, c.y - charY);
+          const score = dChar * 0.7 + dAlien * 0.35 - (c.hostile ? 45 : 0) - (c.ref === attackLockRef ? 35 : 0);
+          if (score < bestScore) {
+            bestScore = score;
+            bestTarget = c;
+          }
+        }
+
+        const distToAlien = Math.hypot(alien.x - charX, alien.y - charY);
+        if (distToAlien > 580) {
+          bestTarget = null;
+        }
+
+        if (bestTarget) {
+          attackLockRef = bestTarget.ref;
+          const dx = bestTarget.x - charX;
+          const dy = bestTarget.y - charY;
+          const dist = Math.hypot(dx, dy);
+          const strikeRange = (bestTarget.r || 18) + 38 * charScale;
+          if (Math.abs(dx) > 2) facingX = dx >= 0 ? 1 : -1;
+
+          if (dist <= strikeRange) {
+            isMoving = false;
+            if (attackCooldown <= 0) {
+              startAttackMove(bestTarget);
+            }
+          } else {
+            isMoving = true;
+            const dashSpd = 345;
+            charX += (dx / dist) * dashSpd * safeDt;
+            charY += (dy / dist) * dashSpd * safeDt;
+          }
+          return;
+        }
+
+        attackLockRef = null;
+
+        // Suivi du joueur
+        const sideOffset = Math.cos(alien.facing + Math.PI * 0.78) * 66;
+        const followX = alien.x + sideOffset;
+        const followY = alien.y + Math.sin(alien.facing + Math.PI * 0.78) * 66;
+        const fdx = followX - charX;
+        const fdy = followY - charY;
+        const fDist = Math.hypot(fdx, fdy);
+
+        if (fDist > 920) {
+          charX = followX;
+          charY = followY;
+          isMoving = false;
+          spawnShockwave(charX, charY, 44, "#ffd32a", 3);
+        } else if (fDist > 22) {
+          isMoving = true;
+          const followSpd = clamp(180 + fDist * 1.45, 200, 440);
+          charX += (fdx / fDist) * followSpd * safeDt;
+          charY += (fdy / fDist) * followSpd * safeDt;
+          if (Math.abs(fdx) > 2) facingX = fdx >= 0 ? 1 : -1;
+        } else {
+          isMoving = false;
+          if (Math.abs(alien.x - charX) > 4) {
+            facingX = Math.cos(alien.facing) >= 0 ? 1 : -1;
+          }
+        }
+      });
+
+      function getActiveAnimSpec() {
+        if (activeMove) {
+          const normT = clamp(moveElapsed / activeMove.duration, 0, 1);
+          return {
+            id: activeMove.id,
+            frame: normT * activeMove.frames,
+          };
+        }
+        return {
+          id: isMoving ? ANIM_RUN : ANIM_IDLE,
+          frame: undefined,
+        };
+      }
+
+      function drawJclcnEntity(ctx, screenX, screenY, scaleVal, alphaVal) {
+        if (!window.AssemblageVisuals) return;
+        const eased = 1 - Math.pow(1 - appearT, 3);
+        const popScale = scaleVal * (0.6 + 0.4 * eased);
+        const animSpec = getActiveAnimSpec();
+
+        // Halo interactif subtil au sol / autour quand survolé ou en attente sur l'ancre
+        if (state === "at_anchor_visible" || isHovering) {
+          ctx.save();
+          ctx.strokeStyle = isHovering ? "rgba(255, 224, 102, 0.92)" : "rgba(247, 201, 36, 0.48)";
+          ctx.lineWidth = isHovering ? 2.6 : 1.8;
+          ctx.setLineDash([6, 5]);
+          ctx.beginPath();
+          ctx.arc(screenX, screenY + 26 * popScale, 36 * popScale, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        ctx.save();
+        ctx.translate(screenX, screenY);
+        ctx.scale(facingX, 1);
+        const opts = {
+          scale: popScale,
+          tint,
+          alpha: alphaVal,
+        };
+        if (animSpec.frame !== undefined) {
+          opts.frame = animSpec.frame;
+        }
+        const drew = window.AssemblageVisuals.drawAnimation(ctx, animSpec.id, 0, 0, animClock, opts);
+        if (!drew) {
+          window.AssemblageVisuals.drawVisual(ctx, VISUAL_SKIN, 0, 0, {
+            scale: popScale,
+            tint,
+            alpha: alphaVal,
+          });
+        }
+        ctx.restore();
+
+        // Petit badge nom discret à l'ancre ou au survol
+        if (state === "at_anchor_visible" || isHovering) {
+          ctx.save();
+          const label = state === "following" ? "JCLCN (Cliquer : renvoyer)" : "Jean-Claude Lee Chan Norris";
+          ctx.font = "700 11px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.textAlign = "center";
+          const tw = ctx.measureText(label).width + 14;
+          const bx = screenX - tw * 0.5;
+          const by = screenY - 56 * popScale - 16;
+          ctx.fillStyle = "rgba(14, 18, 32, 0.85)";
+          ctx.strokeStyle = "rgba(247, 201, 36, 0.72)";
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          if (ctx.roundRect) ctx.roundRect(bx, by, tw, 19, 8);
+          else ctx.rect(bx, by, tw, 19);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = "#ffe885";
+          ctx.fillText(label, screenX, by + 13);
+          ctx.restore();
+        }
+      }
+
+      function drawCombatVfx2D(ctx) {
+        for (const sw of shockwaves) {
+          const p = 1 - clamp(sw.life / sw.maxLife, 0, 1);
+          const r = sw.r + (sw.maxR - sw.r) * (1 - Math.pow(1 - p, 2));
+          ctx.save();
+          ctx.globalAlpha = (1 - p) * 0.88;
+          ctx.strokeStyle = sw.color;
+          ctx.lineWidth = Math.max(1, sw.lineWidth * (1 - p * 0.65));
+          ctx.beginPath();
+          ctx.arc(sw.x, sw.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+        for (const sp of sparks) {
+          const t = clamp(sp.life / sp.maxLife, 0, 1);
+          ctx.save();
+          ctx.globalAlpha = t * 0.92;
+          ctx.fillStyle = sp.color;
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, Math.max(0.8, sp.r * t), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        for (const ft of floatingTexts) {
+          const t = clamp(ft.life / ft.maxLife, 0, 1);
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, t * 1.4);
+          ctx.font = "900 13px -apple-system, BlinkMacSystemFont, sans-serif";
+          ctx.textAlign = "center";
+          ctx.strokeStyle = "rgba(10, 12, 20, 0.92)";
+          ctx.lineWidth = 3.5;
+          ctx.strokeText(ft.text, ft.x, ft.y);
+          ctx.fillStyle = ft.color;
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+      }
+
+      // Rendu 2.5D (billboards triés en profondeur Y)
+      const sourceKey = `${FILENAME}:companion`;
+      window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+      window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+        if (!window.AssemblageVisuals) return;
+
+        if (state !== "at_anchor_hidden" && appearT > 0.01) {
+          pushBillboard(charY, (ctx, projectPoint) => {
+            const heightZ = 34 * charScale;
+            const pt = projectPoint(charX, charY, heightZ);
+            lastScreenX = pt.x;
+            lastScreenY = pt.y;
+            lastScreenRadius = Math.max(28, 44 * charScale * pt.scale);
+            drawJclcnEntity(ctx, pt.x, pt.y, charScale * pt.scale, clamp(appearT, 0, 1));
+          }, charX);
+        }
+
+        for (const ft of floatingTexts) {
+          pushBillboard(ft.y + 4, (ctx, projectPoint) => {
+            const pt = projectPoint(ft.x, ft.y, 44);
+            const t = clamp(ft.life / ft.maxLife, 0, 1);
+            ctx.save();
+            ctx.globalAlpha = Math.min(1, t * 1.4);
+            ctx.font = `900 ${Math.max(10, Math.round(13 * pt.scale))}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.strokeStyle = "rgba(10, 12, 20, 0.92)";
+            ctx.lineWidth = 3.5;
+            ctx.strokeText(ft.text, pt.x, pt.y);
+            ctx.fillStyle = ft.color;
+            ctx.fillText(ft.text, pt.x, pt.y);
+            ctx.restore();
+          }, ft.x);
+        }
+      });
+
+      host.registerCleanup(() => {
+        if (window.Assemblage25DBillboardSources) {
+          window.Assemblage25DBillboardSources.delete(sourceKey);
+        }
+        delete window.AssemblageJclcnSync;
+      });
+
+      // Pont P2P : expose l'état live de JCLCN pour le synchroniser sur l'autre appareil
+      window.AssemblageJclcnSync = {
+        getState() {
+          return {
+            active: state === "following" || state === "returning",
+            state,
+            x: charX,
+            y: charY,
+            facingX,
+            isMoving,
+            appearT,
+            scale: charScale,
+            tint,
+            moveId: activeMove ? activeMove.id : "",
+            moveFrame: activeMove ? clamp(moveElapsed / activeMove.duration, 0, 1) * activeMove.frames : -1,
+          };
+        },
+      };
+
+      // Rendu 2D classique + VFX sol
+      host.hooks.after("drawWorldAfter", () => {
+        const ctx = host.game.ctx;
+        if (!ctx || !window.AssemblageVisuals) return;
+
+        // Médaillon de dojo au sol de l'ancre lorsque visible à l'ancre
+        if ((state === "at_anchor_visible" || state === "returning") && appearT > 0.02) {
+          const anchor = host.game.getAnchor(anchorId);
+          if (anchor) {
+            window.AssemblageVisuals.drawVisual(ctx, VISUAL_MEDALLION, anchor.x, anchor.y, {
+              scale: 0.56 * appearT,
+              tint,
+              alpha: 0.72 * appearT,
+            });
+          }
+        }
+
+        // En mode 2.5D, les ondes et étincelles restent au sol ici ; le personnage est dans Assemblage25DBillboardSources
+        if (window.Assemblage25DActive) {
+          for (const sw of shockwaves) {
+            const p = 1 - clamp(sw.life / sw.maxLife, 0, 1);
+            const r = sw.r + (sw.maxR - sw.r) * (1 - Math.pow(1 - p, 2));
+            ctx.save();
+            ctx.globalAlpha = (1 - p) * 0.85;
+            ctx.strokeStyle = sw.color;
+            ctx.lineWidth = Math.max(1, sw.lineWidth * (1 - p * 0.65));
+            ctx.beginPath();
+            ctx.arc(sw.x, sw.y, r, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+          for (const sp of sparks) {
+            const t = clamp(sp.life / sp.maxLife, 0, 1);
+            ctx.save();
+            ctx.globalAlpha = t * 0.9;
+            ctx.fillStyle = sp.color;
+            ctx.beginPath();
+            ctx.arc(sp.x, sp.y, Math.max(0.8, sp.r * t), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+          return;
+        }
+
+        if (state === "at_anchor_hidden" || appearT <= 0.01) {
+          lastScreenRadius = 0;
+          return;
+        }
+
+        const drawY = charY - 22 * charScale;
+        const cam = host.game.cam;
+        const zoom = host.game.currentZoom || 1;
+        const dx = charX - cam.x;
+        const dy = drawY - cam.y;
+        let rx = dx;
+        let ry = dy;
+        if (cam.angle) {
+          const c = Math.cos(cam.angle);
+          const s = Math.sin(cam.angle);
+          rx = dx * c - dy * s;
+          ry = dx * s + dy * c;
+        }
+        lastScreenX = host.game.viewW * 0.5 + rx * zoom;
+        lastScreenY = host.game.viewH * 0.5 + ry * zoom;
+        lastScreenRadius = Math.max(28, 44 * charScale * zoom);
+
+        drawJclcnEntity(ctx, charX, drawY, charScale, clamp(appearT, 0, 1));
+        drawCombatVfx2D(ctx);
+      });
+    },
+
+    onDeactivate() {
+      // Nettoyage automatique via host.registerCleanup
+    },
+  };
+})();
+</script>
+</body>
+</html>

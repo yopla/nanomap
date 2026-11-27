@@ -199,6 +199,11 @@
 
         spawnSparks(m.x, m.y, 3, shotRgb, 70, 170, 1.5, 2.8, 0.10, 0.22, a, 0.9);
         muzzlePulse = Math.max(muzzlePulse, 0.85);
+        if (window.AssemblageP2PBus && typeof window.AssemblageP2PBus.emit === "function") {
+          window.AssemblageP2PBus.emit("tir_shot", {
+            x: m.x, y: m.y, vx, vy, angle: a, isFinisher: false, scale: 1, rgb: shotRgb,
+          });
+        }
       }
 
       function spawnFinisherExplosion(x, y, scale) {
@@ -288,13 +293,71 @@
         spawnSparks(m.x, m.y, Math.round(14 * scale), finisherRgb, 120, 340 * scale, 2.4, 5.2 * scale, 0.18, 0.42, angle, 1.35);
         spawnSparks(m.x, m.y, Math.round(8 * scale), [255, 240, 210], 90, 240 * scale, 1.8, 3.6 * scale, 0.14, 0.30, angle, 0.85);
         muzzlePulse = 1.4;
+        if (window.AssemblageP2PBus && typeof window.AssemblageP2PBus.emit === "function") {
+          window.AssemblageP2PBus.emit("tir_shot", {
+            x: m.x, y: m.y, vx, vy, angle, isFinisher: true, scale, rgb: finisherRgb,
+          });
+        }
       }
+
+      // Pont P2P : réception des tirs du 2e joueur
+      window.AssemblageTirRemoteSpawn = (shot) => {
+        if (!shot || !Number.isFinite(shot.x) || !Number.isFinite(shot.y)) return;
+        const isFin = Boolean(shot.isFinisher);
+        const sc = clamp(Number(shot.scale) || 1, 0.6, 2.0);
+        const rgb = Array.isArray(shot.rgb) && shot.rgb.length === 3 ? shot.rgb : (isFin ? finisherRgb : shotRgb);
+        const ang = Number(shot.angle) || Math.atan2(Number(shot.vy) || 0, Number(shot.vx) || 1);
+        projectiles.push({
+          x: shot.x,
+          y: shot.y,
+          vx: Number(shot.vx) || Math.cos(ang) * projectileSpeed,
+          vy: Number(shot.vy) || Math.sin(ang) * projectileSpeed,
+          angle: ang,
+          radius: isFin ? 13.5 * sc : 4.5,
+          hitRadius: isFin ? 14 * sc : 5,
+          tailLen: isFin ? 58 * sc : 26,
+          life: isFin ? 0.62 : 0.75,
+          maxLife: isFin ? 0.62 : 0.75,
+          isFinisher: isFin,
+          rgb,
+          scale: sc,
+          trailTimer: 0,
+        });
+        flashes.push({
+          x: shot.x,
+          y: shot.y,
+          angle: ang,
+          radius: isFin ? 30 * sc : 13,
+          life: isFin ? 0.18 : 0.08,
+          maxLife: isFin ? 0.18 : 0.08,
+          rgb,
+          isFinisher: isFin,
+        });
+        if (isFin) {
+          shockwaves.push({
+            x: shot.x,
+            y: shot.y,
+            r: 8,
+            maxR: 54 * sc,
+            life: 0.28,
+            maxLife: 0.28,
+            lineWidth: 4.5 * sc,
+            rgb,
+          });
+          spawnSparks(shot.x, shot.y, Math.round(12 * sc), rgb, 110, 310 * sc, 2.2, 4.8 * sc, 0.16, 0.38, ang, 1.3);
+        } else {
+          spawnSparks(shot.x, shot.y, 3, rgb, 70, 170, 1.5, 2.8, 0.10, 0.22, ang, 0.9);
+        }
+      };
+      host.registerCleanup(() => {
+        delete window.AssemblageTirRemoteSpawn;
+      });
 
       function beginFire(screenX, screenY, touchId, isMouse) {
         fireActive = true;
         fireTouchId = touchId;
         fireIsMouse = Boolean(isMouse);
-        fireMode = host.game.useJoystick ? "joystick" : "normal";
+        fireMode = (fireIsMouse || !host.game.useJoystick) ? "normal" : "joystick";
         fireOriginX = screenX;
         fireOriginY = screenY;
         fireScreenX = screenX;
@@ -338,7 +401,8 @@
           fireKnobY = fireOriginY + (dist > 0.001 ? (dy / dist) * clamped : 0);
           if (dist > FIRE_JOY_DEADZONE) {
             fireStickMoved = true;
-            targetAimAngle = Math.atan2(dy, dx);
+            const camAng = Number(host.game.cam && host.game.cam.angle) || 0;
+            targetAimAngle = Math.atan2(dy, dx) - camAng;
           }
         }
       }
@@ -413,7 +477,7 @@
         if (ended) endFire(false);
       };
 
-      // --- Fallback pratique sur ordinateur : clic droit pendant un déplacement clic gauche ---
+      // --- Souris : clic droit pour tirer à tout moment (immobile ou en déplacement) ---
       const onContextMenu = (e) => {
         if (fireIsMouse || e.target === canvas || !host.game.isAnyUIOpen()) {
           e.preventDefault();
@@ -424,7 +488,6 @@
         if (e.button !== 2) return;
         e.preventDefault();
         if (host.game.isAnyUIOpen() || fireActive) return;
-        if (!host.game.isMoveActive()) return;
         const pos = host.game.getCanvasPos(e.clientX, e.clientY);
         beginFire(pos.x, pos.y, null, true);
       };
@@ -777,8 +840,9 @@
         ctx.fill();
 
         // Indicateur de direction de tir sur le pourtour
-        const dirX = Math.cos(aimAngle);
-        const dirY = Math.sin(aimAngle);
+        const camAng = Number(host.game.cam && host.game.cam.angle) || 0;
+        const dirX = Math.cos(aimAngle + camAng);
+        const dirY = Math.sin(aimAngle + camAng);
         const tipX = fireOriginX + dirX * (FIRE_JOY_MAX_RADIUS + 8);
         const tipY = fireOriginY + dirY * (FIRE_JOY_MAX_RADIUS + 8);
         const perpX = -dirY;

@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>SPAWN — DimCom 1D</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #050a12;
+    color: #e6f4ff;
+    font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+  }
+  canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #050a12;
+    touch-action: none;
+    cursor: crosshair;
+  }
+  .bar {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 25, 43, 0.90);
+    border: 1px solid rgba(56, 214, 255, 0.55);
+    padding: 6px 9px;
+    border-radius: 10px;
+    font-size: 12.5px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  }
+  .bar-title { white-space: nowrap; font-weight: 700; color: #38d6ff; }
+  #stat { font-variant-numeric: tabular-nums; font-weight: 600; color: #e2f1ff; text-align: center; flex: 1; min-width: 0; }
+  .bar-btns { display: flex; gap: 5px; flex-shrink: 0; }
+  button {
+    background: #1a3350;
+    color: #aef0ff;
+    border: 1px solid #38d6ff;
+    border-radius: 7px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    transition: background 0.12s, transform 0.08s;
+  }
+  button:hover { background: #23466d; }
+  button:active { transform: scale(0.95); }
+  .hint {
+    position: fixed;
+    bottom: 8px;
+    left: 10px;
+    right: 10px;
+    z-index: 9;
+    pointer-events: none;
+    font-size: 11px;
+    color: #8fb4d4;
+    text-align: center;
+    line-height: 1.35;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  }
+  .hint b { color: #bae6fd; }
+  @media (max-width: 440px) {
+    .bar { padding: 5px 7px; font-size: 11.5px; }
+    .bar-title { display: none; }
+    button { padding: 4px 7px; font-size: 11.5px; }
+    .hint { font-size: 10.5px; }
+  }
+</style>
+</head>
+<body>
+<script type="application/json" data-spawn-minigame>
+{
+  "id": "g14a_dimcom_1d",
+  "name": "Combat 1D Lumineux (DimCom 1D)",
+  "family": "core",
+  "icon": "➖",
+  "layout": "framed",
+  "ownExit": false,
+  "accentColor": "#38d6ff",
+  "controls": "Flèches Gauche/Droite ou Q/D (ou glisser horizontalement) : glisser sur l'axe • Espace / Z / Clic : tirer un pulse cyan, puis réappuyer pour le faire exploser !",
+  "description": "Portage de fmrf.as (DimCom 1D) : tout le combat se déroule sur une seule dimension lumineuse horizontale. Lancez un projectile cyan vers la droite, puis déclenchez sa détonation au bon moment : chaque ennemi rouge touché déclenche une explosion en chaîne dont le multiplicateur (+1, +2, +3...) augmente à chaque maillon. Attention : vos propres explosions peuvent aussi vous blesser !",
+  "goal": "Atteindre 90 points en moins de 55 secondes grâce aux réactions en chaîne sur la ligne 1D sans perdre vos 3 boucliers.",
+  "fields": [
+    { "key": "targetScore", "label": "Score cible", "type": "number", "default": 90, "min": 15, "max": 500, "step": 5, "group": "Objectif" },
+    { "key": "durationSec", "label": "Durée (s)", "type": "number", "default": 55, "min": 15, "max": 300, "step": 5, "group": "Objectif" },
+    { "key": "initialShields", "label": "Boucliers initiaux", "type": "number", "default": 3, "min": 1, "max": 10, "step": 1, "group": "Objectif" },
+    { "key": "playerSpeed", "label": "Vitesse du joueur", "type": "number", "default": 170, "min": 60, "max": 420, "step": 10, "group": "Gameplay" },
+    { "key": "shotSpeed", "label": "Vitesse du projectile", "type": "number", "default": 270, "min": 100, "max": 600, "step": 10, "group": "Gameplay" },
+    { "key": "explosionMaxWidth", "label": "Largeur max explosion (px)", "type": "number", "default": 44, "min": 18, "max": 120, "step": 2, "group": "Gameplay" },
+    { "key": "enemySpeedMult", "label": "Multiplicateur vitesse ennemis", "type": "number", "default": 1.0, "min": 0.4, "max": 2.5, "step": 0.1, "group": "Ennemis" },
+    { "key": "enemySpawnRate", "label": "Fréquence d'apparition ennemis", "type": "number", "default": 1.0, "min": 0.4, "max": 2.5, "step": 0.1, "group": "Ennemis" },
+    { "key": "selfDamage", "label": "Dégâts de ses propres explosions", "type": "bool", "default": true, "group": "Gameplay", "hint": "Si activé, vos propres explosions peuvent vous retirer un bouclier." },
+    { "key": "playerColor", "label": "Couleur du joueur", "type": "color", "default": "#4ade80", "group": "Visuel" },
+    { "key": "shotColor", "label": "Couleur du projectile", "type": "color", "default": "#67e8f9", "group": "Visuel" },
+    { "key": "enemyColor", "label": "Couleur des ennemis", "type": "color", "default": "#fb7185", "group": "Visuel" },
+    { "key": "explosionColor", "label": "Couleur des explosions", "type": "color", "default": "#fef08a", "group": "Visuel" }
+  ],
+  "texts": [
+    { "key": "fireButtonLabel", "label": "Bouton Tirer", "type": "text", "default": "💥 TIRER" },
+    { "key": "detonateButtonLabel", "label": "Bouton Détoner", "type": "text", "default": "💥 DÉTONER !" },
+    { "key": "guideFireText", "label": "Guide : tirer", "type": "text", "default": "🎯 Espace / Clic pour tirer un pulse cyan" },
+    { "key": "guideDetonateText", "label": "Guide : détoner", "type": "text", "default": "💥 Réappuyez sur Espace / Clic pour DÉTONER !" },
+    { "key": "hitPopupText", "label": "Popup dégât subi", "type": "text", "default": "TOUCHE !" },
+    { "key": "chainPopupSuffix", "label": "Suffixe popup chaîne", "type": "text", "default": " CHAÎNE!" },
+    { "key": "victoryTitle", "label": "Titre de victoire", "type": "text", "default": "DIMENSION SÉCURISÉE !" },
+    { "key": "defeatTitle", "label": "Titre défaite boucliers", "type": "text", "default": "LIGNE BRISÉE" },
+    { "key": "timeoutTitle", "label": "Titre temps écoulé", "type": "text", "default": "CHRONO ÉCOULÉ" },
+    { "key": "endReturnHint", "label": "Indice de fin de partie", "type": "text", "default": "Cliquez pour revenir au jeu principal" }
+  ]
+}
+</script>
+
+<div class="bar">
+  <span class="bar-title">➖ DimCom 1D</span>
+  <span id="stat">Score 0/90 • 🛡️ 3 • 55s</span>
+  <div class="bar-btns">
+    <button id="btn-fire" onclick="triggerFire()" title="Tirer / Détoner (Espace)">💥 Tir</button>
+    <button id="btn-reset" onclick="resetGame()" title="Recommencer">🔄</button>
+    <button id="btn-exit" onclick="sendResultAndExit(won, score)" title="Revenir au jeu principal">✕ Retour</button>
+  </div>
+</div>
+
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="hint">
+  <b>Gauche/Droite (Q/D)</b> ou <b>Glisser</b> : Bouger sur l'axe • <b>Espace / Clic</b> : Tirer, puis <b>réappuyer</b> pour faire exploser en chaîne !
+</div>
+
+<script>
+const GAME_ID = "g14a_dimcom_1d";
+const DEFAULT_PARAMS = {
+  targetScore: 90,
+  durationSec: 55,
+  initialShields: 3,
+  playerSpeed: 170,
+  shotSpeed: 270,
+  explosionMaxWidth: 44,
+  enemySpeedMult: 1.0,
+  enemySpawnRate: 1.0,
+  selfDamage: true,
+  playerColor: "#4ade80",
+  shotColor: "#67e8f9",
+  enemyColor: "#fb7185",
+  explosionColor: "#fef08a"
+};
+const DEFAULT_TEXTS = {
+  fireButtonLabel: "💥 TIRER",
+  detonateButtonLabel: "💥 DÉTONER !",
+  guideFireText: "🎯 Espace / Clic pour tirer un pulse cyan",
+  guideDetonateText: "💥 Réappuyez sur Espace / Clic pour DÉTONER !",
+  hitPopupText: "TOUCHE !",
+  chainPopupSuffix: " CHAÎNE!",
+  victoryTitle: "DIMENSION SÉCURISÉE !",
+  defeatTitle: "LIGNE BRISÉE",
+  timeoutTitle: "CHRONO ÉCOULÉ",
+  endReturnHint: "Cliquez pour revenir au jeu principal"
+};
+let activeParams = Object.assign({}, DEFAULT_PARAMS);
+let activeTexts = Object.assign({}, DEFAULT_TEXTS);
+const SIZE = 512;
+const LINE_Y = 256;
+const MAX_SPARKS = 96;
+const MAX_POPUPS = 24;
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d", { alpha: false });
+const statEl = document.getElementById("stat");
+
+// Pre-render static background (clear + oscilloscope lines + 1D luminous beam) once
+const bgCanvas = document.createElement("canvas");
+bgCanvas.width = SIZE;
+bgCanvas.height = SIZE;
+(function buildBackground() {
+  const bctx = bgCanvas.getContext("2d", { alpha: false });
+  bctx.fillStyle = "#050a12";
+  bctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Ambient 1D oscilloscope echo above and below the luminous axis (single batched path)
+  bctx.strokeStyle = "rgba(56, 214, 255, 0.12)";
+  bctx.lineWidth = 1;
+  bctx.beginPath();
+  for (let ring = 1; ring <= 4; ring++) {
+    const dy = ring * 38;
+    bctx.moveTo(0, LINE_Y - dy);
+    bctx.lineTo(SIZE, LINE_Y - dy);
+    bctx.moveTo(0, LINE_Y + dy);
+    bctx.lineTo(SIZE, LINE_Y + dy);
+  }
+  bctx.stroke();
+
+  // The 1D Universe Beam (layered soft glow, zero per-frame shadowBlur)
+  const beamGrad = bctx.createLinearGradient(0, LINE_Y - 18, 0, LINE_Y + 18);
+  beamGrad.addColorStop(0, "rgba(37, 99, 235, 0)");
+  beamGrad.addColorStop(0.35, "rgba(37, 99, 235, 0.22)");
+  beamGrad.addColorStop(0.5, "rgba(59, 130, 246, 0.55)");
+  beamGrad.addColorStop(0.65, "rgba(37, 99, 235, 0.22)");
+  beamGrad.addColorStop(1, "rgba(37, 99, 235, 0)");
+  bctx.fillStyle = beamGrad;
+  bctx.fillRect(0, LINE_Y - 18, SIZE, 36);
+  bctx.fillStyle = "#1d4ed8";
+  bctx.fillRect(0, LINE_Y - 2, SIZE, 4);
+  bctx.fillStyle = "#60a5fa";
+  bctx.fillRect(0, LINE_Y - 1, SIZE, 2);
+})();
+
+const params = new URLSearchParams(window.location.search);
+let externalPaused = params.get("minigd_paused") === "1";
+const isEmbedded = params.get("minigd_embedded") === "1";
+if (isEmbedded) {
+  const barEl = document.querySelector(".bar");
+  if (barEl) barEl.style.display = "none";
+  const hintEl = document.querySelector(".hint");
+  if (hintEl) hintEl.style.display = "none";
+  const exitBtn = document.getElementById("btn-exit");
+  if (exitBtn) exitBtn.style.display = "none";
+}
+
+let helpOpen = false;
+let destroyed = false;
+let rafId = null;
+
+let targetScore = 90, durationSec = 55;
+let score = 0, shields = 3, timeLeft = 55, won = false, over = false;
+let player = { x: 100, w: 14, invuln: 0 };
+let shot = null;
+let enemies = [], explosions = [], popups = [], sparks = [];
+let enemySpawnTimer = 0.5, maxChain = 0, gt = 0, lastTs = 0;
+let keys = {};
+let ptr = { down: false, startX: 0, lastX: 0, movedDist: 0 };
+let cvRect = null;
+let lastStatTxt = "";
+let lastStatShot = null;
+let lastStatOver = null;
+
+function swapPop(arr, i) {
+  const last = arr.length - 1;
+  if (i !== last) arr[i] = arr[last];
+  arr.pop();
+}
+
+function updateCanvasRect() {
+  cvRect = cv.getBoundingClientRect();
+}
+window.addEventListener("resize", updateCanvasRect, { passive: true });
+
+function readMeta() {
+  const el = document.querySelector("script[data-spawn-minigame]");
+  if (!el) return {};
+  try { return JSON.parse(el.textContent || "{}") || {}; } catch (_e) { return {}; }
+}
+
+function clampNum(val, lo, hi, fallback) {
+  const n = Number(val);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
+}
+
+function hexToRgba(hex, alpha) {
+  let h = String(hex || "").trim().replace("#", "");
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  if (!/^[0-9a-fA-F]{6}$/.test(h)) return `rgba(255,255,255,${alpha})`;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function applyRuntimeConfig(initData) {
+  if (!initData || typeof initData !== "object") return;
+  const p = (initData.params && typeof initData.params === "object")
+    ? initData.params
+    : ((initData.custom && typeof initData.custom === "object" && initData.custom.params)
+      ? initData.custom.params
+      : ((initData.custom && typeof initData.custom === "object") ? initData.custom : initData));
+  if (p && typeof p === "object") {
+    activeParams.targetScore = Math.round(clampNum(p.targetScore ?? activeParams.targetScore, 15, 500, DEFAULT_PARAMS.targetScore));
+    activeParams.durationSec = Math.round(clampNum(p.durationSec ?? activeParams.durationSec, 15, 300, DEFAULT_PARAMS.durationSec));
+    activeParams.initialShields = Math.round(clampNum(p.initialShields ?? activeParams.initialShields, 1, 10, DEFAULT_PARAMS.initialShields));
+    activeParams.playerSpeed = Math.round(clampNum(p.playerSpeed ?? activeParams.playerSpeed, 60, 420, DEFAULT_PARAMS.playerSpeed));
+    activeParams.shotSpeed = Math.round(clampNum(p.shotSpeed ?? activeParams.shotSpeed, 100, 600, DEFAULT_PARAMS.shotSpeed));
+    activeParams.explosionMaxWidth = Math.round(clampNum(p.explosionMaxWidth ?? activeParams.explosionMaxWidth, 18, 120, DEFAULT_PARAMS.explosionMaxWidth));
+    activeParams.enemySpeedMult = clampNum(p.enemySpeedMult ?? activeParams.enemySpeedMult, 0.4, 2.5, DEFAULT_PARAMS.enemySpeedMult);
+    activeParams.enemySpawnRate = clampNum(p.enemySpawnRate ?? activeParams.enemySpawnRate, 0.4, 2.5, DEFAULT_PARAMS.enemySpawnRate);
+    if (typeof p.selfDamage === "boolean") activeParams.selfDamage = p.selfDamage;
+    if (typeof p.playerColor === "string" && p.playerColor.trim()) activeParams.playerColor = p.playerColor.trim();
+    if (typeof p.shotColor === "string" && p.shotColor.trim()) activeParams.shotColor = p.shotColor.trim();
+    if (typeof p.enemyColor === "string" && p.enemyColor.trim()) activeParams.enemyColor = p.enemyColor.trim();
+    if (typeof p.explosionColor === "string" && p.explosionColor.trim()) activeParams.explosionColor = p.explosionColor.trim();
+  }
+  const t = (initData.texts && typeof initData.texts === "object")
+    ? initData.texts
+    : ((initData.custom && typeof initData.custom === "object" && initData.custom.texts) ? initData.custom.texts : null);
+  if (t && typeof t === "object") {
+    for (const k of Object.keys(DEFAULT_TEXTS)) {
+      if (typeof t[k] === "string" && t[k].trim()) {
+        activeTexts[k] = t[k].trim();
+      }
+    }
+  }
+}
+
+function isGameplayPaused() {
+  return externalPaused || helpOpen || destroyed || document.hidden;
+}
+
+function cancelLoop() {
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  lastTs = 0;
+}
+
+function startLoopIfActive() {
+  if (isGameplayPaused() || over) return;
+  if (rafId === null) {
+    lastTs = 0;
+    rafId = requestAnimationFrame(loop);
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    keys = {};
+    ptr.down = false;
+    cancelLoop();
+  } else {
+    startLoopIfActive();
+  }
+});
+
+function sendResultAndExit(didWin, finalScore) {
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "spawn_minigame_result",
+      id: GAME_ID,
+      won: !!didWin,
+      score: Math.round(finalScore || 0),
+      resource_deltas: {}
+    }, "*");
+  }
+}
+
+window.addEventListener("message", (e) => {
+  const d = e && e.data;
+  if (!d || typeof d !== "object") return;
+  if (d.type === "minigd_config" || d.type === "spawn_minigame_init" || d.type === "minigd_init" || d.type === "minigd_reset") {
+    resetGame(d);
+    draw();
+  } else if (d.type === "minigd_action") {
+    if (d.action === "fire") {
+      triggerFire();
+      updateStat();
+      draw();
+    }
+  } else if (d.type === "minigd_pause") {
+    externalPaused = true;
+    keys = {};
+    ptr.down = false;
+    cancelLoop();
+    draw();
+  } else if (d.type === "minigd_start" || d.type === "minigd_resume") {
+    externalPaused = false;
+    lastTs = 0;
+    draw();
+    startLoopIfActive();
+  } else if (d.type === "minigd_destroy") {
+    destroyed = true;
+    keys = {};
+    ptr.down = false;
+    cancelLoop();
+    enemies.length = 0;
+    explosions.length = 0;
+    popups.length = 0;
+    sparks.length = 0;
+    shot = null;
+  }
+});
+
+function addPopup(text, x, y, col) {
+  if (popups.length >= MAX_POPUPS) {
+    swapPop(popups, 0);
+  }
+  popups.push({ text, x, y, vy: -45, col: col || "#fde047", life: 0.9, maxLife: 0.9 });
+}
+
+function addSparks(x, col, count = 10) {
+  const room = MAX_SPARKS - sparks.length;
+  const n = room > 0 ? Math.min(count, room) : 0;
+  for (let i = 0; i < n; i++) {
+    const a = (Math.random() - 0.5) * Math.PI * 2;
+    const sp = 50 + Math.random() * 140;
+    sparks.push({
+      x, y: LINE_Y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      col, life: 0.4 + Math.random() * 0.25, maxLife: 0.65
+    });
+  }
+}
+
+function triggerFire() {
+  if (over || isGameplayPaused()) return;
+  if (shot) {
+    // Second press detonates shot into yellow explosion (fmrf.as)
+    explosions.push({ x: shot.x, w: 2, spreading: true, multiplier: 1 });
+    addSparks(shot.x, activeParams.explosionColor, 12);
+    shot = null;
+  } else {
+    shot = { x: player.x + 8, w: 10, vx: activeParams.shotSpeed };
+    addSparks(player.x + 8, activeParams.shotColor, 6);
+  }
+  updateStat();
+}
+
+function hitPlayer(sourceX) {
+  if (player.invuln > 0 || over) return;
+  shields--;
+  player.invuln = 1.25;
+  explosions.push({ x: player.x, w: 4, spreading: true, multiplier: 0 });
+  addSparks(player.x, "#f87171", 18);
+  addPopup(activeTexts.hitPopupText, player.x, LINE_Y - 26, "#f87171");
+  player.x = Math.max(24, Math.min(SIZE - 24, player.x + (player.x < sourceX ? -20 : 20)));
+}
+
+function resetGame(initData) {
+  applyRuntimeConfig(initData);
+  targetScore = activeParams.targetScore;
+  durationSec = activeParams.durationSec;
+  score = 0;
+  shields = activeParams.initialShields;
+  timeLeft = durationSec;
+  won = false;
+  over = false;
+  player = { x: 96, w: 14, invuln: 0.6 };
+  shot = null;
+  enemies = [];
+  explosions = [];
+  popups = [];
+  sparks = [];
+  enemySpawnTimer = 0.4;
+  maxChain = 0;
+  gt = 0;
+  lastStatTxt = "";
+  lastStatShot = null;
+  lastStatOver = null;
+  updateStat(true);
+  draw();
+  startLoopIfActive();
+}
+
+function updateStat(force) {
+  const txt = `Score ${score}/${targetScore} • 🛡️ ${shields} • Max x${Math.max(1, maxChain)} • ${Math.ceil(timeLeft)}s`;
+  const shotActive = Boolean(shot);
+  const isOver = Boolean(over);
+  const actionLabel = shotActive ? activeTexts.detonateButtonLabel : activeTexts.fireButtonLabel;
+  if (!force && txt === lastStatTxt && shotActive === lastStatShot && isOver === lastStatOver) {
+    return;
+  }
+  lastStatTxt = txt;
+  lastStatShot = shotActive;
+  lastStatOver = isOver;
+  if (!isEmbedded && statEl) {
+    statEl.textContent = txt;
+  }
+  if (isEmbedded && window.parent && window.parent !== window) {
+    window.parent.postMessage({
+      type: "minigd_stats",
+      id: GAME_ID,
+      text: txt,
+      shotActive,
+      actionLabel,
+      over: isOver
+    }, "*");
+  }
+}
+
+function step(dt) {
+  if (over || isGameplayPaused()) return;
+  gt += dt;
+  timeLeft = Math.max(0, timeLeft - dt);
+  if (player.invuln > 0) player.invuln = Math.max(0, player.invuln - dt);
+
+  // Move along 1D axis
+  let ix = 0;
+  if (keys["ArrowLeft"] || keys["KeyA"] || keys["KeyQ"]) ix -= 1;
+  if (keys["ArrowRight"] || keys["KeyD"]) ix += 1;
+  player.x = Math.max(14, Math.min(SIZE - 14, player.x + ix * activeParams.playerSpeed * dt));
+
+  // Spawn enemies on right edge (fmrf.as)
+  enemySpawnTimer -= dt;
+  if (enemySpawnTimer <= 0) {
+    const baseSpd = (55 + Math.random() * (45 + Math.sqrt(gt * 30 * 0.001) * 55)) * activeParams.enemySpeedMult;
+    enemies.push({ x: SIZE + 10, w: 14, vx: baseSpd });
+    enemySpawnTimer = (0.35 + Math.random() * 0.65) / activeParams.enemySpawnRate;
+  }
+
+  // Update shot
+  if (shot) {
+    shot.x += shot.vx * dt;
+    if (shot.x > SIZE + 12) shot = null;
+  }
+
+  // Update explosions & chain reactions (fmrf.as)
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const ex = explosions[i];
+    const rate = 210 * dt;
+    if (ex.spreading) {
+      ex.w += rate;
+      if (ex.w >= activeParams.explosionMaxWidth) ex.spreading = false;
+    } else {
+      ex.w -= rate;
+      if (ex.w <= 1) {
+        swapPop(explosions, i);
+        continue;
+      }
+    }
+
+    // Check explosion hitting player (only real active blasts with multiplier > 0)
+    if (activeParams.selfDamage && ex.multiplier > 0 && Math.abs(player.x - ex.x) < (ex.w + player.w) * 0.45) {
+      hitPlayer(ex.x);
+    }
+
+    // Check explosion hitting enemies -> chain explosion!
+    if (ex.multiplier > 0) {
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const en = enemies[j];
+        if (Math.abs(en.x - ex.x) < (ex.w + en.w) * 0.5) {
+          score += ex.multiplier;
+          if (ex.multiplier > maxChain) maxChain = ex.multiplier;
+          addPopup("+" + ex.multiplier + (ex.multiplier >= 3 ? activeTexts.chainPopupSuffix : ""), en.x, LINE_Y - 22, ex.multiplier >= 3 ? activeParams.shotColor : activeParams.explosionColor);
+          addSparks(en.x, activeParams.enemyColor, 10);
+          explosions.push({ x: en.x, w: 2, spreading: true, multiplier: ex.multiplier + 1 });
+          swapPop(enemies, j);
+        }
+      }
+    }
+  }
+
+  // Update enemies
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const en = enemies[i];
+    en.x -= en.vx * dt;
+    if (Math.abs(en.x - player.x) < (en.w + player.w) * 0.5) {
+      hitPlayer(en.x);
+      swapPop(enemies, i);
+      continue;
+    }
+    if (en.x < -16) swapPop(enemies, i);
+  }
+
+  // Sparks & popups (framerate-independent drag)
+  const sparkDrag = Math.pow(0.94, dt * 60);
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += s.vx * dt; s.y += s.vy * dt;
+    s.vx *= sparkDrag; s.vy *= sparkDrag;
+    s.life -= dt;
+    if (s.life <= 0) swapPop(sparks, i);
+  }
+  for (let i = popups.length - 1; i >= 0; i--) {
+    const m = popups[i];
+    m.y += m.vy * dt;
+    m.life -= dt;
+    if (m.life <= 0) swapPop(popups, i);
+  }
+
+  if (score >= targetScore) {
+    won = true;
+    over = true;
+    score += Math.ceil(timeLeft) * 2 + shields * 10;
+  } else if (shields <= 0 || timeLeft <= 0) {
+    won = false;
+    over = true;
+  }
+  updateStat();
+}
+
+function draw() {
+  // Static pre-rendered background (clear + oscilloscope lines + 1D luminous beam)
+  ctx.drawImage(bgCanvas, 0, 0);
+
+  // Vertical markers for entities (batched into a single path)
+  if (enemies.length > 0) {
+    ctx.strokeStyle = "rgba(244, 63, 94, 0.18)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < enemies.length; i++) {
+      const ex = enemies[i].x;
+      ctx.moveTo(ex, LINE_Y - 28);
+      ctx.lineTo(ex, LINE_Y + 28);
+    }
+    ctx.stroke();
+  }
+  if (shot) {
+    ctx.strokeStyle = "rgba(56, 214, 255, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(shot.x, LINE_Y - 36);
+    ctx.lineTo(shot.x, LINE_Y + 36);
+    ctx.stroke();
+  }
+
+  // Explosions along 1D line (layered soft glow, zero shadowBlur)
+  if (explosions.length > 0) {
+    ctx.fillStyle = hexToRgba(activeParams.explosionColor, 0.14);
+    for (let i = 0; i < explosions.length; i++) {
+      const ex = explosions[i];
+      ctx.fillRect(ex.x - ex.w * 0.5 - 8, LINE_Y - 22, ex.w + 16, 44);
+    }
+    ctx.fillStyle = hexToRgba(activeParams.explosionColor, 0.32);
+    for (let i = 0; i < explosions.length; i++) {
+      const ex = explosions[i];
+      ctx.fillRect(ex.x - ex.w * 0.5 - 3, LINE_Y - 13, ex.w + 6, 26);
+    }
+    ctx.fillStyle = activeParams.explosionColor;
+    for (let i = 0; i < explosions.length; i++) {
+      const ex = explosions[i];
+      ctx.fillRect(ex.x - ex.w * 0.5, LINE_Y - 4, ex.w, 8);
+    }
+  }
+
+  // Shot (layered neon glow)
+  if (shot) {
+    const sx = shot.x - shot.w * 0.5;
+    ctx.fillStyle = hexToRgba(activeParams.shotColor, 0.18);
+    ctx.fillRect(sx - 7, LINE_Y - 12, shot.w + 14, 24);
+    ctx.fillStyle = hexToRgba(activeParams.shotColor, 0.42);
+    ctx.fillRect(sx - 3, LINE_Y - 7, shot.w + 6, 14);
+    ctx.fillStyle = activeParams.shotColor;
+    ctx.fillRect(sx, LINE_Y - 4, shot.w, 8);
+  }
+
+  // Enemies (batched layered glow, zero shadowBlur)
+  if (enemies.length > 0) {
+    ctx.fillStyle = hexToRgba(activeParams.enemyColor, 0.18);
+    for (let i = 0; i < enemies.length; i++) {
+      const en = enemies[i];
+      ctx.fillRect(en.x - en.w * 0.5 - 5, LINE_Y - 11, en.w + 10, 22);
+    }
+    ctx.fillStyle = hexToRgba(activeParams.enemyColor, 0.38);
+    for (let i = 0; i < enemies.length; i++) {
+      const en = enemies[i];
+      ctx.fillRect(en.x - en.w * 0.5 - 2, LINE_Y - 7, en.w + 4, 14);
+    }
+    ctx.fillStyle = activeParams.enemyColor;
+    for (let i = 0; i < enemies.length; i++) {
+      const en = enemies[i];
+      ctx.fillRect(en.x - en.w * 0.5, LINE_Y - 5, en.w, 10);
+    }
+  }
+
+  // Player (layered neon glow)
+  const blink = player.invuln > 0 && Math.floor(gt * 16) % 2 === 0;
+  const px = player.x - player.w * 0.5;
+  ctx.fillStyle = blink ? "rgba(239, 68, 68, 0.22)" : hexToRgba(activeParams.playerColor, 0.20);
+  ctx.fillRect(px - 6, LINE_Y - 14, player.w + 12, 28);
+  ctx.fillStyle = blink ? "rgba(239, 68, 68, 0.45)" : hexToRgba(activeParams.playerColor, 0.42);
+  ctx.fillRect(px - 2, LINE_Y - 9, player.w + 4, 18);
+  ctx.fillStyle = blink ? "#fca5a5" : activeParams.playerColor;
+  ctx.fillRect(px, LINE_Y - 6, player.w, 12);
+  ctx.fillStyle = "#dcfce7";
+  ctx.fillRect(player.x - 2, LINE_Y - 12, 4, 24);
+
+  // Sparks
+  if (sparks.length > 0) {
+    for (let i = 0; i < sparks.length; i++) {
+      const s = sparks[i];
+      ctx.globalAlpha = Math.max(0, s.life / s.maxLife);
+      ctx.fillStyle = s.col;
+      ctx.fillRect(s.x - 1.5, s.y - 1.5, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Popups (font & textAlign set once)
+  if (popups.length > 0) {
+    ctx.font = "bold 13px monospace";
+    ctx.textAlign = "center";
+    for (let i = 0; i < popups.length; i++) {
+      const m = popups[i];
+      ctx.globalAlpha = Math.max(0, m.life / m.maxLife);
+      ctx.fillStyle = m.col;
+      ctx.fillText(m.text, m.x, m.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Status guide on canvas
+  ctx.fillStyle = "rgba(143, 180, 212, 0.75)";
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(shot ? activeTexts.guideDetonateText : activeTexts.guideFireText, 256, LINE_Y + 95);
+
+  if (over) {
+    ctx.fillStyle = "rgba(5, 8, 18, 0.86)";
+    ctx.fillRect(0, 176, SIZE, 160);
+    ctx.fillStyle = won ? "#4ade80" : "#f87171";
+    ctx.font = "bold 24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(won ? activeTexts.victoryTitle : (shields <= 0 ? activeTexts.defeatTitle : activeTexts.timeoutTitle), 256, 232);
+    ctx.fillStyle = "#e6f4ff";
+    ctx.font = "15px sans-serif";
+    ctx.fillText(`Score ${score}/${targetScore} • Chaîne max x${Math.max(1, maxChain)}`, 256, 266);
+    ctx.fillStyle = "#7dd3fc";
+    ctx.font = "13px sans-serif";
+    ctx.fillText(activeTexts.endReturnHint, 256, 300);
+  }
+}
+
+function getPos(e) {
+  if (!cvRect || cvRect.width === 0 || cvRect.height === 0) {
+    updateCanvasRect();
+  }
+  const rect = cvRect;
+  const t = e.touches ? e.touches[0] : e;
+  return {
+    x: ((t.clientX - rect.left) / rect.width) * SIZE,
+    y: ((t.clientY - rect.top) / rect.height) * SIZE
+  };
+}
+
+cv.addEventListener("pointerdown", (e) => {
+  if (isGameplayPaused()) return;
+  if (over) { sendResultAndExit(won, score); return; }
+  updateCanvasRect();
+  const p = getPos(e);
+  ptr.down = true;
+  ptr.startX = p.x;
+  ptr.lastX = p.x;
+  ptr.movedDist = 0;
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!ptr.down || over || isGameplayPaused()) return;
+  const p = getPos(e);
+  const dx = p.x - ptr.lastX;
+  ptr.movedDist += Math.abs(dx);
+  player.x = Math.max(14, Math.min(SIZE - 14, player.x + dx));
+  ptr.lastX = p.x;
+});
+window.addEventListener("pointerup", () => {
+  if (ptr.down && !over && !isGameplayPaused() && ptr.movedDist < 12) {
+    triggerFire();
+  }
+  ptr.down = false;
+});
+cv.addEventListener("contextmenu", (e) => e.preventDefault());
+
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (helpOpen) {
+      window.toggleSpawnHelp(false);
+    } else if (isEmbedded && !externalPaused && window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "minigd_exit", id: GAME_ID, won, score: Math.round(score || 0) }, "*");
+    }
+    return;
+  }
+  if (isGameplayPaused()) return;
+  if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+    e.preventDefault();
+  }
+  const firstPress = !keys[e.code];
+  keys[e.code] = true;
+  if (firstPress && (e.code === "Space" || e.code === "KeyZ")) {
+    triggerFire();
+  }
+});
+window.addEventListener("keyup", (e) => { keys[e.code] = false; });
+
+function loop(ts) {
+  if (isGameplayPaused() || over) {
+    rafId = null;
+    return;
+  }
+  if (!lastTs) lastTs = ts;
+  const dt = Math.min(0.05, (ts - lastTs) / 1000);
+  lastTs = ts;
+  step(dt);
+  draw();
+  if (!isGameplayPaused() && !over) {
+    rafId = requestAnimationFrame(loop);
+  } else {
+    rafId = null;
+  }
+}
+
+resetGame();
+if (window.parent && window.parent !== window) {
+  window.parent.postMessage({
+    type: "minigd_ready",
+    id: GAME_ID,
+    meta: readMeta(),
+    actionLabel: activeTexts.fireButtonLabel
+  }, "*");
+}
+if (!isGameplayPaused()) {
+  startLoopIfActive();
+}
+</script>
+
+<!-- SPAWN_HELP_START -->
+<style>
+  #spawn-help-overlay { position: fixed; inset: 0; background: rgba(4,8,18,0.84); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 14px; }
+  #spawn-help-overlay.open { display: flex; }
+  #spawn-help-card { width: min(440px, 94vw); background: #121a2b; border: 1.5px solid #38d6ff; border-radius: 12px; padding: 16px 18px; color: #e6f4ff; box-shadow: 0 12px 32px rgba(0,0,0,0.65); font-family: system-ui, sans-serif; line-height: 1.45; }
+  #spawn-help-card h3 { font-size: 16px; color: #38d6ff; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  #spawn-help-card .sh-tag { font-size: 11px; background: #1c3552; color: #aef0ff; padding: 2px 7px; border-radius: 999px; font-weight: 600; }
+  #spawn-help-card .sh-sec { margin-top: 8px; font-size: 13px; }
+  #spawn-help-card .sh-sec b { color: #fde047; }
+  #spawn-help-card .sh-close { margin-top: 14px; width: 100%; padding: 8px; background: #1c3552; color: #aef0ff; border: 1px solid #38d6ff; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+</style>
+<div id="spawn-help-overlay" onclick="if(event.target===this)toggleSpawnHelp(false)">
+  <div id="spawn-help-card">
+    <h3 id="sh-title"></h3>
+    <div class="sh-sec" id="sh-desc"></div>
+    <div class="sh-sec" id="sh-goal"></div>
+    <div class="sh-sec" id="sh-ctrl"></div>
+    <button class="sh-close" onclick="toggleSpawnHelp(false)">Fermer</button>
+  </div>
+</div>
+<script>
+(function(){
+  var populated = false;
+  function fillHelp(){
+    if (populated) return;
+    populated = true;
+    var el = document.querySelector("script[data-spawn-minigame]");
+    var m = {};
+    try { if (el) m = JSON.parse(el.textContent); } catch(e){}
+    document.getElementById("sh-title").innerHTML = "<span>" + (m.icon || "🕹️") + " " + (m.name || document.title) + "</span><span class='sh-tag'>" + (m.family || "spawn") + "</span>";
+    document.getElementById("sh-desc").innerHTML = m.description ? ("<b>Principe :</b> " + m.description) : "";
+    document.getElementById("sh-goal").innerHTML = m.goal ? ("<b>Objectif :</b> " + m.goal) : "";
+    document.getElementById("sh-ctrl").innerHTML = m.controls ? ("<b>Contrôles :</b> " + m.controls) : "";
+  }
+  window.toggleSpawnHelp = function(force){
+    fillHelp();
+    var ov = document.getElementById("spawn-help-overlay");
+    if (!ov) return;
+    var show = typeof force === "boolean" ? force : !ov.classList.contains("open");
+    ov.classList.toggle("open", show);
+    helpOpen = show;
+    if (helpOpen) {
+      keys = {};
+      ptr.down = false;
+      cancelLoop();
+      draw();
+    } else {
+      startLoopIfActive();
+    }
+  };
+})();
+</script>
+<!-- SPAWN_HELP_END -->
+</body>
+</html>
