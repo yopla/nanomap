@@ -216,18 +216,23 @@
     return false;
   }
 
-  function sampleIslandHeight(wx, wy, env) {
+  function sampleIslandInfo(wx, wy, env) {
     const seed = (env && env.worldSeed) || 482913;
     const cellSize = getCellSize(env);
     const gx0 = Math.floor(wx / cellSize);
     const gy0 = Math.floor(wy / cellSize);
     let maxH = -1.0;
+    let bestGx = gx0;
+    let bestGy = gy0;
+    let bestIsl = null;
 
     const coastNoise = fbm(wx * 0.0042, wy * 0.0042, seed + 223, 3);
 
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
-        const isl = getIslandForCell(gx0 + dx, gy0 + dy, env);
+        const cx = gx0 + dx;
+        const cy = gy0 + dy;
+        const isl = getIslandForCell(cx, cy, env);
         if (!isl.exists) continue;
         const rx = wx - isl.x;
         const ry = wy - isl.y;
@@ -235,10 +240,159 @@
         const angle = Math.atan2(ry, rx);
         const organicR = isl.r * (1.0 + 0.12 * Math.sin(angle * isl.lobes + isl.phase) + 0.16 * coastNoise);
         const h = 1.0 - d / Math.max(60, organicR);
-        if (h > maxH) maxH = h;
+        if (h > maxH) {
+          maxH = h;
+          bestGx = cx;
+          bestGy = cy;
+          bestIsl = isl;
+        }
       }
     }
-    return maxH;
+    return { h: maxH, gx: bestGx, gy: bestGy, island: bestIsl };
+  }
+
+  function sampleIslandHeight(wx, wy, env) {
+    return sampleIslandInfo(wx, wy, env).h;
+  }
+
+  let reachableCellsCacheKey = "";
+  let reachableCellsCacheSet = new Set();
+
+  function getReachableIslandCells(env, maxRadiusCells = 8) {
+    const seed = (env && env.worldSeed) || 482913;
+    const cellSize = getCellSize(env);
+    const rad = Math.max(8, Math.min(20, Math.ceil(maxRadiusCells)));
+    const key = `${seed}|${cellSize.toFixed(2)}|${rad}`;
+    if (reachableCellsCacheKey === key) {
+      return reachableCellsCacheSet;
+    }
+
+    const visited = new Set(["0,0"]);
+    const queue = [[0, 0]];
+    const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    let head = 0;
+
+    while (head < queue.length) {
+      const [gx, gy] = queue[head++];
+      for (let i = 0; i < dirs.length; i++) {
+        const nx = gx + dirs[i][0];
+        const ny = gy + dirs[i][1];
+        if (Math.abs(nx) > rad || Math.abs(ny) > rad) continue;
+        const nk = `${nx},${ny}`;
+        if (visited.has(nk)) continue;
+        if (hasBridgeBetween(gx, gy, nx, ny, env)) {
+          visited.add(nk);
+          queue.push([nx, ny]);
+        }
+      }
+    }
+
+    reachableCellsCacheKey = key;
+    reachableCellsCacheSet = visited;
+    return visited;
+  }
+
+  function isCellReachableFromOrigin(gx, gy, env) {
+    const neededRad = Math.max(8, Math.max(Math.abs(gx), Math.abs(gy)) + 2);
+    const set = getReachableIslandCells(env, neededRad);
+    return set.has(`${gx},${gy}`);
+  }
+
+  function isAnchorValid(wx, wy, env) {
+    // Évite le centre du vaisseau spatial
+    if (Math.hypot(wx, wy) < 110) return false;
+    const info = sampleIslandInfo(wx, wy, env);
+    // Doit être franchement sur la terre ferme (hors eau et bord immédiat du rivage)
+    if (!info.island || info.h < 0.10) return false;
+    // Évite d'obstruer les ponts en bois
+    if (pointOnBridge(wx, wy, env, 14)) return false;
+    // L'île doit être joignable à pied depuis l'île d'atterrissage (0, 0) via les ponts
+    if (!isCellReachableFromOrigin(info.gx, info.gy, env)) return false;
+    // Vérifie une petite marge marchable autour de l'ancre pour que le joueur puisse en faire le tour
+    const pad = 18;
+    if (!isWalkable(wx + pad, wy, env) || !isWalkable(wx - pad, wy, env) ||
+        !isWalkable(wx, wy + pad, env) || !isWalkable(wx, wy - pad, env)) {
+      return false;
+    }
+    return true;
+  }
+
+  function findNearestValidAnchorPos(wx, wy, env, opts = {}) {
+    if (isAnchorValid(wx, wy, env)) {
+      return { x: wx, y: wy };
+    }
+    const cellSize = getCellSize(env);
+    const placedPx = Array.isArray(opts.placedPx) ? opts.placedPx : [];
+    const minSepPx = Math.max(0, Number(opts.minSepPx) || 0);
+    const neededRad = Math.max(8, Math.ceil(Math.hypot(wx, wy) / cellSize) + 3);
+    const reachable = getReachableIslandCells(env, neededRad);
+
+    const islands = [];
+    for (const key of reachable) {
+      const parts = key.split(",");
+      const gx = Number(parts[0]);
+      const gy = Number(parts[1]);
+      const isl = getIslandForCell(gx, gy, env);
+      if (!isl.exists) continue;
+      islands.push({ isl, dist: Math.hypot(isl.x - wx, isl.y - wy) });
+    }
+    islands.sort((a, b) => a.dist - b.dist);
+
+    let bestOk = null;
+    let bestOkDist = Infinity;
+    let bestFallback = null;
+    let bestFallbackScore = -Infinity;
+
+    const maxIslandsToCheck = Math.min(islands.length, 14);
+    for (let i = 0; i < maxIslandsToCheck; i++) {
+      const isl = islands[i].isl;
+      const rings = [0.0, 0.28, 0.52, 0.72];
+      for (let rIdx = 0; rIdx < rings.length; rIdx++) {
+        const rad = isl.r * rings[rIdx];
+        const steps = rIdx === 0 ? 1 : (8 + rIdx * 6);
+        for (let s = 0; s < steps; s++) {
+          const ang = (Math.PI * 2 * s) / steps + isl.phase * 0.3;
+          const px = isl.x + Math.cos(ang) * rad;
+          const py = isl.y + Math.sin(ang) * rad;
+          if (!isAnchorValid(px, py, env)) continue;
+
+          const dTarget = Math.hypot(px - wx, py - wy);
+          let sepOk = true;
+          let worstClearance = 1e9;
+          for (let j = 0; j < placedPx.length; j++) {
+            const other = placedPx[j];
+            const req = Math.max(minSepPx, Number(other.minSepPx) || 0);
+            if (req <= 0) continue;
+            const dOther = Math.hypot(px - other.x, py - other.y);
+            const cl = dOther - req;
+            if (cl < worstClearance) worstClearance = cl;
+            if (dOther < req) sepOk = false;
+          }
+
+          if (sepOk) {
+            if (dTarget < bestOkDist) {
+              bestOkDist = dTarget;
+              bestOk = { x: px, y: py };
+            }
+          } else {
+            const score = worstClearance * 4 - dTarget * 0.15;
+            if (score > bestFallbackScore) {
+              bestFallbackScore = score;
+              bestFallback = { x: px, y: py };
+            }
+          }
+        }
+      }
+      // Dès qu'on a trouvé une position valide respectant la séparation sur une île proche, on peut arrêter si les îles suivantes sont plus loin
+      if (bestOk && i + 1 < maxIslandsToCheck && islands[i + 1].dist - islands[i + 1].isl.r > bestOkDist) {
+        break;
+      }
+    }
+
+    if (bestOk) return bestOk;
+    if (bestFallback) return bestFallback;
+    // Ultime repli garanti sur l'île d'atterrissage (0, 0) hors vaisseau
+    return { x: 150, y: 0 };
   }
 
   function sampleBiome(wx, wy, env) {
@@ -1074,6 +1228,8 @@
     sampleDetail,
     sampleGroundColor,
     isWalkable,
+    isAnchorValid,
+    findNearestValidAnchorPos,
     resolveTerrainConstraint,
     generateChunk,
     drawChunk,

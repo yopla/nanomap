@@ -23,7 +23,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 197358.0
+			"worldSeed": 197358
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -38,7 +38,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 498187.0
+			"worldSeed": 498187
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -53,7 +53,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 36445.0
+			"worldSeed": 36445
 		},
 		{
 			"accentColor": "#b66dff",
@@ -68,7 +68,7 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 871501.0
+			"worldSeed": 871501
 		},
 		{
 			"accentColor": "#ffd24c",
@@ -84,7 +84,7 @@
 			"name": "Désert Ionique",
 			"rockDensity": 1.15,
 			"theme": "astral",
-			"worldSeed": 173548.0
+			"worldSeed": 173548
 		},
 		{
 			"accentColor": "#48e5c2",
@@ -106,7 +106,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 958206.0
+			"worldSeed": 958206
 		},
 		{
 			"accentColor": "#9be564",
@@ -143,7 +143,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 314159.0
+			"worldSeed": 314159
 		}
 	],
 	"cameraSmoothing": 6.5,
@@ -157,5 +157,5 @@
 	"shipSubtitle": "Systèmes nominaux • Base (0, 0)",
 	"shipTitle": "VAISSEAU",
 	"showCompass": true,
-	"worldSeed": 197358.0
+	"worldSeed": 197358
 }

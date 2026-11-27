@@ -928,11 +928,11 @@
 			],
 			"ui": {
 				"custom": {
-					"arrowColor": "#38e0ff",
 					"arrivalRadiusM": 4.5,
+					"arrowColor": "#38e0ff",
 					"autoClearOnArrival": false,
 					"discoverAllInBiome": false,
-					"discoveryRadiusM": 14,
+					"discoveryRadiusM": 14.0,
 					"notifyOnDiscover": true,
 					"showDistanceReadout": true,
 					"showTipEmoji": true

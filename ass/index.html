@@ -2264,7 +2264,7 @@
 			"name": "Campagne de base"
 		},
 		{
-			"description": "Campagne évolutive en 12 étapes qui fait découvrir progressivement tous les biomes, recettes, ancres, visuels vectoriels & feuilles de sprites, boussole bis (points d'intérêt), acteurs/faune, mini-jeux, allié JCLCN et coop P2P.",
+			"description": "Campagne évolutive en 13 étapes avec ancres largement espacées et guidage automatique par Boussole Bis longue portée : récolte, assemblage, ancres vectorielles & feuilles de sprites, personnalisation, tir, vue 2.5D, mini-jeux, caméra rotative, acteurs/faune, allié JCLCN et coop P2P.",
 			"exported": true,
 			"icon": "🧭",
 			"id": "decouverte_progressive",
@@ -2343,7 +2343,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 197358.0
+			"worldSeed": 197358
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -2358,7 +2358,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 498187.0
+			"worldSeed": 498187
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -2373,7 +2373,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 36445.0
+			"worldSeed": 36445
 		},
 		{
 			"accentColor": "#b66dff",
@@ -2388,7 +2388,7 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 871501.0
+			"worldSeed": 871501
 		},
 		{
 			"accentColor": "#ffd24c",
@@ -2404,7 +2404,7 @@
 			"name": "Désert Ionique",
 			"rockDensity": 1.15,
 			"theme": "astral",
-			"worldSeed": 173548.0
+			"worldSeed": 173548
 		},
 		{
 			"accentColor": "#48e5c2",
@@ -2426,7 +2426,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 958206.0
+			"worldSeed": 958206
 		},
 		{
 			"accentColor": "#9be564",
@@ -2463,7 +2463,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 314159.0
+			"worldSeed": 314159
 		}
 	],
 	"cameraSmoothing": 6.5,
@@ -2477,7 +2477,7 @@
 	"shipSubtitle": "Systèmes nominaux • Base (0, 0)",
 	"shipTitle": "VAISSEAU",
 	"showCompass": true,
-	"worldSeed": 197358.0
+	"worldSeed": 197358
 }/*GAME_CONFIG_JSON_END*/;
 
   let ELEMENTS_DATA = /*ELEMENTS_DATA_JSON*/{
@@ -4480,11 +4480,11 @@
 			],
 			"ui": {
 				"custom": {
-					"arrowColor": "#38e0ff",
 					"arrivalRadiusM": 4.5,
+					"arrowColor": "#38e0ff",
 					"autoClearOnArrival": false,
 					"discoverAllInBiome": false,
-					"discoveryRadiusM": 14,
+					"discoveryRadiusM": 14.0,
 					"notifyOnDiscover": true,
 					"showDistanceReadout": true,
 					"showTipEmoji": true
@@ -5344,7 +5344,7 @@
 				"boostDurationSec": 1.2,
 				"cameraRotates": false,
 				"carColor": "#38d6ff",
-				"defaultControlMode": "joystick",
+				"defaultControlMode": "steering_wheel",
 				"defaultLivery": "stripes",
 				"defaultTrackStyle": "classic",
 				"defaultVehicle": "kart",
@@ -5395,6 +5395,7 @@
 				"ai_difficulty": "normal",
 				"ai_style": "balanced",
 				"ai_units": 10,
+				"aim_turn_time": 0.35,
 				"allow_mode_switch": true,
 				"arena_bg_color": "#1f293b",
 				"bullet_damage": 18,
@@ -5437,6 +5438,14 @@
 				"tb_shoot_cost": 2,
 				"tb_unit_hp": 100,
 				"tb_weapon_custom_cost": true,
+				"tw_base_hp": 300,
+				"tw_max_turrets": 5,
+				"tw_min_spacing": 38,
+				"tw_redeploy_time": 0.25,
+				"tw_respawn_delay": 4.0,
+				"tw_turret_hp": 140,
+				"tw_variant": "hybrid",
+				"tw_wave_interval": 5.5,
 				"unit_hp": 100,
 				"unit_speed": 62,
 				"wall_blocks_bullets": true,
@@ -5446,16 +5455,7 @@
 				"wall_hp": 160,
 				"wall_pattern": "symmetrical",
 				"wall_seed": 0,
-				"walls_enabled": true,
-				"tw_variant": "hybrid",
-				"tw_max_turrets": 5,
-				"tw_turret_hp": 140,
-				"tw_redeploy_time": 0.25,
-				"tw_min_spacing": 38,
-				"tw_respawn_delay": 4.0,
-				"tw_base_hp": 300,
-				"tw_wave_interval": 5.5,
-				"aim_turn_time": 0.35
+				"walls_enabled": true
 			},
 			"path": "stratpick/stratpick.html",
 			"presets": [],
@@ -5475,6 +5475,7 @@
 				"modeGlideLabel": "🏹 GLIDE",
 				"modePathfindLabel": "🧭 PATHFIND",
 				"modePickLabel": "🤏 PICK",
+				"modeTowerLabel": "🗼 TOWER",
 				"modeTurnLabel": "♟ TOUR",
 				"pauseBadge": "⏸ EN PAUSE",
 				"replayButtonLabel": "↻ REJOUER",
@@ -5483,8 +5484,7 @@
 				"returnButtonLabel": "← RETOUR AU JEU",
 				"startButtonText": "▶ Commencer",
 				"timeoutTitle": "Temps écoulé !",
-				"victoryTitle": "VICTOIRE !",
-				"modeTowerLabel": "🗼 TOWER"
+				"victoryTitle": "VICTOIRE !"
 			}
 		}
 	],
@@ -6972,6 +6972,7 @@
       const targetGenId = activeBiomeGeneratorId;
       ensureBiomeGeneratorLoaded(targetGenId).then((loaded) => {
         if (loaded && activeBiomeGeneratorId === targetGenId && typeof chunks !== "undefined" && typeof updateChunks === "function" && typeof alien !== "undefined") {
+          resolveAnchors();
           chunks.clear();
           lastCenterKey = "";
           updateChunks(alien.x, alien.y);
@@ -7126,6 +7127,39 @@
       }
     }
 
+    const activeGen = (window.AssemblageBiomeGenerators && window.AssemblageBiomeGenerators[activeBiomeGeneratorId]) || null;
+    const hasTerrainAnchorCheck = Boolean(
+      activeGen && (typeof activeGen.isAnchorValid === "function" || typeof activeGen.isWalkable === "function")
+    );
+    const anchorEnv = hasTerrainAnchorCheck ? {
+      CHUNK_SIZE,
+      TILE_COUNT,
+      TILE_SIZE,
+      LANDING_CLEAR_RADIUS,
+      worldSeed: WORLD_SEED,
+      rockDensity: ROCK_DENSITY,
+      crystalDensity: CRYSTAL_DENSITY,
+      biomeScale: BIOME_SCALE,
+      biomeId: activeBiomeId,
+      theme: activeBiomeTheme,
+      generator: activeBiomeGeneratorId,
+      biome: activeBiome,
+      groundColA,
+      groundColB,
+      groundColC,
+      accentRgb,
+    } : null;
+
+    const isTerrainValidForAnchor = (wxM, wyM) => {
+      if (!hasTerrainAnchorCheck) return true;
+      const wxPx = wxM * ANCHOR_PIXELS_PER_METER;
+      const wyPx = wyM * ANCHOR_PIXELS_PER_METER;
+      if (typeof activeGen.isAnchorValid === "function") {
+        return Boolean(activeGen.isAnchorValid(wxPx, wyPx, anchorEnv));
+      }
+      return Boolean(activeGen.isWalkable(wxPx, wyPx, anchorEnv));
+    };
+
     const placedList = [];
     for (const a of ordered) {
       const aid = String(a.id || "").trim();
@@ -7136,6 +7170,25 @@
       if (mode === "fixed") {
         xm = Number(a.x || 0);
         ym = Number(a.y || 0);
+        if (hasTerrainAnchorCheck && !isTerrainValidForAnchor(xm, ym) && typeof activeGen.findNearestValidAnchorPos === "function") {
+          const snapped = activeGen.findNearestValidAnchorPos(
+            xm * ANCHOR_PIXELS_PER_METER,
+            ym * ANCHOR_PIXELS_PER_METER,
+            anchorEnv,
+            {
+              placedPx: placedList.map((p) => ({
+                x: p.x,
+                y: p.y,
+                minSepPx: p.minSeparation * ANCHOR_PIXELS_PER_METER,
+              })),
+              minSepPx: 0,
+            }
+          );
+          if (snapped && Number.isFinite(snapped.x) && Number.isFinite(snapped.y)) {
+            xm = snapped.x / ANCHOR_PIXELS_PER_METER;
+            ym = snapped.y / ANCHOR_PIXELS_PER_METER;
+          }
+        }
       } else {
         let refXm = 0;
         let refYm = 0;
@@ -7162,6 +7215,24 @@
         let bestXm = refXm + Math.cos(initAngle) * minD;
         let bestYm = refYm + Math.sin(initAngle) * minD;
         let bestClearance = -1e9;
+        let hasValidCandidate = false;
+        let bestValidXm = bestXm;
+        let bestValidYm = bestYm;
+        let bestValidClearance = -1e9;
+
+        const evaluateSeparation = (cx, cy) => {
+          let worstClearance = 1e9;
+          let ok = true;
+          for (const other of placedList) {
+            const reqSep = Math.max(minSep, other.minSeparation);
+            if (reqSep <= 0) continue;
+            const dOther = Math.hypot(cx - other.xm, cy - other.ym);
+            const clearance = dOther - reqSep;
+            if (clearance < worstClearance) worstClearance = clearance;
+            if (dOther < reqSep) ok = false;
+          }
+          return { ok, worstClearance };
+        };
 
         for (let attempt = 0; attempt < 256; attempt++) {
           const r1 = nextAnchorPrng(st);
@@ -7176,30 +7247,106 @@
           const cx = refXm + Math.cos(angle) * dist;
           const cy = refYm + Math.sin(angle) * dist;
 
-          let worstClearance = 1e9;
-          let ok = true;
-          for (const other of placedList) {
-            const reqSep = Math.max(minSep, other.minSeparation);
-            if (reqSep <= 0) continue;
-            const dOther = Math.hypot(cx - other.xm, cy - other.ym);
-            const clearance = dOther - reqSep;
-            if (clearance < worstClearance) worstClearance = clearance;
-            if (dOther < reqSep) ok = false;
-          }
-          if (ok) {
+          const sep = evaluateSeparation(cx, cy);
+          const terrainOk = isTerrainValidForAnchor(cx, cy);
+
+          if (sep.ok && terrainOk) {
             xm = cx;
             ym = cy;
             found = true;
+            hasValidCandidate = true;
             break;
-          } else if (worstClearance > bestClearance) {
-            bestClearance = worstClearance;
+          }
+          if (terrainOk && (!hasValidCandidate || sep.worstClearance > bestValidClearance)) {
+            hasValidCandidate = true;
+            bestValidClearance = sep.worstClearance;
+            bestValidXm = cx;
+            bestValidYm = cy;
+          }
+          if (sep.worstClearance > bestClearance) {
+            bestClearance = sep.worstClearance;
             bestXm = cx;
             bestYm = cy;
           }
         }
+
+        // Si le biome filtre le terrain (ex: archipel avec eau) et qu'aucun point valide
+        // n'a été trouvé dans l'anneau strict, élargit la recherche sur la terre ferme atteignable
+        if (!found && hasTerrainAnchorCheck) {
+          const expMinD = Math.max(7, minD * 0.45);
+          const expMaxD = Math.max(maxD * 1.85, maxD + 25);
+          const searchPasses = useAngleRange
+            ? [{ useAng: true, attempts: 256 }, { useAng: false, attempts: 192 }]
+            : [{ useAng: false, attempts: 256 }];
+
+          let bestExpScore = -1e9;
+          let foundExpOk = false;
+
+          for (const pass of searchPasses) {
+            if (foundExpOk) break;
+            for (let attempt = 0; attempt < pass.attempts; attempt++) {
+              const r1 = nextAnchorPrng(st);
+              st = r1.state;
+              const r2 = nextAnchorPrng(st);
+              st = r2.state;
+
+              const angle = pass.useAng
+                ? ((minAngleDeg + r1.value * angleSpanDeg) * Math.PI / 180)
+                : (r1.value * Math.PI * 2);
+              const dist = expMinD + r2.value * (expMaxD - expMinD);
+              const cx = refXm + Math.cos(angle) * dist;
+              const cy = refYm + Math.sin(angle) * dist;
+              if (!isTerrainValidForAnchor(cx, cy)) continue;
+
+              const sep = evaluateSeparation(cx, cy);
+              const distPenalty = dist < minD ? (minD - dist) : (dist > maxD ? (dist - maxD) : 0);
+              if (sep.ok) {
+                const score = -distPenalty;
+                if (!foundExpOk || score > bestExpScore) {
+                  foundExpOk = true;
+                  bestExpScore = score;
+                  xm = cx;
+                  ym = cy;
+                  found = true;
+                  hasValidCandidate = true;
+                }
+              } else if (!hasValidCandidate || sep.worstClearance > bestValidClearance) {
+                hasValidCandidate = true;
+                bestValidClearance = sep.worstClearance;
+                bestValidXm = cx;
+                bestValidYm = cy;
+              }
+            }
+          }
+        }
+
         if (!found) {
-          xm = bestXm;
-          ym = bestYm;
+          if (hasValidCandidate) {
+            xm = bestValidXm;
+            ym = bestValidYm;
+          } else {
+            xm = bestXm;
+            ym = bestYm;
+            if (hasTerrainAnchorCheck && typeof activeGen.findNearestValidAnchorPos === "function") {
+              const snapped = activeGen.findNearestValidAnchorPos(
+                xm * ANCHOR_PIXELS_PER_METER,
+                ym * ANCHOR_PIXELS_PER_METER,
+                anchorEnv,
+                {
+                  placedPx: placedList.map((p) => ({
+                    x: p.x,
+                    y: p.y,
+                    minSepPx: p.minSeparation * ANCHOR_PIXELS_PER_METER,
+                  })),
+                  minSepPx: minSep * ANCHOR_PIXELS_PER_METER,
+                }
+              );
+              if (snapped && Number.isFinite(snapped.x) && Number.isFinite(snapped.y)) {
+                xm = snapped.x / ANCHOR_PIXELS_PER_METER;
+                ym = snapped.y / ANCHOR_PIXELS_PER_METER;
+              }
+            }
+          }
         }
       }
 
@@ -13365,6 +13512,7 @@
             applyActiveBiomeParams(activeBiomeId);
           }
           await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId, false);
+          resolveAnchors();
           const nextBiomeKey = JSON.stringify(activeBiome || {});
           if (prevBiomeKey !== nextBiomeKey) {
             if (deferChunkRefresh && !uiOpen) {
@@ -13403,6 +13551,7 @@
             const genHash = hashBiomeGenHtml(combined);
             if (loadedBiomeGenHtmlHash.get(activeBiomeGeneratorId) !== genHash) {
               await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId, true);
+              resolveAnchors();
               if (deferChunkRefresh && !uiOpen) {
                 pendingChunkRefresh = true;
               } else {
@@ -13969,6 +14118,7 @@
   requestScreenWakeLock();
 
   await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
+  resolveAnchors();
 
   let lastTs = null;
   const transferredState = window.__ASSEMBLAGE_TRANSFERRED_STATE;
@@ -13981,6 +14131,7 @@
       syncUnlockedExtensions(false);
     } else {
       await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
+      resolveAnchors();
       chunks.clear();
       lastCenterKey = "";
       updateChunks(alien.x, alien.y);
@@ -14002,6 +14153,7 @@
       startNewGame(currentSlotId);
       if (!window.AssemblageBiomeGenerators[activeBiomeGeneratorId]) {
         await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
+        resolveAnchors();
         chunks.clear();
         lastCenterKey = "";
         updateChunks(alien.x, alien.y);
@@ -14010,6 +14162,7 @@
       loadSlot(currentSlotId, true);
       if (!window.AssemblageBiomeGenerators[activeBiomeGeneratorId]) {
         await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
+        resolveAnchors();
         chunks.clear();
         lastCenterKey = "";
         updateChunks(alien.x, alien.y);
