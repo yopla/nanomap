@@ -69,7 +69,7 @@
       "label": "Étapes du scénario (JSON)",
       "type": "textarea",
       "default": "[\n  {\n    \"id\": \"etape_1_deplacement\",\n    \"title\": \"Premiers pas\",\n    \"icon\": \"🚀\",\n    \"objective\": \"Explorez les environs sur 20 mètres.\",\n    \"hint\": \"Maintenez le clic ou utilisez le joystick pour déplacer votre alien.\",\n    \"startCondition\": { \"type\": \"always\" },\n    \"completeCondition\": { \"type\": \"distance_traveled\", \"count\": 20 },\n    \"onStart\": {\n      \"modal\": {\n        \"icon\": \"🌌\",\n        \"title\": \"Bienvenue\",\n        \"body\": \"Votre vaisseau vient d'atterrir. Suivez les objectifs en haut à gauche pour découvrir les fonctionnalités étape par étape.\",\n        \"subtext\": \"Cliquez sur le bandeau Objectif à tout moment pour consulter le journal.\"\n      }\n    },\n    \"onComplete\": {\n      \"toast\": \"✅ Bien joué ! Vous maîtrisez le déplacement.\"\n    }\n  },\n  {\n    \"id\": \"etape_2_recolte\",\n    \"title\": \"Première récolte\",\n    \"icon\": \"🪨\",\n    \"objective\": \"Récoltez 2 ressources différentes autour du vaisseau.\",\n    \"hint\": \"Approchez-vous des éléments au sol pour les collecter automatiquement.\",\n    \"completeCondition\": { \"type\": \"discovered_count\", \"count\": 2 },\n    \"onComplete\": {\n      \"toast\": \"🎉 Ressources collectées ! Retournez au vaisseau pour assembler.\"\n    }\n  }\n]",
-      "hint": "Tableau JSON d'étapes : id, title, icon, objective, hint, sequential (défaut true), startCondition, completeCondition, compassGuidance (anchors, revealAnchors, minDistanceM, replace, clearOnComplete, unlockCompass), onStart/onComplete (toast, modal, titleCard, unlockExtension, giveItems, compassPoint, compassClear). Utilise les mêmes types de conditions que les extensions."
+      "hint": "Tableau JSON d'étapes : id, title, icon, objective, hint, sequential (défaut true), startCondition, completeCondition, compassGuidance (anchors, revealAnchors, minDistanceM, replace, clearOnComplete, unlockCompass), onStart/onComplete (toast, modal, titleCard, unlockExtension, lockExtension, unlockBiome, lockBiome, giveItems, compassPoint, compassClear). Utilise les mêmes types de conditions que les extensions."
     }
   ]
 }
@@ -219,20 +219,33 @@
         gap: 9px;
         padding: 9px 12px;
         border-radius: 13px;
-        background: rgba(11, 18, 32, 0.84);
-        border: 1px solid rgba(115, 250, 209, 0.38);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        background: rgba(11, 18, 32, 0.56);
+        border: 1px solid rgba(115, 250, 209, 0.36);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
         color: #eefcff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
         font-family: inherit;
-        cursor: pointer;
+        cursor: grab;
         user-select: none;
-        transition: transform 0.16s ease, border-color 0.16s ease, opacity 0.18s ease;
+        touch-action: none;
+        opacity: 0.86;
+        transition: transform 0.16s ease, border-color 0.16s ease, opacity 0.18s ease, background 0.18s ease;
       }
       #${HUD_ID}:hover {
+        background: rgba(11, 18, 32, 0.72);
         border-color: rgba(115, 250, 209, 0.72);
+        opacity: 0.96;
         transform: translateY(-1px);
+      }
+      #${HUD_ID}.dragging {
+        cursor: grabbing;
+        background: rgba(11, 18, 32, 0.72);
+        border-color: rgba(115, 250, 209, 0.85);
+        opacity: 0.96;
+        transform: none;
+        transition: none;
       }
       #${HUD_ID}.hidden {
         display: none !important;
@@ -478,6 +491,9 @@
       const startedSet = new Set(Array.isArray(saved.started) ? saved.started.map(String) : []);
       const completedSet = new Set(Array.isArray(saved.completed) ? saved.completed.map(String) : []);
       let hudVisible = (saved.hudVisible !== undefined) ? Boolean(saved.hudVisible) : hudEnabledDefault;
+      let hudPos = (saved.hudPos && Number.isFinite(Number(saved.hudPos.x)) && Number.isFinite(Number(saved.hudPos.y)))
+        ? { x: Number(saved.hudPos.x), y: Number(saved.hudPos.y) }
+        : null;
       let finishedNotified = Boolean(saved.finishedNotified);
       let skipped = Boolean(saved.skipped);
 
@@ -556,6 +572,7 @@
           started: Array.from(startedSet),
           completed: Array.from(completedSet),
           hudVisible,
+          hudPos,
           finishedNotified,
           skipped,
         }, true);
@@ -596,6 +613,37 @@
           for (const target of targets) {
             const fname = String(target || "").trim();
             if (fname) host.unlockExtension(fname, !silent);
+          }
+        }
+
+        // Verrouillage d'extension(s)
+        if (action.lockExtension && typeof host.lockExtension === "function") {
+          const targets = Array.isArray(action.lockExtension)
+            ? action.lockExtension
+            : [action.lockExtension];
+          for (const target of targets) {
+            const fname = String(target || "").trim();
+            if (fname) host.lockExtension(fname, false, false);
+          }
+        }
+
+        // Déblocage / verrouillage de biome(s)
+        if (action.unlockBiome && host.game && typeof host.game.unlockBiome === "function") {
+          const targets = Array.isArray(action.unlockBiome)
+            ? action.unlockBiome
+            : [action.unlockBiome];
+          for (const target of targets) {
+            const bid = String(target || "").trim();
+            if (bid) host.game.unlockBiome(bid, !silent);
+          }
+        }
+        if (action.lockBiome && host.game && typeof host.game.lockBiome === "function") {
+          const targets = Array.isArray(action.lockBiome)
+            ? action.lockBiome
+            : [action.lockBiome];
+          for (const target of targets) {
+            const bid = String(target || "").trim();
+            if (bid) host.game.lockBiome(bid, false);
           }
         }
 
@@ -986,7 +1034,104 @@
         persistState();
         updateHud();
       });
-      hudEl.addEventListener("click", () => openJournalModal());
+
+      const HUD_MARGIN = 8;
+      const DRAG_THRESHOLD_PX = 5;
+      let dragState = null;
+      let suppressNextClick = false;
+
+      function clampHudCoords(x, y) {
+        const rect = hudEl ? hudEl.getBoundingClientRect() : null;
+        const w = (rect && rect.width > 0) ? rect.width : 260;
+        const h = (rect && rect.height > 0) ? rect.height : 72;
+        const maxX = Math.max(HUD_MARGIN, window.innerWidth - w - HUD_MARGIN);
+        const maxY = Math.max(HUD_MARGIN, window.innerHeight - h - HUD_MARGIN);
+        return {
+          x: Math.round(Math.min(Math.max(HUD_MARGIN, x), maxX)),
+          y: Math.round(Math.min(Math.max(HUD_MARGIN, y), maxY)),
+        };
+      }
+
+      function applyFloatingHudPosition(x, y, pointerIdToKeep = null) {
+        if (!hudEl) return null;
+        const reparented = hudEl.parentNode !== document.body;
+        if (reparented) {
+          document.body.appendChild(hudEl);
+        }
+        hudEl.style.position = "fixed";
+        hudEl.style.right = "auto";
+        hudEl.style.bottom = "auto";
+        hudEl.style.margin = "0";
+        hudEl.style.pointerEvents = "auto";
+        const clamped = clampHudCoords(x, y);
+        hudEl.style.left = `${clamped.x}px`;
+        hudEl.style.top = `${clamped.y}px`;
+        if (reparented && pointerIdToKeep !== null) {
+          try { hudEl.setPointerCapture(pointerIdToKeep); } catch (_e) {}
+        }
+        return clamped;
+      }
+
+      hudEl.addEventListener("pointerdown", (ev) => {
+        if (ev.pointerType === "mouse" && ev.button !== 0) return;
+        if (ev.target && typeof ev.target.closest === "function" && ev.target.closest(".sg-hide")) return;
+        const rect = hudEl.getBoundingClientRect();
+        dragState = {
+          pointerId: ev.pointerId,
+          startX: ev.clientX,
+          startY: ev.clientY,
+          originLeft: rect.left,
+          originTop: rect.top,
+          moved: false,
+        };
+        try { hudEl.setPointerCapture(ev.pointerId); } catch (_e) {}
+      });
+
+      const onPointerMove = (ev) => {
+        if (!dragState || ev.pointerId !== dragState.pointerId) return;
+        const dx = ev.clientX - dragState.startX;
+        const dy = ev.clientY - dragState.startY;
+        if (!dragState.moved) {
+          if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+          dragState.moved = true;
+          suppressNextClick = true;
+          hudEl.classList.add("dragging");
+        }
+        ev.preventDefault();
+        const clamped = applyFloatingHudPosition(dragState.originLeft + dx, dragState.originTop + dy, dragState.pointerId);
+        if (clamped) hudPos = clamped;
+      };
+
+      const finishHudDrag = (ev) => {
+        if (!dragState || ev.pointerId !== dragState.pointerId) return;
+        const wasMoved = dragState.moved;
+        const pid = dragState.pointerId;
+        dragState = null;
+        if (hudEl) {
+          hudEl.classList.remove("dragging");
+          try {
+            if (hudEl.hasPointerCapture(pid)) hudEl.releasePointerCapture(pid);
+          } catch (_e) {}
+        }
+        if (wasMoved) {
+          persistState();
+          setTimeout(() => { suppressNextClick = false; }, 0);
+        }
+      };
+
+      window.addEventListener("pointermove", onPointerMove, { passive: false });
+      window.addEventListener("pointerup", finishHudDrag);
+      window.addEventListener("pointercancel", finishHudDrag);
+
+      hudEl.addEventListener("click", (ev) => {
+        if (suppressNextClick) {
+          suppressNextClick = false;
+          ev.preventDefault();
+          ev.stopPropagation();
+          return;
+        }
+        openJournalModal();
+      });
       hudEl.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
@@ -994,7 +1139,9 @@
         }
       });
 
-      if (host.ui && typeof host.ui.mountHudSlot === "function") {
+      if (hudPos) {
+        applyFloatingHudPosition(hudPos.x, hudPos.y);
+      } else if (host.ui && typeof host.ui.mountHudSlot === "function") {
         hudEl.style.position = "relative";
         hudEl.style.top = "auto";
         hudEl.style.left = "auto";
@@ -1002,7 +1149,19 @@
       } else {
         document.body.appendChild(hudEl);
       }
+
+      const onWindowResize = () => {
+        if (!hudEl || !hudPos || hudEl.classList.contains("hidden")) return;
+        const clamped = applyFloatingHudPosition(hudPos.x, hudPos.y);
+        if (clamped) hudPos = clamped;
+      };
+      window.addEventListener("resize", onWindowResize);
+
       host.registerCleanup(() => {
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", finishHudDrag);
+        window.removeEventListener("pointercancel", finishHudDrag);
+        window.removeEventListener("resize", onWindowResize);
         if (hudEl) hudEl.remove();
         hudEl = null;
       });
@@ -1035,6 +1194,7 @@
 
       // Évaluation initiale + suivi régulier (fonctionne aussi dans le vaisseau / menu craft)
       updateHud();
+      if (hudPos) requestAnimationFrame(onWindowResize);
       evaluateSteps(false);
       pollTimer = setInterval(() => evaluateSteps(false), 250);
       host.registerCleanup(() => {

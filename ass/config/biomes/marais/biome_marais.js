@@ -60,6 +60,7 @@
   }
 
   function onUnload() {
+    if (M.loading && typeof M.loading.hide === "function") M.loading.hide();
     if (M.parallax25D && typeof M.parallax25D.detach === "function") M.parallax25D.detach();
     reset();
   }
@@ -372,6 +373,10 @@
     deflectProjectilesAt,
     reset,
     onUnload,
+    showLoading: (biomeObj, statusText) => (M.loading ? M.loading.show(biomeObj, statusText) : Promise.resolve()),
+    updateLoading: (statusText) => { if (M.loading) M.loading.update(statusText); },
+    hideLoading: () => { if (M.loading) M.loading.hide(); },
+    waitLoadingFrame: () => (M.loading ? M.loading.waitFrame() : Promise.resolve()),
     getChunkStates: () => chunkStates,
   };
 

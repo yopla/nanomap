@@ -1,6 +1,76 @@
 {
 	"extensions": [
 		{
+			"accentColor": "#ffb86c",
+			"activationBehavior": "Verrouille initialement les 6 biomes de progression (Caldeira, Archipel, Toundra, Marais, Jungle, Désert) puis les débloque dynamiquement sur événements et conditions au fil de l'Odyssée.",
+			"announcementMode": "silent",
+			"category": "",
+			"condition": {
+				"actorId": "",
+				"anchorId": "",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"flagKey": "",
+				"logic": "and",
+				"minigdId": "",
+				"negate": false,
+				"requiredExtension": "",
+				"tagId": "",
+				"type": "always"
+			},
+			"conflictsWith": [],
+			"deactivateCondition": {
+				"actorId": "",
+				"anchorId": "",
+				"announcementMode": "silent",
+				"biomeId": "",
+				"count": 1,
+				"elementId": "",
+				"expression": "",
+				"extra": [],
+				"flagKey": "",
+				"logic": "and",
+				"minigdId": "",
+				"negate": false,
+				"permanent": false,
+				"requiredExtension": "",
+				"tagId": "",
+				"type": "none"
+			},
+			"description": "Gère dynamiquement le verrouillage initial et le déblocage progressif des biomes sur conditions et événements.",
+			"enabled": true,
+			"filename": "regles_deblocage.html",
+			"icon": "🔐",
+			"id": "regles_deblocage.html",
+			"name": "Règles de Déblocage — Biomes",
+			"priority": -10,
+			"requires": [],
+			"tags": [
+				"scénario",
+				"progression",
+				"verrouillage"
+			],
+			"ui": {
+				"custom": {
+					"announceBiomes": true,
+					"announceExtensions": true,
+					"initialLockedBiomes": "caldeira_magma, archipel_corallien, toundra_glaciaire, marais, jungle_fongique, desert_ionique",
+					"initialLockedExtensions": "",
+					"rulesJson": "[\n  {\n    \"id\": \"unlock_caldeira_magma\",\n    \"when\": { \"type\": \"crafted_element\", \"elementId\": \"bio_serum\" },\n    \"unlockBiomes\": [\"caldeira_magma\"]\n  },\n  {\n    \"id\": \"unlock_archipel_corallien\",\n    \"when\": { \"type\": \"crafted_element\", \"elementId\": \"verre_solaire\" },\n    \"unlockBiomes\": [\"archipel_corallien\"]\n  },\n  {\n    \"id\": \"unlock_toundra_glaciaire\",\n    \"when\": { \"type\": \"biome_visited\", \"biomeId\": \"archipel_corallien\" },\n    \"unlockBiomes\": [\"toundra_glaciaire\"]\n  },\n  {\n    \"id\": \"unlock_marais\",\n    \"when\": { \"type\": \"biome_visited\", \"biomeId\": \"toundra_glaciaire\" },\n    \"unlockBiomes\": [\"marais\"]\n  },\n  {\n    \"id\": \"unlock_jungle_fongique\",\n    \"when\": { \"type\": \"biome_visited\", \"biomeId\": \"marais\" },\n    \"unlockBiomes\": [\"jungle_fongique\"]\n  },\n  {\n    \"id\": \"unlock_desert_ionique\",\n    \"when\": { \"type\": \"biome_visited\", \"biomeId\": \"jungle_fongique\" },\n    \"unlockBiomes\": [\"desert_ionique\"]\n  }\n]"
+				},
+				"titleCardBadge": "",
+				"titleCardButtonText": "",
+				"titleCardDurationMs": 0,
+				"titleCardShowFile": false,
+				"titleCardText": "",
+				"titleCardTitle": "",
+				"toastText": ""
+			}
+		},
+		{
 			"accentColor": "#73fad1",
 			"activationBehavior": "Affiche un bandeau d'objectif HUD en haut à gauche, un Journal de mission dans les Paramètres (avec options Recommencer et Passer la découverte), pilote la Boussole Bis dès qu'une cible est lointaine, et déclenche progressivement modales et toasts au fil des 13 étapes de l'Odyssée.",
 			"announcementMode": "silent",

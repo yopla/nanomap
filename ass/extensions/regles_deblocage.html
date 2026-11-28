@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Règles de Déblocage (Biomes, Extensions &amp; Événements)</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "initialLockedBiomes",
+      "label": "Biomes verrouillés au départ",
+      "type": "text",
+      "default": "",
+      "placeholder": "caldeira_magma, archipel_corallien, toundra_glaciaire",
+      "hint": "Liste d'IDs de biomes séparés par des virgules (ou tableau JSON) à verrouiller dynamiquement au début d'une partie."
+    },
+    {
+      "key": "initialLockedExtensions",
+      "label": "Extensions verrouillées au départ",
+      "type": "text",
+      "default": "",
+      "placeholder": "tir_alien.html, parallaxe_25d.html",
+      "hint": "Liste de fichiers d'extensions séparés par des virgules (ou tableau JSON) à verrouiller au début d'une partie."
+    },
+    {
+      "key": "announceBiomes",
+      "label": "Annoncer les déblocages de biomes",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche un toast lorsqu'une règle débloque un biome."
+    },
+    {
+      "key": "announceExtensions",
+      "label": "Annoncer les déblocages d'extensions",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche l'annonce configurée lorsqu'une règle débloque une extension."
+    },
+    {
+      "key": "rulesJson",
+      "label": "Règles de verrouillage / déblocage (JSON)",
+      "type": "textarea",
+      "default": "[\n  {\n    \"id\": \"unlock_caldeira\",\n    \"when\": { \"type\": \"crafted_element\", \"elementId\": \"bio_serum\" },\n    \"unlockBiomes\": [\"caldeira_magma\"]\n  }\n]",
+      "hint": "Tableau JSON de règles : id, when (condition standard), onEvent (nom d'événement host ou tableau), eventMatch (filtre sur payload), once (défaut true), unlockBiomes, lockBiomes, unlockExtensions, lockExtensions, setFlag, toast, emitEvent."
+    }
+  ]
+}
+</script>
+<script>
+// Extension générique Assemblage : regles_deblocage.html
+// Gère de façon déclarative le verrouillage et le déblocage de biomes et d'extensions
+// à partir de conditions de jeu et d'événements déclencheurs (host.events).
+(() => {
+  const FILENAME = "regles_deblocage.html";
+  const DEFAULT_WATCH_EVENTS = [
+    "element:crafted",
+    "element:collected",
+    "biome:changed",
+    "biome:unlocked",
+    "biome:locked",
+    "anchor_discovered",
+    "actor:killed",
+    "progress:flag",
+    "progress:stat",
+    "minigd:result",
+    "extension:unlocked",
+    "extension:locked",
+    "ship:entered",
+    "ship:exited",
+  ];
+
+  function parseIdList(rawVal) {
+    if (Array.isArray(rawVal)) {
+      return rawVal.map((v) => String(v || "").trim()).filter(Boolean);
+    }
+    const txt = String(rawVal ?? "").trim();
+    if (!txt) return [];
+    if (txt.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(txt);
+        if (Array.isArray(parsed)) {
+          return parsed.map((v) => String(v || "").trim()).filter(Boolean);
+        }
+      } catch (_e) {}
+    }
+    return txt.split(/[\s,;]+/).map((v) => v.trim()).filter(Boolean);
+  }
+
+  function parseRules(rawVal) {
+    if (Array.isArray(rawVal)) return rawVal;
+    const txt = String(rawVal ?? "").trim();
+    if (!txt) return [];
+    try {
+      const parsed = JSON.parse(txt);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === "object" && Array.isArray(parsed.rules)) {
+        return parsed.rules;
+      }
+    } catch (err) {
+      console.warn("[regles_deblocage] JSON de règles invalide :", err);
+    }
+    return [];
+  }
+
+  function normalizeRule(raw, idx) {
+    if (!raw || typeof raw !== "object") return null;
+    const id = String(raw.id || `rule_${idx + 1}`).trim();
+    const onEvents = Array.isArray(raw.onEvent)
+      ? raw.onEvent.map((e) => String(e || "").trim()).filter(Boolean)
+      : (raw.onEvent ? [String(raw.onEvent).trim()].filter(Boolean) : []);
+    return {
+      id,
+      when: (raw.when && typeof raw.when === "object") ? raw.when : null,
+      onEvents,
+      eventMatch: (raw.eventMatch && typeof raw.eventMatch === "object") ? raw.eventMatch : null,
+      once: raw.once !== false,
+      unlockBiomes: parseIdList(raw.unlockBiomes || raw.unlockBiome),
+      lockBiomes: parseIdList(raw.lockBiomes || raw.lockBiome),
+      unlockExtensions: parseIdList(raw.unlockExtensions || raw.unlockExtension),
+      lockExtensions: parseIdList(raw.lockExtensions || raw.lockExtension),
+      permanentLock: Boolean(raw.permanentLock),
+      setFlag: raw.setFlag || null,
+      toast: String(raw.toast || "").trim(),
+      emitEvent: raw.emitEvent || null,
+    };
+  }
+
+  function matchesEventPayload(matchObj, payload) {
+    if (!matchObj || typeof matchObj !== "object") return true;
+    const src = (payload && typeof payload === "object") ? payload : {};
+    for (const [k, expected] of Object.entries(matchObj)) {
+      if (src[k] !== expected) return false;
+    }
+    return true;
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, extDef, opts = {}) {
+      const initialLockedBiomes = parseIdList(host.ui.getConfig("initialLockedBiomes", ""));
+      const initialLockedExtensions = parseIdList(host.ui.getConfig("initialLockedExtensions", ""));
+      const announceBiomes = host.ui.getConfig("announceBiomes", true) !== false;
+      const announceExtensions = host.ui.getConfig("announceExtensions", true) !== false;
+      const rules = parseRules(host.ui.getConfig("rulesJson", "[]"))
+        .map(normalizeRule)
+        .filter(Boolean);
+
+      const saved = host.state.get() || {};
+      const state = {
+        initialized: Boolean(saved.initialized),
+        triggered: Object.assign({}, (saved.triggered && typeof saved.triggered === "object") ? saved.triggered : {}),
+      };
+
+      function persistState() {
+        host.state.set({
+          initialized: state.initialized,
+          triggered: state.triggered,
+        }, true);
+      }
+
+      function applyInitialLocks() {
+        if (state.initialized) return;
+        for (const bid of initialLockedBiomes) {
+          if (bid === host.game.activeBiomeId) continue;
+          if (typeof host.game.lockBiome === "function") {
+            host.game.lockBiome(bid, false);
+          }
+        }
+        for (const fname of initialLockedExtensions) {
+          if (fname === FILENAME) continue;
+          if (typeof host.lockExtension === "function") {
+            host.lockExtension(fname, false, false);
+          }
+        }
+        state.initialized = true;
+        persistState();
+      }
+
+      function executeRule(rule, silent = false) {
+        if (rule.once && state.triggered[rule.id]) return false;
+
+        let anyEffect = false;
+        for (const bid of rule.unlockBiomes) {
+          if (typeof host.game.unlockBiome === "function") {
+            if (host.game.unlockBiome(bid, !silent && announceBiomes)) anyEffect = true;
+          }
+        }
+        for (const bid of rule.lockBiomes) {
+          if (typeof host.game.lockBiome === "function") {
+            if (host.game.lockBiome(bid, false)) anyEffect = true;
+          }
+        }
+        for (const fname of rule.unlockExtensions) {
+          if (fname === FILENAME) continue;
+          if (typeof host.unlockExtension === "function") {
+            if (host.unlockExtension(fname, !silent && announceExtensions)) anyEffect = true;
+          }
+        }
+        for (const fname of rule.lockExtensions) {
+          if (fname === FILENAME) continue;
+          if (typeof host.lockExtension === "function") {
+            if (host.lockExtension(fname, false, rule.permanentLock)) anyEffect = true;
+          }
+        }
+        if (rule.setFlag && host.progress && typeof host.progress.setFlag === "function") {
+          if (typeof rule.setFlag === "string") {
+            host.progress.setFlag(rule.setFlag, true, true);
+            anyEffect = true;
+          } else if (typeof rule.setFlag === "object") {
+            for (const [fk, fv] of Object.entries(rule.setFlag)) {
+              host.progress.setFlag(fk, fv, true);
+              anyEffect = true;
+            }
+          }
+        }
+
+        if (rule.once) {
+          state.triggered[rule.id] = true;
+          persistState();
+        }
+
+        if (!silent && rule.toast) {
+          host.ui.showToast(rule.toast);
+        }
+        if (rule.emitEvent && host.events && typeof host.events.emit === "function") {
+          if (typeof rule.emitEvent === "string") {
+            host.events.emit(rule.emitEvent, { ruleId: rule.id });
+          } else if (typeof rule.emitEvent === "object" && rule.emitEvent.name) {
+            host.events.emit(String(rule.emitEvent.name), rule.emitEvent.payload || { ruleId: rule.id });
+          }
+        }
+        return anyEffect || rule.once;
+      }
+
+      let evaluating = false;
+      function evaluateConditionRules(silent = false) {
+        if (evaluating) return;
+        evaluating = true;
+        try {
+          let changed = true;
+          let passes = 0;
+          while (changed && passes < 6) {
+            changed = false;
+            passes++;
+            for (const rule of rules) {
+              if (rule.onEvents.length > 0) continue;
+              if (rule.once && state.triggered[rule.id]) continue;
+              if (!rule.when) continue;
+              if (host.game.evaluateCondition(rule.when, "none")) {
+                if (executeRule(rule, silent)) changed = true;
+              }
+            }
+          }
+        } finally {
+          evaluating = false;
+        }
+      }
+
+      function handleEvent(eventName, payload) {
+        for (const rule of rules) {
+          if (!rule.onEvents.includes(eventName)) continue;
+          if (rule.once && state.triggered[rule.id]) continue;
+          if (!matchesEventPayload(rule.eventMatch, payload)) continue;
+          if (rule.when && !host.game.evaluateCondition(rule.when, "always")) continue;
+          executeRule(rule, false);
+        }
+        evaluateConditionRules(false);
+      }
+
+      const silentRestore = Boolean(opts && opts.isSilentRestore);
+      applyInitialLocks();
+      evaluateConditionRules(silentRestore);
+
+      const watchedEvents = new Set(DEFAULT_WATCH_EVENTS);
+      for (const rule of rules) {
+        for (const ev of rule.onEvents) watchedEvents.add(ev);
+      }
+      if (host.events && typeof host.events.on === "function") {
+        for (const evName of watchedEvents) {
+          host.events.on(evName, (payload) => handleEvent(evName, payload));
+        }
+      }
+
+      const pollId = window.setInterval(() => {
+        evaluateConditionRules(false);
+      }, 650);
+
+      if (host.services && typeof host.services.provide === "function") {
+        host.services.provide("regles_deblocage", {
+          evaluateNow: (silent = false) => evaluateConditionRules(silent),
+          getState: () => ({ initialized: state.initialized, triggered: Object.assign({}, state.triggered) }),
+          resetRules: () => {
+            state.initialized = false;
+            state.triggered = {};
+            applyInitialLocks();
+            evaluateConditionRules(false);
+          },
+        });
+      }
+
+      this._pollId = pollId;
+    },
+    onDeactivate() {
+      if (this._pollId) {
+        window.clearInterval(this._pollId);
+        this._pollId = null;
+      }
+    },
+  };
+})();
+</script>
+</body>
+</html>

@@ -7590,7 +7590,28 @@
     return resolved.join("/");
   }
 
-  async function ensureBiomeGeneratorLoaded(rawId, forceReload = false) {
+  function getBiomeLoadingUi(rawGenId) {
+    const genId = normalizeBiomeGeneratorId(rawGenId);
+    const baseId = genId.includes("/") ? genId.split("/").pop() : genId;
+    const gens = window.AssemblageBiomeGenerators || {};
+    const gen = gens[genId] || (baseId ? gens[baseId] : null);
+    if (gen && typeof gen.showLoading === "function" && typeof gen.hideLoading === "function") {
+      return {
+        show: (b, txt) => gen.showLoading(b, txt),
+        update: (txt) => { if (typeof gen.updateLoading === "function") gen.updateLoading(txt); },
+        hide: () => gen.hideLoading(),
+        waitFrame: () => (typeof gen.waitLoadingFrame === "function" ? gen.waitLoadingFrame() : Promise.resolve()),
+      };
+    }
+    const preloaders = window.AssemblageBiomePreloaders || {};
+    const pre = preloaders[genId] || (baseId ? preloaders[baseId] : null);
+    if (pre && typeof pre.show === "function" && typeof pre.hide === "function") {
+      return pre;
+    }
+    return null;
+  }
+
+  async function ensureBiomeGeneratorLoaded(rawId, forceReload = false, biomeContext = null) {
     const genId = normalizeBiomeGeneratorId(rawId);
     if (!forceReload && window.AssemblageBiomeGenerators[genId]) {
       return window.AssemblageBiomeGenerators[genId];
@@ -7618,23 +7639,67 @@
         const scriptBodies = [];
         let combinedSource = htmlText;
 
+        const preloadScripts = [];
+        const mainScripts = [];
         for (const sc of scripts) {
           const stype = String(sc.getAttribute("type") || "").trim().toLowerCase();
           if (stype && stype !== "text/javascript" && stype !== "application/javascript") continue;
-          const srcAttr = sc.getAttribute("src");
-          if (srcAttr) {
-            const depUrl = resolveBiomeRelativeUrl(baseDir, srcAttr);
-            if (!depUrl) continue;
-            const depFetchUrl = isHttp ? `${depUrl}?_ts=${Date.now()}` : depUrl;
-            const depResp = await fetch(depFetchUrl, { cache: "no-store" });
-            if (!depResp.ok) throw new Error(`HTTP ${depResp.status} (${depUrl})`);
-            const depCode = await depResp.text();
-            depUrls.push(depUrl);
-            combinedSource += "\n/*DEP:" + depUrl + "*/\n" + depCode;
-            if (depCode.trim()) scriptBodies.push(depCode);
-          } else if (sc.textContent && sc.textContent.trim()) {
-            scriptBodies.push(sc.textContent);
+          const isPreload = sc.getAttribute("data-preload") === "true" || sc.hasAttribute("data-preload");
+          (isPreload ? preloadScripts : mainScripts).push(sc);
+        }
+
+        const fetchScriptGroup = async (group) => {
+          const entries = [];
+          for (const sc of group) {
+            const srcAttr = sc.getAttribute("src");
+            if (srcAttr) {
+              const depUrl = resolveBiomeRelativeUrl(baseDir, srcAttr);
+              if (!depUrl) continue;
+              const depFetchUrl = isHttp ? `${depUrl}?_ts=${Date.now()}` : depUrl;
+              entries.push({
+                depUrl,
+                promise: fetch(depFetchUrl, { cache: "no-store" }).then(async (depResp) => {
+                  if (!depResp.ok) throw new Error(`HTTP ${depResp.status} (${depUrl})`);
+                  return depResp.text();
+                }),
+              });
+            } else if (sc.textContent && sc.textContent.trim()) {
+              entries.push({ depUrl: "", inline: sc.textContent });
+            }
           }
+          return Promise.all(
+            entries.map(async (entry) => ({
+              depUrl: entry.depUrl,
+              code: entry.promise ? await entry.promise : (entry.inline || ""),
+            }))
+          );
+        };
+
+        if (preloadScripts.length > 0) {
+          const resolvedPreload = await fetchScriptGroup(preloadScripts);
+          for (const item of resolvedPreload) {
+            if (item.depUrl) {
+              depUrls.push(item.depUrl);
+              combinedSource += "\n/*DEP:" + item.depUrl + "*/\n" + item.code;
+            }
+            if (item.code && item.code.trim()) {
+              const fn = new Function(item.code);
+              fn();
+            }
+          }
+          const preUi = getBiomeLoadingUi(genId);
+          if (preUi) {
+            await preUi.show(biomeContext, "Chargement des modules du biome…");
+          }
+        }
+
+        const resolvedMain = await fetchScriptGroup(mainScripts);
+        for (const item of resolvedMain) {
+          if (item.depUrl) {
+            depUrls.push(item.depUrl);
+            combinedSource += "\n/*DEP:" + item.depUrl + "*/\n" + item.code;
+          }
+          if (item.code && item.code.trim()) scriptBodies.push(item.code);
         }
 
         loadedBiomeGenDeps.set(genId, depUrls);
@@ -8655,38 +8720,62 @@
     }
   }
 
+  let isTravelingBiome = false;
+
   async function travelToBiome(biomeId) {
+    if (isTravelingBiome) return;
     const targetB = BIOMES.find(x => x && x.id === biomeId);
     if (!targetB || isBiomeLocked(targetB)) return;
-    const prevGen = getActiveBiomeGenerator();
-    if (prevGen && typeof prevGen.onUnload === "function") {
-      try { prevGen.onUnload(); } catch (_e) {}
+    const targetGenId = normalizeBiomeGeneratorId(targetB.generator);
+    isTravelingBiome = true;
+    try {
+      let loadingUi = getBiomeLoadingUi(targetGenId);
+      if (loadingUi) {
+        const alreadyLoaded = Boolean(window.AssemblageBiomeGenerators && window.AssemblageBiomeGenerators[targetGenId]);
+        await loadingUi.show(
+          targetB,
+          alreadyLoaded ? "Préparation du terrain…" : "Chargement des modules du biome…"
+        );
+      }
+      const prevGen = getActiveBiomeGenerator();
+      if (prevGen && typeof prevGen.onUnload === "function") {
+        try { prevGen.onUnload(); } catch (_e) {}
+      }
+      await ensureBiomeGeneratorLoaded(targetGenId, false, targetB);
+      loadingUi = getBiomeLoadingUi(targetGenId);
+      if (loadingUi) {
+        loadingUi.update("Génération du terrain…");
+        await loadingUi.waitFrame();
+      }
+      applyActiveBiomeParams(biomeId);
+      const nextGen = getActiveBiomeGenerator();
+      if (nextGen && typeof nextGen.reset === "function") {
+        try { nextGen.reset(); } catch (_e) {}
+      }
+      if (typeof clearAllChunkActors === "function") clearAllChunkActors();
+      chunks.clear();
+      lastCenterKey = "";
+      pendingChunkRefresh = false;
+      alien.x = 115;
+      alien.y = 70;
+      alien.vx = 0;
+      alien.vy = 0;
+      cam.x = alien.x;
+      cam.y = alien.y;
+      hasTarget = false;
+      shipContactLocked = false;
+      updateChunks(alien.x, alien.y);
+      runHook("onBiomeChange", () => {}, activeBiomeId);
+      emitHostEvent("biome:changed", { biomeId: activeBiomeId });
+      saveCurrentSlot(true);
+      syncUnlockedExtensions(false);
+      closeShipUI();
+      showToast(`🚀 Atterrissage : ${activeBiome.icon || "🌍"} ${activeBiome.name || activeBiome.id} !`);
+    } finally {
+      isTravelingBiome = false;
+      const loadingUi = getBiomeLoadingUi(targetGenId);
+      if (loadingUi) loadingUi.hide();
     }
-    await ensureBiomeGeneratorLoaded(normalizeBiomeGeneratorId(targetB.generator));
-    applyActiveBiomeParams(biomeId);
-    const nextGen = getActiveBiomeGenerator();
-    if (nextGen && typeof nextGen.reset === "function") {
-      try { nextGen.reset(); } catch (_e) {}
-    }
-    if (typeof clearAllChunkActors === "function") clearAllChunkActors();
-    chunks.clear();
-    lastCenterKey = "";
-    pendingChunkRefresh = false;
-    alien.x = 115;
-    alien.y = 70;
-    alien.vx = 0;
-    alien.vy = 0;
-    cam.x = alien.x;
-    cam.y = alien.y;
-    hasTarget = false;
-    shipContactLocked = false;
-    updateChunks(alien.x, alien.y);
-    runHook("onBiomeChange", () => {}, activeBiomeId);
-    emitHostEvent("biome:changed", { biomeId: activeBiomeId });
-    saveCurrentSlot(true);
-    syncUnlockedExtensions(false);
-    closeShipUI();
-    showToast(`🚀 Atterrissage : ${activeBiome.icon || "🌍"} ${activeBiome.name || activeBiome.id} !`);
   }
 
   // --- Système de sauvegarde multi-slots (localStorage + validation MAJ) ---
@@ -8712,7 +8801,8 @@
   let isSwitchingScenario = false;
   const AUTOSAVE_INTERVAL_SEC = 5;
   const extensionStates = new Map(); // instanceKey (id || filename) -> { unlocked: bool, enabled: bool, unlocked_at: string, state: {} }
-  const unlockedBiomes = new Set(); // biome_id débloqués par condition de campagne
+  const unlockedBiomes = new Set(); // biome_id débloqués par condition de campagne ou extension
+  const lockedBiomes = new Set(); // biome_id verrouillés dynamiquement par une extension
   const campaignFlags = new Map(); // flagKey -> boolean | primitive
   const campaignStats = new Map(); // statKey -> number
   const minigdResults = new Map(); // targetKey (path or path#preset) -> { plays, wins, bestScore, lastWon, lastScore, lastPlayedAt }
@@ -8808,6 +8898,7 @@
         discovered: Array.from(discovered).sort(),
         extensions: exportExtensionStatesObj(),
         unlocked_biomes: Array.from(unlockedBiomes).sort(),
+        locked_biomes: Array.from(lockedBiomes).sort(),
         flags: mapToPlainObj(campaignFlags),
         stats: mapToPlainObj(campaignStats),
         minigd: mapToPlainObj(minigdResults),
@@ -9047,6 +9138,10 @@
     if (Array.isArray(d.progress.unlocked_biomes)) {
       for (const bid of d.progress.unlocked_biomes) unlockedBiomes.add(String(bid));
     }
+    lockedBiomes.clear();
+    if (Array.isArray(d.progress.locked_biomes)) {
+      for (const bid of d.progress.locked_biomes) lockedBiomes.add(String(bid));
+    }
     campaignFlags.clear();
     if (d.progress.flags && typeof d.progress.flags === "object") {
       for (const [k, v] of Object.entries(d.progress.flags)) campaignFlags.set(String(k), v);
@@ -9140,6 +9235,7 @@
     deactivateAllExtensions();
     extensionStates.clear();
     unlockedBiomes.clear();
+    lockedBiomes.clear();
     campaignFlags.clear();
     campaignStats.clear();
     minigdResults.clear();
@@ -11649,7 +11745,7 @@
 
   function hasMeaningfulExtensionState(st) {
     if (!st || typeof st !== "object") return false;
-    if (st.unlocked || st.permanently_disabled || st.enabled === false) return true;
+    if (st.unlocked || st.permanently_disabled || st.manually_locked || st.enabled === false) return true;
     if (st.state && typeof st.state === "object" && Object.keys(st.state).length > 0) return true;
     return false;
   }
@@ -11665,6 +11761,7 @@
         condition_sig: String(st.condition_sig || ""),
         deactivate_sig: String(st.deactivate_sig || ""),
         permanently_disabled: Boolean(st.permanently_disabled),
+        manually_locked: Boolean(st.manually_locked),
         state: (st.state && typeof st.state === "object") ? st.state : {},
       };
     }
@@ -11683,6 +11780,7 @@
         condition_sig: String(st.condition_sig || ""),
         deactivate_sig: String(st.deactivate_sig || ""),
         permanently_disabled: Boolean(st.permanently_disabled),
+        manually_locked: Boolean(st.manually_locked),
         state: (st.state && typeof st.state === "object") ? JSON.parse(JSON.stringify(st.state)) : {},
       });
     }
@@ -11690,7 +11788,7 @@
 
   function getExtensionStateRecord(filename) {
     if (!extensionStates.has(filename)) {
-      extensionStates.set(filename, { unlocked: false, enabled: true, unlocked_at: "", condition_sig: "", deactivate_sig: "", permanently_disabled: false, state: {} });
+      extensionStates.set(filename, { unlocked: false, enabled: true, unlocked_at: "", condition_sig: "", deactivate_sig: "", permanently_disabled: false, manually_locked: false, state: {} });
     }
     return extensionStates.get(filename);
   }
@@ -12202,6 +12300,9 @@
       unlockExtension(targetFilename, announce = true) {
         return unlockExtensionByFilename(targetFilename, announce);
       },
+      lockExtension(targetFilename, announce = false, permanent = false) {
+        return lockExtensionByFilename(targetFilename, announce, permanent);
+      },
       state: {
         get() {
           return getExtensionStateRecord(extKey).state;
@@ -12321,12 +12422,23 @@
           renderShipUI();
         },
         selectBiome(biomeId) { travelToBiome(biomeId); },
+        unlockBiome(biomeId, announce = true) {
+          return unlockBiomeById(biomeId, announce);
+        },
+        lockBiome(biomeId, announce = false) {
+          return lockBiomeById(biomeId, announce);
+        },
         unlockAllBiomes(silent = true) {
           let count = 0;
           for (const b of BIOMES) {
-            if (!b || !b.id || !b.locked || unlockedBiomes.has(b.id)) continue;
+            if (!b || !b.id) continue;
+            const isDynLocked = lockedBiomes.has(b.id);
+            const isStaticLocked = Boolean(b.locked) && !unlockedBiomes.has(b.id);
+            if (!isDynLocked && !isStaticLocked) continue;
+            lockedBiomes.delete(b.id);
             unlockedBiomes.add(b.id);
             count++;
+            emitHostEvent("biome:unlocked", { biomeId: b.id, biome: b });
             if (!silent) showToast(`🌍 Nouveau biome débloqué : ${b.icon || "🌍"} ${b.name || b.id} !`);
           }
           if (count > 0) {
@@ -12393,39 +12505,54 @@
           }
           const targetBiomeId = String(remoteState.activeBiomeId || activeBiomeId);
           const targetB = BIOMES.find(x => x && x.id === targetBiomeId) || BIOMES[0];
-          const prevGen = getActiveBiomeGenerator();
-          if (prevGen && typeof prevGen.onUnload === "function") {
-            try { prevGen.onUnload(); } catch (_e) {}
+          const targetGenId = targetB ? normalizeBiomeGeneratorId(targetB.generator) : "";
+          try {
+            let loadingUi = targetGenId ? getBiomeLoadingUi(targetGenId) : null;
+            if (loadingUi) {
+              await loadingUi.show(targetB, "Chargement des modules du biome…");
+            }
+            const prevGen = getActiveBiomeGenerator();
+            if (prevGen && typeof prevGen.onUnload === "function") {
+              try { prevGen.onUnload(); } catch (_e) {}
+            }
+            if (targetB) {
+              await ensureBiomeGeneratorLoaded(targetGenId, false, targetB);
+              loadingUi = getBiomeLoadingUi(targetGenId);
+              if (loadingUi) {
+                loadingUi.update("Génération du terrain…");
+                await loadingUi.waitFrame();
+              }
+              applyActiveBiomeParams(targetB.id);
+            }
+            const nextGen = getActiveBiomeGenerator();
+            if (nextGen && typeof nextGen.reset === "function") {
+              try { nextGen.reset(); } catch (_e) {}
+            }
+            if (Array.isArray(remoteState.collectedChunks)) {
+              importCollectedChunksLRU(remoteState.collectedChunks);
+            }
+            if (typeof clearAllChunkActors === "function") clearAllChunkActors();
+            chunks.clear();
+            lastCenterKey = "";
+            if (Number.isFinite(spawnX) && Number.isFinite(spawnY)) {
+              alien.x = spawnX;
+              alien.y = spawnY;
+            } else {
+              alien.x = 135;
+              alien.y = 70;
+            }
+            alien.vx = 0;
+            alien.vy = 0;
+            cam.x = alien.x;
+            cam.y = alien.y;
+            hasTarget = false;
+            shipContactLocked = false;
+            updateChunks(alien.x, alien.y);
+            return true;
+          } finally {
+            const loadingUi = targetGenId ? getBiomeLoadingUi(targetGenId) : null;
+            if (loadingUi) loadingUi.hide();
           }
-          if (targetB) {
-            await ensureBiomeGeneratorLoaded(normalizeBiomeGeneratorId(targetB.generator));
-            applyActiveBiomeParams(targetB.id);
-          }
-          const nextGen = getActiveBiomeGenerator();
-          if (nextGen && typeof nextGen.reset === "function") {
-            try { nextGen.reset(); } catch (_e) {}
-          }
-          if (Array.isArray(remoteState.collectedChunks)) {
-            importCollectedChunksLRU(remoteState.collectedChunks);
-          }
-          if (typeof clearAllChunkActors === "function") clearAllChunkActors();
-          chunks.clear();
-          lastCenterKey = "";
-          if (Number.isFinite(spawnX) && Number.isFinite(spawnY)) {
-            alien.x = spawnX;
-            alien.y = spawnY;
-          } else {
-            alien.x = 135;
-            alien.y = 70;
-          }
-          alien.vx = 0;
-          alien.vy = 0;
-          cam.x = alien.x;
-          cam.y = alien.y;
-          hasTarget = false;
-          shipContactLocked = false;
-          updateChunks(alien.x, alien.y);
-          return true;
         },
         async leaveRemoteWorld() {
           if (!p2pSoloSnapshot) return false;
@@ -12439,32 +12566,47 @@
             }
           }
           const targetB = BIOMES.find(x => x && x.id === snap.activeBiomeId) || BIOMES[0];
-          const prevGen = getActiveBiomeGenerator();
-          if (prevGen && typeof prevGen.onUnload === "function") {
-            try { prevGen.onUnload(); } catch (_e) {}
+          const targetGenId = targetB ? normalizeBiomeGeneratorId(targetB.generator) : "";
+          try {
+            let loadingUi = targetGenId ? getBiomeLoadingUi(targetGenId) : null;
+            if (loadingUi) {
+              await loadingUi.show(targetB, "Chargement des modules du biome…");
+            }
+            const prevGen = getActiveBiomeGenerator();
+            if (prevGen && typeof prevGen.onUnload === "function") {
+              try { prevGen.onUnload(); } catch (_e) {}
+            }
+            if (targetB) {
+              await ensureBiomeGeneratorLoaded(targetGenId, false, targetB);
+              loadingUi = getBiomeLoadingUi(targetGenId);
+              if (loadingUi) {
+                loadingUi.update("Génération du terrain…");
+                await loadingUi.waitFrame();
+              }
+              applyActiveBiomeParams(targetB.id);
+            }
+            const nextGen = getActiveBiomeGenerator();
+            if (nextGen && typeof nextGen.reset === "function") {
+              try { nextGen.reset(); } catch (_e) {}
+            }
+            importCollectedChunksLRU(snap.collectedChunks || []);
+            chunks.clear();
+            lastCenterKey = "";
+            alien.x = Number.isFinite(snap.playerX) ? snap.playerX : 115;
+            alien.y = Number.isFinite(snap.playerY) ? snap.playerY : 70;
+            alien.vx = 0;
+            alien.vy = 0;
+            cam.x = alien.x;
+            cam.y = alien.y;
+            hasTarget = false;
+            shipContactLocked = false;
+            updateChunks(alien.x, alien.y);
+            saveCurrentSlot(true);
+            return true;
+          } finally {
+            const loadingUi = targetGenId ? getBiomeLoadingUi(targetGenId) : null;
+            if (loadingUi) loadingUi.hide();
           }
-          if (targetB) {
-            await ensureBiomeGeneratorLoaded(normalizeBiomeGeneratorId(targetB.generator));
-            applyActiveBiomeParams(targetB.id);
-          }
-          const nextGen = getActiveBiomeGenerator();
-          if (nextGen && typeof nextGen.reset === "function") {
-            try { nextGen.reset(); } catch (_e) {}
-          }
-          importCollectedChunksLRU(snap.collectedChunks || []);
-          chunks.clear();
-          lastCenterKey = "";
-          alien.x = Number.isFinite(snap.playerX) ? snap.playerX : 115;
-          alien.y = Number.isFinite(snap.playerY) ? snap.playerY : 70;
-          alien.vx = 0;
-          alien.vy = 0;
-          cam.x = alien.x;
-          cam.y = alien.y;
-          hasTarget = false;
-          shipContactLocked = false;
-          updateChunks(alien.x, alien.y);
-          saveCurrentSlot(true);
-          return true;
         },
         applyRemotePickup(biomeId, cx, cy, pickupIdx) {
           const bid = String(biomeId || activeBiomeId);
@@ -13239,6 +13381,7 @@
     const extKey = getExtKey(extDef);
     const rec = getExtensionStateRecord(extKey);
     if (rec.permanently_disabled || evaluateDeactivateCondition(extDef)) return false;
+    rec.manually_locked = false;
     if (rec.unlocked) {
       if (!rec.condition_sig) rec.condition_sig = getExtensionConditionSignature(extDef);
       if (rec.enabled && !activeExtensions.has(extKey)) loadAndActivateExtension(extDef, false, false, false);
@@ -13257,12 +13400,76 @@
       }
     }
     loadAndActivateExtension(extDef, announce, false, !announce);
+    emitHostEvent("extension:unlocked", { filename: target, extKey });
+    saveCurrentSlot(true);
+    return true;
+  }
+
+  function lockExtensionByFilename(targetFilename, announce = false, permanent = false) {
+    const target = String(targetFilename || "");
+    const extDef = getExtensionsByFilenameMap().get(target);
+    if (!extDef) return false;
+    const extKey = getExtKey(extDef);
+    const rec = getExtensionStateRecord(extKey);
+    const wasActive = activeExtensions.has(extKey);
+    const wasUnlocked = Boolean(rec.unlocked);
+    const wasManuallyLocked = Boolean(rec.manually_locked);
+    if (wasActive) deactivateExtension(extKey);
+    rec.unlocked = false;
+    rec.enabled = false;
+    rec.manually_locked = true;
+    if (permanent) rec.permanently_disabled = true;
+    const changed = wasActive || wasUnlocked || !wasManuallyLocked || (permanent && !rec.permanently_disabled);
+    if (announce && (wasActive || wasUnlocked)) {
+      showToast(`🛑 Extension verrouillée : ${extDef.name || target}`);
+    }
+    if (changed) {
+      emitHostEvent("extension:locked", { filename: target, extKey, permanent: Boolean(permanent) });
+      saveCurrentSlot(true);
+    }
+    return wasActive || wasUnlocked;
+  }
+
+  function unlockBiomeById(biomeId, announce = true) {
+    const bid = String(biomeId || "").trim();
+    if (!bid) return false;
+    const b = BIOMES.find((x) => x && x.id === bid);
+    if (!b) return false;
+    const wasLocked = isBiomeLocked(b);
+    lockedBiomes.delete(b.id);
+    unlockedBiomes.add(b.id);
+    if (!wasLocked) return false;
+    emitHostEvent("biome:unlocked", { biomeId: b.id, biome: b });
+    if (announce) {
+      showToast(`🌍 Nouveau biome débloqué : ${b.icon || "🌍"} ${b.name || b.id} !`);
+    }
+    if (uiOpen && shipViewMode === "biomes") renderBiomesView();
+    saveCurrentSlot(true);
+    return true;
+  }
+
+  function lockBiomeById(biomeId, announce = false) {
+    const bid = String(biomeId || "").trim();
+    if (!bid) return false;
+    const b = BIOMES.find((x) => x && x.id === bid);
+    if (!b) return false;
+    const wasLocked = isBiomeLocked(b);
+    unlockedBiomes.delete(b.id);
+    lockedBiomes.add(b.id);
+    if (wasLocked) return false;
+    emitHostEvent("biome:locked", { biomeId: b.id, biome: b });
+    if (announce) {
+      showToast(`🔒 Biome verrouillé : ${b.icon || "🌍"} ${b.name || b.id}`);
+    }
+    if (uiOpen && shipViewMode === "biomes") renderBiomesView();
     saveCurrentSlot(true);
     return true;
   }
 
   function isBiomeLocked(b) {
-    if (!b || !b.locked) return false;
+    if (!b || !b.id) return false;
+    if (lockedBiomes.has(b.id)) return true;
+    if (!b.locked) return false;
     if (unlockedBiomes.has(b.id)) return false;
     const uc = b.unlockCondition;
     if (uc && typeof uc === "object" && uc.type && uc.type !== "none") {
@@ -13325,7 +13532,7 @@
       }
       const rec = extensionStates.get(extKey);
 
-      if (rec && rec.permanently_disabled) {
+      if (rec && (rec.permanently_disabled || rec.manually_locked)) {
         if (activeExtensions.has(extKey)) deactivateExtension(extKey);
         continue;
       }
@@ -13819,6 +14026,9 @@
     checkNow: () => syncUnlockedExtensions(false),
     refreshRemote: (opts = null) => hotRefreshRemoteData(true, opts),
     unlockExtension: unlockExtensionByFilename,
+    lockExtension: lockExtensionByFilename,
+    unlockBiome: unlockBiomeById,
+    lockBiome: lockBiomeById,
     openExtensionFrame: openExtFrame,
     closeExtensionFrame: closeExtFrame,
     getBiomeGenerators: () => window.AssemblageBiomeGenerators,
@@ -14117,8 +14327,35 @@
   window.addEventListener("keydown", ensureWakeLockOnUserGesture, { passive: true });
   requestScreenWakeLock();
 
-  await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
+  try {
+    await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId, false, activeBiome);
+  } finally {
+    const initLoadingUi = getBiomeLoadingUi(activeBiomeGeneratorId);
+    if (initLoadingUi) initLoadingUi.hide();
+  }
   resolveAnchors();
+
+  async function loadBootBiomeWithNotice() {
+    try {
+      let loadingUi = getBiomeLoadingUi(activeBiomeGeneratorId);
+      if (loadingUi) {
+        await loadingUi.show(activeBiome, "Chargement des modules du biome…");
+      }
+      await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId, false, activeBiome);
+      loadingUi = getBiomeLoadingUi(activeBiomeGeneratorId);
+      if (loadingUi) {
+        loadingUi.update("Génération du terrain…");
+        await loadingUi.waitFrame();
+      }
+      resolveAnchors();
+      chunks.clear();
+      lastCenterKey = "";
+      updateChunks(alien.x, alien.y);
+    } finally {
+      const loadingUi = getBiomeLoadingUi(activeBiomeGeneratorId);
+      if (loadingUi) loadingUi.hide();
+    }
+  }
 
   let lastTs = null;
   const transferredState = window.__ASSEMBLAGE_TRANSFERRED_STATE;
@@ -14130,11 +14367,7 @@
       updateChunks(alien.x, alien.y);
       syncUnlockedExtensions(false);
     } else {
-      await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
-      resolveAnchors();
-      chunks.clear();
-      lastCenterKey = "";
-      updateChunks(alien.x, alien.y);
+      await loadBootBiomeWithNotice();
       saveCurrentSlot(true, currentSlotId);
     }
   } else {
@@ -14152,20 +14385,12 @@
     if (bootForceRestart) {
       startNewGame(currentSlotId);
       if (!window.AssemblageBiomeGenerators[activeBiomeGeneratorId]) {
-        await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
-        resolveAnchors();
-        chunks.clear();
-        lastCenterKey = "";
-        updateChunks(alien.x, alien.y);
+        await loadBootBiomeWithNotice();
       }
     } else if (storageGet(SAVE_KEY_PREFIX + currentSlotId)) {
       loadSlot(currentSlotId, true);
       if (!window.AssemblageBiomeGenerators[activeBiomeGeneratorId]) {
-        await ensureBiomeGeneratorLoaded(activeBiomeGeneratorId);
-        resolveAnchors();
-        chunks.clear();
-        lastCenterKey = "";
-        updateChunks(alien.x, alien.y);
+        await loadBootBiomeWithNotice();
       }
     } else {
       updateChunks(alien.x, alien.y);
@@ -14360,6 +14585,7 @@
         renderShipUI(); saveCurrentSlot(true); syncUnlockedExtensions(false); showToast("🎁 +5 de chaque élément !");
       });
       dbgEl.querySelector("[data-dbg-unlock-biomes]")?.addEventListener("click", () => {
+        lockedBiomes.clear();
         for (const b of BIOMES) if (b && b.id) unlockedBiomes.add(b.id);
         renderBiomesView(); saveCurrentSlot(true); showToast("🌍 Tous les biomes débloqués !");
       });
