@@ -1,0 +1,81 @@
+{
+	"version": 1,
+	"id": "biomes_icons",
+	"name": "Biomes — Icônes Cel-Shaded 2D",
+	"category": "biomes",
+	"tags": [
+		"biomes",
+		"icons",
+		"spritesheet",
+		"cel_shaded"
+	],
+	"image": "biomes_icons.png",
+	"tintImage": "",
+	"tintStrength": 0.0,
+	"frames": [
+		{
+			"id": "plaine_astrale",
+			"x": 0,
+			"y": 0,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		},
+		{
+			"id": "caldeira_magma",
+			"x": 256,
+			"y": 0,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		},
+		{
+			"id": "toundra_glaciaire",
+			"x": 512,
+			"y": 0,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		},
+		{
+			"id": "jungle_fongique",
+			"x": 768,
+			"y": 0,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		},
+		{
+			"id": "desert_ionique",
+			"x": 0,
+			"y": 256,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		},
+		{
+			"id": "archipel_corallien",
+			"x": 256,
+			"y": 256,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		},
+		{
+			"id": "marais",
+			"x": 512,
+			"y": 256,
+			"w": 256,
+			"h": 256,
+			"pivotX": 128,
+			"pivotY": 128
+		}
+	],
+	"clips": {}
+}

@@ -74,7 +74,44 @@
     }
   }
 
+  function buildActorParams(actorId, baseParams, env) {
+    const cfg = env && typeof env.getActorConfig === "function" ? env.getActorConfig(actorId) : null;
+    if (env && typeof env.getActorConfig === "function" && env.hasActorCatalog && !cfg) {
+      return { enabled: false, density: 0, sampleTerritory: M.sampleTerritory };
+    }
+    if (cfg && cfg._enabled === false) {
+      return { enabled: false, density: 0, sampleTerritory: M.sampleTerritory };
+    }
+    const out = Object.assign({}, baseParams, { sampleTerritory: M.sampleTerritory });
+    if (cfg) {
+      out.enabled = true;
+      if (cfg._density !== undefined) out.density = cfg._density;
+      if (cfg.hp !== undefined) out.hp = cfg.hp;
+      if (cfg.speed !== undefined) out.speed = cfg.speed;
+      if (cfg.scale !== undefined) out.scale = cfg.scale;
+      if (cfg.aggroRadius !== undefined) out.aggroRadius = cfg.aggroRadius;
+      if (cfg.attackRate !== undefined) out.attackRate = cfg.attackRate;
+      if (cfg.minSeparation !== undefined) out.minSeparation = cfg.minSeparation;
+      if (cfg._overrides && cfg._overrides.tint) out.tintOverride = cfg._overrides.tint;
+    }
+    return out;
+  }
+
   function generateChunk(cx, cy, env) {
+    if (env && env.dryRun) {
+      const CHUNK_SIZE = env.CHUNK_SIZE || 512;
+      const seed = env.worldSeed || 314159;
+      const terrainRng = M.chunkRng(seed, cx, cy, 11);
+      const terrain = M.terrain.generateTerrainData(cx, cy, env, terrainRng);
+      return {
+        cx,
+        cy,
+        ox: cx * CHUNK_SIZE,
+        oy: cy * CHUNK_SIZE,
+        generator: GENERATOR_ID,
+        pickups: terrain.pickups,
+      };
+    }
     latestEnv = env;
     if (M.parallax25D && typeof M.parallax25D.attach === "function") {
       M.parallax25D.attach(chunkStates, () => latestEnv);
@@ -95,16 +132,23 @@
       M.registerSpot(placedSpots, col.x, col.y, col.r);
     }
 
+    const tentacleMod = (window.AssemblageActors && window.AssemblageActors["plante_tentacule"]) || M.tentacles;
+    const octopusMod = (window.AssemblageActors && window.AssemblageActors["poulpe_marcheur"]) || M.octopus;
+    const puyoMod = (window.AssemblageActors && window.AssemblageActors["troupe_puyos"]) || M.puyos;
+    const tentacleParams = buildActorParams("plante_tentacule", params, env);
+    const octopusParams = buildActorParams("poulpe_marcheur", params, env);
+    const puyoParams = buildActorParams("troupe_puyos", params, env);
+
     const state = {
       key,
       cx,
       cy,
       melons: M.melon.spawnChunkMelons(cx, cy, env, M.chunkRng(seed, cx, cy, 37), params, placedSpots),
       puddles: M.puddles.spawnChunkPuddles(cx, cy, env, M.chunkRng(seed, cx, cy, 23), params, placedSpots),
-      tentacles: M.tentacles.spawnChunkTentacles(cx, cy, env, M.chunkRng(seed, cx, cy, 53), params, placedSpots),
+      tentacles: (tentacleMod && tentacleParams.enabled !== false) ? tentacleMod.spawnChunkTentacles(cx, cy, env, M.chunkRng(seed, cx, cy, 53), tentacleParams, placedSpots) : [],
       vines: M.vines.spawnChunkVines(cx, cy, env, M.chunkRng(seed, cx, cy, 103), params, placedSpots),
-      octopuses: M.octopus.spawnChunkOctopuses(cx, cy, env, M.chunkRng(seed, cx, cy, 71), params, placedSpots),
-      puyos: M.puyos.spawnChunkPuyos(cx, cy, env, M.chunkRng(seed, cx, cy, 89), params, placedSpots),
+      octopuses: (octopusMod && octopusParams.enabled !== false) ? octopusMod.spawnChunkOctopuses(cx, cy, env, M.chunkRng(seed, cx, cy, 71), octopusParams, placedSpots) : [],
+      puyos: (puyoMod && puyoParams.enabled !== false) ? puyoMod.spawnChunkPuyos(cx, cy, env, M.chunkRng(seed, cx, cy, 89), puyoParams, placedSpots) : [],
     };
     chunkStates.set(key, state);
 
@@ -132,15 +176,20 @@
     M.terrain.drawTerrainChunk(ctx, ch, env);
   }
 
+  function is25DActive() {
+    const p25d = window.AssemblageRuntime && window.AssemblageRuntime.parallax25d;
+    return Boolean((p25d && p25d.isActive()) || window.Assemblage25DActive);
+  }
+
   function drawWorldBefore(ctx, timeSec, env) {
     M.puddles.drawPuddlesGround(ctx, timeSec, env, chunkStates);
-    if (!window.Assemblage25DActive) {
+    if (!is25DActive()) {
       M.melon.drawMelons(ctx, timeSec, env, chunkStates);
     }
   }
 
   function drawWorldAfter(ctx, timeSec, env) {
-    if (window.Assemblage25DActive) return;
+    if (is25DActive()) return;
     M.puyos.drawPuyos(ctx, timeSec, env, chunkStates);
     M.octopus.drawOctopuses(ctx, timeSec, env, chunkStates);
     M.tentacles.drawTentacles(ctx, timeSec, env, chunkStates);
@@ -160,8 +209,8 @@
 
     M.puddles.updatePuddles(dt, timeSec, env, chunkStates);
     M.melon.updateMelons(dt, timeSec, env, chunkStates);
-    M.tentacles.updateTentacles(dt, timeSec, env, chunkStates, params);
-    M.octopus.updateOctopuses(dt, timeSec, env, chunkStates, params);
+    M.tentacles.updateTentacles(dt, timeSec, env, chunkStates, buildActorParams("plante_tentacule", params, env));
+    M.octopus.updateOctopuses(dt, timeSec, env, chunkStates, buildActorParams("poulpe_marcheur", params, env));
     M.puyos.updatePuyos(dt, timeSec, env, chunkStates);
     M.vines.updateVines(dt, timeSec, env, chunkStates, params);
 
@@ -247,14 +296,55 @@
     return M.melon.handlePointerUp();
   }
 
-  function onProjectileHit(wx, wy, radius, env) {
-    const dmg = radius >= 10 ? 35 : 15;
-    if (M.octopus.damageAt(wx, wy, radius, dmg, chunkStates)) return true;
+  function notifyCreatureDamaged(env, kind, actorId, x, y, dmg, kx, ky, killed, remote = false) {
+    const e = env || latestEnv;
+    if (e && typeof e.emitActorDamaged === "function") {
+      e.emitActorDamaged({ kind, actorId, x, y, dmg, kx: kx || 0, ky: ky || 0, killed: Boolean(killed), remote: Boolean(remote) });
+    }
+    if (killed && !remote && e && typeof e.onActorKilled === "function") {
+      e.onActorKilled(actorId, x, y);
+    }
+  }
+
+  function onProjectileHit(wx, wy, radius, env, opts = null) {
+    if (opts && opts.remote) {
+      for (const st of chunkStates.values()) {
+        for (const oct of st.octopuses) {
+          if (Math.hypot(wx - oct.x, wy - (oct.y - oct.bodyHeight * 0.5)) <= oct.bodyR + radius + 6) return true;
+        }
+        for (const p of st.tentacles) {
+          const dBase = Math.hypot(wx - p.x, wy - (p.y - 22 * p.scale));
+          const dTip = Math.hypot(wx - (p.eyeX || p.x), wy - (p.eyeY || (p.y - 48 * p.scale)));
+          if (Math.min(dBase, dTip) <= 22 * p.scale + radius + 6) return true;
+        }
+        for (const pu of st.puyos) {
+          if (Math.hypot(wx - pu.x, wy - (pu.y - pu.z - pu.r * 0.35)) <= pu.r + radius + 6) return true;
+        }
+      }
+      return false;
+    }
+    const dmg = Number(opts && opts.damage) > 0 ? Number(opts.damage) : (radius >= 10 ? 35 : 15);
+    if (M.octopus && typeof M.octopus.damageAt === "function") {
+      const rOct = M.octopus.damageAt(wx, wy, radius, dmg, chunkStates);
+      const hitOct = typeof rOct === "object" ? Boolean(rOct && rOct.hit) : Boolean(rOct);
+      if (hitOct) {
+        notifyCreatureDamaged(env, "octopus", "poulpe_marcheur", rOct.x ?? wx, rOct.y ?? wy, dmg, 0, 0, Boolean(rOct && rOct.killed));
+        return true;
+      }
+    }
     if (M.tentacles && typeof M.tentacles.damageAt === "function") {
-      if (M.tentacles.damageAt(wx, wy, radius, dmg, chunkStates).hit) return true;
+      const rTent = M.tentacles.damageAt(wx, wy, radius, dmg, chunkStates);
+      if (rTent && rTent.hit) {
+        notifyCreatureDamaged(env, "tentacle", "plante_tentacule", rTent.x ?? wx, rTent.y ?? wy, dmg, 0, 0, rTent.killed);
+        return true;
+      }
     }
     if (M.puyos && typeof M.puyos.damageAt === "function") {
-      if (M.puyos.damageAt(wx, wy, radius, dmg, chunkStates).hit) return true;
+      const rPuyo = M.puyos.damageAt(wx, wy, radius, dmg, chunkStates);
+      if (rPuyo && rPuyo.hit) {
+        notifyCreatureDamaged(env, "puyo", "troupe_puyos", rPuyo.x ?? wx, rPuyo.y ?? wy, dmg, 0, 0, rPuyo.killed);
+        return true;
+      }
     }
     return false;
   }
@@ -266,6 +356,7 @@
         for (const oct of st.octopuses) {
           out.push({
             kind: "octopus",
+            actorId: "poulpe_marcheur",
             ref: oct,
             chunkState: st,
             x: oct.x,
@@ -281,6 +372,7 @@
         for (const p of st.puyos) {
           out.push({
             kind: "puyo",
+            actorId: "troupe_puyos",
             ref: p,
             chunkState: st,
             x: p.x,
@@ -296,6 +388,7 @@
         for (const t of st.tentacles) {
           out.push({
             kind: "tentacle",
+            actorId: "plante_tentacule",
             ref: t,
             chunkState: st,
             x: t.x,
@@ -311,32 +404,35 @@
     return out;
   }
 
-  function damageCreature(creature, dmg, knockX = 0, knockY = 0) {
+  function damageCreature(creature, dmg, knockX = 0, knockY = 0, opts = null) {
     if (!creature || !creature.ref || !creature.chunkState) return { hit: false, killed: false };
+    const isRemote = Boolean(opts && opts.remote);
     const st = creature.chunkState;
     const ref = creature.ref;
     if (creature.kind === "octopus") {
       const idx = st.octopuses.indexOf(ref);
       if (idx < 0) return { hit: false, killed: false };
-      const kLen = Math.hypot(knockX, knockY);
-      if (kLen > 0.001) {
-        ref.vx += (knockX / kLen) * 140;
-        ref.vy += (knockY / kLen) * 140;
-      }
-      const prevLen = st.octopuses.length;
-      const hit = M.octopus.damageAt(ref.x, ref.y - ref.bodyHeight * 0.5, 4, dmg, chunkStates);
-      return { hit, killed: st.octopuses.length < prevLen || ref.hp <= 0 };
+      const res = M.octopus && typeof M.octopus.applyDamageToOne === "function"
+        ? M.octopus.applyDamageToOne(ref, dmg, knockX, knockY)
+        : { hit: false, killed: false };
+      const hit = Boolean(res && res.hit);
+      const killed = Boolean((res && res.killed) || ref.hp <= 0);
+      if (killed) st.octopuses.splice(idx, 1);
+      if (hit) notifyCreatureDamaged(latestEnv, "octopus", "poulpe_marcheur", ref.x, ref.y, dmg, knockX, knockY, killed, isRemote);
+      return { hit, killed };
     }
     if (creature.kind === "puyo" && M.puyos && typeof M.puyos.applyDamageToPuyo === "function") {
       const idx = st.puyos.indexOf(ref);
       if (idx < 0) return { hit: false, killed: false };
       const killed = M.puyos.applyDamageToPuyo(ref, st, idx, dmg, knockX, knockY);
+      notifyCreatureDamaged(latestEnv, "puyo", "troupe_puyos", ref.x, ref.y, dmg, knockX, knockY, killed, isRemote);
       return { hit: true, killed };
     }
     if (creature.kind === "tentacle" && M.tentacles && typeof M.tentacles.applyDamageToTentacle === "function") {
       const idx = st.tentacles.indexOf(ref);
       if (idx < 0) return { hit: false, killed: false };
       const killed = M.tentacles.applyDamageToTentacle(ref, st, idx, dmg, knockX);
+      notifyCreatureDamaged(latestEnv, "tentacle", "plante_tentacule", ref.x, ref.y, dmg, knockX, knockY, killed, isRemote);
       return { hit: true, killed };
     }
     return { hit: false, killed: false };
@@ -353,6 +449,7 @@
     id: GENERATOR_ID,
     name: "Les Marais (Faune, Flore & Zones Tactiles)",
     description: "Marais vivants avec tentacules cracheurs d'yeux, poulpes marcheurs, puyos gélatineux, zones tactiles molles, lianes physiques et flaques à bulles.",
+    nativeActorIds: ["poulpe_marcheur", "plante_tentacule", "troupe_puyos"],
     paramsSchema: M.PARAMS_SCHEMA,
     sampleBiome: M.terrain.sampleBiome,
     sampleElev: M.terrain.sampleElev,

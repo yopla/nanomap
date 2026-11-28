@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Habillage de Map & Chunks Pérennes</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "skinRules",
+      "label": "Tableau Éléments ↔ Skins d'habillage",
+      "type": "map_skins_table",
+      "default": [
+        {
+          "elementId": "silice",
+          "requiredCount": 10,
+          "visualId": "habillage_sanctuaire_cristal",
+          "maxSizeM": 12.0,
+          "maxPlaced": 0,
+          "projectionMode": "ground",
+          "tint": "#38e0ff"
+        },
+        {
+          "elementId": "spore",
+          "requiredCount": 10,
+          "visualId": "habillage_bosquet_biolum",
+          "maxSizeM": 12.0,
+          "maxPlaced": 0,
+          "projectionMode": "ground",
+          "tint": "#6be5b8"
+        },
+        {
+          "elementId": "gel_astral",
+          "requiredCount": 10,
+          "visualId": "habillage_esplanade_avant_poste",
+          "maxSizeM": 12.0,
+          "maxPlaced": 0,
+          "projectionMode": "ground",
+          "tint": "#73c8ff"
+        }
+      ],
+      "hint": "Chaque ligne associe un élément du Craft, la quantité X requise en inventaire, le skin d'habillage, sa taille max (m), une limite optionnelle (0 = illimité) et son mode 2.5D."
+    },
+    {
+      "key": "mapRadiusM",
+      "label": "Rayon mini-map autour du vaisseau (m)",
+      "type": "number",
+      "default": 500,
+      "min": 50,
+      "max": 2000,
+      "step": 50,
+      "hint": "Demi-largeur de la zone couverte par la mini-map (500 m = carré de 1000 m × 1000 m)."
+    },
+    {
+      "key": "defaultAnchorZoneM",
+      "label": "Zone par défaut autour d'une ancre (m)",
+      "type": "number",
+      "default": 6.0,
+      "min": 1.0,
+      "max": 50.0,
+      "step": 0.5,
+      "hint": "Rayon d'exclusion utilisé si une ancre n'a pas de champ zoneRadiusM défini."
+    },
+    {
+      "key": "shipExclusionRadiusM",
+      "label": "Zone d'exclusion du vaisseau (m)",
+      "type": "number",
+      "default": 13.0,
+      "min": 5.0,
+      "max": 50.0,
+      "step": 0.5
+    },
+    {
+      "key": "buttonText",
+      "label": "Libellé bouton menu Craft",
+      "type": "text",
+      "default": "Ouvrir l'élément"
+    }
+  ]
+}
+</script>
+<style>
+  .hm-intro {
+    margin: 0 0 10px 0;
+    font-size: 12.5px;
+    color: rgba(204, 228, 248, 0.88);
+    line-height: 1.42;
+  }
+  .hm-budget-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding: 8px 11px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    background: rgba(13, 24, 42, 0.9);
+    border: 1px solid rgba(72, 229, 194, 0.35);
+    font-size: 12px;
+    color: #d8f4ff;
+  }
+  .hm-rule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .hm-rule-card {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 11px;
+    border-radius: 12px;
+    background: rgba(19, 32, 54, 0.94);
+    border: 1.5px solid rgba(78, 178, 226, 0.38);
+  }
+  @media (max-width: 520px) {
+    .hm-rule-card {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+  .hm-preview-box {
+    width: 68px;
+    height: 68px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(9, 15, 28, 0.92);
+    border: 1.5px solid rgba(102, 217, 255, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+  .hm-preview-box canvas {
+    width: 60px !important;
+    height: 60px !important;
+    max-width: 60px;
+    max-height: 60px;
+    display: block;
+    flex-shrink: 0;
+  }
+  .hm-rule-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .hm-rule-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: #ffffff;
+  }
+  .hm-rule-meta {
+    font-size: 11.5px;
+    color: rgba(190, 216, 240, 0.85);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .hm-prog-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hm-prog-track {
+    flex: 1;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(8, 14, 26, 0.9);
+    border: 1px solid rgba(102, 184, 232, 0.28);
+    overflow: hidden;
+  }
+  .hm-prog-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.2s ease;
+  }
+  .hm-prog-txt {
+    font-size: 12px;
+    font-weight: 800;
+    min-width: 66px;
+    text-align: right;
+  }
+  .hm-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .hm-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    font-family: inherit;
+    padding: 7px 13px;
+    border-radius: 9px;
+    border: 1px solid rgba(72, 229, 194, 0.72);
+    background: rgba(18, 56, 62, 0.92);
+    color: #e6fff9;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.14s ease, opacity 0.14s ease;
+  }
+  .hm-btn:hover:not(:disabled) {
+    background: rgba(26, 78, 86, 0.98);
+  }
+  .hm-btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+  .hm-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .hm-btn-secondary {
+    border-color: rgba(102, 184, 232, 0.65);
+    background: rgba(24, 42, 70, 0.92);
+    color: #dbeeff;
+  }
+  .hm-btn-danger {
+    border-color: rgba(255, 110, 122, 0.75);
+    background: rgba(74, 22, 32, 0.92);
+    color: #ffdbe0;
+  }
+
+  /* Overlay Mini-map plein écran */
+  #hm-minimap-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 95;
+    background: rgba(7, 11, 20, 0.96);
+    display: flex;
+    flex-direction: column;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #eefcff;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .hm-mm-topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: max(10px, env(safe-area-inset-top, 10px)) 14px 10px;
+    background: rgba(12, 20, 36, 0.96);
+    border-bottom: 1px solid rgba(86, 178, 226, 0.35);
+    flex-shrink: 0;
+  }
+  .hm-mm-title {
+    font-size: 14.5px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hm-mm-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    font-size: 11.5px;
+  }
+  .hm-pill {
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(20, 35, 60, 0.95);
+    border: 1px solid rgba(102, 217, 255, 0.35);
+    color: #cdeeff;
+    font-weight: 600;
+  }
+  .hm-mm-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+  .hm-mm-canvas-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    touch-action: none;
+  }
+  .hm-mm-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+    cursor: grab;
+  }
+  .hm-mm-canvas.dragging {
+    cursor: grabbing;
+  }
+  .hm-mm-legend {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    pointer-events: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: calc(100% - 20px);
+  }
+  .hm-legend-chip {
+    padding: 3px 8px;
+    border-radius: 7px;
+    background: rgba(8, 14, 26, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    font-size: 11px;
+    color: #d8eeff;
+  }
+  .hm-mm-bottombar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom, 10px));
+    background: rgba(12, 20, 36, 0.97);
+    border-top: 1px solid rgba(86, 178, 226, 0.35);
+    flex-shrink: 0;
+  }
+  .hm-mm-status {
+    font-size: 12.5px;
+    font-weight: 700;
+    flex: 1;
+    min-width: 220px;
+  }
+  .hm-mm-status.ok { color: #7cf5c4; }
+  .hm-mm-status.err { color: #ff8e99; }
+  .hm-mm-status.info { color: #9fd8ff; }
+</style>
+<script>
+// Extension Assemblage : habillage_map.html
+// Permet d'associer des éléments du Craft à des skins d'habillage posables sur mini-map (±500 m),
+// en rendant les chunks occupés pérennes (déduits du budget maxCollectedChunks).
+(function () {
+  const FILENAME = "habillage_map.html";
+  const BASE_VISUAL_DIAMETER = 184; // Envergure de référence des skins vectoriels (rx ≈ 92)
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function escapeHtml(s) {
+    return String(s || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
+  function parseRules(raw) {
+    let arr = raw;
+    if (typeof raw === "string") {
+      try { arr = JSON.parse(raw); } catch { arr = []; }
+    }
+    if (!Array.isArray(arr)) return [];
+    const out = [];
+    for (let i = 0; i < arr.length; i++) {
+      const r = arr[i];
+      if (!r || typeof r !== "object") continue;
+      const elementId = String(r.elementId || "").trim();
+      const visualId = String(r.visualId || "").trim();
+      if (!elementId || !visualId) continue;
+      const requiredCount = Math.max(1, Math.floor(Number(r.requiredCount ?? 10) || 10));
+      const maxSizeM = clamp(Number(r.maxSizeM ?? 12) || 12, 2, 120);
+      const maxPlaced = Math.max(0, Math.floor(Number(r.maxPlaced ?? 0) || 0));
+      const projectionMode = String(r.projectionMode || "ground").trim().toLowerCase() === "billboard" ? "billboard" : "ground";
+      const tint = String(r.tint || "#6be5b8").trim() || "#6be5b8";
+      out.push({
+        ruleIndex: out.length,
+        elementId,
+        requiredCount,
+        visualId,
+        maxSizeM,
+        maxPlaced,
+        projectionMode,
+        tint,
+      });
+    }
+    return out;
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const rules = parseRules(host.ui.getConfig("skinRules", []));
+      const mapRadiusM = clamp(Number(host.ui.getConfig("mapRadiusM", 500)) || 500, 50, 2000);
+      const defaultAnchorZoneM = clamp(Number(host.ui.getConfig("defaultAnchorZoneM", 6)) || 6, 1, 50);
+      const shipExclusionRadiusM = clamp(Number(host.ui.getConfig("shipExclusionRadiusM", 13)) || 13, 5, 50);
+      const buttonText = String(host.ui.getConfig("buttonText", "Ouvrir l'élément") || "Ouvrir l'élément").trim();
+
+      const ownerPrefix = `ext_${FILENAME}`;
+      const ownerKey = `${ownerPrefix}_placements`;
+
+      // Précharge les visuels utilisés par les règles
+      if (window.AssemblageVisuals) {
+        for (const r of rules) {
+          window.AssemblageVisuals.ensureVisual(r.visualId);
+        }
+      }
+
+      // État persistant : placementsByBiome = { [biomeId]: [ { id, ruleIndex, elementId, cost, visualId, x, y, sizeM, projectionMode, tint } ] }
+      function loadPlacementsMap() {
+        const st = host.state.get() || {};
+        const raw = st.placementsByBiome;
+        const clean = {};
+        if (raw && typeof raw === "object") {
+          for (const [bid, list] of Object.entries(raw)) {
+            if (!Array.isArray(list)) continue;
+            clean[bid] = list.filter((it) => it && typeof it === "object" && Number.isFinite(Number(it.x)) && Number.isFinite(Number(it.y)) && it.visualId).map((it) => ({
+              id: String(it.id || `hm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`),
+              ruleIndex: Number(it.ruleIndex ?? 0) | 0,
+              elementId: String(it.elementId || ""),
+              cost: Math.max(1, Math.floor(Number(it.cost ?? 1) || 1)),
+              visualId: String(it.visualId || ""),
+              x: Number(it.x) || 0,
+              y: Number(it.y) || 0,
+              sizeM: clamp(Number(it.sizeM ?? 12) || 12, 2, 120),
+              projectionMode: String(it.projectionMode || "ground") === "billboard" ? "billboard" : "ground",
+              tint: String(it.tint || "#6be5b8") || "#6be5b8",
+            }));
+          }
+        }
+        return clean;
+      }
+
+      let placementsByBiome = loadPlacementsMap();
+
+      function savePlacementsMap() {
+        host.state.set({ placementsByBiome }, true);
+      }
+
+      function getBiomePlacements(biomeId = host.game.activeBiomeId) {
+        const bid = String(biomeId || host.game.activeBiomeId || "");
+        if (!Array.isArray(placementsByBiome[bid])) placementsByBiome[bid] = [];
+        return placementsByBiome[bid];
+      }
+
+      function getPxPerMeter() {
+        return Number(host.game.ANCHOR_PIXELS_PER_METER) || 18;
+      }
+
+      function getChunksForRect(xPx, yPx, sizeM) {
+        const CHUNK_SIZE = host.game.CHUNK_SIZE || 512;
+        const halfPx = (sizeM * getPxPerMeter()) * 0.5;
+        const minCx = Math.floor((xPx - halfPx) / CHUNK_SIZE);
+        const maxCx = Math.floor((xPx + halfPx) / CHUNK_SIZE);
+        const minCy = Math.floor((yPx - halfPx) / CHUNK_SIZE);
+        const maxCy = Math.floor((yPx + halfPx) / CHUNK_SIZE);
+        const out = [];
+        for (let cy = minCy; cy <= maxCy; cy++) {
+          for (let cx = minCx; cx <= maxCx; cx++) {
+            out.push({ cx, cy });
+          }
+        }
+        return out;
+      }
+
+      function collectAllPinnedChunks(overrideBiomeId = null, overrideList = null) {
+        const seen = new Set();
+        const out = [];
+        for (const [bid, list] of Object.entries(placementsByBiome)) {
+          const items = (overrideBiomeId !== null && bid === overrideBiomeId && Array.isArray(overrideList))
+            ? overrideList
+            : list;
+          if (!Array.isArray(items)) continue;
+          for (const it of items) {
+            const chunks = getChunksForRect(it.x, it.y, it.sizeM);
+            for (const c of chunks) {
+              const k = `${bid}|${c.cx},${c.cy}`;
+              if (!seen.has(k)) {
+                seen.add(k);
+                out.push({ biomeId: bid, cx: c.cx, cy: c.cy });
+              }
+            }
+          }
+        }
+        return out;
+      }
+
+      function syncPinnedChunks() {
+        if (typeof host.game.setPinnedChunksForOwner === "function") {
+          host.game.setPinnedChunksForOwner(ownerKey, collectAllPinnedChunks());
+        }
+      }
+
+      // Synchronise dès l'activation
+      syncPinnedChunks();
+
+      function countPlacedForRule(rule, biomeId = host.game.activeBiomeId) {
+        const list = getBiomePlacements(biomeId);
+        let cnt = 0;
+        for (const it of list) {
+          if (it.elementId === rule.elementId && it.visualId === rule.visualId) cnt++;
+        }
+        return cnt;
+      }
+
+      function getVisualLabel(visualId) {
+        const lib = window.AssemblageVisuals && typeof window.AssemblageVisuals.getVisuals === "function"
+          ? window.AssemblageVisuals.getVisuals()
+          : null;
+        if (lib && lib[visualId] && lib[visualId].name) return String(lib[visualId].name);
+        return visualId;
+      }
+
+      // --- Rendu dans le monde (2D + 2.5D) ---
+      function drawSkinAt(ctx, visualId, x, y, sizePx, tint, alpha = 1) {
+        if (!window.AssemblageVisuals) return false;
+        const scale = sizePx / BASE_VISUAL_DIAMETER;
+        return window.AssemblageVisuals.drawVisual(ctx, visualId, x, y, { scale, tint, alpha });
+      }
+
+      const unhookGround = host.hooks.after("drawGroundAfter", () => {
+        const ctx = host.game.ctx;
+        if (!ctx) return;
+        const list = getBiomePlacements();
+        if (list.length === 0) return;
+        const pxPerM = getPxPerMeter();
+        for (let i = 0; i < list.length; i++) {
+          const it = list[i];
+          if (it.projectionMode === "billboard") continue;
+          drawSkinAt(ctx, it.visualId, it.x, it.y, it.sizeM * pxPerM, it.tint, 1);
+        }
+      });
+
+      const p25dSvc = host.services.get("parallax25d");
+      const unhookWorldAfter = host.hooks.after("drawWorldAfter", () => {
+        if ((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive) return;
+        const ctx = host.game.ctx;
+        if (!ctx) return;
+        const list = getBiomePlacements();
+        if (list.length === 0) return;
+        const pxPerM = getPxPerMeter();
+        for (let i = 0; i < list.length; i++) {
+          const it = list[i];
+          if (it.projectionMode !== "billboard") continue;
+          drawSkinAt(ctx, it.visualId, it.x, it.y, it.sizeM * pxPerM, it.tint, 1);
+        }
+      });
+
+      const billboardSourceKey = `${host.instanceId || FILENAME}:billboards`;
+      const billboardCollector = (pushBillboard) => {
+        if (!window.AssemblageVisuals) return;
+        const list = getBiomePlacements();
+        if (list.length === 0) return;
+        const pxPerM = getPxPerMeter();
+        for (let i = 0; i < list.length; i++) {
+          const it = list[i];
+          if (it.projectionMode !== "billboard") continue;
+          pushBillboard(it.y, (ctx, projectPoint) => {
+            const pt = projectPoint(it.x, it.y, 0);
+            const sizePx = it.sizeM * pxPerM * pt.scale;
+            drawSkinAt(ctx, it.visualId, pt.x, pt.y, sizePx, it.tint, 1);
+          }, it.x);
+        }
+      };
+      if (p25dSvc) {
+        p25dSvc.registerSource(billboardSourceKey, billboardCollector);
+      } else {
+        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+        window.Assemblage25DBillboardSources.set(billboardSourceKey, billboardCollector);
+      }
+
+      // --- Mini-map interactive (±mapRadiusM autour du vaisseau) ---
+      let activeOverlayEl = null;
+
+      function closeMiniMap() {
+        if (activeOverlayEl) {
+          activeOverlayEl.remove();
+          activeOverlayEl = null;
+        }
+      }
+
+      // Cache du terrain praticable pour le fond de la mini-map
+      let terrainCacheKey = "";
+      let terrainCacheCanvas = null;
+
+      function ensureTerrainCacheCanvas() {
+        const bid = String(host.game.activeBiomeId || "");
+        const key = `${bid}|${mapRadiusM}`;
+        if (terrainCacheCanvas && terrainCacheKey === key) return terrainCacheCanvas;
+
+        const gridN = 160;
+        const c = document.createElement("canvas");
+        c.width = gridN;
+        c.height = gridN;
+        const g = c.getContext("2d");
+        if (!g) return null;
+
+        const pxPerM = getPxPerMeter();
+        const spanM = mapRadiusM * 2;
+        const imgData = g.createImageData(gridN, gridN);
+        const data = imgData.data;
+
+        for (let py = 0; py < gridN; py++) {
+          const ym = -mapRadiusM + ((py + 0.5) / gridN) * spanM;
+          const wy = ym * pxPerM;
+          for (let px = 0; px < gridN; px++) {
+            const xm = -mapRadiusM + ((px + 0.5) / gridN) * spanM;
+            const wx = xm * pxPerM;
+            const ok = typeof host.game.isPositionWalkable === "function" ? host.game.isPositionWalkable(wx, wy) : true;
+            const idx = (py * gridN + px) * 4;
+            if (ok) {
+              data[idx] = 28;
+              data[idx + 1] = 48;
+              data[idx + 2] = 66;
+              data[idx + 3] = 255;
+            } else {
+              data[idx] = 10;
+              data[idx + 1] = 20;
+              data[idx + 2] = 38;
+              data[idx + 3] = 255;
+            }
+          }
+        }
+        g.putImageData(imgData, 0, 0);
+        terrainCacheKey = key;
+        terrainCacheCanvas = c;
+        return c;
+      }
+
+      function validatePlacement(xPx, yPx, sizeM, ignorePlacementId = "") {
+        const pxPerM = getPxPerMeter();
+        const radiusM = sizeM * 0.5;
+        const radiusPx = radiusM * pxPerM;
+        const xM = xPx / pxPerM;
+        const yM = yPx / pxPerM;
+
+        // 1) Dans les bornes ±mapRadiusM
+        if (Math.abs(xM) + radiusM > mapRadiusM || Math.abs(yM) + radiusM > mapRadiusM) {
+          return { valid: false, reason: `Hors de la zone de ±${mapRadiusM} m autour du vaisseau`, chunks: getChunksForRect(xPx, yPx, sizeM), projectedPinned: host.game.getPinnedChunkCount() };
+        }
+
+        // 2) Terrain praticable (pas de trou / eau)
+        if (typeof host.game.isPositionWalkable === "function") {
+          const checkPts = [[xPx, yPx]];
+          for (let a = 0; a < 8; a++) {
+            const ang = (Math.PI * 2 * a) / 8;
+            checkPts.push([xPx + Math.cos(ang) * radiusPx * 0.9, yPx + Math.sin(ang) * radiusPx * 0.9]);
+          }
+          for (let a = 0; a < 4; a++) {
+            const ang = (Math.PI * 2 * a) / 4 + Math.PI * 0.25;
+            checkPts.push([xPx + Math.cos(ang) * radiusPx * 0.45, yPx + Math.sin(ang) * radiusPx * 0.45]);
+          }
+          for (const [tx, ty] of checkPts) {
+            if (!host.game.isPositionWalkable(tx, ty)) {
+              return { valid: false, reason: "Terrain non praticable (trou / eau)", chunks: getChunksForRect(xPx, yPx, sizeM), projectedPinned: host.game.getPinnedChunkCount() };
+            }
+          }
+        }
+
+        // 3) Hors zone du vaisseau
+        if (Math.hypot(xM, yM) < shipExclusionRadiusM + radiusM) {
+          return { valid: false, reason: `Trop proche du vaisseau (zone réservée ${shipExclusionRadiusM} m)`, chunks: getChunksForRect(xPx, yPx, sizeM), projectedPinned: host.game.getPinnedChunkCount() };
+        }
+
+        // 4) Hors zone de chaque ancre (zoneRadiusM ou defaultAnchorZoneM)
+        const anchors = Array.isArray(host.game.anchors) ? host.game.anchors : [];
+        for (const a of anchors) {
+          const az = (Number(a.zoneRadiusM) > 0) ? Number(a.zoneRadiusM) : defaultAnchorZoneM;
+          if (Math.hypot(xM - Number(a.xm || 0), yM - Number(a.ym || 0)) < az + radiusM) {
+            return { valid: false, reason: `Dans la zone de l'ancre ${a.emoji || "⚓"} ${a.id} (${az} m)`, chunks: getChunksForRect(xPx, yPx, sizeM), projectedPinned: host.game.getPinnedChunkCount() };
+          }
+        }
+
+        // 5) Sans chevauchement d'un autre habillage déjà posé
+        const bid = String(host.game.activeBiomeId || "");
+        const existingList = getBiomePlacements(bid);
+        for (const other of existingList) {
+          if (ignorePlacementId && other.id === ignorePlacementId) continue;
+          const otherRM = other.sizeM * 0.5;
+          if (Math.hypot(xM - other.x / pxPerM, yM - other.y / pxPerM) < otherRM + radiusM) {
+            return { valid: false, reason: "Chevauche un autre habillage déjà posé", chunks: getChunksForRect(xPx, yPx, sizeM), projectedPinned: host.game.getPinnedChunkCount() };
+          }
+        }
+
+        // 6) Chunks intersectés : 0 élément non récolté restant + respect du budget maxDecoratedChunks
+        const targetChunks = getChunksForRect(xPx, yPx, sizeM);
+        for (const ch of targetChunks) {
+          const info = typeof host.game.inspectChunkPickups === "function"
+            ? host.game.inspectChunkPickups(bid, ch.cx, ch.cy)
+            : { remaining: 0, cleared: true, pinned: false };
+          if (info.remaining > 0) {
+            return {
+              valid: false,
+              reason: `${info.remaining} élément(s) non récolté(s) sur le chunk (${ch.cx}, ${ch.cy})`,
+              chunks: targetChunks,
+              projectedPinned: host.game.getPinnedChunkCount(),
+            };
+          }
+        }
+
+        // Calcul du nombre total de chunks pérennes projeté après cette opération
+        const simulatedBiomeList = existingList.filter((it) => !ignorePlacementId || it.id !== ignorePlacementId);
+        simulatedBiomeList.push({ x: xPx, y: yPx, sizeM });
+        const projectedAll = collectAllPinnedChunks(bid, simulatedBiomeList);
+        const projectedCount = projectedAll.length;
+        const maxDecorated = Number(host.game.MAX_DECORATED_CHUNKS ?? 500);
+        if (projectedCount > maxDecorated) {
+          return {
+            valid: false,
+            reason: `Limite de chunks d'habillage atteinte (${projectedCount}/${maxDecorated})`,
+            chunks: targetChunks,
+            projectedPinned: projectedCount,
+          };
+        }
+
+        return {
+          valid: true,
+          reason: "",
+          chunks: targetChunks,
+          projectedPinned: projectedCount,
+        };
+      }
+
+      function openMiniMap({ mode = "manage", rule = null, initialSelectedId = "" } = {}) {
+        closeMiniMap();
+        if (window.AssemblageVisuals && rule) {
+          window.AssemblageVisuals.ensureVisual(rule.visualId);
+        }
+
+        const pxPerM = getPxPerMeter();
+        const CHUNK_SIZE = host.game.CHUNK_SIZE || 512;
+        const mapRadiusPx = mapRadiusM * pxPerM;
+        const alien = host.game.alien;
+        const bid = String(host.game.activeBiomeId || "");
+
+        // Mode courant : "place" | "manage" | "move"
+        let currentMode = mode;
+        let selectedId = initialSelectedId || "";
+        let camWorldX = alien ? alien.x : 0;
+        let camWorldY = alien ? alien.y : 0;
+        let viewScale = 0.04; // px écran par px monde (recalculé à l'ouverture)
+        let defaultViewScale = 0.04;
+        let minViewScale = 0.01;
+        let maxViewScale = 0.45;
+        let initializedScale = false;
+
+        // Fantôme en cours de placement ou déplacement
+        let ghost = null;
+        if (currentMode === "place" && rule) {
+          const startX = clamp(alien ? alien.x : 0, -mapRadiusPx * 0.85, mapRadiusPx * 0.85);
+          const startY = clamp(alien ? alien.y : 0, -mapRadiusPx * 0.85, mapRadiusPx * 0.85);
+          ghost = {
+            id: "",
+            ruleIndex: rule.ruleIndex,
+            elementId: rule.elementId,
+            cost: rule.requiredCount,
+            visualId: rule.visualId,
+            x: startX,
+            y: startY,
+            sizeM: rule.maxSizeM,
+            projectionMode: rule.projectionMode,
+            tint: rule.tint,
+          };
+        }
+
+        const overlay = document.createElement("div");
+        overlay.id = "hm-minimap-overlay";
+        overlay.innerHTML = `
+          <div class="hm-mm-topbar">
+            <div class="hm-mm-title">
+              <span>🗺️ Mini-map d'habillage (±${mapRadiusM} m)</span>
+            </div>
+            <div class="hm-mm-badges">
+              <span class="hm-pill" data-hm-budget></span>
+              <span class="hm-pill" data-hm-lru></span>
+            </div>
+            <div class="hm-mm-controls">
+              <span class="hm-pill" data-hm-zoom-pct title="Niveau de zoom (100% = 4,5 chunks de côté)">🔍 100%</span>
+              <button type="button" class="hm-btn hm-btn-secondary" data-hm-fit title="Voir toute la zone ±${mapRadiusM} m">🗺️ Tout</button>
+              <button type="button" class="hm-btn hm-btn-secondary" data-hm-center-alien title="Centrer sur l'alien">👾</button>
+              <button type="button" class="hm-btn hm-btn-danger" data-hm-close>✕ Fermer</button>
+            </div>
+          </div>
+          <div class="hm-mm-canvas-wrap">
+            <canvas class="hm-mm-canvas" data-hm-canvas></canvas>
+            <div class="hm-mm-legend">
+              <span class="hm-legend-chip">🚀 Vaisseau (0,0)</span>
+              <span class="hm-legend-chip">⚓ Zones ancres</span>
+              <span class="hm-legend-chip" style="border-color:rgba(72,229,194,0.55);color:#8cffdf;">■ Chunks pérennes</span>
+              <span class="hm-legend-chip" style="border-color:rgba(255,110,122,0.45);color:#ffb0b8;">■ Eau / Trou</span>
+            </div>
+          </div>
+          <div class="hm-mm-bottombar">
+            <div class="hm-mm-status info" data-hm-status></div>
+            <div class="hm-btn-row" data-hm-actions></div>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+        activeOverlayEl = overlay;
+
+        const canvasEl = overlay.querySelector("[data-hm-canvas]");
+        const mctx = canvasEl.getContext("2d");
+        const statusEl = overlay.querySelector("[data-hm-status]");
+        const actionsEl = overlay.querySelector("[data-hm-actions]");
+        const budgetEl = overlay.querySelector("[data-hm-budget]");
+        const lruEl = overlay.querySelector("[data-hm-lru]");
+        const zoomPctEl = overlay.querySelector("[data-hm-zoom-pct]");
+
+        const terrainCanvas = ensureTerrainCacheCanvas();
+        // Pré-cache rapide des statuts de pickups des chunks visibles sur la mini-map (dans un rayon raisonnable)
+        const chunkPickupCache = new Map();
+        function getCachedChunkPickups(cx, cy) {
+          const k = `${cx},${cy}`;
+          if (chunkPickupCache.has(k)) return chunkPickupCache.get(k);
+          const res = typeof host.game.inspectChunkPickups === "function"
+            ? host.game.inspectChunkPickups(bid, cx, cy)
+            : { remaining: 0, cleared: true, pinned: false };
+          chunkPickupCache.set(k, res);
+          return res;
+        }
+
+        function refreshBadges() {
+          const pinned = typeof host.game.getPinnedChunkCount === "function" ? host.game.getPinnedChunkCount() : 0;
+          const maxDeco = Number(host.game.MAX_DECORATED_CHUNKS ?? 500);
+          const maxColl = Number(host.game.MAX_COLLECTED_CHUNKS ?? 1000);
+          const effColl = Math.max(0, maxColl - pinned);
+          const lruCount = typeof host.game.getCollectedChunksCount === "function" ? host.game.getCollectedChunksCount() : 0;
+          budgetEl.textContent = `Habillés : ${pinned} / ${maxDeco} chunks`;
+          lruEl.textContent = `Repousse : ${lruCount} / ${effColl} (${maxColl} − ${pinned})`;
+        }
+
+        let currentValidation = null;
+
+        function refreshBottomBar() {
+          refreshBadges();
+          actionsEl.innerHTML = "";
+
+          if (currentMode === "place" && ghost) {
+            currentValidation = validatePlacement(ghost.x, ghost.y, ghost.sizeM, "");
+            if (currentValidation.valid) {
+              statusEl.className = "hm-mm-status ok";
+              statusEl.textContent = `✅ Valide • Occupe ${currentValidation.chunks.length} chunk(s) • Total habillés : ${currentValidation.projectedPinned}/${Number(host.game.MAX_DECORATED_CHUNKS ?? 500)}`;
+            } else {
+              statusEl.className = "hm-mm-status err";
+              statusEl.textContent = `❌ ${currentValidation.reason}`;
+            }
+
+            const btnConfirm = document.createElement("button");
+            btnConfirm.type = "button";
+            btnConfirm.className = "hm-btn";
+            btnConfirm.textContent = `✓ Poser (−${ghost.cost} ressource(s))`;
+            btnConfirm.disabled = !currentValidation.valid;
+            btnConfirm.addEventListener("click", () => {
+              const check = validatePlacement(ghost.x, ghost.y, ghost.sizeM, "");
+              if (!check.valid) return;
+              const stock = host.game.getQty(ghost.elementId);
+              if (stock < ghost.cost) {
+                host.ui.showToast(`❌ Stock insuffisant (${stock}/${ghost.cost})`);
+                return;
+              }
+              host.game.consumeItem(ghost.elementId, ghost.cost);
+              const list = getBiomePlacements(bid);
+              const newItem = {
+                id: `hm_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                ruleIndex: ghost.ruleIndex,
+                elementId: ghost.elementId,
+                cost: ghost.cost,
+                visualId: ghost.visualId,
+                x: Math.round(ghost.x * 10) / 10,
+                y: Math.round(ghost.y * 10) / 10,
+                sizeM: ghost.sizeM,
+                projectionMode: ghost.projectionMode,
+                tint: ghost.tint,
+              };
+              list.push(newItem);
+              savePlacementsMap();
+              syncPinnedChunks();
+              chunkPickupCache.clear();
+              host.ui.showToast(`✨ Habillage posé (${check.chunks.length} chunk(s) pérennes)`);
+              currentMode = "manage";
+              selectedId = newItem.id;
+              ghost = null;
+              refreshBottomBar();
+              renderMap();
+            });
+            actionsEl.appendChild(btnConfirm);
+
+            const btnCancel = document.createElement("button");
+            btnCancel.type = "button";
+            btnCancel.className = "hm-btn hm-btn-secondary";
+            btnCancel.textContent = "Annuler";
+            btnCancel.addEventListener("click", closeMiniMap);
+            actionsEl.appendChild(btnCancel);
+          } else if (currentMode === "move" && ghost) {
+            currentValidation = validatePlacement(ghost.x, ghost.y, ghost.sizeM, ghost.id);
+            if (currentValidation.valid) {
+              statusEl.className = "hm-mm-status ok";
+              statusEl.textContent = `✅ Nouvelle position valide • Occupe ${currentValidation.chunks.length} chunk(s) • Total habillés : ${currentValidation.projectedPinned}/${Number(host.game.MAX_DECORATED_CHUNKS ?? 500)}`;
+            } else {
+              statusEl.className = "hm-mm-status err";
+              statusEl.textContent = `❌ ${currentValidation.reason}`;
+            }
+
+            const btnSaveMove = document.createElement("button");
+            btnSaveMove.type = "button";
+            btnSaveMove.className = "hm-btn";
+            btnSaveMove.textContent = "✓ Confirmer déplacement";
+            btnSaveMove.disabled = !currentValidation.valid;
+            btnSaveMove.addEventListener("click", () => {
+              const check = validatePlacement(ghost.x, ghost.y, ghost.sizeM, ghost.id);
+              if (!check.valid) return;
+              const list = getBiomePlacements(bid);
+              const target = list.find((it) => it.id === ghost.id);
+              if (target) {
+                target.x = Math.round(ghost.x * 10) / 10;
+                target.y = Math.round(ghost.y * 10) / 10;
+                savePlacementsMap();
+                syncPinnedChunks();
+                chunkPickupCache.clear();
+                host.ui.showToast("✋ Habillage repositionné !");
+              }
+              currentMode = "manage";
+              selectedId = ghost.id;
+              ghost = null;
+              refreshBottomBar();
+              renderMap();
+            });
+            actionsEl.appendChild(btnSaveMove);
+
+            const btnCancelMove = document.createElement("button");
+            btnCancelMove.type = "button";
+            btnCancelMove.className = "hm-btn hm-btn-secondary";
+            btnCancelMove.textContent = "Annuler";
+            btnCancelMove.addEventListener("click", () => {
+              currentMode = "manage";
+              selectedId = ghost.id;
+              ghost = null;
+              refreshBottomBar();
+              renderMap();
+            });
+            actionsEl.appendChild(btnCancelMove);
+          } else {
+            currentValidation = null;
+            const list = getBiomePlacements(bid);
+            const sel = list.find((it) => it.id === selectedId) || null;
+            if (sel) {
+              const chks = getChunksForRect(sel.x, sel.y, sel.sizeM);
+              const xm = Math.round(sel.x / pxPerM);
+              const ym = Math.round(sel.y / pxPerM);
+              statusEl.className = "hm-mm-status info";
+              statusEl.textContent = `🎨 ${getVisualLabel(sel.visualId)} (${xm} m, ${ym} m) • ${sel.sizeM} m • ${chks.length} chunk(s) pérennes`;
+
+              const btnMove = document.createElement("button");
+              btnMove.type = "button";
+              btnMove.className = "hm-btn hm-btn-secondary";
+              btnMove.textContent = "✋ Repositionner";
+              btnMove.addEventListener("click", () => {
+                currentMode = "move";
+                ghost = Object.assign({}, sel);
+                refreshBottomBar();
+                renderMap();
+              });
+              actionsEl.appendChild(btnMove);
+
+              const btnDestroy = document.createElement("button");
+              btnDestroy.type = "button";
+              btnDestroy.className = "hm-btn hm-btn-danger";
+              btnDestroy.textContent = `🗑️ Détruire (+${sel.cost} ressource(s))`;
+              btnDestroy.addEventListener("click", () => {
+                const idx = list.indexOf(sel);
+                if (idx >= 0) list.splice(idx, 1);
+                host.game.addItem(sel.elementId, sel.cost);
+                savePlacementsMap();
+                syncPinnedChunks();
+                chunkPickupCache.clear();
+                selectedId = "";
+                host.ui.showToast(`🗑️ Habillage détruit (+${sel.cost} ressource(s) récupérées)`);
+                refreshBottomBar();
+                renderMap();
+              });
+              actionsEl.appendChild(btnDestroy);
+            } else {
+              statusEl.className = "hm-mm-status info";
+              statusEl.textContent = list.length > 0
+                ? "Cliquez sur un habillage posé pour le repositionner ou le détruire • Glissez la carte pour explorer"
+                : "Aucun habillage posé dans ce biome • Glissez la carte pour explorer";
+            }
+          }
+        }
+
+        function resizeCanvas() {
+          const rect = canvasEl.getBoundingClientRect();
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const w = Math.max(1, Math.floor(rect.width));
+          const h = Math.max(1, Math.floor(rect.height));
+          canvasEl.width = w * dpr;
+          canvasEl.height = h * dpr;
+          const fitScale = (Math.min(w, h) * 0.88) / (mapRadiusPx * 2);
+          defaultViewScale = Math.min(w, h) / (4.5 * CHUNK_SIZE);
+          minViewScale = Math.max(0.006, fitScale * 0.65);
+          maxViewScale = Math.max(0.45, defaultViewScale * 3.5, fitScale * 18);
+          if (!initializedScale) {
+            initializedScale = true;
+            // Zoom par défaut : 4,5 chunks de côté
+            viewScale = clamp(defaultViewScale, minViewScale, maxViewScale);
+            if (ghost) {
+              camWorldX = ghost.x;
+              camWorldY = ghost.y;
+            }
+          } else {
+            viewScale = clamp(viewScale, minViewScale, maxViewScale);
+          }
+        }
+
+        function screenToMapWorld(sx, sy) {
+          const rect = canvasEl.getBoundingClientRect();
+          const cx = rect.width * 0.5;
+          const cy = rect.height * 0.5;
+          return {
+            x: camWorldX + (sx - cx) / viewScale,
+            y: camWorldY + (sy - cy) / viewScale,
+          };
+        }
+
+        function renderMap() {
+          const rect = canvasEl.getBoundingClientRect();
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const w = Math.max(1, Math.floor(rect.width));
+          const h = Math.max(1, Math.floor(rect.height));
+          if (canvasEl.width !== w * dpr || canvasEl.height !== h * dpr) {
+            resizeCanvas();
+          }
+          if (zoomPctEl && defaultViewScale > 0) {
+            zoomPctEl.textContent = `🔍 ${Math.round((viewScale / defaultViewScale) * 100)}%`;
+          }
+          mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          mctx.fillStyle = "#070b14";
+          mctx.fillRect(0, 0, w, h);
+
+          mctx.save();
+          mctx.translate(w * 0.5, h * 0.5);
+          mctx.scale(viewScale, viewScale);
+          mctx.translate(-camWorldX, -camWorldY);
+
+          // 1) Fond terrain praticable (±mapRadiusPx)
+          if (terrainCanvas) {
+            mctx.imageSmoothingEnabled = true;
+            mctx.drawImage(terrainCanvas, -mapRadiusPx, -mapRadiusPx, mapRadiusPx * 2, mapRadiusPx * 2);
+          } else {
+            mctx.fillStyle = "#1c3042";
+            mctx.fillRect(-mapRadiusPx, -mapRadiusPx, mapRadiusPx * 2, mapRadiusPx * 2);
+          }
+
+          // Bordure de la zone constructible ±mapRadiusM
+          mctx.strokeStyle = "rgba(102, 217, 255, 0.72)";
+          mctx.lineWidth = 2 / viewScale;
+          mctx.strokeRect(-mapRadiusPx, -mapRadiusPx, mapRadiusPx * 2, mapRadiusPx * 2);
+
+          // 2) Chunks visibles dans la fenêtre
+          const halfVisW = (w * 0.5) / viewScale + CHUNK_SIZE;
+          const halfVisH = (h * 0.5) / viewScale + CHUNK_SIZE;
+          const minCx = Math.max(Math.floor(-mapRadiusPx / CHUNK_SIZE), Math.floor((camWorldX - halfVisW) / CHUNK_SIZE));
+          const maxCx = Math.min(Math.floor(mapRadiusPx / CHUNK_SIZE), Math.floor((camWorldX + halfVisW) / CHUNK_SIZE));
+          const minCy = Math.max(Math.floor(-mapRadiusPx / CHUNK_SIZE), Math.floor((camWorldY - halfVisH) / CHUNK_SIZE));
+          const maxCy = Math.min(Math.floor(mapRadiusPx / CHUNK_SIZE), Math.floor((camWorldY + halfVisH) / CHUNK_SIZE));
+
+          // Chunks déjà pérennes
+          const pinnedList = typeof host.game.getPinnedChunkKeys === "function" ? host.game.getPinnedChunkKeys(bid) : [];
+          mctx.fillStyle = "rgba(72, 229, 194, 0.22)";
+          for (const pc of pinnedList) {
+            mctx.fillRect(pc.cx * CHUNK_SIZE, pc.cy * CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+          }
+
+          // Quand on zoome suffisamment, montre les chunks non défrichés en rouge subtil
+          if (CHUNK_SIZE * viewScale >= 20) {
+            for (let cy = minCy; cy <= maxCy; cy++) {
+              for (let cx = minCx; cx <= maxCx; cx++) {
+                const info = getCachedChunkPickups(cx, cy);
+                if (!info.pinned && info.remaining > 0) {
+                  mctx.fillStyle = "rgba(255, 92, 112, 0.14)";
+                  mctx.fillRect(cx * CHUNK_SIZE, cy * CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+                }
+              }
+            }
+          }
+
+          // Chunks survolés par le fantôme
+          if (ghost && currentValidation && Array.isArray(currentValidation.chunks)) {
+            mctx.fillStyle = currentValidation.valid ? "rgba(115, 250, 209, 0.28)" : "rgba(255, 92, 112, 0.34)";
+            for (const ch of currentValidation.chunks) {
+              mctx.fillRect(ch.cx * CHUNK_SIZE, ch.cy * CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+            }
+          }
+
+          // Grille des chunks
+          mctx.strokeStyle = "rgba(102, 217, 255, 0.22)";
+          mctx.lineWidth = 1 / viewScale;
+          mctx.beginPath();
+          for (let cx = minCx; cx <= maxCx + 1; cx++) {
+            const lx = cx * CHUNK_SIZE;
+            mctx.moveTo(lx, minCy * CHUNK_SIZE);
+            mctx.lineTo(lx, (maxCy + 1) * CHUNK_SIZE);
+          }
+          for (let cy = minCy; cy <= maxCy + 1; cy++) {
+            const ly = cy * CHUNK_SIZE;
+            mctx.moveTo(minCx * CHUNK_SIZE, ly);
+            mctx.lineTo((maxCx + 1) * CHUNK_SIZE, ly);
+          }
+          mctx.stroke();
+
+          // 3) Zone d'exclusion du vaisseau (0, 0)
+          const shipExclPx = shipExclusionRadiusM * pxPerM;
+          mctx.fillStyle = "rgba(255, 209, 102, 0.14)";
+          mctx.strokeStyle = "rgba(255, 209, 102, 0.78)";
+          mctx.lineWidth = 1.6 / viewScale;
+          mctx.beginPath();
+          mctx.arc(0, 0, shipExclPx, 0, Math.PI * 2);
+          mctx.fill();
+          mctx.stroke();
+
+          mctx.font = `${Math.max(12, Math.round(14 / viewScale))}px sans-serif`;
+          mctx.textAlign = "center";
+          mctx.textBaseline = "middle";
+          mctx.fillStyle = "#ffe69b";
+          mctx.fillText("🚀", 0, 0);
+
+          // 4) Ancres & zones réservées
+          const anchors = Array.isArray(host.game.anchors) ? host.game.anchors : [];
+          for (const a of anchors) {
+            const azM = (Number(a.zoneRadiusM) > 0) ? Number(a.zoneRadiusM) : defaultAnchorZoneM;
+            const azPx = azM * pxPerM;
+            mctx.fillStyle = "rgba(180, 130, 255, 0.16)";
+            mctx.strokeStyle = "rgba(180, 130, 255, 0.80)";
+            mctx.lineWidth = 1.4 / viewScale;
+            mctx.beginPath();
+            mctx.arc(a.x, a.y, azPx, 0, Math.PI * 2);
+            mctx.fill();
+            mctx.stroke();
+
+            mctx.font = `${Math.max(11, Math.round(13 / viewScale))}px sans-serif`;
+            mctx.fillStyle = "#f2e5ff";
+            mctx.fillText(a.emoji || "⚓", a.x, a.y);
+          }
+
+          // 5) Skins déjà posés
+          const list = getBiomePlacements(bid);
+          for (const it of list) {
+            if (ghost && ghost.id && it.id === ghost.id) continue;
+            const sizePx = it.sizeM * pxPerM;
+            const drawn = drawSkinAt(mctx, it.visualId, it.x, it.y, sizePx, it.tint, 1);
+            if (!drawn) {
+              mctx.fillStyle = it.tint || "#6be5b8";
+              mctx.beginPath();
+              mctx.arc(it.x, it.y, sizePx * 0.5, 0, Math.PI * 2);
+              mctx.fill();
+            }
+            if (it.id === selectedId) {
+              mctx.strokeStyle = "#ffd166";
+              mctx.lineWidth = 2.5 / viewScale;
+              mctx.beginPath();
+              mctx.arc(it.x, it.y, sizePx * 0.56, 0, Math.PI * 2);
+              mctx.stroke();
+            }
+          }
+
+          // 6) Fantôme actif (pose ou repositionnement)
+          if (ghost) {
+            const gSizePx = ghost.sizeM * pxPerM;
+            const isValid = Boolean(currentValidation && currentValidation.valid);
+            mctx.save();
+            drawSkinAt(mctx, ghost.visualId, ghost.x, ghost.y, gSizePx, ghost.tint, isValid ? 0.92 : 0.65);
+            mctx.strokeStyle = isValid ? "#7cf5c4" : "#ff6e7a";
+            mctx.lineWidth = 2.5 / viewScale;
+            mctx.setLineDash([6 / viewScale, 4 / viewScale]);
+            mctx.beginPath();
+            mctx.arc(ghost.x, ghost.y, gSizePx * 0.54, 0, Math.PI * 2);
+            mctx.stroke();
+            mctx.restore();
+          }
+
+          // 7) Position de l'alien
+          if (alien) {
+            const ar = 7 / viewScale;
+            mctx.fillStyle = "#6bdb6b";
+            mctx.strokeStyle = "#ffffff";
+            mctx.lineWidth = 2 / viewScale;
+            mctx.beginPath();
+            mctx.arc(alien.x, alien.y, ar, 0, Math.PI * 2);
+            mctx.fill();
+            mctx.stroke();
+          }
+
+          mctx.restore();
+        }
+
+        // Interactions souris & tactile (glisser le fantôme ou déplacer la vue)
+        let pointerMode = ""; // "drag_ghost" | "pan" | "pinch"
+        let activePrimaryId = null;
+        const activePointers = new Map(); // pointerId -> { sx, sy }
+        let pointerStartSX = 0;
+        let pointerStartSY = 0;
+        let dragMoved = false;
+        let lastPanSX = 0;
+        let lastPanSY = 0;
+        let ghostOffsetX = 0;
+        let ghostOffsetY = 0;
+        let pinchStartDist = 0;
+        let pinchStartScale = 1;
+        let pinchAnchorWorldX = 0;
+        let pinchAnchorWorldY = 0;
+
+        function startPinchFromActivePointers() {
+          const pts = Array.from(activePointers.values());
+          if (pts.length < 2) return;
+          const p0 = pts[0];
+          const p1 = pts[1];
+          const midX = (p0.sx + p1.sx) * 0.5;
+          const midY = (p0.sy + p1.sy) * 0.5;
+          pinchStartDist = Math.max(8, Math.hypot(p1.sx - p0.sx, p1.sy - p0.sy));
+          pinchStartScale = viewScale;
+          const anchor = screenToMapWorld(midX, midY);
+          pinchAnchorWorldX = anchor.x;
+          pinchAnchorWorldY = anchor.y;
+          pointerMode = "pinch";
+          dragMoved = true;
+          canvasEl.classList.add("dragging");
+        }
+
+        canvasEl.addEventListener("pointerdown", (ev) => {
+          ev.preventDefault();
+          const rect = canvasEl.getBoundingClientRect();
+          const sx = ev.clientX - rect.left;
+          const sy = ev.clientY - rect.top;
+          activePointers.set(ev.pointerId, { sx, sy });
+          try { canvasEl.setPointerCapture(ev.pointerId); } catch {}
+
+          if (activePointers.size >= 2) {
+            startPinchFromActivePointers();
+            return;
+          }
+
+          const wp = screenToMapWorld(sx, sy);
+          activePrimaryId = ev.pointerId;
+          pointerStartSX = sx;
+          pointerStartSY = sy;
+          lastPanSX = sx;
+          lastPanSY = sy;
+          dragMoved = false;
+
+          if (ghost) {
+            const hitR = Math.max(ghost.sizeM * pxPerM * 0.65, 22 / viewScale);
+            if (Math.hypot(wp.x - ghost.x, wp.y - ghost.y) <= hitR) {
+              pointerMode = "drag_ghost";
+              ghostOffsetX = ghost.x - wp.x;
+              ghostOffsetY = ghost.y - wp.y;
+              canvasEl.classList.add("dragging");
+              return;
+            }
+          }
+          pointerMode = "pan";
+          canvasEl.classList.add("dragging");
+        });
+
+        canvasEl.addEventListener("pointermove", (ev) => {
+          if (!activePointers.has(ev.pointerId)) return;
+          const rect = canvasEl.getBoundingClientRect();
+          const sx = ev.clientX - rect.left;
+          const sy = ev.clientY - rect.top;
+          activePointers.set(ev.pointerId, { sx, sy });
+
+          if (pointerMode === "pinch" && activePointers.size >= 2) {
+            const pts = Array.from(activePointers.values());
+            const p0 = pts[0];
+            const p1 = pts[1];
+            const midX = (p0.sx + p1.sx) * 0.5;
+            const midY = (p0.sy + p1.sy) * 0.5;
+            const curDist = Math.max(8, Math.hypot(p1.sx - p0.sx, p1.sy - p0.sy));
+            const nextScale = clamp(pinchStartScale * (curDist / pinchStartDist), minViewScale, maxViewScale);
+            viewScale = nextScale;
+            camWorldX = pinchAnchorWorldX - (midX - rect.width * 0.5) / nextScale;
+            camWorldY = pinchAnchorWorldY - (midY - rect.height * 0.5) / nextScale;
+            renderMap();
+            return;
+          }
+
+          if (!pointerMode || ev.pointerId !== activePrimaryId) return;
+          if (Math.hypot(sx - pointerStartSX, sy - pointerStartSY) > 5) {
+            dragMoved = true;
+          }
+          if (pointerMode === "drag_ghost" && ghost) {
+            const wp = screenToMapWorld(sx, sy);
+            ghost.x = wp.x + ghostOffsetX;
+            ghost.y = wp.y + ghostOffsetY;
+            refreshBottomBar();
+            renderMap();
+          } else if (pointerMode === "pan") {
+            const dx = (sx - lastPanSX) / viewScale;
+            const dy = (sy - lastPanSY) / viewScale;
+            camWorldX -= dx;
+            camWorldY -= dy;
+            lastPanSX = sx;
+            lastPanSY = sy;
+            renderMap();
+          }
+        });
+
+        function onPointerEnd(ev) {
+          if (!activePointers.has(ev.pointerId)) return;
+          activePointers.delete(ev.pointerId);
+          try { canvasEl.releasePointerCapture(ev.pointerId); } catch {}
+
+          // Si on passe de 2+ doigts à 1 doigt après un pinch, bascule en pan fluide sans saut
+          if (activePointers.size >= 2) {
+            startPinchFromActivePointers();
+            return;
+          }
+          if (activePointers.size === 1) {
+            const [remId, remPos] = activePointers.entries().next().value;
+            activePrimaryId = remId;
+            pointerMode = "pan";
+            lastPanSX = remPos.sx;
+            lastPanSY = remPos.sy;
+            dragMoved = true;
+            return;
+          }
+
+          const wasPan = pointerMode === "pan";
+          pointerMode = "";
+          activePrimaryId = null;
+          canvasEl.classList.remove("dragging");
+
+          if (wasPan && !dragMoved) {
+            const rect = canvasEl.getBoundingClientRect();
+            const sx = ev.clientX - rect.left;
+            const sy = ev.clientY - rect.top;
+            const wp = screenToMapWorld(sx, sy);
+            if (ghost) {
+              // Clic direct sur la carte téléporte le fantôme à cet endroit pour faciliter la pose sur mobile
+              ghost.x = wp.x;
+              ghost.y = wp.y;
+              refreshBottomBar();
+              renderMap();
+            } else if (currentMode === "manage") {
+              const list = getBiomePlacements(bid);
+              let picked = "";
+              for (let i = list.length - 1; i >= 0; i--) {
+                const it = list[i];
+                const hitR = Math.max(it.sizeM * pxPerM * 0.58, 18 / viewScale);
+                if (Math.hypot(wp.x - it.x, wp.y - it.y) <= hitR) {
+                  picked = it.id;
+                  break;
+                }
+              }
+              selectedId = picked;
+              refreshBottomBar();
+              renderMap();
+            }
+          }
+        }
+        canvasEl.addEventListener("pointerup", onPointerEnd);
+        canvasEl.addEventListener("pointercancel", onPointerEnd);
+
+        canvasEl.addEventListener("wheel", (ev) => {
+          ev.preventDefault();
+          const rect = canvasEl.getBoundingClientRect();
+          const sx = ev.clientX - rect.left;
+          const sy = ev.clientY - rect.top;
+          const anchor = screenToMapWorld(sx, sy);
+          const factor = ev.ctrlKey
+            ? Math.exp(-ev.deltaY * 0.01)
+            : (ev.deltaY < 0 ? 1.18 : 1 / 1.18);
+          const nextScale = clamp(viewScale * factor, minViewScale, maxViewScale);
+          viewScale = nextScale;
+          camWorldX = anchor.x - (sx - rect.width * 0.5) / nextScale;
+          camWorldY = anchor.y - (sy - rect.height * 0.5) / nextScale;
+          renderMap();
+        }, { passive: false });
+
+        overlay.querySelector("[data-hm-fit]")?.addEventListener("click", () => {
+          const rect = canvasEl.getBoundingClientRect();
+          const fitScale = (Math.min(rect.width, rect.height) * 0.88) / (mapRadiusPx * 2);
+          viewScale = clamp(fitScale, minViewScale, maxViewScale);
+          camWorldX = 0;
+          camWorldY = 0;
+          renderMap();
+        });
+        overlay.querySelector("[data-hm-center-alien]")?.addEventListener("click", () => {
+          viewScale = clamp(defaultViewScale, minViewScale, maxViewScale);
+          if (alien) {
+            camWorldX = alien.x;
+            camWorldY = alien.y;
+          }
+          renderMap();
+        });
+        overlay.querySelector("[data-hm-close]")?.addEventListener("click", closeMiniMap);
+
+        const onResize = () => {
+          if (!activeOverlayEl) return;
+          resizeCanvas();
+          renderMap();
+        };
+        window.addEventListener("resize", onResize);
+        // Nettoyage du listener quand l'overlay est retiré
+        const origRemove = overlay.remove.bind(overlay);
+        overlay.remove = () => {
+          window.removeEventListener("resize", onResize);
+          origRemove();
+        };
+
+        resizeCanvas();
+        refreshBottomBar();
+        renderMap();
+        // Re-dessine après un court délai si un pack visuel finit son chargement asynchrone
+        setTimeout(() => { if (activeOverlayEl === overlay) renderMap(); }, 250);
+      }
+
+      // --- Modale « Ouvrir l'élément » dans le menu Craft ---
+      function openElementModal(elementId) {
+        const matchingRules = rules.filter((r) => r.elementId === elementId);
+        if (matchingRules.length === 0) return;
+
+        const elObj = host.game.elementsById ? host.game.elementsById.get(elementId) : null;
+        const elName = elObj ? `${elObj.icon || "🧩"} ${elObj.name || elementId}` : elementId;
+        const stock = host.game.getQty(elementId);
+        const pinned = typeof host.game.getPinnedChunkCount === "function" ? host.game.getPinnedChunkCount() : 0;
+        const maxDeco = Number(host.game.MAX_DECORATED_CHUNKS ?? 500);
+        const maxColl = Number(host.game.MAX_COLLECTED_CHUNKS ?? 1000);
+        const effColl = Math.max(0, maxColl - pinned);
+        const biomePlacements = getBiomePlacements();
+
+        const cardsHtml = matchingRules.map((r, idx) => {
+          const placedCount = countPlacedForRule(r);
+          const pct = clamp(Math.round((stock / r.requiredCount) * 100), 0, 100);
+          const enoughStock = stock >= r.requiredCount;
+          const underLimit = r.maxPlaced <= 0 || placedCount < r.maxPlaced;
+          const underChunkCap = pinned < maxDeco;
+          const canPlace = enoughStock && underLimit && underChunkCap;
+          const limitTxt = r.maxPlaced > 0 ? `${placedCount} / ${r.maxPlaced} posés` : `${placedCount} posé(s) (illimité)`;
+          const projTxt = r.projectionMode === "billboard" ? "Vertical 2.5D" : "À plat au sol";
+          let disableHint = "";
+          if (!enoughStock) disableHint = `Manque ${r.requiredCount - stock} ${elObj?.name || elementId}`;
+          else if (!underLimit) disableHint = `Limite atteinte (${r.maxPlaced})`;
+          else if (!underChunkCap) disableHint = `Budget chunks plein (${pinned}/${maxDeco})`;
+
+          return `
+            <div class="hm-rule-card" data-hm-rule-idx="${idx}">
+              <div class="hm-preview-box">
+                <canvas width="120" height="120" style="width:60px;height:60px;" data-hm-preview="${escapeHtml(r.visualId)}" data-hm-tint="${escapeHtml(r.tint)}"></canvas>
+              </div>
+              <div class="hm-rule-info">
+                <div class="hm-rule-title">🎨 ${escapeHtml(getVisualLabel(r.visualId))}</div>
+                <div class="hm-rule-meta">
+                  <span>📐 Taille max : ${r.maxSizeM} m</span>
+                  <span>📦 ${limitTxt}</span>
+                  <span>🧊 ${projTxt}</span>
+                </div>
+                <div class="hm-prog-wrap">
+                  <div class="hm-prog-track">
+                    <div class="hm-prog-fill" style="width:${pct}%;background:${enoughStock ? "#7cf5c4" : "#38d6ff"};"></div>
+                  </div>
+                  <div class="hm-prog-txt" style="color:${enoughStock ? "#7cf5c4" : "#ffd166"};">${stock} / ${r.requiredCount}</div>
+                </div>
+                <div class="hm-btn-row">
+                  <button type="button" class="hm-btn" data-hm-place-btn="${idx}" ${canPlace ? "" : "disabled"}>
+                    ${canPlace ? "🗺️ Placer sur la mini-map" : `🔒 ${escapeHtml(disableHint)}`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        const manageBtnHtml = biomePlacements.length > 0
+          ? `<div class="hm-btn-row" style="margin-top:12px;justify-content:flex-end;">
+               <button type="button" class="hm-btn hm-btn-secondary" data-hm-manage-btn>🗺️ Gérer les habillages posés (${biomePlacements.length})</button>
+             </div>`
+          : "";
+
+        host.ui.showModal({
+          icon: elObj?.icon || "🗺️",
+          title: `Habillage de Map — ${elName}`,
+          html: `
+            <p class="hm-intro">Obtenez la quantité requise en inventaire pour poser un habillage pérenne sur la mini-map (±${mapRadiusM} m autour du vaisseau). Les chunks occupés ne repoussent plus et sont déduits du budget de ${maxColl} chunks.</p>
+            <div class="hm-budget-bar">
+              <span>🗺️ Chunks habillés : <strong>${pinned} / ${maxDeco}</strong></span>
+              <span>💾 Repousse max : <strong>${effColl} / ${maxColl}</strong></span>
+            </div>
+            <div class="hm-rule-list">${cardsHtml}</div>
+            ${manageBtnHtml}
+          `,
+          onMount(bodyEl) {
+            const drawPreviews = () => {
+              if (!window.AssemblageVisuals) return;
+              bodyEl.querySelectorAll("canvas[data-hm-preview]").forEach((cv) => {
+                const vid = cv.dataset.hmPreview;
+                const tint = cv.dataset.hmTint || "#6be5b8";
+                window.AssemblageVisuals.ensureVisual(vid);
+                const c2 = cv.getContext("2d");
+                c2.clearRect(0, 0, cv.width, cv.height);
+                window.AssemblageVisuals.drawVisual(c2, vid, cv.width * 0.5, cv.height * 0.5, {
+                  scale: 100 / BASE_VISUAL_DIAMETER,
+                  tint,
+                });
+              });
+            };
+            drawPreviews();
+            setTimeout(drawPreviews, 220);
+            setTimeout(drawPreviews, 650);
+
+            bodyEl.querySelectorAll("[data-hm-place-btn]").forEach((btn) => {
+              btn.addEventListener("click", () => {
+                const idx = Number(btn.dataset.hmPlaceBtn);
+                const r = matchingRules[idx];
+                if (!r) return;
+                host.ui.closeModal();
+                openMiniMap({ mode: "place", rule: r });
+              });
+            });
+
+            bodyEl.querySelector("[data-hm-manage-btn]")?.addEventListener("click", () => {
+              host.ui.closeModal();
+              openMiniMap({ mode: "manage" });
+            });
+          },
+        });
+      }
+
+      // Enregistre un bouton « Ouvrir l'élément » dans le détail Craft pour chaque élément configuré
+      const uniqueElementIds = Array.from(new Set(rules.map((r) => r.elementId)));
+      for (const eid of uniqueElementIds) {
+        host.ui.addElementAction({
+          id: `habillage_map_open_${eid}`,
+          elementId: eid,
+          icon: "🗺️",
+          buttonText,
+          accentColor: ext.accentColor || "#48e5c2",
+          onClick: () => openElementModal(eid),
+        });
+      }
+
+      host.registerCleanup(() => {
+        closeMiniMap();
+        if (unhookGround) unhookGround();
+        if (unhookWorldAfter) unhookWorldAfter();
+        if (p25dSvc) {
+          p25dSvc.unregisterSource(billboardSourceKey);
+        } else if (window.Assemblage25DBillboardSources) {
+          window.Assemblage25DBillboardSources.delete(billboardSourceKey);
+        }
+        if (typeof host.game.clearPinnedChunksByPrefix === "function") {
+          host.game.clearPinnedChunksByPrefix(ownerPrefix);
+        }
+      });
+    },
+
+    onDeactivate() {
+      // Nettoyage automatique géré via host.registerCleanup
+    },
+  };
+})();
+</script>
+</body>
+</html>

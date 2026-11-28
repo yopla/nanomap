@@ -23,7 +23,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 197358
+			"worldSeed": 197358.0
 		},
 		{
 			"accentColor": "#ff6a2b",
@@ -39,7 +39,7 @@
 			"name": "Caldeira Volcanique",
 			"rockDensity": 1.3,
 			"theme": "volcanic",
-			"worldSeed": 498187
+			"worldSeed": 498187.0
 		},
 		{
 			"accentColor": "#7be3ff",
@@ -55,7 +55,7 @@
 			"name": "Toundra Glaciaire",
 			"rockDensity": 1.1,
 			"theme": "glacial",
-			"worldSeed": 36445
+			"worldSeed": 36445.0
 		},
 		{
 			"accentColor": "#b66dff",
@@ -71,7 +71,7 @@
 			"name": "Jungle Fongique",
 			"rockDensity": 0.95,
 			"theme": "fungal",
-			"worldSeed": 871501
+			"worldSeed": 871501.0
 		},
 		{
 			"accentColor": "#ffd24c",
@@ -87,7 +87,7 @@
 			"name": "Désert Ionique",
 			"rockDensity": 1.15,
 			"theme": "astral",
-			"worldSeed": 173548
+			"worldSeed": 173548.0
 		},
 		{
 			"accentColor": "#48e5c2",
@@ -109,7 +109,7 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 958206
+			"worldSeed": 958206.0
 		},
 		{
 			"accentColor": "#9be564",
@@ -128,11 +128,7 @@
 			"maraisMelonDensity": 1.0,
 			"maraisMinSeparation": 56.0,
 			"maraisMistIntensity": 0.45,
-			"maraisOctopusDensity": 1.0,
-			"maraisOctopusHp": 60.0,
 			"maraisPuddleDensity": 1.0,
-			"maraisPuyoDensity": 1.0,
-			"maraisTentacleDensity": 1.0,
 			"maraisTentacleWriggle": 1.2,
 			"maraisVineDensity": 1.0,
 			"maraisWindStrength": 1.0,
@@ -146,19 +142,22 @@
 			"weatherIntensity": 0.75,
 			"weatherMode": "generative",
 			"weatherWind": 1.0,
-			"worldSeed": 314159
+			"worldSeed": 314159.0
 		}
 	],
+	"biomesSpriteSheet": "biomes_icons",
 	"cameraSmoothing": 6.5,
 	"cameraZoom": 1.0,
+	"craftLongPressMs": 150,
 	"crystalDensity": 1.0,
 	"deadzonePx": 14.0,
 	"exitButtonText": "Sortir",
 	"maxCollectedChunks": 1000.0,
+	"maxDecoratedChunks": 500.0,
 	"moveSpeed": 240.0,
 	"rockDensity": 1.0,
 	"shipSubtitle": "Découverte progressive • Base (0, 0)",
 	"shipTitle": "VAISSEAU — ODYSSÉE",
 	"showCompass": true,
-	"worldSeed": 197358
+	"worldSeed": 197358.0
 }

@@ -556,21 +556,21 @@
       let selfScreenY = -9999;
       let selfScreenRadius = 0;
       let suppressingCreatureHook = false;
-      const wrappedGenerators = new WeakSet();
+      let disposed = false;
 
-      // --- Bus P2P pour tir_alien.html et jclcn.html ---
+      // --- Bus P2P enregistré dans host.services ---
       const busHandlers = new Map();
-      const prevBus = window.AssemblageP2PBus;
-      window.AssemblageP2PBus = {
+      const p2pBus = {
         emit(event, payload) {
-          if (prevBus && typeof prevBus.emit === "function") {
-            try { prevBus.emit(event, payload); } catch (_e) {}
-          }
-          const set = busHandlers.get(event);
+          const ev = String(event || "");
+          const set = busHandlers.get(ev);
           if (set) {
             for (const fn of set) {
               try { fn(payload); } catch (_e) {}
             }
+          }
+          if (mode === "connected" && ev.startsWith("host:")) {
+            sendSync({ t: "host_ev", ev: ev.slice(5), p: payload });
           }
         },
         on(event, fn) {
@@ -582,10 +582,7 @@
           };
         },
       };
-      host.registerCleanup(() => {
-        if (prevBus) window.AssemblageP2PBus = prevBus;
-        else delete window.AssemblageP2PBus;
-      });
+      host.services.provide("p2p", p2pBus);
 
       // --- Bouton dynamique dans le menu Paramètres côté joueur ---
       const settingBtn = host.ui.addSettingButton({
@@ -609,7 +606,7 @@
 
         if (mode === "connected") {
           if (lbl) lbl.textContent = `🟢 P2P actif avec ${remotePlayer.name}`;
-          if (desc) desc.textContent = `Connexion directe P2P (${role === "host" ? "Hôte" : "Invité"}${pingMs > 0 ? ` • ${pingMs} ms` : ""}). Cliquez ici ou sur un personnage pour quitter.`;
+          if (desc) desc.textContent = `Connexion directe P2P (${role === "host" ? "Hôte" : "Invité"}${pingMs > 0 ? ` • ${pingMs} ms` : ""}). Cliquez ici ou sur le 2e joueur pour quitter.`;
           settingBtn.textContent = "Gérer / Quitter";
         } else if (mode === "hosting_wait") {
           if (lbl) lbl.textContent = "📡 P2P — Proposition en ligne";
@@ -836,6 +833,7 @@
       async function endSharedSession(notifyPeer = true, reasonToast = "", opts = {}) {
         const wasConnected = mode === "connected";
         const wasGuest = role === "guest";
+        const wasHost = role === "host";
         const reconnectFirebase = opts.reconnectFirebase !== false;
 
         if (notifyPeer && dcSync && dcSync.readyState === "open") {
@@ -843,7 +841,7 @@
         }
 
         closePeerConnectionOnly();
-        await cleanupFirebaseRoom(true);
+        await cleanupFirebaseRoom(wasHost);
 
         mode = "idle";
         role = "";
@@ -856,6 +854,8 @@
         if (wasGuest && typeof host.game.leaveRemoteWorld === "function" && host.game.isInRemoteWorld()) {
           await host.game.leaveRemoteWorld();
         }
+
+        if (disposed) return;
 
         if (reconnectFirebase && hasFirebaseConfig && fbReady && !fbIsOnline) {
           ensureFirebaseConnected();
@@ -877,8 +877,9 @@
       }
 
       host.registerCleanup(() => {
-        endSharedSession(true, "", { reconnectFirebase: false });
-        disconnectFirebase();
+        disposed = true;
+        Promise.resolve(endSharedSession(true, "", { reconnectFirebase: false }))
+          .finally(() => disconnectFirebase());
       });
 
       // --- Gestion des messages P2P entrants ---
@@ -919,9 +920,7 @@
             remoteJclcn.active = false;
           }
         } else if (msg.t === "shot") {
-          if (typeof window.AssemblageTirRemoteSpawn === "function") {
-            window.AssemblageTirRemoteSpawn(msg.s);
-          }
+          host.events.emit("p2p:remote_tir_shot", msg.s);
         } else if (msg.t === "jclcn_mv") {
           const mv = msg.m;
           if (mv && Number.isFinite(mv.x) && Number.isFinite(mv.y)) {
@@ -1006,26 +1005,32 @@
             host.game.applyRemotePickup(msg.b, msg.cx, msg.cy, msg.idx);
           }
         } else if (msg.t === "dmg") {
-          const activeGen = host.game.getActiveBiomeGenerator();
-          if (activeGen && typeof activeGen.damageCreature === "function") {
-            const list = collectCreatures(activeGen);
-            let best = null;
-            let bestD = 90;
-            for (const c of list) {
-              if (msg.k && c.kind !== msg.k) continue;
-              const d = Math.hypot(c.x - msg.x, c.y - msg.y);
-              if (d < bestD) {
-                bestD = d;
-                best = c;
-              }
+          const list = (host.actors && typeof host.actors.getLiveCreatures === "function")
+            ? host.actors.getLiveCreatures()
+            : collectCreatures(host.game.getActiveBiomeGenerator());
+          let best = null;
+          let bestD = 90;
+          for (const c of list) {
+            if (msg.k && c.kind !== msg.k && c.actorId !== msg.k) continue;
+            const d = Math.hypot(c.x - msg.x, c.y - msg.y);
+            if (d < bestD) {
+              bestD = d;
+              best = c;
             }
-            if (best) {
-              suppressingCreatureHook = true;
-              try {
-                activeGen.damageCreature(best, Number(msg.dmg) || 10, Number(msg.kx) || 0, Number(msg.ky) || 0);
-              } finally {
-                suppressingCreatureHook = false;
+          }
+          if (best) {
+            suppressingCreatureHook = true;
+            try {
+              if (host.actors && typeof host.actors.damageCreature === "function") {
+                host.actors.damageCreature(best, Number(msg.dmg) || 10, Number(msg.kx) || 0, Number(msg.ky) || 0, { remote: true });
+              } else {
+                const activeGen = host.game.getActiveBiomeGenerator();
+                if (activeGen && typeof activeGen.damageCreature === "function") {
+                  activeGen.damageCreature(best, Number(msg.dmg) || 10, Number(msg.kx) || 0, Number(msg.ky) || 0, { remote: true });
+                }
               }
+            } finally {
+              suppressingCreatureHook = false;
             }
           }
         } else if (msg.t === "ping") {
@@ -1034,6 +1039,15 @@
           if (Number.isFinite(msg.ts)) {
             pingMs = Math.max(1, Math.round(performance.now() - msg.ts));
             updateSettingsUiSummary();
+          }
+        } else if (msg.t === "host_ev" && msg.ev) {
+          const evName = String(msg.ev);
+          host.events.emit(evName, msg.p);
+          const set = busHandlers.get(`host:${evName}`);
+          if (set) {
+            for (const fn of set) {
+              try { fn(msg.p); } catch (_e) {}
+            }
           }
         } else if (msg.t === "bye") {
           await endSharedSession(false, `🔌 ${msg.by || remotePlayer.name} a mis fin à la partie partagée.`);
@@ -1502,46 +1516,37 @@
         });
       });
 
-      const unsubTir = window.AssemblageP2PBus.on("tir_shot", (shot) => {
+      host.events.on("p2p:tir_shot", (shot) => {
         if (mode !== "connected") return;
         sendFast({ t: "shot", s: shot });
       });
-      const unsubJclcn = window.AssemblageP2PBus.on("jclcn_move", (mv) => {
+      host.events.on("p2p:jclcn_move", (mv) => {
         if (mode !== "connected") return;
         sendFast({ t: "jclcn_mv", m: mv });
       });
-      host.registerCleanup(() => {
-        unsubTir();
-        unsubJclcn();
+
+      host.events.on("actor:damaged", (ev) => {
+        if (!ev || ev.remote || suppressingCreatureHook || mode !== "connected") return;
+        sendSync({
+          t: "dmg",
+          k: ev.kind || ev.actorId || "",
+          x: Math.round(ev.x),
+          y: Math.round(ev.y),
+          dmg: Math.round(ev.dmg || 10),
+          kx: Math.round(ev.kx || 0),
+          ky: Math.round(ev.ky || 0),
+        });
       });
 
-      function ensureGeneratorDamageHook(activeGen) {
-        if (!activeGen || typeof activeGen.damageCreature !== "function" || wrappedGenerators.has(activeGen)) return;
-        wrappedGenerators.add(activeGen);
-        const origDamage = activeGen.damageCreature.bind(activeGen);
-        activeGen.damageCreature = (creature, dmg, kx, ky) => {
-          const res = origDamage(creature, dmg, kx, ky);
-          if (!suppressingCreatureHook && mode === "connected" && creature && res && res.hit) {
-            sendSync({
-              t: "dmg",
-              k: creature.kind || "",
-              x: Math.round(creature.x),
-              y: Math.round(creature.y),
-              dmg: Math.round(dmg),
-              kx: Math.round(kx || 0),
-              ky: Math.round(ky || 0),
-            });
-          }
-          return res;
-        };
+      function ensureGeneratorDamageHook(_activeGen) {
+        // Désormais unifié via l'événement Host "actor:damaged" (Marais + worldEntities de tous les biomes)
       }
 
-      // --- Clic / Tap sur le 2e joueur OU sur soi-même pour mettre fin à la partie ---
+      // --- Clic / Tap sur le 2e joueur pour mettre fin à la partie ---
       function isHitP2OrSelf(sx, sy) {
         if (mode !== "connected") return false;
         const hitP2 = p2ScreenRadius > 0 && Math.hypot(sx - p2ScreenX, sy - p2ScreenY) <= p2ScreenRadius;
-        const hitSelf = selfScreenRadius > 0 && Math.hypot(sx - selfScreenX, sy - selfScreenY) <= selfScreenRadius;
-        return hitP2 || hitSelf;
+        return hitP2;
       }
 
       const onTouchStartCapture = (e) => {
@@ -1669,8 +1674,9 @@
           stateSendAccum = 0;
           const al = host.game.alien;
           if (al) {
-            const jclcnState = (window.AssemblageJclcnSync && typeof window.AssemblageJclcnSync.getState === "function")
-              ? window.AssemblageJclcnSync.getState()
+            const jclcnSvc = host.services.get("jclcn");
+            const jclcnState = (jclcnSvc && typeof jclcnSvc.getState === "function")
+              ? jclcnSvc.getState()
               : null;
             sendFast({
               t: "p",
@@ -1889,9 +1895,9 @@
       }
 
       // Rendu 2.5D (billboards triés en Y)
+      const p25dSvc = host.services.get("parallax25d");
       const sourceKey = `${FILENAME}:entities`;
-      window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
-      window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+      const billboardCollector = (pushBillboard) => {
         if (mode !== "connected") return;
 
         // Met à jour la hitbox écran de soi-même en 2.5D
@@ -1938,10 +1944,18 @@
             ctx.restore();
           }, ft.x);
         }
-      });
+      };
+      if (p25dSvc) {
+        p25dSvc.registerSource(sourceKey, billboardCollector);
+      } else {
+        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+        window.Assemblage25DBillboardSources.set(sourceKey, billboardCollector);
+      }
 
       host.registerCleanup(() => {
-        if (window.Assemblage25DBillboardSources) {
+        if (p25dSvc) {
+          p25dSvc.unregisterSource(sourceKey);
+        } else if (window.Assemblage25DBillboardSources) {
           window.Assemblage25DBillboardSources.delete(sourceKey);
         }
       });
@@ -1990,7 +2004,7 @@
           ctx.restore();
         }
 
-        if (window.Assemblage25DActive) return;
+        if ((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive) return;
 
         if (mode !== "connected") {
           p2ScreenRadius = 0;

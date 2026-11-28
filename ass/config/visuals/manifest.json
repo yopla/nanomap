@@ -23,6 +23,18 @@
 			]
 		},
 		{
+			"file": "packs/habillage_map.json",
+			"id": "habillage_map",
+			"name": "🗺️ Habillage de Map",
+			"preload": false,
+			"symbolIds": [],
+			"visualIds": [
+				"habillage_sanctuaire_cristal",
+				"habillage_bosquet_biolum",
+				"habillage_esplanade_avant_poste"
+			]
+		},
+		{
 			"file": "packs/jclcn.json",
 			"id": "jclcn",
 			"name": "🥋 JCLCN — Jean-Claude Lee Chan Norris",

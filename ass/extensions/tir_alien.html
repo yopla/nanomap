@@ -199,11 +199,9 @@
 
         spawnSparks(m.x, m.y, 3, shotRgb, 70, 170, 1.5, 2.8, 0.10, 0.22, a, 0.9);
         muzzlePulse = Math.max(muzzlePulse, 0.85);
-        if (window.AssemblageP2PBus && typeof window.AssemblageP2PBus.emit === "function") {
-          window.AssemblageP2PBus.emit("tir_shot", {
-            x: m.x, y: m.y, vx, vy, angle: a, isFinisher: false, scale: 1, rgb: shotRgb,
-          });
-        }
+        host.events.emit("p2p:tir_shot", {
+          x: m.x, y: m.y, vx, vy, angle: a, isFinisher: false, scale: 1, rgb: shotRgb,
+        });
       }
 
       function spawnFinisherExplosion(x, y, scale) {
@@ -293,15 +291,13 @@
         spawnSparks(m.x, m.y, Math.round(14 * scale), finisherRgb, 120, 340 * scale, 2.4, 5.2 * scale, 0.18, 0.42, angle, 1.35);
         spawnSparks(m.x, m.y, Math.round(8 * scale), [255, 240, 210], 90, 240 * scale, 1.8, 3.6 * scale, 0.14, 0.30, angle, 0.85);
         muzzlePulse = 1.4;
-        if (window.AssemblageP2PBus && typeof window.AssemblageP2PBus.emit === "function") {
-          window.AssemblageP2PBus.emit("tir_shot", {
-            x: m.x, y: m.y, vx, vy, angle, isFinisher: true, scale, rgb: finisherRgb,
-          });
-        }
+        host.events.emit("p2p:tir_shot", {
+          x: m.x, y: m.y, vx, vy, angle, isFinisher: true, scale, rgb: finisherRgb,
+        });
       }
 
       // Pont P2P : réception des tirs du 2e joueur
-      window.AssemblageTirRemoteSpawn = (shot) => {
+      host.events.on("p2p:remote_tir_shot", (shot) => {
         if (!shot || !Number.isFinite(shot.x) || !Number.isFinite(shot.y)) return;
         const isFin = Boolean(shot.isFinisher);
         const sc = clamp(Number(shot.scale) || 1, 0.6, 2.0);
@@ -319,6 +315,7 @@
           life: isFin ? 0.62 : 0.75,
           maxLife: isFin ? 0.62 : 0.75,
           isFinisher: isFin,
+          isRemote: true,
           rgb,
           scale: sc,
           trailTimer: 0,
@@ -348,9 +345,6 @@
         } else {
           spawnSparks(shot.x, shot.y, 3, rgb, 70, 170, 1.5, 2.8, 0.10, 0.22, ang, 0.9);
         }
-      };
-      host.registerCleanup(() => {
-        delete window.AssemblageTirRemoteSpawn;
       });
 
       function beginFire(screenX, screenY, touchId, isMouse) {
@@ -588,7 +582,13 @@
             }
           }
 
-          const hit = host.game.checkColliderHit(p.x, p.y, p.hitRadius);
+          const hit = host.game.checkColliderHit(p.x, p.y, p.hitRadius, {
+            damage: p.isFinisher ? 35 : 15,
+            knockX: p.vx,
+            knockY: p.vy,
+            source: "tir_alien",
+            remote: Boolean(p.isRemote),
+          });
           if (hit || p.life <= 0) {
             if (p.isFinisher) {
               spawnFinisherExplosion(p.x, p.y, p.scale);

@@ -310,19 +310,6 @@
       .replaceAll("'", "&#39;");
   }
 
-  function injectStyleOnce() {
-    const styleEl = document.querySelector("style");
-    if (!styleEl || !styleEl.textContent) return null;
-    const stId = "ext-style-jclcn";
-    const prev = document.getElementById(stId);
-    if (prev) prev.remove();
-    const st = document.createElement("style");
-    st.id = stId;
-    st.textContent = styleEl.textContent;
-    document.head.appendChild(st);
-    return () => st.remove();
-  }
-
   window.AssemblageExtensions = window.AssemblageExtensions || {};
   window.AssemblageExtensions[FILENAME] = {
     onActivate(host) {
@@ -336,9 +323,6 @@
       const aggroRadiusPx = clamp(Number(host.ui.getConfig("aggroRadiusPx", 380)) || 380, 120, 800);
       const attackPower = clamp(Number(host.ui.getConfig("attackPower", 1.0)) || 1.0, 0.3, 3.0);
       const tint = String(host.ui.getConfig("tint", "#f7c924") || "#f7c924");
-
-      const removeCss = injectStyleOnce();
-      if (removeCss) host.registerCleanup(removeCss);
 
       // Charge le pack visuel/animations JCLCN dès l'activation
       const av = window.AssemblageVisuals;
@@ -432,35 +416,20 @@
       }
 
       function collectCreatures(activeGen) {
+        if (host.actors && typeof host.actors.getLiveCreatures === "function") {
+          return host.actors.getLiveCreatures() || [];
+        }
         if (!activeGen) return [];
         if (typeof activeGen.getCreatures === "function") {
           return activeGen.getCreatures() || [];
         }
-        if (typeof activeGen.getChunkStates !== "function") return [];
-        const cs = activeGen.getChunkStates();
-        if (!cs) return [];
-        const list = [];
-        for (const st of cs.values()) {
-          if (Array.isArray(st.octopuses)) {
-            for (const o of st.octopuses) {
-              list.push({ kind: "octopus", ref: o, chunkState: st, x: o.x, y: o.y, r: o.bodyR || 20, hp: o.hp, maxHp: o.maxHp, hostile: true });
-            }
-          }
-          if (Array.isArray(st.puyos)) {
-            for (const p of st.puyos) {
-              list.push({ kind: "puyo", ref: p, chunkState: st, x: p.x, y: p.y, r: p.r || 15, hp: p.hp ?? 30, maxHp: p.maxHp ?? 30, hostile: false });
-            }
-          }
-          if (Array.isArray(st.tentacles)) {
-            for (const t of st.tentacles) {
-              list.push({ kind: "tentacle", ref: t, chunkState: st, x: t.x, y: t.y, r: 20 * (t.scale || 1), hp: t.hp ?? 45, maxHp: t.maxHp ?? 45, hostile: Boolean(t.canSpit) });
-            }
-          }
-        }
-        return list;
+        return [];
       }
 
       function applyCreatureDamage(activeGen, creature, dmg, kx, ky) {
+        if (host.actors && typeof host.actors.damageCreature === "function") {
+          return host.actors.damageCreature(creature, dmg, kx, ky);
+        }
         if (activeGen && typeof activeGen.damageCreature === "function") {
           return activeGen.damageCreature(creature, dmg, kx, ky);
         }
@@ -490,21 +459,19 @@
           facingX = targetCreature.x >= charX ? 1 : -1;
         }
         spawnFloatingText(charX, charY - 46 * charScale, mv.cry, mv.color);
-        if (window.AssemblageP2PBus && typeof window.AssemblageP2PBus.emit === "function") {
-          window.AssemblageP2PBus.emit("jclcn_move", {
-            moveId: mv.id,
-            frames: mv.frames,
-            duration: mv.duration,
-            x: charX,
-            y: charY,
-            facingX,
-            cry: mv.cry,
-            color: mv.color,
-            aoeRadius: mv.aoeRadius,
-            scale: charScale,
-            tint,
-          });
-        }
+        host.events.emit("p2p:jclcn_move", {
+          moveId: mv.id,
+          frames: mv.frames,
+          duration: mv.duration,
+          x: charX,
+          y: charY,
+          facingX,
+          cry: mv.cry,
+          color: mv.color,
+          aoeRadius: mv.aoeRadius,
+          scale: charScale,
+          tint,
+        });
       }
 
       function executeAttackHit(mv, activeGen, creatures) {
@@ -519,11 +486,11 @@
         spawnShockwave(strikeX, strikeY, aoe * 1.08, mv.color, 3.6);
         spawnSparks(strikeX, strikeY - 10, mv.color, 10);
 
-        if (activeGen && typeof activeGen.deflectProjectilesAt === "function") {
-          const deflected = activeGen.deflectProjectilesAt(charX, charY, aoe + 16);
-          if (deflected > 0) {
-            spawnFloatingText(charX, charY - 62 * charScale, "PARADE !", "#ffffff");
-          }
+        const deflected = (host.actors && typeof host.actors.deflectProjectilesAt === "function")
+          ? host.actors.deflectProjectilesAt(charX, charY, aoe + 16)
+          : ((activeGen && typeof activeGen.deflectProjectilesAt === "function") ? activeGen.deflectProjectilesAt(charX, charY, aoe + 16) : 0);
+        if (deflected > 0) {
+          spawnFloatingText(charX, charY - 62 * charScale, "PARADE !", "#ffffff");
         }
 
         let anyKilled = false;
@@ -1099,8 +1066,8 @@
 
       // Rendu 2.5D (billboards triés en profondeur Y)
       const sourceKey = `${FILENAME}:companion`;
-      window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
-      window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+      const p25dSvc = host.services.get("parallax25d");
+      const billboardCollector = (pushBillboard) => {
         if (!window.AssemblageVisuals) return;
 
         if (state !== "at_anchor_hidden" && appearT > 0.01) {
@@ -1130,17 +1097,24 @@
             ctx.restore();
           }, ft.x);
         }
-      });
+      };
+      if (p25dSvc) {
+        p25dSvc.registerSource(sourceKey, billboardCollector);
+      } else {
+        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+        window.Assemblage25DBillboardSources.set(sourceKey, billboardCollector);
+      }
 
       host.registerCleanup(() => {
-        if (window.Assemblage25DBillboardSources) {
+        if (p25dSvc) {
+          p25dSvc.unregisterSource(sourceKey);
+        } else if (window.Assemblage25DBillboardSources) {
           window.Assemblage25DBillboardSources.delete(sourceKey);
         }
-        delete window.AssemblageJclcnSync;
       });
 
-      // Pont P2P : expose l'état live de JCLCN pour le synchroniser sur l'autre appareil
-      window.AssemblageJclcnSync = {
+      // Pont P2P : expose l'état live de JCLCN via le registre de services Host
+      host.services.provide("jclcn", {
         getState() {
           return {
             active: state === "following" || state === "returning",
@@ -1156,7 +1130,7 @@
             moveFrame: activeMove ? clamp(moveElapsed / activeMove.duration, 0, 1) * activeMove.frames : -1,
           };
         },
-      };
+      });
 
       // Rendu 2D classique + VFX sol
       host.hooks.after("drawWorldAfter", () => {
@@ -1175,8 +1149,8 @@
           }
         }
 
-        // En mode 2.5D, les ondes et étincelles restent au sol ici ; le personnage est dans Assemblage25DBillboardSources
-        if (window.Assemblage25DActive) {
+        // En mode 2.5D, les ondes et étincelles restent au sol ici ; le personnage est dans le service parallax25d
+        if ((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive) {
           for (const sw of shockwaves) {
             const p = 1 - clamp(sw.life / sw.maxLife, 0, 1);
             const r = sw.r + (sw.maxR - sw.r) * (1 - Math.pow(1 - p, 2));

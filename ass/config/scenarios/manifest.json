@@ -1,5 +1,5 @@
 {
-	"activeScenarioId": "base",
+	"activeScenarioId": "decouverte_progressive",
 	"scenarios": [
 		{
 			"description": "Scénario principal migré depuis la configuration racine du projet.",

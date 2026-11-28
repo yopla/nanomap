@@ -93,8 +93,17 @@
       }
 
       let appearT = 0;
+      const hasHostLifecycle = Boolean(host.lifecycle && typeof host.lifecycle.setFade === "function");
+      if (hasHostLifecycle) {
+        host.lifecycle.setFade({ inDuration: 0.32, outDuration: 0.32 });
+      }
+      function getEasedAlpha() {
+        if (hasHostLifecycle) return host.lifecycle.getEasedAlpha();
+        return 1 - Math.pow(1 - appearT, 3);
+      }
 
       function drawAnchoredVisual(ctx, x, y, scale, alpha, timeSec) {
+        if (alpha <= 0.001) return;
         if (animationId) {
           window.AssemblageVisuals.drawAnimation(ctx, animationId, x, y, timeSec || 0, {
             scale,
@@ -110,44 +119,56 @@
         }
       }
 
+      const p25dSvc = host.services.get("parallax25d");
       // Enregistrement pour le tri en profondeur Y (mode vertical face caméra en 2.5D)
       if (projectionMode === "billboard") {
         const sourceKey = `${host.instanceId || FILENAME}:${anchorId}:${visualId || animationId}`;
-        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
-        window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+        const billboardCollector = (pushBillboard) => {
           if (!window.AssemblageVisuals) return;
           const anchor = host.game.getAnchor(anchorId);
           if (!anchor) return;
           pushBillboard(anchor.y, (ctx, projectPoint, _blend, timeSec) => {
-            const eased = 1 - Math.pow(1 - appearT, 3);
+            const eased = getEasedAlpha();
+            if (eased <= 0.001) return;
             const popScale = baseScale * (0.65 + 0.35 * eased);
             const bob = Math.sin((timeSec || 0) * 2.4) * 3.5;
             const pt = projectPoint(anchor.x, anchor.y, billboardZ - bob);
             drawAnchoredVisual(ctx, pt.x, pt.y, popScale * pt.scale, eased, timeSec);
           }, anchor.x);
-        });
+        };
+        if (p25dSvc) {
+          p25dSvc.registerSource(sourceKey, billboardCollector);
+        } else {
+          window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+          window.Assemblage25DBillboardSources.set(sourceKey, billboardCollector);
+        }
         host.registerCleanup(() => {
-          if (window.Assemblage25DBillboardSources) {
+          if (p25dSvc) {
+            p25dSvc.unregisterSource(sourceKey);
+          } else if (window.Assemblage25DBillboardSources) {
             window.Assemblage25DBillboardSources.delete(sourceKey);
           }
         });
       }
 
-      host.hooks.after("update", (_, dt) => {
-        if (appearT < 1) {
-          appearT = Math.min(1, appearT + Math.max(0, dt || 0) * 3.2);
-        }
-      });
+      if (!hasHostLifecycle) {
+        host.hooks.after("update", (_, dt) => {
+          if (appearT < 1) {
+            appearT = Math.min(1, appearT + Math.max(0, dt || 0) * 3.2);
+          }
+        });
+      }
 
       host.hooks.after("drawWorldAfter", (_, timeSec) => {
-        if (projectionMode === "billboard" && window.Assemblage25DActive) return;
+        if (projectionMode === "billboard" && ((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive)) return;
         const ctx = host.game.ctx;
         if (!ctx || !window.AssemblageVisuals) return;
         const anchor = host.game.getAnchor(anchorId);
         if (!anchor) return;
 
-        // Apparition douce (ease-out back léger)
-        const eased = 1 - Math.pow(1 - appearT, 3);
+        // Apparition / disparition douce pilotée par le cycle de vie hôte
+        const eased = getEasedAlpha();
+        if (eased <= 0.001) return;
         const popScale = baseScale * (0.65 + 0.35 * eased);
         const bobY = Math.sin((timeSec || 0) * 2.4) * 3.5;
         drawAnchoredVisual(ctx, anchor.x, anchor.y + bobY, popScale, eased, timeSec);
@@ -155,8 +176,7 @@
     },
 
     onDeactivate() {
-      // Les hooks drawWorldAfter et update sont automatiquement retirés par AssemblageHost :
-      // le graphisme disparaît immédiatement quand le joueur s'éloigne de l'ancre.
+      // Appelé par l'hôte une fois le fondu de sortie terminé (host.lifecycle.setFade).
     },
   };
 })();

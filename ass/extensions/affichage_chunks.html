@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Extension : Affichage des Chunks sur la Map</title>
+</head>
+<body>
+<script type="application/json" data-assemblage-ui-schema>
+{
+  "fields": [
+    {
+      "key": "defaultEnabled",
+      "label": "Afficher par défaut",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche automatiquement la grille des chunks dès le démarrage (toujours basculable dans Paramètres)."
+    },
+    {
+      "key": "gridColor",
+      "label": "Couleur des bordures",
+      "type": "color",
+      "default": "#38e0ff",
+      "hint": "Couleur principale des bordures et coordonnées des chunks."
+    },
+    {
+      "key": "currentChunkColor",
+      "label": "Couleur du chunk actif",
+      "type": "color",
+      "default": "#ffd166",
+      "hint": "Couleur de mise en évidence du chunk dans lequel se trouve l'alien."
+    },
+    {
+      "key": "lineWidth",
+      "label": "Épaisseur des bordures (px)",
+      "type": "number",
+      "default": 1.5,
+      "min": 0.5,
+      "max": 5.0,
+      "step": 0.5,
+      "hint": "Épaisseur visuelle constante à l'écran, quel que soit le niveau de zoom."
+    },
+    {
+      "key": "gridOpacity",
+      "label": "Opacité de la grille",
+      "type": "number",
+      "default": 0.75,
+      "min": 0.1,
+      "max": 1.0,
+      "step": 0.05
+    },
+    {
+      "key": "dashedBorders",
+      "label": "Bordures en pointillés",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "highlightCurrentChunk",
+      "label": "Surligner le chunk du joueur",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "showCoords",
+      "label": "Afficher les coordonnées (cx, cy)",
+      "type": "bool",
+      "default": true
+    },
+    {
+      "key": "showChunkStats",
+      "label": "Afficher les infos du chunk",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche le nombre d'éléments récoltables et de colliders présents dans chaque chunk."
+    },
+    {
+      "key": "showSubTiles",
+      "label": "Afficher la sous-grille des tuiles",
+      "type": "bool",
+      "default": false,
+      "hint": "Dessine également le quadrillage interne des tuiles de chaque chunk."
+    },
+    {
+      "key": "showHudInfo",
+      "label": "Afficher le bandeau HUD",
+      "type": "bool",
+      "default": true,
+      "hint": "Affiche en haut à gauche le chunk courant et le nombre total de chunks chargés."
+    },
+    {
+      "key": "toggleLabel",
+      "label": "Libellé interrupteur",
+      "type": "text",
+      "default": "Afficher les chunks sur la map",
+      "hint": "Affiché dans le menu Paramètres."
+    },
+    {
+      "key": "toggleDesc",
+      "label": "Description interrupteur",
+      "type": "text",
+      "default": "Affiche les bordures, coordonnées (cx, cy) et statistiques des chunks chargés sur la carte (0 impact FPS si désactivé).",
+      "hint": "Variables disponibles : {filename}, {name}"
+    },
+    {
+      "key": "toastOn",
+      "label": "Toast activation",
+      "type": "text",
+      "default": "🗺️ Affichage des chunks activé"
+    },
+    {
+      "key": "toastOff",
+      "label": "Toast désactivation",
+      "type": "text",
+      "default": "🗺️ Affichage des chunks masqué"
+    }
+  ]
+}
+</script>
+<script>
+// Extension Assemblage : affichage_chunks.html
+// Affiche la grille des chunks chargés sur la map (bordures, coordonnées, chunk actif,
+// statistiques et bandeau HUD optionnel). Compatible 2D, 2.5D et Caméra Rotative.
+// 0 impact FPS lorsque l'option est désactivée dans Paramètres.
+(function () {
+  const FILENAME = "affichage_chunks.html";
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function hexToRgba(hex, alpha) {
+    const raw = String(hex || "").trim().replace(/^#/, "");
+    let r = 56, g = 224, b = 255;
+    if (raw.length === 3) {
+      r = parseInt(raw[0] + raw[0], 16) || 0;
+      g = parseInt(raw[1] + raw[1], 16) || 0;
+      b = parseInt(raw[2] + raw[2], 16) || 0;
+    } else if (raw.length >= 6) {
+      r = parseInt(raw.slice(0, 2), 16) || 0;
+      g = parseInt(raw.slice(2, 4), 16) || 0;
+      b = parseInt(raw.slice(4, 6), 16) || 0;
+    }
+    return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`;
+  }
+
+  function getCustomText(ext, key, fallback) {
+    const fname = (ext && ext.filename) || FILENAME;
+    const name = (ext && ext.name) || fname;
+    const custom = (ext && ext.ui && typeof ext.ui.custom === "object" && ext.ui.custom) ? ext.ui.custom : null;
+    const raw = (custom && Object.prototype.hasOwnProperty.call(custom, key) && custom[key] !== undefined && custom[key] !== null)
+      ? String(custom[key])
+      : fallback;
+    return raw.replaceAll("{filename}", fname).replaceAll("{name}", name);
+  }
+
+  function drawRoundedRect(ctx, x, y, w, h, r) {
+    const rad = Math.min(r, w * 0.5, h * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rad);
+    ctx.arcTo(x + w, y + h, x, y + h, rad);
+    ctx.arcTo(x, y + h, x, y, rad);
+    ctx.arcTo(x, y, x + w, y, rad);
+    ctx.closePath();
+  }
+
+  window.AssemblageExtensions = window.AssemblageExtensions || {};
+  window.AssemblageExtensions[FILENAME] = {
+    onActivate(host, ext) {
+      const savedState = host.state.get() || {};
+      const defaultEnabled = host.ui.getConfig("defaultEnabled", true) !== false;
+      let enabledOverlay = (savedState && savedState.enabledOverlay !== undefined)
+        ? Boolean(savedState.enabledOverlay)
+        : defaultEnabled;
+
+      const gridColor = String(host.ui.getConfig("gridColor", "#38e0ff") || "#38e0ff");
+      const currentChunkColor = String(host.ui.getConfig("currentChunkColor", "#ffd166") || "#ffd166");
+      const lineWidthPx = clamp(Number(host.ui.getConfig("lineWidth", 1.5)) || 1.5, 0.5, 5.0);
+      const gridOpacity = clamp(Number(host.ui.getConfig("gridOpacity", 0.75)) || 0.75, 0.1, 1.0);
+      const dashedBorders = host.ui.getConfig("dashedBorders", true) !== false;
+      const highlightCurrentChunk = host.ui.getConfig("highlightCurrentChunk", true) !== false;
+      const showCoords = host.ui.getConfig("showCoords", true) !== false;
+      const showChunkStats = host.ui.getConfig("showChunkStats", true) !== false;
+      const showSubTiles = Boolean(host.ui.getConfig("showSubTiles", false));
+      const showHudInfo = host.ui.getConfig("showHudInfo", true) !== false;
+
+      const toggleLabel = getCustomText(ext, "toggleLabel", "Afficher les chunks sur la map");
+      const toggleDesc = getCustomText(ext, "toggleDesc", "Affiche les bordures, coordonnées (cx, cy) et statistiques des chunks chargés sur la carte (0 impact FPS si désactivé).");
+      const toastOn = getCustomText(ext, "toastOn", "🗺️ Affichage des chunks activé");
+      const toastOff = getCustomText(ext, "toastOff", "🗺️ Affichage des chunks masqué");
+
+      let unhookWorld = null;
+      let unhookHud = null;
+
+      function drawChunksOverlay() {
+        const ctx = host.game.ctx;
+        const chunks = host.game.chunks;
+        const cam = host.game.cam;
+        const alien = host.game.alien;
+        const CHUNK_SIZE = host.game.CHUNK_SIZE || 512;
+        const TILE_COUNT = host.game.TILE_COUNT || 8;
+        const zoom = Math.max(0.1, Number(host.game.currentZoom) || 1);
+        const viewW = host.game.viewW || 800;
+        const viewH = host.game.viewH || 600;
+        if (!ctx || !chunks || !cam) return;
+
+        // Calcul de la zone visible (tient compte de la rotation et du mode 2.5D)
+        const p25dSvc = host.services.get("parallax25d");
+        const is25D = Boolean((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive);
+        const pitchMargin = is25D ? 1.85 : 1.0;
+        const rawHW = (viewW * 0.5) / zoom;
+        const rawHH = ((viewH * 0.5) / zoom) * pitchMargin;
+        let halfW, halfH;
+        const camAngle = Number(cam.angle) || 0;
+        if (camAngle) {
+          const ac = Math.abs(Math.cos(camAngle));
+          const as = Math.abs(Math.sin(camAngle));
+          halfW = rawHW * ac + rawHH * as + CHUNK_SIZE;
+          halfH = rawHW * as + rawHH * ac + CHUNK_SIZE;
+        } else {
+          halfW = rawHW + CHUNK_SIZE;
+          halfH = rawHH + CHUNK_SIZE;
+        }
+
+        const playerCx = alien ? Math.floor(alien.x / CHUNK_SIZE) : null;
+        const playerCy = alien ? Math.floor(alien.y / CHUNK_SIZE) : null;
+        const invZoom = 1 / zoom;
+        const worldLineWidth = lineWidthPx * invZoom;
+
+        ctx.save();
+
+        // 1) Sous-grille des tuiles (optionnelle)
+        if (showSubTiles && TILE_COUNT > 1 && zoom >= 0.45) {
+          const tileSize = CHUNK_SIZE / TILE_COUNT;
+          ctx.strokeStyle = hexToRgba(gridColor, gridOpacity * 0.22);
+          ctx.lineWidth = Math.max(0.6, lineWidthPx * 0.5) * invZoom;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          for (const ch of chunks.values()) {
+            if (ch.ox + CHUNK_SIZE < cam.x - halfW || ch.ox > cam.x + halfW ||
+                ch.oy + CHUNK_SIZE < cam.y - halfH || ch.oy > cam.y + halfH) continue;
+            for (let i = 1; i < TILE_COUNT; i++) {
+              const lx = ch.ox + i * tileSize;
+              const ly = ch.oy + i * tileSize;
+              ctx.moveTo(lx, ch.oy);
+              ctx.lineTo(lx, ch.oy + CHUNK_SIZE);
+              ctx.moveTo(ch.ox, ly);
+              ctx.lineTo(ch.ox + CHUNK_SIZE, ly);
+            }
+          }
+          ctx.stroke();
+        }
+
+        // 2) Bordures des chunks + surbrillance du chunk actif
+        const dashLen = 10 * invZoom;
+        const gapLen = 6 * invZoom;
+        let currentChunk = null;
+
+        ctx.strokeStyle = hexToRgba(gridColor, gridOpacity);
+        ctx.lineWidth = worldLineWidth;
+        ctx.setLineDash(dashedBorders ? [dashLen, gapLen] : []);
+        ctx.beginPath();
+
+        for (const ch of chunks.values()) {
+          if (ch.ox + CHUNK_SIZE < cam.x - halfW || ch.ox > cam.x + halfW ||
+              ch.oy + CHUNK_SIZE < cam.y - halfH || ch.oy > cam.y + halfH) continue;
+          if (highlightCurrentChunk && ch.cx === playerCx && ch.cy === playerCy) {
+            currentChunk = ch;
+            continue;
+          }
+          ctx.rect(ch.ox, ch.oy, CHUNK_SIZE, CHUNK_SIZE);
+        }
+        ctx.stroke();
+
+        // Chunk actif dessiné au-dessus avec une bordure pleine et un voile léger
+        if (currentChunk) {
+          ctx.setLineDash([]);
+          ctx.fillStyle = hexToRgba(currentChunkColor, gridOpacity * 0.11);
+          ctx.fillRect(currentChunk.ox, currentChunk.oy, CHUNK_SIZE, CHUNK_SIZE);
+
+          ctx.strokeStyle = hexToRgba(currentChunkColor, Math.min(1, gridOpacity + 0.18));
+          ctx.lineWidth = worldLineWidth * 1.65;
+          ctx.strokeRect(currentChunk.ox, currentChunk.oy, CHUNK_SIZE, CHUNK_SIZE);
+        }
+
+        // 3) Repères d'angle + étiquettes (cx, cy) et stats
+        if (showCoords || showChunkStats) {
+          ctx.setLineDash([]);
+          const fontSize = clamp(13 * invZoom, 10, 38);
+          const subFontSize = clamp(10.5 * invZoom, 8.5, 28);
+          const padX = 9 * invZoom;
+          const padY = 6 * invZoom;
+          const radius = 6 * invZoom;
+
+          for (const ch of chunks.values()) {
+            if (ch.ox + CHUNK_SIZE < cam.x - halfW || ch.ox > cam.x + halfW ||
+                ch.oy + CHUNK_SIZE < cam.y - halfH || ch.oy > cam.y + halfH) continue;
+
+            const isCurrent = Boolean(highlightCurrentChunk && ch.cx === playerCx && ch.cy === playerCy);
+            const isOrigin = (ch.cx === 0 && ch.cy === 0);
+            const accent = isCurrent ? currentChunkColor : gridColor;
+
+            const lines = [];
+            if (showCoords) {
+              lines.push(`(${ch.cx}, ${ch.cy})${isOrigin ? " • BASE" : ""}`);
+            }
+            if (showChunkStats && zoom >= 0.42) {
+              const pickupsTotal = Array.isArray(ch.pickups) ? ch.pickups.length : 0;
+              let pickupsLeft = 0;
+              if (pickupsTotal > 0) {
+                for (let i = 0; i < pickupsTotal; i++) {
+                  if (!ch.pickups[i].collected) pickupsLeft++;
+                }
+              }
+              const collidersCount = Array.isArray(ch.colliders) ? ch.colliders.length : 0;
+              lines.push(`✨ ${pickupsLeft}/${pickupsTotal}  •  🪨 ${collidersCount}`);
+            }
+            if (lines.length === 0) continue;
+
+            const anchorX = ch.ox + CHUNK_SIZE * 0.5;
+            const anchorY = ch.oy + CHUNK_SIZE * 0.5;
+
+            ctx.save();
+            ctx.translate(anchorX, anchorY);
+            // Contre-rotation pour que le texte reste droit avec Caméra Rotative
+            if (camAngle) ctx.rotate(-camAngle);
+
+            ctx.font = `700 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+            let maxW = ctx.measureText(lines[0]).width;
+            if (lines.length > 1) {
+              ctx.font = `500 ${subFontSize}px system-ui, -apple-system, sans-serif`;
+              maxW = Math.max(maxW, ctx.measureText(lines[1]).width);
+            }
+
+            const lineGap = lines.length > 1 ? (subFontSize * 1.25) : 0;
+            const boxW = maxW + padX * 2;
+            const boxH = fontSize + lineGap + padY * 2;
+            const bx = -boxW * 0.5;
+            const by = -boxH * 0.5;
+
+            drawRoundedRect(ctx, bx, by, boxW, boxH, radius);
+            ctx.fillStyle = `rgba(9, 15, 28, ${clamp(gridOpacity * 0.85, 0.25, 0.85)})`;
+            ctx.fill();
+            ctx.strokeStyle = hexToRgba(accent, clamp(gridOpacity * 0.9, 0.25, 0.95));
+            ctx.lineWidth = Math.max(1, lineWidthPx * 0.75) * invZoom;
+            ctx.stroke();
+
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = `700 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+            ctx.fillStyle = hexToRgba(accent, 0.98);
+            const firstLineY = lines.length > 1 ? (-lineGap * 0.45) : 0;
+            ctx.fillText(lines[0], 0, firstLineY);
+
+            if (lines.length > 1) {
+              ctx.font = `500 ${subFontSize}px system-ui, -apple-system, sans-serif`;
+              ctx.fillStyle = "rgba(226, 242, 255, 0.88)";
+              ctx.fillText(lines[1], 0, firstLineY + fontSize * 0.95);
+            }
+
+            ctx.restore();
+          }
+        }
+
+        ctx.restore();
+      }
+
+      function drawChunksHud() {
+        if (!showHudInfo) return;
+        const ctx = host.game.ctx;
+        const chunks = host.game.chunks;
+        const alien = host.game.alien;
+        const CHUNK_SIZE = host.game.CHUNK_SIZE || 512;
+        if (!ctx || !chunks || !alien) return;
+        if (host.game.isAnyUIOpen()) return;
+
+        const cx = Math.floor(alien.x / CHUNK_SIZE);
+        const cy = Math.floor(alien.y / CHUNK_SIZE);
+        const text = `🗺️ Chunk (${cx}, ${cy})  •  ${chunks.size} chargés  •  ${CHUNK_SIZE}px`;
+
+        ctx.save();
+        ctx.font = "600 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+        const tw = ctx.measureText(text).width;
+        const padX = 10;
+        const boxW = tw + padX * 2;
+        const boxH = 26;
+        const x = 14;
+        const y = 14;
+
+        drawRoundedRect(ctx, x, y, boxW, boxH, 8);
+        ctx.fillStyle = "rgba(9, 15, 28, 0.78)";
+        ctx.fill();
+        ctx.strokeStyle = hexToRgba(currentChunkColor, 0.75);
+        ctx.lineWidth = 1.25;
+        ctx.stroke();
+
+        ctx.fillStyle = "#eefcff";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, x + padX, y + boxH * 0.5 + 0.5);
+        ctx.restore();
+      }
+
+      function attachHooks() {
+        if (!unhookWorld) {
+          unhookWorld = host.hooks.after("drawWorldAfter", drawChunksOverlay);
+        }
+        if (!unhookHud && showHudInfo) {
+          unhookHud = host.hooks.after("drawHudAfter", drawChunksHud);
+        }
+      }
+
+      function detachHooks() {
+        if (unhookWorld) {
+          unhookWorld();
+          unhookWorld = null;
+        }
+        if (unhookHud) {
+          unhookHud();
+          unhookHud = null;
+        }
+      }
+
+      host.registerCleanup(detachHooks);
+
+      if (enabledOverlay) {
+        attachHooks();
+      }
+
+      host.ui.addSettingToggle({
+        id: "affichage_chunks",
+        label: toggleLabel,
+        desc: toggleDesc,
+        checked: enabledOverlay,
+        onChange(checked) {
+          enabledOverlay = Boolean(checked);
+          host.state.set({ enabledOverlay }, true);
+          if (enabledOverlay) {
+            attachHooks();
+          } else {
+            detachHooks();
+          }
+          const msg = enabledOverlay ? toastOn : toastOff;
+          if (msg.trim()) host.ui.showToast(msg);
+        },
+      });
+    },
+
+    onDeactivate() {
+      // Les hooks sont retirés automatiquement via registerCleanup(detachHooks)
+    },
+  };
+})();
+</script>
+</body>
+</html>

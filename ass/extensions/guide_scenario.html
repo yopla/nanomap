@@ -66,10 +66,10 @@
     },
     {
       "key": "stepsJson",
-      "label": "Étapes du scénario (JSON)",
-      "type": "textarea",
+      "label": "Étapes du scénario",
+      "type": "scenario_steps",
       "default": "[\n  {\n    \"id\": \"etape_1_deplacement\",\n    \"title\": \"Premiers pas\",\n    \"icon\": \"🚀\",\n    \"objective\": \"Explorez les environs sur 20 mètres.\",\n    \"hint\": \"Maintenez le clic ou utilisez le joystick pour déplacer votre alien.\",\n    \"startCondition\": { \"type\": \"always\" },\n    \"completeCondition\": { \"type\": \"distance_traveled\", \"count\": 20 },\n    \"onStart\": {\n      \"modal\": {\n        \"icon\": \"🌌\",\n        \"title\": \"Bienvenue\",\n        \"body\": \"Votre vaisseau vient d'atterrir. Suivez les objectifs en haut à gauche pour découvrir les fonctionnalités étape par étape.\",\n        \"subtext\": \"Cliquez sur le bandeau Objectif à tout moment pour consulter le journal.\"\n      }\n    },\n    \"onComplete\": {\n      \"toast\": \"✅ Bien joué ! Vous maîtrisez le déplacement.\"\n    }\n  },\n  {\n    \"id\": \"etape_2_recolte\",\n    \"title\": \"Première récolte\",\n    \"icon\": \"🪨\",\n    \"objective\": \"Récoltez 2 ressources différentes autour du vaisseau.\",\n    \"hint\": \"Approchez-vous des éléments au sol pour les collecter automatiquement.\",\n    \"completeCondition\": { \"type\": \"discovered_count\", \"count\": 2 },\n    \"onComplete\": {\n      \"toast\": \"🎉 Ressources collectées ! Retournez au vaisseau pour assembler.\"\n    }\n  }\n]",
-      "hint": "Tableau JSON d'étapes : id, title, icon, objective, hint, sequential (défaut true), startCondition, completeCondition, compassGuidance (anchors, revealAnchors, minDistanceM, replace, clearOnComplete, unlockCompass), onStart/onComplete (toast, modal, titleCard, unlockExtension, lockExtension, unlockBiome, lockBiome, giveItems, compassPoint, compassClear). Utilise les mêmes types de conditions que les extensions."
+      "hint": "Éditez visuellement les étapes (activer/désactiver, réordonner, conditions, guidage Boussole Bis, modales & toasts) ou basculez en vue JSON."
     }
   ]
 }
@@ -121,6 +121,7 @@
     if (!id) return null;
     return {
       id,
+      enabled: raw.enabled !== false,
       title: String(raw.title || `Étape ${idx + 1}`).trim(),
       icon: String(raw.icon || "🧭").trim() || "🧭",
       objective: String(raw.objective || "").trim(),
@@ -485,7 +486,7 @@
       const skipUnlocksAll = cfg.skipUnlocksAll !== false;
 
       const rawSteps = (cfg.steps !== undefined && cfg.steps !== null) ? cfg.steps : cfg.stepsJson;
-      const steps = parseSteps(rawSteps).map(normalizeStep).filter(Boolean);
+      const steps = parseSteps(rawSteps).map(normalizeStep).filter((s) => s && s.enabled !== false);
 
       const saved = host.state.get() || {};
       const startedSet = new Set(Array.isArray(saved.started) ? saved.started.map(String) : []);
@@ -1195,7 +1196,7 @@
       // Évaluation initiale + suivi régulier (fonctionne aussi dans le vaisseau / menu craft)
       updateHud();
       if (hudPos) requestAnimationFrame(onWindowResize);
-      evaluateSteps(false);
+      evaluateSteps(Boolean(extDef && extDef.isSilentRestore));
       pollTimer = setInterval(() => evaluateSteps(false), 250);
       host.registerCleanup(() => {
         if (pollTimer) clearInterval(pollTimer);

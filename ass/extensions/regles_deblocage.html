@@ -11,18 +11,18 @@
     {
       "key": "initialLockedBiomes",
       "label": "Biomes verrouillés au départ",
-      "type": "text",
+      "type": "biomes_multi",
       "default": "",
       "placeholder": "caldeira_magma, archipel_corallien, toundra_glaciaire",
-      "hint": "Liste d'IDs de biomes séparés par des virgules (ou tableau JSON) à verrouiller dynamiquement au début d'une partie."
+      "hint": "Sélectionnez les biomes à verrouiller dynamiquement au début d'une partie."
     },
     {
       "key": "initialLockedExtensions",
       "label": "Extensions verrouillées au départ",
-      "type": "text",
+      "type": "extensions_multi",
       "default": "",
       "placeholder": "tir_alien.html, parallaxe_25d.html",
-      "hint": "Liste de fichiers d'extensions séparés par des virgules (ou tableau JSON) à verrouiller au début d'une partie."
+      "hint": "Sélectionnez les extensions à verrouiller au début d'une partie."
     },
     {
       "key": "announceBiomes",
@@ -40,10 +40,10 @@
     },
     {
       "key": "rulesJson",
-      "label": "Règles de verrouillage / déblocage (JSON)",
-      "type": "textarea",
+      "label": "Règles de verrouillage / déblocage",
+      "type": "unlock_rules",
       "default": "[\n  {\n    \"id\": \"unlock_caldeira\",\n    \"when\": { \"type\": \"crafted_element\", \"elementId\": \"bio_serum\" },\n    \"unlockBiomes\": [\"caldeira_magma\"]\n  }\n]",
-      "hint": "Tableau JSON de règles : id, when (condition standard), onEvent (nom d'événement host ou tableau), eventMatch (filtre sur payload), once (défaut true), unlockBiomes, lockBiomes, unlockExtensions, lockExtensions, setFlag, toast, emitEvent."
+      "hint": "Configurez visuellement chaque règle (condition, biomes/extensions à débloquer ou verrouiller, activer/désactiver, ordre) ou basculez en vue JSON."
     }
   ]
 }
@@ -112,6 +112,7 @@
       : (raw.onEvent ? [String(raw.onEvent).trim()].filter(Boolean) : []);
     return {
       id,
+      enabled: raw.enabled !== false,
       when: (raw.when && typeof raw.when === "object") ? raw.when : null,
       onEvents,
       eventMatch: (raw.eventMatch && typeof raw.eventMatch === "object") ? raw.eventMatch : null,
@@ -145,7 +146,7 @@
       const announceExtensions = host.ui.getConfig("announceExtensions", true) !== false;
       const rules = parseRules(host.ui.getConfig("rulesJson", "[]"))
         .map(normalizeRule)
-        .filter(Boolean);
+        .filter((r) => r && r.enabled !== false);
 
       const saved = host.state.get() || {};
       const state = {
@@ -269,7 +270,7 @@
         evaluateConditionRules(false);
       }
 
-      const silentRestore = Boolean(opts && opts.isSilentRestore);
+      const silentRestore = Boolean((extDef && extDef.isSilentRestore) || (opts && opts.isSilentRestore));
       applyInitialLocks();
       evaluateConditionRules(silentRestore);
 
@@ -300,14 +301,11 @@
         });
       }
 
-      this._pollId = pollId;
+      host.registerCleanup(() => {
+        window.clearInterval(pollId);
+      });
     },
-    onDeactivate() {
-      if (this._pollId) {
-        window.clearInterval(this._pollId);
-        this._pollId = null;
-      }
-    },
+    onDeactivate() {},
   };
 })();
 </script>

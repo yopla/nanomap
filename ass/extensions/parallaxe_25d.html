@@ -812,15 +812,16 @@
         g.lineWidth = 2 * s;
         g.beginPath(); g.arc(half, half, 15 * s, 0, Math.PI * 2); g.stroke();
         g.globalAlpha = 1;
+        let spriteDrawn = true;
         if (sprInfo && window.AssemblageVisuals && typeof window.AssemblageVisuals.drawSpriteSheet === "function") {
           const fw = Math.max(1, Number((sprInfo.frame && sprInfo.frame.w) || 1));
           const fh = Math.max(1, Number((sprInfo.frame && sprInfo.frame.h) || 1));
           const sc = (26 * s) / Math.max(fw, fh);
-          window.AssemblageVisuals.drawSpriteSheet(g, sprInfo.sheetId, half, half, {
+          spriteDrawn = Boolean(window.AssemblageVisuals.drawSpriteSheet(g, sprInfo.sheetId, half, half, {
             frameId: sprInfo.frameId,
             scale: sc,
             pixelated: Boolean(sprInfo.isPixel),
-          });
+          }));
         } else if (icon) {
           g.font = `${Math.round(16 * s)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
           g.textAlign = "center";
@@ -838,10 +839,12 @@
           g.fill();
         }
 
-        if (pickupSpriteCache.size >= 192) {
-          pickupSpriteCache.clear();
+        if (spriteDrawn) {
+          if (pickupSpriteCache.size >= 192) {
+            pickupSpriteCache.clear();
+          }
+          pickupSpriteCache.set(key, c);
         }
-        pickupSpriteCache.set(key, c);
         return c;
       }
 
@@ -1240,14 +1243,18 @@
         if (blend <= 0.0001 && targetBlend === 0) {
           blend = 0;
           lastAnimTs = null;
-          window.Assemblage25DActive = false;
+          const p25dSvc = host.services.get("parallax25d");
+          if (p25dSvc) p25dSvc.setActive(false);
+          else window.Assemblage25DActive = false;
           queueMicrotask(() => {
             if (blend === 0 && targetBlend === 0) detachHooks();
           });
           return origDrawWorld(timeSec);
         }
 
-        window.Assemblage25DActive = true;
+        const p25dSvc = host.services.get("parallax25d");
+        if (p25dSvc) p25dSvc.setActive(true);
+        else window.Assemblage25DActive = true;
         const eased = easeInOutCubic(clamp(blend, 0, 1));
         proj.blend = eased;
         proj.pitch = 1 + (pitch - 1) * eased;
@@ -1312,6 +1319,10 @@
             ctx.beginPath(); ctx.arc(tx, ty, 3, 0, Math.PI * 2); ctx.fill();
           }
         }
+        if (host.world && typeof host.world.drawGroundEntities === "function") {
+          host.world.drawGroundEntities(ctx, timeSec);
+        }
+        host.game.runHook("drawGroundAfter", () => {}, timeSec);
         ctx.restore();
 
         // PASSE 2 : Collecte des plans 2D verticaux et tri en Y (Painter's Algorithm)
@@ -1369,7 +1380,7 @@
           billboards.push({ y: depthOf(alien.x, alien.y), kind: 6 });
         }
 
-        const customSources = window.Assemblage25DBillboardSources;
+        const customSources = p25dSvc ? p25dSvc.getSources() : window.Assemblage25DBillboardSources;
         if (customSources && customSources.size > 0) {
           const pushCustom = (yPos, drawFn, xPos) => {
             if (typeof drawFn === "function") {
@@ -1519,7 +1530,9 @@
       }
 
       function detachHooks() {
-        window.Assemblage25DActive = false;
+        const p25dSvc = host.services.get("parallax25d");
+        if (p25dSvc) p25dSvc.setActive(false);
+        else window.Assemblage25DActive = false;
         prevCamX = null;
         prevCamY = null;
         prevCamAngle = null;

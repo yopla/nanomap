@@ -13,12 +13,33 @@
 		},
 		{
 			"color": "",
+			"description": "Entités et créatures dynamiques du monde.",
+			"emoji": "👾",
+			"id": "acteur",
+			"label": "Acteur",
+			"parents": [
+				"monde",
+				"gameplay"
+			]
+		},
+		{
+			"color": "",
 			"description": "Éléments liés au personnage alien.",
 			"emoji": "👽",
 			"id": "alien",
 			"label": "Alien",
 			"parents": [
 				"avatar"
+			]
+		},
+		{
+			"color": "",
+			"description": "Éléments décoratifs ou créatures d'atmosphère.",
+			"emoji": "✨",
+			"id": "ambiance",
+			"label": "Ambiance",
+			"parents": [
+				"visuel"
 			]
 		},
 		{
@@ -127,6 +148,16 @@
 		},
 		{
 			"color": "",
+			"description": "Créatures vivantes peuplant les biomes.",
+			"emoji": "🐙",
+			"id": "créature",
+			"label": "Créature",
+			"parents": [
+				"acteur"
+			]
+		},
+		{
+			"color": "",
 			"description": "Contenu de démonstration ou de test.",
 			"emoji": "🧪",
 			"id": "démo",
@@ -143,6 +174,17 @@
 			"label": "Extension",
 			"parents": [
 				"systeme"
+			]
+		},
+		{
+			"color": "",
+			"description": "Faune sauvage et vie animale des planètes.",
+			"emoji": "🦋",
+			"id": "faune",
+			"label": "Faune",
+			"parents": [
+				"monde",
+				"acteur"
 			]
 		},
 		{
@@ -165,6 +207,17 @@
 			"parents": []
 		},
 		{
+			"color": "#ff6e7a",
+			"description": "Entités ou créatures agressives envers le joueur.",
+			"emoji": "⚔️",
+			"id": "hostile",
+			"label": "Hostile",
+			"parents": [
+				"combat",
+				"acteur"
+			]
+		},
+		{
 			"color": "",
 			"description": "Zone centrale et interfaces principales.",
 			"emoji": "🏛️",
@@ -184,6 +237,16 @@
 			"parents": [
 				"avatar",
 				"gameplay"
+			]
+		},
+		{
+			"color": "#9be564",
+			"description": "Éléments et créatures associés au biome des Marais.",
+			"emoji": "🪷",
+			"id": "marais",
+			"label": "Marais",
+			"parents": [
+				"biome"
 			]
 		},
 		{
@@ -236,6 +299,16 @@
 			"id": "monde",
 			"label": "Monde",
 			"parents": []
+		},
+		{
+			"color": "",
+			"description": "Créatures ou entités pacifiques jusqu'à provocation.",
+			"emoji": "🫧",
+			"id": "neutre",
+			"label": "Neutre",
+			"parents": [
+				"acteur"
+			]
 		},
 		{
 			"color": "",

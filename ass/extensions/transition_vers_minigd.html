@@ -3517,7 +3517,9 @@
       if (!ext.isSilentRestore && condType !== "always") {
         if (host.ui.isTitleCardPending(ext.filename || FILENAME)) {
           unsubTitleCard = host.ui.onTitleCardClosed(() => {
+            const fn = unsubTitleCard;
             unsubTitleCard = null;
+            if (fn) fn();
             if (!destroyedExt) launchMiniGame();
           }, { filename: ext.filename || FILENAME });
         } else {

@@ -124,6 +124,7 @@
       disks,
       touchPulse: 0,
       isTouched: false,
+      bounceCd: 0,
       pointerWorldX: x,
       pointerWorldY: y,
     };
@@ -239,13 +240,88 @@
     const damp = Math.pow(0.955, dtFrame);
     const bounds = M.getViewBounds ? M.getViewBounds(env, 320) : null;
     const chunkSize = (env && env.CHUNK_SIZE) || 512;
+    const alien = env && env.alien;
+    const alienR = 15;
 
     for (const st of chunkStates.values()) {
       const inView = !bounds || M.isChunkVisible(st, bounds, chunkSize);
       for (const z of st.melons) {
-        if (!inView && !z.isTouched && z.touchPulse <= 0.001) continue;
+        if (z.bounceCd > 0) {
+          z.bounceCd = Math.max(0, z.bounceCd - dt);
+        }
+        if (!inView && !z.isTouched && z.touchPulse <= 0.001 && z.bounceCd <= 0) continue;
         if (z.touchPulse > 0 && !z.isTouched) {
           z.touchPulse = Math.max(0, z.touchPulse - dt * 2.2);
+        }
+
+        // Contact alien sur le melon : rebond élastique + déformation du melon
+        if (alien) {
+          const dxA = alien.x - z.x;
+          const dyA = alien.y - z.y;
+          const distA = Math.hypot(dxA, dyA);
+          const minDist = z.r + alienR;
+          if (distA < minDist) {
+            let nx = 1;
+            let ny = 0;
+            if (distA > 0.001) {
+              nx = dxA / distA;
+              ny = dyA / distA;
+            } else {
+              const spd = Math.hypot(alien.vx || 0, alien.vy || 0);
+              if (spd > 0.001) {
+                nx = -(alien.vx / spd);
+                ny = -(alien.vy / spd);
+              }
+            }
+
+            alien.x = z.x + nx * minDist;
+            alien.y = z.y + ny * minDist;
+
+            if (z.bounceCd <= 0) {
+              const avx = alien.vx || 0;
+              const avy = alien.vy || 0;
+              const vDotN = avx * nx + avy * ny;
+              const incomingSpd = Math.hypot(avx, avy);
+
+              let bx = nx;
+              let by = ny;
+              if (vDotN < -10) {
+                const rvx = avx - 2 * vDotN * nx;
+                const rvy = avy - 2 * vDotN * ny;
+                const rLen = Math.hypot(rvx, rvy);
+                if (rLen > 0.001) {
+                  bx = (rvx / rLen) * 0.7 + nx * 0.3;
+                  by = (rvy / rLen) * 0.7 + ny * 0.3;
+                }
+              }
+
+              const bounceDist = 78 + Math.min(42, incomingSpd * 0.16);
+              if (typeof env.applyAlienKnockback === "function") {
+                env.applyAlienKnockback(bx, by, bounceDist, { flash: false, duration: 0.3 });
+              } else {
+                const bLen = Math.hypot(bx, by) || 1;
+                const speed = Math.max(260, bounceDist * 6.2);
+                alien.vx = (bx / bLen) * speed;
+                alien.vy = (by / bLen) * speed;
+              }
+
+              const impactForce = (0.022 + Math.min(0.018, incomingSpd * 0.00006)) * z.h * z.r * z.r;
+              applyForceToZone(z, -nx * impactForce, -ny * impactForce, 1.35);
+              z.touchPulse = 1.0;
+              z.bounceCd = 0.22;
+
+              const pal = SKIN_VARIANTS[z.variantIdx] || SKIN_VARIANTS[0];
+              ripples.push({
+                x: z.x,
+                y: z.y,
+                r: z.r * 0.88,
+                maxR: z.r * 1.75,
+                life: 0.52,
+                maxLife: 0.52,
+                col: pal.glow,
+              });
+            }
+          }
         }
 
         // Force continue pendant le toucher (comme isMouseOn dans melon.as)

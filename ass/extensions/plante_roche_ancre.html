@@ -216,11 +216,11 @@
         }
       }
 
+      const p25dSvc = host.services.get("parallax25d");
       // Enregistrement pour le tri en profondeur Y en mode 2.5D
       if (projectionMode === "billboard") {
         const sourceKey = `${host.instanceId || FILENAME}:${anchorId}:${sheetId}`;
-        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
-        window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+        const billboardCollector = (pushBillboard) => {
           if (!window.AssemblageVisuals) return;
           const anchor = host.game.getAnchor(anchorId);
           if (!anchor) return;
@@ -228,9 +228,17 @@
             const pt = projectPoint(anchor.x, anchor.y, 0);
             drawPlant(ctx, pt.x, pt.y, baseScale * pt.scale, timeSec);
           }, anchor.x);
-        });
+        };
+        if (p25dSvc) {
+          p25dSvc.registerSource(sourceKey, billboardCollector);
+        } else {
+          window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+          window.Assemblage25DBillboardSources.set(sourceKey, billboardCollector);
+        }
         host.registerCleanup(() => {
-          if (window.Assemblage25DBillboardSources) {
+          if (p25dSvc) {
+            p25dSvc.unregisterSource(sourceKey);
+          } else if (window.Assemblage25DBillboardSources) {
             window.Assemblage25DBillboardSources.delete(sourceKey);
           }
         });
@@ -279,7 +287,7 @@
       });
 
       host.hooks.after("drawWorldAfter", (_, timeSec) => {
-        if (projectionMode === "billboard" && window.Assemblage25DActive) return;
+        if (projectionMode === "billboard" && ((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive)) return;
         const ctx = host.game.ctx;
         if (!ctx || !window.AssemblageVisuals) return;
         const anchor = host.game.getAnchor(anchorId);

@@ -1,0 +1,732 @@
+{
+	"id": "habillage_map",
+	"name": "🗺️ Habillage de Map",
+	"symbols": {},
+	"version": 1,
+	"visuals": {
+		"habillage_bosquet_biolum": {
+			"category": "extensions",
+			"layers": [
+				{
+					"alpha": 0.92,
+					"fill": "#193a2b",
+					"name": "Clairière Moussue",
+					"rot": 0.0,
+					"rx": 90.0,
+					"ry": 86.0,
+					"stroke": "#42a876",
+					"strokeW": 3.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.88,
+					"fill": "#214d38",
+					"name": "Couronne Interne",
+					"rot": 0.0,
+					"rx": 62.0,
+					"ry": 58.0,
+					"stroke": "$tint",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.85,
+					"closed": true,
+					"fill": "#2f6b4b",
+					"name": "Racines Rayonnantes",
+					"pts": [
+						[
+							0.0,
+							-72.0
+						],
+						[
+							14.0,
+							-22.0
+						],
+						[
+							68.0,
+							-24.0
+						],
+						[
+							24.0,
+							6.0
+						],
+						[
+							44.0,
+							62.0
+						],
+						[
+							0.0,
+							26.0
+						],
+						[
+							-44.0,
+							62.0
+						],
+						[
+							-24.0,
+							6.0
+						],
+						[
+							-68.0,
+							-24.0
+						],
+						[
+							-14.0,
+							-22.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#69e6a4",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.95,
+					"fill": "$tint",
+					"name": "Lotus Haut",
+					"rot": 0.0,
+					"rx": 14.0,
+					"ry": 14.0,
+					"stroke": "#dcffe8",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": -54.0
+				},
+				{
+					"alpha": 0.95,
+					"fill": "$tint",
+					"name": "Lotus Droit",
+					"rot": 0.0,
+					"rx": 13.0,
+					"ry": 13.0,
+					"stroke": "#dcffe8",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 52.0,
+					"y": -16.0
+				},
+				{
+					"alpha": 0.95,
+					"fill": "$tint",
+					"name": "Lotus Gauche",
+					"rot": 0.0,
+					"rx": 13.0,
+					"ry": 13.0,
+					"stroke": "#dcffe8",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -52.0,
+					"y": -16.0
+				},
+				{
+					"alpha": 0.95,
+					"fill": "$tint",
+					"name": "Lotus Bas Droit",
+					"rot": 0.0,
+					"rx": 13.0,
+					"ry": 13.0,
+					"stroke": "#dcffe8",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 34.0,
+					"y": 46.0
+				},
+				{
+					"alpha": 0.95,
+					"fill": "$tint",
+					"name": "Lotus Bas Gauche",
+					"rot": 0.0,
+					"rx": 13.0,
+					"ry": 13.0,
+					"stroke": "#dcffe8",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -34.0,
+					"y": 46.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#f4ff99",
+					"name": "Cœur Spore Dorée",
+					"rot": 0.0,
+					"rx": 20.0,
+					"ry": 20.0,
+					"stroke": "$tint",
+					"strokeW": 3.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				}
+			],
+			"name": "Bosquet Bioluminescent",
+			"tags": [
+				"habillage",
+				"flore",
+				"map"
+			]
+		},
+		"habillage_esplanade_avant_poste": {
+			"category": "extensions",
+			"layers": [
+				{
+					"alpha": 0.95,
+					"closed": true,
+					"fill": "#1e2a3d",
+					"name": "Plateforme Hexagonale",
+					"pts": [
+						[
+							0.0,
+							-90.0
+						],
+						[
+							78.0,
+							-45.0
+						],
+						[
+							78.0,
+							45.0
+						],
+						[
+							0.0,
+							90.0
+						],
+						[
+							-78.0,
+							45.0
+						],
+						[
+							-78.0,
+							-45.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "$tint",
+					"strokeW": 4.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.92,
+					"closed": true,
+					"fill": "#283952",
+					"name": "Dalle Intérieure",
+					"pts": [
+						[
+							0.0,
+							-68.0
+						],
+						[
+							59.0,
+							-34.0
+						],
+						[
+							59.0,
+							34.0
+						],
+						[
+							0.0,
+							68.0
+						],
+						[
+							-59.0,
+							34.0
+						],
+						[
+							-59.0,
+							-34.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#70a8d8",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.65,
+					"fill": "$tint",
+					"h": 14.0,
+					"name": "Marquage Piste H",
+					"rot": 0.0,
+					"rx": 5.0,
+					"stroke": "#d8f5ff",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 116.0,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.65,
+					"fill": "$tint",
+					"h": 116.0,
+					"name": "Marquage Piste V",
+					"rot": 0.0,
+					"rx": 5.0,
+					"stroke": "#d8f5ff",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "rect",
+					"visible": true,
+					"w": 14.0,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffd166",
+					"name": "Balise 1",
+					"rot": 0.0,
+					"rx": 7.0,
+					"ry": 7.0,
+					"stroke": "#fff6cc",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": -82.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffd166",
+					"name": "Balise 2",
+					"rot": 0.0,
+					"rx": 7.0,
+					"ry": 7.0,
+					"stroke": "#fff6cc",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 71.0,
+					"y": -41.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffd166",
+					"name": "Balise 3",
+					"rot": 0.0,
+					"rx": 7.0,
+					"ry": 7.0,
+					"stroke": "#fff6cc",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 71.0,
+					"y": 41.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffd166",
+					"name": "Balise 4",
+					"rot": 0.0,
+					"rx": 7.0,
+					"ry": 7.0,
+					"stroke": "#fff6cc",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 82.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffd166",
+					"name": "Balise 5",
+					"rot": 0.0,
+					"rx": 7.0,
+					"ry": 7.0,
+					"stroke": "#fff6cc",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -71.0,
+					"y": 41.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#ffd166",
+					"name": "Balise 6",
+					"rot": 0.0,
+					"rx": 7.0,
+					"ry": 7.0,
+					"stroke": "#fff6cc",
+					"strokeW": 1.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": -71.0,
+					"y": -41.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#0e1d30",
+					"name": "Noyau Holographique",
+					"rot": 0.0,
+					"rx": 24.0,
+					"ry": 24.0,
+					"stroke": "$tint",
+					"strokeW": 3.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"fill": "#dff8ff",
+					"name": "Centre Lumineux",
+					"rot": 0.0,
+					"rx": 10.0,
+					"ry": 10.0,
+					"stroke": "$tint",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				}
+			],
+			"name": "Esplanade Avant-Poste",
+			"tags": [
+				"habillage",
+				"technologie",
+				"map"
+			]
+		},
+		"habillage_sanctuaire_cristal": {
+			"category": "extensions",
+			"layers": [
+				{
+					"alpha": 0.48,
+					"fill": "#121a30",
+					"name": "Halo Extérieur",
+					"rot": 0.0,
+					"rx": 92.0,
+					"ry": 92.0,
+					"stroke": "$tint",
+					"strokeW": 2.5,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.94,
+					"closed": true,
+					"fill": "#1b2440",
+					"name": "Socle Octogonal",
+					"pts": [
+						[
+							0.0,
+							-82.0
+						],
+						[
+							58.0,
+							-58.0
+						],
+						[
+							82.0,
+							0.0
+						],
+						[
+							58.0,
+							58.0
+						],
+						[
+							0.0,
+							82.0
+						],
+						[
+							-58.0,
+							58.0
+						],
+						[
+							-82.0,
+							0.0
+						],
+						[
+							-58.0,
+							-58.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#5b79b8",
+					"strokeW": 3.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.9,
+					"fill": "#131b33",
+					"name": "Anneau Runique",
+					"rot": 0.0,
+					"rx": 58.0,
+					"ry": 58.0,
+					"stroke": "$tint",
+					"strokeW": 3.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "ellipse",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.95,
+					"closed": true,
+					"fill": "$tint",
+					"name": "Pointe Nord",
+					"pts": [
+						[
+							0.0,
+							-88.0
+						],
+						[
+							13.0,
+							-52.0
+						],
+						[
+							0.0,
+							-40.0
+						],
+						[
+							-13.0,
+							-52.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#d8f8ff",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.95,
+					"closed": true,
+					"fill": "$tint",
+					"name": "Pointe Est",
+					"pts": [
+						[
+							88.0,
+							0.0
+						],
+						[
+							52.0,
+							13.0
+						],
+						[
+							40.0,
+							0.0
+						],
+						[
+							52.0,
+							-13.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#d8f8ff",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.95,
+					"closed": true,
+					"fill": "$tint",
+					"name": "Pointe Sud",
+					"pts": [
+						[
+							0.0,
+							88.0
+						],
+						[
+							13.0,
+							52.0
+						],
+						[
+							0.0,
+							40.0
+						],
+						[
+							-13.0,
+							52.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#d8f8ff",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 0.95,
+					"closed": true,
+					"fill": "$tint",
+					"name": "Pointe Ouest",
+					"pts": [
+						[
+							-88.0,
+							0.0
+						],
+						[
+							-52.0,
+							13.0
+						],
+						[
+							-40.0,
+							0.0
+						],
+						[
+							-52.0,
+							-13.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "#d8f8ff",
+					"strokeW": 2.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				},
+				{
+					"alpha": 1.0,
+					"closed": true,
+					"fill": "#e4fbff",
+					"name": "Cœur Énergétique",
+					"pts": [
+						[
+							0.0,
+							-26.0
+						],
+						[
+							18.0,
+							-8.0
+						],
+						[
+							26.0,
+							0.0
+						],
+						[
+							18.0,
+							8.0
+						],
+						[
+							0.0,
+							26.0
+						],
+						[
+							-18.0,
+							8.0
+						],
+						[
+							-26.0,
+							0.0
+						],
+						[
+							-18.0,
+							-8.0
+						]
+					],
+					"rot": 0.0,
+					"stroke": "$tint",
+					"strokeW": 3.0,
+					"sx": 1.0,
+					"sy": 1.0,
+					"type": "polygon",
+					"visible": true,
+					"x": 0.0,
+					"y": 0.0
+				}
+			],
+			"name": "Sanctuaire Cristallin",
+			"tags": [
+				"habillage",
+				"cristal",
+				"map"
+			]
+		}
+	}
+}

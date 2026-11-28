@@ -18,7 +18,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		},
 		{
 			"biomes": [
@@ -38,7 +39,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		},
 		{
 			"biomes": [
@@ -58,7 +60,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		},
 		{
 			"biomes": [
@@ -78,7 +81,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		},
 		{
 			"biomes": [
@@ -98,7 +102,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		},
 		{
 			"biomes": [
@@ -118,7 +123,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		},
 		{
 			"biomes": [
@@ -138,7 +144,8 @@
 			"tags": [],
 			"useAngleRange": true,
 			"x": 0.0,
-			"y": 0.0
+			"y": 0.0,
+			"zoneRadiusM": 0.0
 		}
 	],
 	"version": 1

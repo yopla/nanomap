@@ -153,14 +153,18 @@
         if (blend <= 0.0001 && targetBlend === 0) {
           blend = 0;
           cam.angle = 0;
-          window.AssemblageCamRotActive = false;
+          const camSvc = host.services.get("camera");
+          if (camSvc) camSvc.setRotating(false);
+          else window.AssemblageCamRotActive = false;
           queueMicrotask(() => {
             if (blend === 0 && targetBlend === 0) detachHooks();
           });
           return;
         }
 
-        window.AssemblageCamRotActive = true;
+        const camSvc = host.services.get("camera");
+        if (camSvc) camSvc.setRotating(true);
+        else window.AssemblageCamRotActive = true;
 
         if (!uiOpen) {
           alien.facing = prevFacing;
@@ -195,7 +199,9 @@
       }
 
       function detachHooks() {
-        window.AssemblageCamRotActive = false;
+        const camSvc = host.services.get("camera");
+        if (camSvc) camSvc.setRotating(false);
+        else window.AssemblageCamRotActive = false;
         if (host.game.cam) {
           host.game.cam.angle = 0;
         }
@@ -211,7 +217,9 @@
         if (host.game.cam && host.game.alien) {
           host.game.cam.angle = normalizeAngle(-Math.PI * 0.5 - host.game.alien.facing);
         }
-        window.AssemblageCamRotActive = true;
+        const camSvc = host.services.get("camera");
+        if (camSvc) camSvc.setRotating(true);
+        else window.AssemblageCamRotActive = true;
         attachHooks();
       }
 

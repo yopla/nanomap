@@ -3,11 +3,7 @@
   const M = (window.MaraisBiome = window.MaraisBiome || {});
 
   M.PARAMS_SCHEMA = [
-    { key: "maraisTentacleDensity", label: "Plantes tentacules", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: true },
     { key: "maraisEyeSpitRate", label: "Fréquence tir d'œil", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: false },
-    { key: "maraisOctopusDensity", label: "Poulpes marcheurs", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: true },
-    { key: "maraisOctopusHp", label: "Vie des poulpes", min: 20, max: 200, step: 10, default: 60, rebuildChunks: false },
-    { key: "maraisPuyoDensity", label: "Troupes de Puyos", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: true },
     { key: "maraisMelonDensity", label: "Zones tactiles (Melon)", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: true },
     { key: "maraisVineDensity", label: "Lianes physiques", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: true },
     { key: "maraisPuddleDensity", label: "Flaques & bulles", min: 0, max: 2.5, step: 0.1, default: 1.0, rebuildChunks: true },
@@ -109,7 +105,8 @@
     const zoom = Math.max(0.15, Number(env.currentZoom) || 1);
     const viewW = Number(env.viewW) || 1280;
     const viewH = Number(env.viewH) || 720;
-    const is25D = typeof window !== "undefined" && Boolean(window.Assemblage25DActive);
+    const p25d = typeof window !== "undefined" && window.AssemblageRuntime && window.AssemblageRuntime.parallax25d;
+    const is25D = Boolean((p25d && p25d.isActive()) || (typeof window !== "undefined" && window.Assemblage25DActive));
     const rawHW = (viewW * 0.5) / zoom;
     const rawHH = (viewH * (is25D ? 0.65 : 0.5)) / (zoom * (is25D ? 0.6 : 1));
     let halfW, halfH;
@@ -142,6 +139,32 @@
     return x + r >= bounds.minX && x - r <= bounds.maxX && y + r >= bounds.minY && y - r <= bounds.maxY;
   }
 
+  function migrateChunkEntities(chunkStates, listKey, chunkSize = 512) {
+    if (!chunkStates || !listKey) return;
+    const cs = Math.max(1, Number(chunkSize) || 512);
+    let pending = null;
+    for (const st of chunkStates.values()) {
+      const list = st[listKey];
+      if (!Array.isArray(list) || list.length === 0) continue;
+      for (let i = list.length - 1; i >= 0; i--) {
+        const ent = list[i];
+        const ncx = Math.floor(ent.x / cs);
+        const ncy = Math.floor(ent.y / cs);
+        if (ncx === st.cx && ncy === st.cy) continue;
+        const target = chunkStates.get(ncx + "," + ncy);
+        if (!target || !Array.isArray(target[listKey])) continue;
+        list.splice(i, 1);
+        if (!pending) pending = [];
+        pending.push({ target, ent });
+      }
+    }
+    if (pending) {
+      for (let i = 0; i < pending.length; i++) {
+        pending[i].target[listKey].push(pending[i].ent);
+      }
+    }
+  }
+
   function lerp(a, b, t) {
     return a + (b - a) * t;
   }
@@ -156,7 +179,8 @@
   }
 
   function lerpAngle(a, b, t) {
-    const diff = ((b - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    const twoPi = Math.PI * 2;
+    const diff = ((((b - a + Math.PI) % twoPi) + twoPi) % twoPi) - Math.PI;
     return a + diff * t;
   }
 
@@ -267,4 +291,5 @@
   M.getViewBounds = getViewBounds;
   M.isChunkVisible = isChunkVisible;
   M.isPointVisible = isPointVisible;
+  M.migrateChunkEntities = migrateChunkEntities;
 })();

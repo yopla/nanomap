@@ -950,9 +950,9 @@
         ctx.restore();
       }
 
+      const p25dSvc = host.services.get("parallax25d");
       const sourceKey = `${host.instanceId || FILENAME}:alien_hitbox`;
-      window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
-      window.Assemblage25DBillboardSources.set(sourceKey, (pushBillboard) => {
+      const billboardCollector = (pushBillboard) => {
         const al = host.game.alien;
         if (!al) return;
         pushBillboard(al.y - 0.12, (ctx, projectPoint) => {
@@ -962,9 +962,17 @@
           alienScreenRadius = Math.max(24, 32 * pt.scale);
           drawHoverHint(ctx, pt.x, pt.y, pt.scale);
         }, al.x);
-      });
+      };
+      if (p25dSvc) {
+        p25dSvc.registerSource(sourceKey, billboardCollector);
+      } else {
+        window.Assemblage25DBillboardSources = window.Assemblage25DBillboardSources || new Map();
+        window.Assemblage25DBillboardSources.set(sourceKey, billboardCollector);
+      }
       host.registerCleanup(() => {
-        if (window.Assemblage25DBillboardSources) {
+        if (p25dSvc) {
+          p25dSvc.unregisterSource(sourceKey);
+        } else if (window.Assemblage25DBillboardSources) {
           window.Assemblage25DBillboardSources.delete(sourceKey);
         }
       });
@@ -992,7 +1000,7 @@
       }
 
       host.hooks.after("drawWorldAfter", () => {
-        if (window.Assemblage25DActive) return;
+        if ((p25dSvc && p25dSvc.isActive()) || window.Assemblage25DActive) return;
         const al = host.game.alien;
         const ctx = host.game.ctx;
         if (!al || !ctx) return;

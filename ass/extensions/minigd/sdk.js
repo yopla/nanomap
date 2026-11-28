@@ -84,6 +84,8 @@
         applyConfig(d.params, d.texts, d.meta);
       } else if (d.type === "minigd_pause") {
         setPaused(true);
+      } else if (d.type === "minigd_resume") {
+        setPaused(false);
       } else if (d.type === "minigd_start") {
         setPaused(false);
         if (typeof opts.onStart === "function") {
